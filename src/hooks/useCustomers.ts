@@ -1,0 +1,263 @@
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  Timestamp,
+  orderBy,
+} from 'firebase/firestore'
+import { db } from '../lib/firebase'
+import { useAuthStore } from '../stores/authStore'
+import type { Customer, Contract } from '../types'
+import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
+
+export function useCustomers() {
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [contracts, setContracts] = useState<Contract[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuthStore()
+
+  const fetchAllData = useCallback(async () => {
+    if (!user) return
+
+    setLoading(true)
+    setError(null)
+    try {
+      // 1. Fetch Customers
+      const customersRef = collection(db, 'customers')
+      let qCust
+      if (user.role === 'admin') {
+        qCust = query(customersRef, orderBy('createdAt', 'desc'))
+      } else {
+        qCust = query(
+          customersRef,
+          where('trainerId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        )
+      }
+
+      const custSnapshot = await getDocs(qCust)
+      const custData = custSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Customer[]
+
+      setCustomers(custData)
+
+      // 2. Fetch Contracts
+      const contractsRef = collection(db, 'contracts')
+      let qCont
+      if (user.role === 'admin') {
+        qCont = query(contractsRef)
+      } else {
+        qCont = query(
+          contractsRef,
+          where('trainerId', '==', user.uid)
+        )
+      }
+
+      const contSnapshot = await getDocs(qCont)
+      const contData = contSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Contract[]
+
+      setContracts(contData)
+    } catch (err: any) {
+      console.error('Error fetching customers/contracts:', err)
+      setError(err.message || '無法載入資料')
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  useEffect(() => {
+    fetchAllData()
+  }, [fetchAllData])
+
+  // --- Real-time Stats Computations ---
+  const activeContractsCount = useMemo(() => {
+    return contracts.filter(c => c.status === 'active' || c.status === 'expiring').length
+  }, [contracts])
+
+  const expiringContractsCount = useMemo(() => {
+    const now = new Date()
+    const thirtyDaysFromNow = new Date()
+    thirtyDaysFromNow.setDate(now.getDate() + 30)
+
+    return contracts.filter(c => {
+      if (c.status !== 'active' && c.status !== 'expiring') return false
+      if (!c.endDate) return false
+      const end = c.endDate.toDate()
+      // Within next 30 days
+      return end >= now && end <= thirtyDaysFromNow
+    }).length
+  }, [contracts])
+
+  const thisMonthBirthdaysCount = useMemo(() => {
+    const currentMonth = new Date().getMonth() // 0-11
+    return customers.filter(customer => {
+      if (!customer.dateOfBirth) return false
+      const dob = customer.dateOfBirth.toDate()
+      return dob.getMonth() === currentMonth
+    }).length
+  }, [customers])
+
+  // ─── Customer Profile Actions ───────────────────────────────
+  
+  const createCustomerProfile = async (data: CustomerFormValues) => {
+    if (!user) throw new Error('Not authenticated')
+
+    const newCustomer = {
+      ...data,
+      dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+      trainerId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    const docRef = await addDoc(collection(db, 'customers'), newCustomer)
+    await fetchAllData()
+    return docRef.id
+  }
+
+  const updateCustomerProfile = async (id: string, data: CustomerFormValues) => {
+    const customerRef = doc(db, 'customers', id)
+    const updateData = {
+      ...data,
+      dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+      updatedAt: serverTimestamp(),
+    }
+    await updateDoc(customerRef, updateData)
+    await fetchAllData()
+  }
+
+  // ─── Contract Actions ───────────────────────────────────────
+
+  const createContract = async (customerId: string, data: ContractFormValues) => {
+    if (!user) throw new Error('Not authenticated')
+
+    console.log('Creating contract for customer:', customerId, data)
+
+    const ensureDate = (d: any) => {
+      if (d instanceof Date) return d
+      if (d?.toDate && typeof d.toDate === 'function') return d.toDate()
+      if (typeof d === 'string') return new Date(d)
+      return new Date()
+    }
+
+    const newContract = {
+      ...data,
+      customerId,
+      startDate: Timestamp.fromDate(ensureDate(data.startDate)),
+      endDate: Timestamp.fromDate(ensureDate(data.endDate)),
+      installments: (data.installments || []).map(ins => ({
+        ...ins,
+        dueDate: Timestamp.fromDate(ensureDate(ins.dueDate)),
+        paidDate: ins.paidDate ? Timestamp.fromDate(ensureDate(ins.paidDate)) : null,
+      })),
+      trainerId: user.uid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }
+
+    const docRef = await addDoc(collection(db, 'contracts'), newContract)
+    console.log('Contract created with ID:', docRef.id)
+    await fetchAllData()
+    return docRef.id
+  }
+
+  const fetchCustomerContracts = async (customerId: string) => {
+    console.log('Fetching contracts for customer:', customerId)
+    const contractsRef = collection(db, 'contracts')
+    const q = query(
+      contractsRef, 
+      where('customerId', '==', customerId)
+    )
+    const snapshot = await getDocs(q)
+    const results = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })).sort((a: any, b: any) => {
+      const timeA = a.createdAt?.toMillis?.() || 0
+      const timeB = b.createdAt?.toMillis?.() || 0
+      return timeB - timeA
+    }) as Contract[]
+    
+    console.log('Found contracts:', results.length)
+    return results
+  }
+
+  // ─── Combined Flows (Onboarding) ───────────────────────────
+
+  const onboardNewCustomer = async (data: CombinedCustomerContractValues) => {
+    if (!user) throw new Error('Not authenticated')
+
+    try {
+      // 1. Create Profile
+      const customerData = { ...data }
+      delete (customerData as any).contract
+
+      const newCustomer = {
+        ...customerData,
+        dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+        trainerId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+
+      const customerDoc = await addDoc(collection(db, 'customers'), newCustomer)
+      const customerId = customerDoc.id
+
+      // 2. Create Initial Contract if provided
+      const totalSessions = Number(data.contract?.totalSessions || 0)
+      if (data.contract && totalSessions > 0) {
+        console.log('Onboarding: Creating initial contract...')
+        await createContract(customerId, data.contract as any)
+      } else {
+        console.log('Onboarding: No contract sessions provided, skipping contract creation.')
+      }
+
+      // 3. Final refresh
+      await fetchAllData()
+      return customerId
+    } catch (err) {
+      console.error('Error in onboarding flow:', err)
+      throw err
+    }
+  }
+
+  const deleteCustomer = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'customers', id))
+      await fetchAllData()
+    } catch (err: any) {
+      console.error('Error deleting customer:', err)
+      throw err
+    }
+  }
+
+  return {
+    customers,
+    contracts,
+    loading,
+    error,
+    activeContractsCount,
+    expiringContractsCount,
+    thisMonthBirthdaysCount,
+    createCustomerProfile,
+    updateCustomerProfile,
+    createContract,
+    fetchCustomerContracts,
+    onboardNewCustomer,
+    deleteCustomer,
+    refresh: fetchAllData,
+  }
+}

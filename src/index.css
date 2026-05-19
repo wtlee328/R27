@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand palette — derived from logo orange + black */
+  --color-brand-50: #fff7ed;
+  --color-brand-100: #ffedd5;
+  --color-brand-200: #fed7aa;
+  --color-brand-300: #fdba74;
+  --color-brand-400: #fb923c;
+  --color-brand-500: #f97316;
+  --color-brand-600: #ea580c;
+  --color-brand-700: #c2410c;
+  --color-brand-800: #9a3412;
+  --color-brand-900: #7c2d12;
+
+  --color-surface: #fafaf9;
+  --color-surface-card: #ffffff;
+  --color-border: #e7e5e4;
+
+  --font-sans: "Inter", "Noto Sans TC", system-ui, sans-serif;
+
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+}
+
+@layer base {
+  * {
+    @apply border-[var(--color-border)];
+  }
+
+  body {
+    @apply bg-[var(--color-surface)] text-stone-900 font-sans antialiased;
+  }
+
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 20 14.3% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 14.3% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14.3% 4.1%;
+    --primary: 25 95% 53%;
+    --primary-foreground: 60 9.1% 97.8%;
+    --secondary: 60 4.8% 95.9%;
+    --secondary-foreground: 24 9.8% 10%;
+    --muted: 60 4.8% 95.9%;
+    --muted-foreground: 25 5.3% 44.7%;
+    --accent: 60 4.8% 95.9%;
+    --accent-foreground: 24 9.8% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 60 9.1% 97.8%;
+    --border: 20 5.9% 90%;
+    --input: 20 5.9% 90%;
+    --ring: 25 95% 53%;
+    --radius: 0.75rem;
+  }
+}
+
+/* ─── Animations ──────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.35s ease-out both;
+  }
+  .animate-slide-in-left {
+    animation: slide-in-left 0.25s ease-out both;
+  }
+}
+
+@layer components {
+  /* ─── Loading skeleton ──────────────────────────────── */
+  .skeleton {
+    @apply rounded-lg bg-gradient-to-r from-stone-200 via-stone-100 to-stone-200;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* ─── Loading spinner ───────────────────────────────── */
+  .loading-spinner {
+    @apply flex items-center justify-center py-16 gap-1.5;
+  }
+  .loading-spinner::before,
+  .loading-spinner::after,
+  .loading-spinner > span {
+    @apply block w-2 h-2 rounded-full bg-brand-400;
+    animation: pulse-dot 1s ease-in-out infinite;
+  }
+  .loading-spinner::after  { animation-delay: 0.2s; }
+  .loading-spinner > span  { animation-delay: 0.4s; }
+}
