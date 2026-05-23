@@ -24,6 +24,7 @@ import {
   Clock
 } from 'lucide-react'
 import { useCustomers } from '../../hooks/useCustomers'
+import { cn } from '@/lib/utils'
 
 interface CustomerDetailsModalProps {
   open: boolean
