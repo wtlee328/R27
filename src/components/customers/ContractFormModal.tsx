@@ -29,7 +29,7 @@ interface ContractFormModalProps {
 }
 
 const STEPS = [
-  { id: 'contract', title: '合約設定', icon: FileText, fields: ['totalSessions', 'pricePerSession', 'startDate', 'endDate'] },
+  { id: 'contract', title: '合約設定', icon: FileText, fields: ['totalSessions', 'totalAmount', 'startDate', 'endDate'] },
   { id: 'signature', title: '簽署確認', icon: ShieldCheck, fields: [] },
 ]
 
@@ -211,17 +211,25 @@ export function ContractFormModal({
 
   const handleSessionsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sessions = Number(e.target.value)
-    const price = form.getValues('pricePerSession') || 0
+    const totalAmount = form.getValues('totalAmount') || 0
     form.setValue('totalSessions', sessions)
     form.setValue('remainingSessions', sessions)
-    form.setValue('totalAmount', sessions * price)
+    if (sessions > 0) {
+      form.setValue('pricePerSession', Math.round((totalAmount / sessions) * 100) / 100)
+    } else {
+      form.setValue('pricePerSession', 0)
+    }
   }
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const price = Number(e.target.value)
+  const handleTotalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const totalAmount = Number(e.target.value)
     const sessions = form.getValues('totalSessions') || 0
-    form.setValue('pricePerSession', price)
-    form.setValue('totalAmount', sessions * price)
+    form.setValue('totalAmount', totalAmount)
+    if (sessions > 0) {
+      form.setValue('pricePerSession', Math.round((totalAmount / sessions) * 100) / 100)
+    } else {
+      form.setValue('pricePerSession', 0)
+    }
   }
 
   const handleFinalSubmit = async (data: ContractFormValues) => {
@@ -450,8 +458,8 @@ export function ContractFormModal({
                           <Input type="number" {...form.register('totalSessions')} onChange={handleSessionsChange} />
                         </div>
                         <div className="space-y-2">
-                          <Label>單堂價格 *</Label>
-                          <Input type="number" {...form.register('pricePerSession')} onChange={handlePriceChange} />
+                          <Label>合約總金額 (Total Lesson Fee) *</Label>
+                          <Input type="number" {...form.register('totalAmount')} onChange={handleTotalAmountChange} />
                         </div>
                         <div className="space-y-2">
                           <Label>合約開始日 *</Label>
@@ -464,8 +472,13 @@ export function ContractFormModal({
                       </div>
                       <div className="bg-brand-50 p-6 rounded-2xl flex justify-between items-center">
                         <div>
-                          <p className="text-[10px] font-bold text-brand-600 uppercase">預估總金額</p>
-                          <p className="text-2xl font-black text-brand-950">NT$ {form.watch('totalAmount').toLocaleString()}</p>
+                          <p className="text-[10px] font-bold text-brand-600 uppercase">單堂平均價格</p>
+                          <p className="text-2xl font-black text-brand-950">
+                            NT$ {(form.watch('pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="text-right text-stone-400 text-xs">
+                          根據總金額與堂數自動計算
                         </div>
                       </div>
                     </div>
