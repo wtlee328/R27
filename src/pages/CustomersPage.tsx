@@ -212,7 +212,7 @@ export default function CustomersPage() {
             <CustomerTable 
               customers={filteredCustomers} 
               contracts={contracts}
-              onView={handleViewCustomer}
+              onView={handleViewDetails}
             />
           )}
         </div>
@@ -223,8 +223,8 @@ export default function CustomersPage() {
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
         customer={selectedCustomer}
-        onEditProfile={handleEditProfile}
-        onCreateContract={handleRenewal}
+        onEditProfile={handleOpenEditProfile}
+        onCreateContract={handleOpenRenewal}
         onViewContract={handleViewContract}
       />
 
