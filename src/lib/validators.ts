@@ -45,6 +45,9 @@ export const installmentSchema = z.object({
 export const contractFormSchema = z.object({
   customerId: z.string().min(1, '請選擇客戶'),
   sharedWithCustomerId: z.string().nullable().default(null),
+  customerIds: z.array(z.string()).default([]),
+  contractType: z.enum(['single', 'dual']).default('single'),
+  primaryCustomerId: z.string().default(''),
   totalSessions: z.coerce.number().min(1, '堂數必須大於 0'),
   remainingSessions: z.coerce.number().min(0, '剩餘堂數不能為負數'),
   pricePerSession: z.coerce.number().min(0, '單堂價格不能為負數'),

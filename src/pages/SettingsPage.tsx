@@ -1,6 +1,8 @@
 import React from 'react'
 import { Settings, GripVertical, RotateCcw, ShieldAlert } from 'lucide-react'
 import { Reorder } from 'framer-motion'
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import { useAuthStore } from '@/stores/authStore'
 import { useMenuStore, ALL_NAV_ITEMS } from '@/stores/menuStore'
 import { Button } from '@/components/ui/button'
@@ -12,6 +14,45 @@ export default function SettingsPage() {
   const resetOrder = useMenuStore((state) => state.resetOrder)
 
   const isAdmin = user?.role === 'admin'
+
+  const [migrationLoading, setMigrationLoading] = React.useState(false)
+  const [migrationStatus, setMigrationStatus] = React.useState<string | null>(null)
+
+  const handleMigrate = async () => {
+    setMigrationLoading(true)
+    setMigrationStatus('開始遷移舊合約資料...')
+    try {
+      const contractsRef = collection(db, 'contracts')
+      const contractsSnapshot = await getDocs(contractsRef)
+      let migratedCount = 0
+      let skippedCount = 0
+
+      for (const docObj of contractsSnapshot.docs) {
+        const data = docObj.data()
+        if (!data.customerIds) {
+          const customerIds = [data.customerId]
+          if (data.sharedWithCustomerId) {
+            customerIds.push(data.sharedWithCustomerId)
+          }
+          
+          await updateDoc(doc(db, 'contracts', docObj.id), {
+            customerIds: customerIds,
+            contractType: data.sharedWithCustomerId ? 'dual' : 'single',
+            primaryCustomerId: data.customerId
+          })
+          migratedCount++
+        } else {
+          skippedCount++
+        }
+      }
+      setMigrationStatus(`遷移完成！成功升級 ${migratedCount} 份合約，跳過已升級的 ${skippedCount} 份合約。`)
+    } catch (err: any) {
+      console.error('Migration error:', err)
+      setMigrationStatus(`遷移失敗：${err.message || String(err)}`)
+    } finally {
+      setMigrationLoading(false)
+    }
+  }
 
   // Filter items based on user role
   const visibleItems = ALL_NAV_ITEMS.filter((item) => {
@@ -144,6 +185,48 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Database Migration Card for Admin */}
+      {isAdmin && (
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden mt-6">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-red-600 via-amber-500 to-yellow-500" />
+          
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
+            <div>
+              <h2 className="text-lg font-bold text-stone-800">資料庫系統遷移工具</h2>
+              <p className="text-xs text-stone-400 mt-1">
+                將舊的單人合約結構升級為支援雙人合約的 `customerIds` 陣列結構。
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="p-4 bg-amber-50/30 border border-amber-200/40 rounded-xl flex items-start gap-3">
+              <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-xs font-bold text-amber-800">注意：此操作會修改現有資料</h4>
+                <p className="text-[11px] text-amber-700/80 mt-1 leading-relaxed">
+                  點擊下方按鈕將掃描 `contracts` 集合中所有未升級的合約，並為其初始化 `customerIds`、`contractType` 和 `primaryCustomerId` 欄位。此操作安全且可重複執行，不會覆蓋已升級的資料。
+                </p>
+              </div>
+            </div>
+
+            {migrationStatus && (
+              <div className="p-4 bg-stone-50 border border-stone-200 rounded-xl text-xs font-mono text-stone-600">
+                {migrationStatus}
+              </div>
+            )}
+
+            <Button
+              onClick={handleMigrate}
+              disabled={migrationLoading}
+              className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl transition-all"
+            >
+              {migrationLoading ? '正在遷移中...' : '執行合約資料結構升級 (Migrate)'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
