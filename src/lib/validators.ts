@@ -51,7 +51,7 @@ export const contractFormSchema = z.object({
   totalSessions: z.coerce.number().min(1, '堂數必須大於 0'),
   remainingSessions: z.coerce.number().min(0, '剩餘堂數不能為負數'),
   pricePerSession: z.coerce.number().min(0, '單堂價格不能為負數'),
-  totalAmount: z.coerce.number().min(0, '總金額不能為負數'),
+  totalAmount: z.coerce.number().min(1, '總金額必須大於 0'),
   paidAmount: z.coerce.number().min(0, '已付金額不能為負數'),
   installments: z.array(installmentSchema),
   startDate: z.date({

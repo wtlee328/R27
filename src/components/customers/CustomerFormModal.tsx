@@ -30,7 +30,7 @@ interface CustomerFormModalProps {
 const STEPS = [
   { id: 'basic', title: '基本資料', icon: User, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
   { id: 'medical', title: '健康狀態', icon: Activity, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] },
-  { id: 'contract', title: '合約設定', icon: FileText, fields: ['contract.totalSessions', 'contract.pricePerSession', 'contract.startDate', 'contract.endDate'] },
+  { id: 'contract', title: '合約設定', icon: FileText, fields: ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate'] },
   { id: 'signature', title: '簽署確認', icon: ShieldCheck, fields: [] },
 ]
 
@@ -195,17 +195,25 @@ export function CustomerFormModal({
 
   const handleSessionsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sessions = Number(e.target.value)
-    const price = form.getValues('contract.pricePerSession') || 0
+    const totalAmount = form.getValues('contract.totalAmount') || 0
     form.setValue('contract.totalSessions', sessions)
     form.setValue('contract.remainingSessions', sessions)
-    form.setValue('contract.totalAmount', sessions * price)
+    if (sessions > 0) {
+      form.setValue('contract.pricePerSession', Math.round((totalAmount / sessions) * 100) / 100)
+    } else {
+      form.setValue('contract.pricePerSession', 0)
+    }
   }
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const price = Number(e.target.value)
+  const handleTotalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const totalAmount = Number(e.target.value)
     const sessions = form.getValues('contract.totalSessions') || 0
-    form.setValue('contract.pricePerSession', price)
-    form.setValue('contract.totalAmount', sessions * price)
+    form.setValue('contract.totalAmount', totalAmount)
+    if (sessions > 0) {
+      form.setValue('contract.pricePerSession', Math.round((totalAmount / sessions) * 100) / 100)
+    } else {
+      form.setValue('contract.pricePerSession', 0)
+    }
   }
 
   const handleFinalSubmit = async (data: CombinedCustomerContractValues) => {
@@ -617,8 +625,8 @@ export function CustomerFormModal({
                           <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="bg-stone-50 border-stone-200" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-stone-700">單堂價格 *</Label>
-                          <Input type="number" {...form.register('contract.pricePerSession')} onChange={handlePriceChange} className="bg-stone-50 border-stone-200" />
+                          <Label className="text-stone-700">合約總金額 (Total Lesson Fee) *</Label>
+                          <Input type="number" {...form.register('contract.totalAmount')} onChange={handleTotalAmountChange} className="bg-stone-50 border-stone-200" />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">已付金額</Label>
@@ -636,11 +644,13 @@ export function CustomerFormModal({
                       
                       <div className="mt-6 p-6 bg-brand-50 rounded-2xl border border-brand-100 flex items-center justify-between">
                         <div>
-                          <Label className="text-brand-600 text-xs font-bold uppercase mb-1">合約總金額</Label>
-                          <div className="text-2xl font-black text-brand-950">NT$ {form.watch('contract.totalAmount')?.toLocaleString()}</div>
+                          <Label className="text-brand-600 text-xs font-bold uppercase mb-1">單堂平均價格</Label>
+                          <div className="text-2xl font-black text-brand-950">
+                            NT$ {(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </div>
                         </div>
                         <div className="text-right text-stone-400 text-xs">
-                          根據堂數與單價自動計算
+                          根據總金額與堂數自動計算
                         </div>
                       </div>
                     </div>
