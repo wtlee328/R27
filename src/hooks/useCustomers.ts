@@ -153,9 +153,17 @@ export function useCustomers() {
       return new Date()
     }
 
+    const customerIds = [customerId]
+    if (data.sharedWithCustomerId) {
+      customerIds.push(data.sharedWithCustomerId)
+    }
+
     const newContract = {
       ...data,
       customerId,
+      customerIds,
+      contractType: data.sharedWithCustomerId ? 'dual' : 'single',
+      primaryCustomerId: customerId,
       startDate: Timestamp.fromDate(ensureDate(data.startDate)),
       endDate: Timestamp.fromDate(ensureDate(data.endDate)),
       installments: (data.installments || []).map(ins => ({
@@ -177,14 +185,26 @@ export function useCustomers() {
   const fetchCustomerContracts = async (customerId: string) => {
     console.log('Fetching contracts for customer:', customerId)
     const contractsRef = collection(db, 'contracts')
-    const q = query(
-      contractsRef, 
-      where('customerId', '==', customerId)
-    )
-    const snapshot = await getDocs(q)
-    const results = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
+    
+    // Fetch via customerIds array
+    const qArray = query(contractsRef, where('customerIds', 'array-contains', customerId))
+    const snapArray = await getDocs(qArray)
+    
+    // Fetch via old customerId field (in case migration hasn't run yet)
+    const qOld = query(contractsRef, where('customerId', '==', customerId))
+    const snapOld = await getDocs(qOld)
+    
+    // Fetch via old sharedWithCustomerId field (in case migration hasn't run yet)
+    const qShared = query(contractsRef, where('sharedWithCustomerId', '==', customerId))
+    const snapShared = await getDocs(qShared)
+    
+    // Merge & deduplicate
+    const allDocs = [...snapArray.docs, ...snapOld.docs, ...snapShared.docs]
+    const uniqueDocs = Array.from(new Map(allDocs.map(docObj => [docObj.id, docObj])).values())
+
+    const results = uniqueDocs.map(docObj => ({
+      id: docObj.id,
+      ...docObj.data()
     })).sort((a: any, b: any) => {
       const timeA = a.createdAt?.toMillis?.() || 0
       const timeB = b.createdAt?.toMillis?.() || 0

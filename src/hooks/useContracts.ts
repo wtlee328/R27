@@ -30,9 +30,18 @@ export function useContracts(customerId?: string) {
         ...doc.data(),
       })) as Contract[]
 
-      // Also fetch shared contracts
+      // Also fetch shared and array-contains contracts
       if (customerId) {
-        let sharedQ = query(collection(db, 'contracts'), where('sharedWithCustomerId', '==', customerId))
+        // Query by array
+        const arrayQ = query(collection(db, 'contracts'), where('customerIds', 'array-contains', customerId))
+        const arraySnapshot = await getDocs(arrayQ)
+        const arrayData = arraySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Contract[]
+
+        // Legacy Query by sharedWithCustomerId
+        const sharedQ = query(collection(db, 'contracts'), where('sharedWithCustomerId', '==', customerId))
         const sharedSnapshot = await getDocs(sharedQ)
         const sharedData = sharedSnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -40,7 +49,7 @@ export function useContracts(customerId?: string) {
         })) as Contract[]
         
         // Merge and deduplicate
-        const allData = [...data, ...sharedData]
+        const allData = [...data, ...arrayData, ...sharedData]
         const unique = Array.from(new Map(allData.map(item => [item.id, item])).values())
         setContracts(unique)
       } else {
