@@ -67,6 +67,9 @@ export const contractFormSchema = z.object({
   contractType: z.enum(['single', 'dual']).default('single'),
   customerIds: z.array(z.string()).optional(),
   primaryCustomerId: z.string().optional(),
+  partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
+  partnerId: z.string().nullable().optional().default(null),
+  partnerCustomerData: customerFormSchema.nullable().optional().default(null),
 })
 
 export type ContractFormValues = z.infer<typeof contractFormSchema>

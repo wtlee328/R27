@@ -153,14 +153,35 @@ export function useCustomers() {
       return new Date()
     }
 
-    const isDual = data.contractType === 'dual' || !!data.sharedWithCustomerId
-    const partnerId = data.sharedWithCustomerId || (data.customerIds && data.customerIds.find(id => id !== customerId)) || null
+    let finalPartnerId = data.sharedWithCustomerId || null
+    if (data.partnerMode === 'new' && data.partnerCustomerData) {
+      console.log('Contract Renewal: Creating partner customer B profile...')
+      const partnerCustomer = {
+        ...data.partnerCustomerData,
+        dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
+        trainerId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+      const partnerDoc = await addDoc(collection(db, 'customers'), partnerCustomer)
+      finalPartnerId = partnerDoc.id
+    } else if (data.partnerMode === 'existing' && data.partnerId) {
+      finalPartnerId = data.partnerId
+    }
+
+    const isDual = data.contractType === 'dual' || !!finalPartnerId
+    const partnerId = finalPartnerId
     const customerIds = isDual 
       ? [customerId, partnerId].filter((id): id is string => !!id)
       : [customerId]
 
+    const cleanData = { ...data }
+    delete (cleanData as any).partnerMode
+    delete (cleanData as any).partnerId
+    delete (cleanData as any).partnerCustomerData
+
     const newContract = {
-      ...data,
+      ...cleanData,
       customerId,
       sharedWithCustomerId: partnerId,
       customerIds,
