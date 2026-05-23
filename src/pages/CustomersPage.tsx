@@ -23,8 +23,7 @@ export default function CustomersPage() {
     thisMonthBirthdaysCount,
     updateCustomerProfile, 
     onboardNewCustomer, 
-    createContract,
-    fetchCustomerContracts 
+    createContract 
   } = useCustomers()
 
   // Modals visibility
@@ -41,23 +40,24 @@ export default function CustomersPage() {
   // Filter State
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
 
-  const handleOpenOnboarding = () => {
-    setSelectedCustomer(null)
-    setIsOnboardingOpen(true)
-  }
-
-  const handleViewCustomer = (customer: Customer) => {
+  const handleViewDetails = (customer: Customer) => {
     setSelectedCustomer(customer)
     setIsDetailOpen(true)
   }
 
-  const handleEditProfile = (customer: Customer) => {
+  const handleOpenOnboarding = () => {
+    setSelectedCustomer(null)
+    setIsEditingProfile(false)
+    setIsOnboardingOpen(true)
+  }
+
+  const handleOpenEditProfile = (customer: Customer) => {
     setSelectedCustomer(customer)
     setIsEditingProfile(true)
     setIsOnboardingOpen(true)
   }
 
-  const handleRenewal = (customer: Customer) => {
+  const handleOpenRenewal = (customer: Customer) => {
     setSelectedCustomer(customer)
     setIsRenewalOpen(true)
   }
@@ -70,7 +70,7 @@ export default function CustomersPage() {
 
   const handleOnboardingSubmit = async (data: CombinedCustomerContractValues) => {
     if (selectedCustomer && isEditingProfile) {
-      await updateCustomerProfile(selectedCustomer.id, data as any)
+      await updateCustomerProfile(selectedCustomer.id, data as CombinedCustomerContractValues)
     } else {
       await onboardNewCustomer(data)
     }
@@ -236,6 +236,7 @@ export default function CustomersPage() {
         }}
         onSubmit={handleOnboardingSubmit}
         isEditMode={isEditingProfile}
+        customers={customers}
         initialData={selectedCustomer ? {
           name: selectedCustomer.name,
           phone: selectedCustomer.phone,
@@ -252,6 +253,7 @@ export default function CustomersPage() {
         open={isRenewalOpen}
         onOpenChange={setIsRenewalOpen}
         customer={selectedCustomer}
+        customers={customers}
         onSubmit={handleRenewalSubmit}
       />
 

@@ -62,13 +62,20 @@ export const contractFormSchema = z.object({
   }),
   status: z.enum(['active', 'expiring', 'expired', 'completed']),
   signatureDataUrl: z.string().nullable().default(null),
+  secondarySignatureDataUrl: z.string().nullable().default(null),
   isAgreed: z.boolean().default(false),
+  contractType: z.enum(['single', 'dual']).default('single'),
+  customerIds: z.array(z.string()).optional(),
+  primaryCustomerId: z.string().optional(),
 })
 
 export type ContractFormValues = z.infer<typeof contractFormSchema>
 
 export const combinedCustomerContractSchema = customerFormSchema.extend({
   contract: contractFormSchema.omit({ customerId: true }).optional(),
+  partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
+  partnerId: z.string().nullable().optional().default(null),
+  partnerCustomerData: customerFormSchema.nullable().optional().default(null),
 })
 export type CombinedCustomerContractValues = z.infer<typeof combinedCustomerContractSchema>
 
@@ -102,6 +109,7 @@ export const lessonRecordFormSchema = z.object({
   }),
   sessionAmount: z.coerce.number().min(0.5, '消耗堂數必須大於 0'),
   notes: z.string().optional().default(''),
+  attendingCustomerIds: z.array(z.string()).optional(),
 })
 
 export type LessonRecordFormValues = z.infer<typeof lessonRecordFormSchema>

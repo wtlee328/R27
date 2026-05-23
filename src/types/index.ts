@@ -71,6 +71,7 @@ export interface Contract {
   endDate: Timestamp
   status: ContractStatus
   signatureDataUrl: string | null
+  secondarySignatureDataUrl: string | null
   isAgreed: boolean
   createdAt: Timestamp
   updatedAt: Timestamp
@@ -86,6 +87,8 @@ export interface LessonRecord {
   sessionDate: Timestamp
   sessionAmount: number
   notes: string
+  attendingCustomerIds?: string[]
+  attendingCustomerNames?: string[]
   createdAt: Timestamp
   updatedAt: Timestamp
 }

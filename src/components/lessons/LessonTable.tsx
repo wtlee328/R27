@@ -61,7 +61,11 @@ export function LessonTable({
                 <td className="px-5 py-3.5 text-stone-500 tabular-nums">
                   {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '-'}
                 </td>
-                <td className="px-5 py-3.5 font-medium text-stone-900">{r.customerName}</td>
+                <td className="px-5 py-3.5 font-medium text-stone-900">
+                  {r.attendingCustomerNames && r.attendingCustomerNames.length > 0
+                    ? r.attendingCustomerNames.join(' & ')
+                    : r.customerName}
+                </td>
                 <td className="px-5 py-3.5 text-center">
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200/60">
                     {r.sessionAmount} 堂

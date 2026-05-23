@@ -153,16 +153,18 @@ export function useCustomers() {
       return new Date()
     }
 
-    const customerIds = [customerId]
-    if (data.sharedWithCustomerId) {
-      customerIds.push(data.sharedWithCustomerId)
-    }
+    const isDual = data.contractType === 'dual' || !!data.sharedWithCustomerId
+    const partnerId = data.sharedWithCustomerId || (data.customerIds && data.customerIds.find(id => id !== customerId)) || null
+    const customerIds = isDual 
+      ? [customerId, partnerId].filter((id): id is string => !!id)
+      : [customerId]
 
     const newContract = {
       ...data,
       customerId,
+      sharedWithCustomerId: partnerId,
       customerIds,
-      contractType: data.sharedWithCustomerId ? 'dual' : 'single',
+      contractType: isDual ? 'dual' : 'single',
       primaryCustomerId: customerId,
       startDate: Timestamp.fromDate(ensureDate(data.startDate)),
       endDate: Timestamp.fromDate(ensureDate(data.endDate)),
@@ -186,26 +188,28 @@ export function useCustomers() {
     console.log('Fetching contracts for customer:', customerId)
     const contractsRef = collection(db, 'contracts')
     
-    // Fetch via customerIds array
-    const qArray = query(contractsRef, where('customerIds', 'array-contains', customerId))
-    const snapArray = await getDocs(qArray)
+    const q1 = query(contractsRef, where('customerIds', 'array-contains', customerId))
+    const q2 = query(contractsRef, where('customerId', '==', customerId))
+    const q3 = query(contractsRef, where('sharedWithCustomerId', '==', customerId))
     
-    // Fetch via old customerId field (in case migration hasn't run yet)
-    const qOld = query(contractsRef, where('customerId', '==', customerId))
-    const snapOld = await getDocs(qOld)
+    const [snap1, snap2, snap3] = await Promise.all([
+      getDocs(q1),
+      getDocs(q2),
+      getDocs(q3)
+    ])
     
-    // Fetch via old sharedWithCustomerId field (in case migration hasn't run yet)
-    const qShared = query(contractsRef, where('sharedWithCustomerId', '==', customerId))
-    const snapShared = await getDocs(qShared)
+    const resultMap = new Map<string, any>()
+    const addDocs = (snap: any) => {
+      snap.docs.forEach((doc: any) => {
+        resultMap.set(doc.id, { id: doc.id, ...doc.data() })
+      })
+    }
     
-    // Merge & deduplicate
-    const allDocs = [...snapArray.docs, ...snapOld.docs, ...snapShared.docs]
-    const uniqueDocs = Array.from(new Map(allDocs.map(docObj => [docObj.id, docObj])).values())
-
-    const results = uniqueDocs.map(docObj => ({
-      id: docObj.id,
-      ...docObj.data()
-    })).sort((a: any, b: any) => {
+    addDocs(snap1)
+    addDocs(snap2)
+    addDocs(snap3)
+    
+    const results = Array.from(resultMap.values()).sort((a: any, b: any) => {
       const timeA = a.createdAt?.toMillis?.() || 0
       const timeB = b.createdAt?.toMillis?.() || 0
       return timeB - timeA
@@ -221,9 +225,29 @@ export function useCustomers() {
     if (!user) throw new Error('Not authenticated')
 
     try {
+      // Create partner customer if partnerMode is 'new'
+      let finalPartnerId: string | null = null
+      if (data.partnerMode === 'new' && data.partnerCustomerData) {
+        console.log('Onboarding: Creating partner customer B profile...')
+        const partnerCustomer = {
+          ...data.partnerCustomerData,
+          dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
+          trainerId: user.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }
+        const partnerDoc = await addDoc(collection(db, 'customers'), partnerCustomer)
+        finalPartnerId = partnerDoc.id
+      } else if (data.partnerMode === 'existing' && data.partnerId) {
+        finalPartnerId = data.partnerId
+      }
+
       // 1. Create Profile
       const customerData = { ...data }
       delete (customerData as any).contract
+      delete (customerData as any).partnerMode
+      delete (customerData as any).partnerId
+      delete (customerData as any).partnerCustomerData
 
       const newCustomer = {
         ...customerData,
@@ -240,7 +264,13 @@ export function useCustomers() {
       const totalSessions = Number(data.contract?.totalSessions || 0)
       if (data.contract && totalSessions > 0) {
         console.log('Onboarding: Creating initial contract...')
-        await createContract(customerId, data.contract as any)
+        const contractData = {
+          ...data.contract,
+          sharedWithCustomerId: finalPartnerId,
+          contractType: finalPartnerId ? 'dual' as const : 'single' as const,
+          customerIds: finalPartnerId ? [customerId, finalPartnerId] : [customerId],
+        }
+        await createContract(customerId, contractData as any)
       } else {
         console.log('Onboarding: No contract sessions provided, skipping contract creation.')
       }

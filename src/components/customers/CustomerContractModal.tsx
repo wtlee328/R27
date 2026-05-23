@@ -6,6 +6,8 @@ import {
   DialogTitle,
 } from '../ui/dialog'
 import { format } from 'date-fns'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
 import { Printer, X } from 'lucide-react'
 import { Button } from '../ui/button'
@@ -23,6 +25,37 @@ export function CustomerContractModal({
   customer,
   contract,
 }: CustomerContractModalProps) {
+  const [partner, setPartner] = React.useState<Customer | null>(null)
+
+  React.useEffect(() => {
+    const fetchPartner = async () => {
+      if (!contract || !customer) {
+        setPartner(null)
+        return
+      }
+      const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
+      if (!isDual) {
+        setPartner(null)
+        return
+      }
+      const partnerId = contract.customerIds && contract.customerIds.length > 1
+        ? contract.customerIds.find(id => id !== customer.id)
+        : contract.sharedWithCustomerId
+        
+      if (partnerId) {
+        try {
+          const docSnap = await getDoc(doc(db, 'customers', partnerId))
+          if (docSnap.exists()) {
+            setPartner({ id: docSnap.id, ...docSnap.data() } as Customer)
+          }
+        } catch (err) {
+          console.error('Error fetching partner in contract modal:', err)
+        }
+      }
+    }
+    fetchPartner()
+  }, [contract, customer, open])
+
   if (!customer) return null
 
   const handlePrint = () => {
@@ -57,21 +90,42 @@ export function CustomerContractModal({
               {/* Contract Metadata */}
               <div className="grid grid-cols-2 gap-8 mb-8 pb-8 border-b-2 border-stone-100">
                 <div className="space-y-4">
-                  <h3 className="font-bold text-stone-900 text-sm border-l-4 border-brand-500 pl-3">甲方（學員資訊）</h3>
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <span className="text-stone-400 font-medium">姓名</span>
-                    <span className="col-span-2 text-stone-900 font-bold">{customer.name}</span>
-                    <span className="text-stone-400 font-medium">電話</span>
-                    <span className="col-span-2 text-stone-900 font-bold">{customer.phone}</span>
-                    <span className="text-stone-400 font-medium">身分證號</span>
-                    <span className="col-span-2 text-stone-900 font-bold">{customer.idNumber || '──────'}</span>
-                    <span className="text-stone-400 font-medium">出生日期</span>
-                    <span className="col-span-2 text-stone-900 font-bold">
-                      {customer.dateOfBirth ? format(customer.dateOfBirth.toDate(), 'yyyy 年 MM 月 dd 日') : '──────'}
-                    </span>
-                    <span className="text-stone-400 font-medium">Email</span>
-                    <span className="col-span-2 text-stone-900 font-bold break-all">{customer.email || '──────'}</span>
+                  <h3 className="font-bold text-stone-900 text-sm border-l-4 border-brand-500 pl-3">
+                    甲方（學員資訊）
+                    {partner && <span className="ml-1 text-xs text-purple-600 font-bold">(雙人共享合約)</span>}
+                  </h3>
+                  
+                  {/* Primary Customer */}
+                  <div className="space-y-1">
+                    {partner && <p className="text-[9px] text-stone-400 font-bold tracking-wider">【學員 A - 主簽署人】</p>}
+                    <div className="grid grid-cols-3 gap-1 text-sm">
+                      <span className="text-stone-400 font-medium">姓名</span>
+                      <span className="col-span-2 text-stone-900 font-bold">{customer.name}</span>
+                      <span className="text-stone-400 font-medium">電話</span>
+                      <span className="col-span-2 text-stone-900 font-bold">{customer.phone}</span>
+                      <span className="text-stone-400 font-medium">身分證</span>
+                      <span className="col-span-2 text-stone-900 font-bold">{customer.idNumber || '──────'}</span>
+                      <span className="text-stone-400 font-medium">Email</span>
+                      <span className="col-span-2 text-stone-900 font-bold break-all text-xs">{customer.email || '──────'}</span>
+                    </div>
                   </div>
+
+                  {/* Partner Customer */}
+                  {partner && (
+                    <div className="space-y-1 pt-2 border-t border-dashed border-stone-200">
+                      <p className="text-[9px] text-purple-500 font-bold tracking-wider">【學員 B - 共享成員】</p>
+                      <div className="grid grid-cols-3 gap-1 text-sm">
+                        <span className="text-stone-400 font-medium">姓名</span>
+                        <span className="col-span-2 text-purple-950 font-bold">{partner.name}</span>
+                        <span className="text-stone-400 font-medium">電話</span>
+                        <span className="col-span-2 text-stone-900 font-bold">{partner.phone}</span>
+                        <span className="text-stone-400 font-medium">身分證</span>
+                        <span className="col-span-2 text-stone-900 font-bold">{partner.idNumber || '──────'}</span>
+                        <span className="text-stone-400 font-medium">Email</span>
+                        <span className="col-span-2 text-stone-900 font-bold break-all text-xs">{partner.email || '──────'}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-4">
                   <h3 className="font-bold text-stone-900 text-sm border-l-4 border-stone-300 pl-3">乙方（教練/中心資訊）</h3>
@@ -141,18 +195,37 @@ export function CustomerContractModal({
                   </div>
                 </div>
                 
-                <div className="space-y-6 text-right">
-                  <div className="space-y-2">
-                    <p className="text-xs text-stone-400 uppercase font-bold tracking-widest">甲方簽署確認</p>
-                    <div className="min-w-[200px] h-32 border-b-2 border-stone-200 flex items-center justify-end">
-                      {contract?.signatureDataUrl ? (
-                        <img src={contract.signatureDataUrl} alt="Signature" className="max-h-full max-w-full object-contain mix-blend-multiply" />
-                      ) : (
-                        <span className="text-stone-300 italic text-sm">( 尚未簽署 )</span>
-                      )}
+                <div className="space-y-4">
+                  <div className="flex gap-8 items-end">
+                    {/* Primary Signature */}
+                    <div className="space-y-2 text-right">
+                      <p className="text-xs text-stone-400 uppercase font-bold tracking-widest">
+                        {partner ? '甲方學員 A 簽署' : '甲方簽署確認'}
+                      </p>
+                      <div className="min-w-[180px] h-24 border-b-2 border-stone-200 flex items-center justify-end">
+                        {contract?.signatureDataUrl ? (
+                          <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                        ) : (
+                          <span className="text-stone-300 italic text-[11px]">( 尚未簽署 )</span>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Secondary Signature */}
+                    {partner && (
+                      <div className="space-y-2 text-right">
+                        <p className="text-xs text-purple-400 uppercase font-bold tracking-widest">甲方學員 B 簽署</p>
+                        <div className="min-w-[180px] h-24 border-b-2 border-stone-200 flex items-center justify-end">
+                          {contract?.secondarySignatureDataUrl ? (
+                            <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                          ) : (
+                            <span className="text-stone-300 italic text-[11px]">( 尚未簽署 )</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs text-stone-400">簽署日期：{contract?.createdAt ? format(contract.createdAt.toDate(), 'yyyy/MM/dd HH:mm') : format(new Date(), 'yyyy/MM/dd')}</p>
+                  <p className="text-xs text-stone-400 text-right">簽署日期：{contract?.createdAt ? format(contract.createdAt.toDate(), 'yyyy/MM/dd HH:mm') : format(new Date(), 'yyyy/MM/dd')}</p>
                 </div>
               </div>
 

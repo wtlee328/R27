@@ -29,21 +29,32 @@ export function CustomerTable({
     // 2. Active contract status filter
     if (filterType === 'has-active') {
       result = result.filter(c => {
-        return contracts.some(con => con.customerId === c.id && (con.status === 'active' || con.status === 'expiring'))
+        return contracts.some(con => 
+          (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
+          (con.status === 'active' || con.status === 'expiring')
+        )
       })
     } else if (filterType === 'no-active') {
       result = result.filter(c => {
-        return !contracts.some(con => con.customerId === c.id && (con.status === 'active' || con.status === 'expiring'))
+        return !contracts.some(con => 
+          (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
+          (con.status === 'active' || con.status === 'expiring')
+        )
       })
     }
 
     // Helper functions to resolve contract details for sorting
     const getCustomerActiveContract = (customerId: string) => {
-      return contracts.find(con => con.customerId === customerId && (con.status === 'active' || con.status === 'expiring'))
+      return contracts.find(con => 
+        (con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))) && 
+        (con.status === 'active' || con.status === 'expiring')
+      )
     }
 
     const getCustomerLatestContract = (customerId: string) => {
-      const customerContracts = contracts.filter(con => con.customerId === customerId)
+      const customerContracts = contracts.filter(con => 
+        con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))
+      )
       if (customerContracts.length === 0) return null
       return [...customerContracts].sort((a, b) => {
         const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
@@ -175,8 +186,16 @@ export function CustomerTable({
         ) : (
           <div className="divide-y divide-stone-50">
             {processedCustomers.map((c) => {
-              const customerContracts = contracts.filter(con => con.customerId === c.id)
-              const activeContract = contracts.find(con => con.customerId === c.id && (con.status === 'active' || con.status === 'expiring'))
+              const activeContract = contracts.find(con => 
+                (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
+                (con.status === 'active' || con.status === 'expiring')
+              )
+              const partnerId = activeContract 
+                ? (activeContract.customerIds && activeContract.customerIds.length > 1
+                    ? activeContract.customerIds.find(id => id !== c.id)
+                    : activeContract.sharedWithCustomerId)
+                : null
+              const partner = partnerId ? customers.find(cust => cust.id === partnerId) : null
 
               return (
                 <div 
@@ -193,12 +212,26 @@ export function CustomerTable({
                       {c.name.charAt(0)}
                     </div>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         <h3 className="font-bold text-stone-900 group-hover:text-stone-950 transition-colors">{c.name}</h3>
                         {activeContract ? (
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-100/50 text-[10px] py-0 px-2 h-5 flex items-center">進行中</Badge>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="outline" className={cn(
+                              activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
+                                ? "bg-purple-50 text-purple-600 border-purple-100/50" 
+                                : "bg-emerald-50 text-emerald-600 border-emerald-100/50",
+                              "text-[10px] py-0 px-2 h-5 flex items-center shrink-0"
+                            )}>
+                              {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? '👥 雙人合約' : '👤 進行中'}
+                            </Badge>
+                            {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
+                              <span className="text-[10px] text-purple-500 font-bold bg-purple-50/50 px-2 py-0.5 rounded-md border border-purple-100/30 shrink-0">
+                                與 {partner.name} 共享
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200/50 text-[10px] py-0 px-2 h-5 flex items-center">無有效合約</Badge>
+                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200/50 text-[10px] py-0 px-2 h-5 flex items-center shrink-0">無有效合約</Badge>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
@@ -213,14 +246,19 @@ export function CustomerTable({
                     {/* Remaining Sessions */}
                     <div className="space-y-1 min-w-[90px]">
                       <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">剩餘堂數</p>
-                      <div className="flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-stone-400" />
-                        <p className={cn(
-                          "text-xs font-bold",
-                          activeContract ? "text-stone-700" : "text-stone-400 italic"
-                        )}>
-                          {activeContract ? `${activeContract.remainingSessions} / ${activeContract.totalSessions} 堂` : '無合約'}
-                        </p>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-stone-400" />
+                          <p className={cn(
+                            "text-xs font-bold",
+                            activeContract ? "text-stone-700" : "text-stone-400 italic"
+                          )}>
+                            {activeContract ? `${activeContract.remainingSessions} / ${activeContract.totalSessions} 堂` : '無合約'}
+                          </p>
+                        </div>
+                        {activeContract && (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && (
+                          <span className="text-[8px] text-purple-400 font-bold mt-0.5">(雙人共享額度)</span>
+                        )}
                       </div>
                     </div>
 
