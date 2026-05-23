@@ -58,6 +58,9 @@ export interface Contract {
   trainerId: string
   customerId: string
   sharedWithCustomerId: string | null
+  customerIds: string[]
+  contractType: 'single' | 'dual'
+  primaryCustomerId: string
   totalSessions: number
   remainingSessions: number
   pricePerSession: number
