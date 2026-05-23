@@ -24,6 +24,7 @@ interface CustomerFormModalProps {
   onSubmit: (data: CombinedCustomerContractValues) => Promise<void>
   initialData?: Partial<CombinedCustomerContractValues>
   isEditMode?: boolean
+  customers?: Customer[]
 }
 
 const STEPS = [
@@ -39,12 +40,12 @@ export function CustomerFormModal({
   onSubmit,
   initialData,
   isEditMode = false,
+  customers = [],
 }: CustomerFormModalProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
-
-  const activeSteps = useMemo(() => isEditMode ? STEPS.slice(0, 2) : STEPS, [isEditMode])
+  const secondarySigCanvas = useRef<SignatureCanvas>(null)
 
   const defaultValues = useMemo(() => ({
     name: '',
@@ -56,6 +57,9 @@ export function CustomerFormModal({
     emergencyContact: { name: '', relation: '', phone: '' },
     sharedContractCustomerId: null,
     medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+    partnerMode: 'none' as const,
+    partnerId: null,
+    partnerCustomerData: null,
     contract: {
       sharedWithCustomerId: null,
       totalSessions: 0,
@@ -68,6 +72,8 @@ export function CustomerFormModal({
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       status: 'active' as const,
       signatureDataUrl: null,
+      secondarySignatureDataUrl: null,
+      contractType: 'single' as const,
       isAgreed: false,
     },
   }), [])
@@ -107,9 +113,57 @@ export function CustomerFormModal({
 
   const watchedValues = form.watch()
 
+  const activeSteps = useMemo(() => {
+    if (isEditMode) return STEPS.slice(0, 2)
+    
+    const steps = STEPS.map(step => {
+      if (step.id === 'contract') {
+        const fields = [...step.fields]
+        if (watchedValues.partnerMode === 'existing') {
+          fields.push('partnerId')
+        }
+        return { ...step, fields }
+      }
+      return step
+    })
+
+    if (watchedValues.partnerMode === 'new') {
+      steps.splice(3, 0, 
+        { 
+          id: 'partner_basic', 
+          title: '共享學員基本資料', 
+          icon: User, 
+          fields: [
+            'partnerCustomerData.name', 
+            'partnerCustomerData.phone', 
+            'partnerCustomerData.idNumber', 
+            'partnerCustomerData.dateOfBirth', 
+            'partnerCustomerData.emergencyContact.name', 
+            'partnerCustomerData.emergencyContact.relation', 
+            'partnerCustomerData.emergencyContact.phone'
+          ] 
+        },
+        { 
+          id: 'partner_medical', 
+          title: '共享學員健康狀態', 
+          icon: Activity, 
+          fields: [
+            'partnerCustomerData.medicalHistory.chronicConditions', 
+            'partnerCustomerData.medicalHistory.injuries'
+          ] 
+        }
+      )
+    }
+    return steps
+  }, [isEditMode, watchedValues.partnerMode])
+
   const stepStatus = useMemo(() => {
     return activeSteps.map((step) => {
       if (step.id === 'signature') {
+        const isDual = watchedValues.contract?.contractType === 'dual' || watchedValues.partnerMode !== 'none'
+        if (isDual) {
+          return !!watchedValues.contract?.signatureDataUrl && !!watchedValues.contract?.secondarySignatureDataUrl
+        }
         return !!watchedValues.contract?.signatureDataUrl
       }
       
@@ -155,6 +209,14 @@ export function CustomerFormModal({
   }
 
   const handleFinalSubmit = async (data: CombinedCustomerContractValues) => {
+    // Validate all active fields first
+    const allActiveFields = activeSteps.flatMap(s => s.fields) as any[]
+    const isValid = await form.trigger(allActiveFields)
+    if (!isValid) {
+      alert('請確認所有步驟欄位填寫正確。')
+      return
+    }
+
     setLoading(true)
     try {
       // Use getCanvas() to bypass getTrimmedCanvas() which has a broken
@@ -167,6 +229,16 @@ export function CustomerFormModal({
           data.contract!.signatureDataUrl = rawCanvas.toDataURL('image/png')
         }
       }
+
+      if (secondarySigCanvas.current) {
+        const canvas = secondarySigCanvas.current as any
+        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
+        if (!isEmpty) {
+          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
+          data.contract!.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
+        }
+      }
+
       await onSubmit(data)
       onOpenChange(false)
     } catch (error) {
@@ -262,7 +334,7 @@ export function CustomerFormModal({
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {currentStep === 0 && (
+                  {activeSteps[currentStep]?.id === 'basic' && (
                     <div className="space-y-8">
                       <div className="space-y-1">
                         <h2 className="text-2xl font-bold text-stone-900">基本資料</h2>
@@ -318,7 +390,7 @@ export function CustomerFormModal({
                     </div>
                   )}
 
-                  {currentStep === 1 && (
+                  {activeSteps[currentStep]?.id === 'medical' && (
                     <div className="space-y-8">
                       <div className="space-y-1">
                         <h2 className="text-2xl font-bold text-stone-900">健康狀態</h2>
@@ -415,13 +487,131 @@ export function CustomerFormModal({
                     </div>
                   )}
 
-                  {currentStep === 2 && (
+                  {activeSteps[currentStep]?.id === 'contract' && (
                     <div className="space-y-8">
                       <div className="space-y-1">
                         <h2 className="text-2xl font-bold text-stone-900">合約設定</h2>
                         <p className="text-stone-500 text-sm">設定合約堂數、單價以及生效日期。</p>
                       </div>
                       <div className="grid grid-cols-2 gap-6">
+                        <div className="col-span-2 space-y-2">
+                          <Label className="text-stone-700 font-bold block">合約模式 *</Label>
+                          <div className="flex gap-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('contract.contractType', 'single')
+                                form.setValue('partnerMode', 'none')
+                                form.setValue('partnerId', null)
+                                form.setValue('partnerCustomerData', null)
+                              }}
+                              className={cn(
+                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                form.watch('contract.contractType') !== 'dual'
+                                  ? "bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-200"
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}
+                            >
+                              👤 單人合約
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('contract.contractType', 'dual')
+                                form.setValue('partnerMode', 'existing')
+                              }}
+                              className={cn(
+                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                form.watch('contract.contractType') === 'dual'
+                                  ? "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-100"
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}
+                            >
+                              👥 雙人共享合約
+                            </button>
+                          </div>
+                        </div>
+
+                        {form.watch('contract.contractType') === 'dual' && (
+                          <div className="col-span-2 p-6 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-purple-950 font-bold block text-sm">👥 共享學員綁定方式 *</Label>
+                            <div className="flex gap-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  form.setValue('partnerMode', 'existing')
+                                  form.setValue('partnerCustomerData', null)
+                                }}
+                                className={cn(
+                                  "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                  form.watch('partnerMode') === 'existing'
+                                    ? "bg-purple-600 border-purple-600 text-white"
+                                    : "bg-white border-stone-200 text-stone-600"
+                                )}
+                              >
+                                🔗 連結系統現有客戶
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  form.setValue('partnerMode', 'new')
+                                  form.setValue('partnerId', null)
+                                  form.setValue('partnerCustomerData', {
+                                    name: '',
+                                    idNumber: '',
+                                    phone: '',
+                                    email: '',
+                                    dateOfBirth: new Date(),
+                                    historicalSessions: 0,
+                                    emergencyContact: { name: '', relation: '', phone: '' },
+                                    sharedContractCustomerId: null,
+                                    medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                  })
+                                }}
+                                className={cn(
+                                  "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                  form.watch('partnerMode') === 'new'
+                                    ? "bg-purple-600 border-purple-600 text-white"
+                                    : "bg-white border-stone-200 text-stone-600"
+                                )}
+                              >
+                                ➕ 新增全新客戶
+                              </button>
+                            </div>
+
+                            {form.watch('partnerMode') === 'existing' && (
+                              <div className="space-y-2 pt-2">
+                                <Label className="text-xs text-purple-900 font-medium">選擇現有學員 *</Label>
+                                <select
+                                  value={form.watch('partnerId') || ''}
+                                  onChange={(e) => form.setValue('partnerId', e.target.value || null)}
+                                  className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                >
+                                  <option value="">-- 請選擇學員 --</option>
+                                  {customers.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name} ({c.phone})
+                                    </option>
+                                  ))}
+                                </select>
+                                {form.watch('partnerId') && (
+                                  <p className="text-[10px] text-purple-500 font-bold">
+                                    提示：此合約將會由您當前建立的客戶與 {customers.find(c => c.id === form.watch('partnerId'))?.name} 共同持有一份合約。
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
+                            {form.watch('partnerMode') === 'new' && (
+                              <div className="pt-2">
+                                <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
+                                  ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div className="space-y-2">
                           <Label className="text-stone-700">合約總堂數 *</Label>
                           <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="bg-stone-50 border-stone-200" />
@@ -456,7 +646,151 @@ export function CustomerFormModal({
                     </div>
                   )}
 
-                  {currentStep === 3 && (
+                  {activeSteps[currentStep]?.id === 'partner_basic' && (
+                    <div className="space-y-8">
+                      <div className="space-y-1">
+                        <h2 className="text-2xl font-bold text-stone-900">共享學員基本資料</h2>
+                        <p className="text-stone-500 text-sm">輸入第二位共享學員的聯絡方式與緊急聯繫人資訊。</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">共享學員姓名 *</Label>
+                          <Input {...form.register('partnerCustomerData.name')} placeholder="例如：陳小美" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">身分證字號 *</Label>
+                          <Input {...form.register('partnerCustomerData.idNumber')} placeholder="B223456789" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">電話 *</Label>
+                          <Input {...form.register('partnerCustomerData.phone')} placeholder="0987-654-321" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">Email</Label>
+                          <Input type="email" {...form.register('partnerCustomerData.email')} placeholder="partner@mail.com" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">出生年月日 *</Label>
+                          <Input type="date" {...form.register('partnerCustomerData.dateOfBirth', { valueAsDate: true })} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
+                      </div>
+                      <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 space-y-4">
+                        <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                          緊急聯絡人資訊 (共享學員) *
+                        </h3>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-stone-500">姓名 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.name')} className="h-9 text-sm" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-stone-500">關係 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.relation')} className="h-9 text-sm" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs text-stone-500">電話 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.phone')} className="h-9 text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeSteps[currentStep]?.id === 'partner_medical' && (
+                    <div className="space-y-8">
+                      <div className="space-y-1">
+                        <h2 className="text-2xl font-bold text-stone-900">共享學員健康狀態</h2>
+                        <p className="text-stone-500 text-sm">了解第二位學員的身體狀況以進行更安全的課程設計。</p>
+                      </div>
+                      <div className="space-y-6">
+                        <div className="space-y-3">
+                          <Label className="text-stone-700 font-bold block mb-4">慢性病史 (可複選)</Label>
+                          <div className="grid grid-cols-3 gap-3">
+                            {['無狀況', '高血壓', '心臟病', '糖尿病', '氣喘', '癲癇', '骨質疏鬆', '自體免疫', '癌症', '其他'].map((condition) => (
+                              <label key={condition} className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer",
+                                (form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) 
+                                  ? "bg-brand-50 border-brand-200 text-brand-700" 
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}>
+                                <input
+                                  type="checkbox"
+                                  value={condition}
+                                  className="hidden"
+                                  {...form.register('partnerCustomerData.medicalHistory.chronicConditions', {
+                                    onChange: (e) => {
+                                      const checked = e.target.checked
+                                      const val = e.target.value
+                                      const current = form.getValues('partnerCustomerData.medicalHistory.chronicConditions') || []
+                                      if (val === '無狀況' && checked) {
+                                        form.setValue('partnerCustomerData.medicalHistory.chronicConditions', ['無狀況'])
+                                      } else if (val !== '無狀況' && checked) {
+                                        form.setValue('partnerCustomerData.medicalHistory.chronicConditions', current.filter(x => x !== '無狀況'))
+                                      }
+                                    }
+                                  })}
+                                />
+                                <div className={cn(
+                                  "w-4 h-4 rounded border flex items-center justify-center",
+                                  (form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) 
+                                    ? "bg-brand-500 border-brand-500" 
+                                    : "border-stone-300"
+                                  )}>
+                                  {(form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                                </div>
+                                <span className="text-sm font-medium">{condition}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label className="text-stone-700 font-bold block mb-4">傷病史 (可複選)</Label>
+                          <div className="grid grid-cols-4 gap-3">
+                            {['無狀況', '肩部', '手肘', '手腕', '下背', '髖關節', '膝蓋', '腳踝', '其他'].map((injury) => (
+                              <label key={injury} className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-center justify-center",
+                                (form.watch('partnerCustomerData.medicalHistory.injuries') || []).includes(injury) 
+                                  ? "bg-stone-900 border-stone-900 text-white" 
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}>
+                                <input
+                                  type="checkbox"
+                                  value={injury}
+                                  className="hidden"
+                                  {...form.register('partnerCustomerData.medicalHistory.injuries', {
+                                    onChange: (e) => {
+                                      const checked = e.target.checked
+                                      const val = e.target.value
+                                      const current = form.getValues('partnerCustomerData.medicalHistory.injuries') || []
+                                      if (val === '無狀況' && checked) {
+                                        form.setValue('partnerCustomerData.medicalHistory.injuries', ['無狀況'])
+                                      } else if (val !== '無狀況' && checked) {
+                                        form.setValue('partnerCustomerData.medicalHistory.injuries', current.filter(x => x !== '無狀況'))
+                                      }
+                                    }
+                                  })}
+                                />
+                                <span className="text-xs font-bold">{injury}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-4">
+                          <Label className="text-stone-700 font-bold">其他身體狀況說明</Label>
+                          <textarea 
+                            {...form.register('partnerCustomerData.medicalHistory.notes')} 
+                            className="w-full h-32 p-4 rounded-2xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20 transition-all text-sm outline-none"
+                            placeholder="例如：右膝前十字韌帶曾開刀..." 
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeSteps[currentStep]?.id === 'signature' && (
                     <div className="space-y-6">
                       <div className="space-y-1">
                         <h2 className="text-2xl font-bold text-stone-900">簽署確認</h2>
@@ -465,24 +799,37 @@ export function CustomerFormModal({
 
                       <div className="space-y-4">
                         {/* Summary Card */}
-                        <div className="bg-stone-900 rounded-3xl p-6 text-white space-y-4 shadow-xl">
+                        <div className={cn(
+                          "rounded-3xl p-6 text-white space-y-4 shadow-xl transition-colors duration-500",
+                          form.watch('contract.contractType') === 'dual' ? "bg-purple-950" : "bg-stone-900"
+                        )}>
                           <div className="flex justify-between items-start">
                             <div>
-                              <p className="text-stone-400 text-[10px] uppercase font-bold tracking-widest">客戶姓名</p>
-                              <h3 className="text-xl font-bold">{form.watch('name') || '未填寫'}</h3>
+                              <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest">客戶姓名</p>
+                              <h3 className="text-xl font-bold">
+                                {form.watch('name') || '未填寫'}
+                                {form.watch('contract.contractType') === 'dual' && (
+                                  <>
+                                    {' ＆ '}
+                                    {form.watch('partnerMode') === 'existing'
+                                      ? (customers.find(c => c.id === form.watch('partnerId'))?.name || '已選學員')
+                                      : (form.watch('partnerCustomerData.name') || '新學員')}
+                                  </>
+                                )}
+                              </h3>
                             </div>
                             <div className="text-right">
-                              <p className="text-stone-400 text-[10px] uppercase font-bold tracking-widest">合約總金額</p>
+                              <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest">合約總金額</p>
                               <p className="text-xl font-bold text-brand-400">NT$ {form.watch('contract.totalAmount')?.toLocaleString()}</p>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t border-white/10">
                             <div>
-                              <p className="text-stone-500 text-[10px] uppercase font-bold">聯絡電話</p>
+                              <p className="text-white/40 text-[10px] uppercase font-bold">聯絡電話</p>
                               <p>{form.watch('phone') || '-'}</p>
                             </div>
                             <div>
-                              <p className="text-stone-500 text-[10px] uppercase font-bold">合約堂數</p>
+                              <p className="text-white/40 text-[10px] uppercase font-bold">合約堂數</p>
                               <p>{form.watch('contract.totalSessions')} 堂</p>
                             </div>
                           </div>
@@ -538,34 +885,71 @@ export function CustomerFormModal({
 
                         {/* Signature Area */}
                         <div className={cn(
-                          "relative transition-all duration-500",
+                          "grid gap-6 transition-all duration-500",
+                          form.watch('contract.contractType') === 'dual' ? "grid-cols-2" : "grid-cols-1",
                           !form.watch('contract.isAgreed') ? "opacity-30 pointer-events-none grayscale" : "opacity-100"
                         )}>
-                          <Label className="text-stone-700 font-bold mb-2 block">學員數位簽名 *</Label>
-                          <div className="border-2 border-dashed border-stone-300 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
-                            {form.watch('contract.signatureDataUrl') && form.watch('contract.signatureDataUrl') !== 'signed' && (
-                              <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
-                                <img 
-                                  src={form.watch('contract.signatureDataUrl')!} 
-                                  alt="Signature" 
-                                  className="max-h-full max-w-full object-contain"
+                          {/* Signature A */}
+                          <div className="relative">
+                            <Label className="text-stone-700 font-bold mb-2 block">
+                              {form.watch('contract.contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *'}
+                            </Label>
+                            <div className="border-2 border-dashed border-stone-300 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
+                              {form.watch('contract.signatureDataUrl') && form.watch('contract.signatureDataUrl') !== 'signed' && (
+                                <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
+                                  <img 
+                                    src={form.watch('contract.signatureDataUrl')!} 
+                                    alt="Signature A" 
+                                    className="max-h-full max-w-full object-contain"
+                                  />
+                                </div>
+                              )}
+                              <SignatureCanvas
+                                ref={sigCanvas}
+                                onEnd={() => form.setValue('contract.signatureDataUrl', 'signed')}
+                                canvasProps={{ className: 'w-full h-48 rounded-2xl bg-white cursor-crosshair' }}
+                              />
+                            </div>
+                            <div className="absolute right-6 top-10 z-20 flex gap-2">
+                              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                sigCanvas.current?.clear()
+                                form.setValue('contract.signatureDataUrl', null)
+                              }} className="h-8 text-xs text-stone-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
+                                清除
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Signature B */}
+                          {form.watch('contract.contractType') === 'dual' && (
+                            <div className="relative">
+                              <Label className="text-purple-950 font-bold mb-2 block">甲方學員 B 簽名 *</Label>
+                              <div className="border-2 border-dashed border-purple-200 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
+                                {form.watch('contract.secondarySignatureDataUrl') && form.watch('contract.secondarySignatureDataUrl') !== 'signed' && (
+                                  <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
+                                    <img 
+                                      src={form.watch('contract.secondarySignatureDataUrl')!} 
+                                      alt="Signature B" 
+                                      className="max-h-full max-w-full object-contain"
+                                    />
+                                  </div>
+                                )}
+                                <SignatureCanvas
+                                  ref={secondarySigCanvas}
+                                  onEnd={() => form.setValue('contract.secondarySignatureDataUrl', 'signed')}
+                                  canvasProps={{ className: 'w-full h-48 rounded-2xl bg-white cursor-crosshair' }}
                                 />
                               </div>
-                            )}
-                            <SignatureCanvas
-                              ref={sigCanvas}
-                              onEnd={() => form.setValue('contract.signatureDataUrl', 'signed')}
-                              canvasProps={{ className: 'w-full h-48 rounded-2xl bg-white cursor-crosshair' }}
-                            />
-                          </div>
-                          <div className="absolute right-6 top-10 z-20 flex gap-2">
-                            <Button type="button" variant="ghost" size="sm" onClick={() => {
-                              sigCanvas.current?.clear()
-                              form.setValue('contract.signatureDataUrl', null)
-                            }} className="h-8 text-xs text-stone-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
-                              清除重簽
-                            </Button>
-                          </div>
+                              <div className="absolute right-6 top-10 z-20 flex gap-2">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => {
+                                  secondarySigCanvas.current?.clear()
+                                  form.setValue('contract.secondarySignatureDataUrl', null)
+                                }} className="h-8 text-xs text-purple-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
+                                  清除
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

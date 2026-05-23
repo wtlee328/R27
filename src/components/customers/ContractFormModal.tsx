@@ -5,6 +5,8 @@ import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, ChevronRight, ChevronLeft, FileText, ShieldCheck, User } from 'lucide-react'
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import {
   Dialog,
   DialogContent,
@@ -16,13 +18,14 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { contractFormSchema, type ContractFormValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
-import type { Customer } from '../../types'
+import type { Customer, Contract } from '../../types'
 
 interface ContractFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (data: ContractFormValues) => Promise<void>
   customer: Customer | null
+  customers: Customer[]
 }
 
 const STEPS = [
@@ -35,10 +38,12 @@ export function ContractFormModal({
   onOpenChange,
   onSubmit,
   customer,
+  customers,
 }: ContractFormModalProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
+  const secondarySigCanvas = useRef<SignatureCanvas>(null)
 
   const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
@@ -55,7 +60,9 @@ export function ContractFormModal({
       endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       status: 'active',
       signatureDataUrl: null,
+      secondarySignatureDataUrl: null,
       isAgreed: false,
+      contractType: 'single',
     },
   })
 
@@ -74,17 +81,55 @@ export function ContractFormModal({
         endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
         status: 'active',
         signatureDataUrl: null,
+        secondarySignatureDataUrl: null,
         isAgreed: false,
+        contractType: 'single',
       })
       setCurrentStep(0)
+
+      // Fetch previous contract to default partner combination
+      const fetchLastContract = async () => {
+        try {
+          const contractsRef = collection(db, 'contracts')
+          const q = query(
+            contractsRef,
+            where('customerIds', 'array-contains', customer.id),
+            orderBy('createdAt', 'desc'),
+            limit(1)
+          )
+          const snap = await getDocs(q)
+          if (!snap.empty) {
+            const lastCon = { id: snap.docs[0].id, ...snap.docs[0].data() } as Contract
+            const isDual = lastCon.contractType === 'dual' || !!lastCon.sharedWithCustomerId
+            const partnerId = isDual
+              ? (lastCon.customerIds && lastCon.customerIds.find(id => id !== customer.id)) || lastCon.sharedWithCustomerId
+              : null
+
+            if (isDual && partnerId) {
+              form.setValue('contractType', 'dual')
+              form.setValue('sharedWithCustomerId', partnerId)
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching last contract for default partner:', err)
+        }
+      }
+      fetchLastContract()
     }
   }, [open, customer, form])
 
   const watchedValues = form.watch()
 
   const stepStatus = [
-    watchedValues.totalSessions > 0 && watchedValues.pricePerSession > 0 && !!watchedValues.startDate && !!watchedValues.endDate,
-    !!watchedValues.signatureDataUrl && watchedValues.isAgreed
+    watchedValues.totalSessions > 0 &&
+    watchedValues.pricePerSession > 0 &&
+    !!watchedValues.startDate &&
+    !!watchedValues.endDate &&
+    (watchedValues.contractType !== 'dual' || !!watchedValues.sharedWithCustomerId),
+    
+    !!watchedValues.signatureDataUrl &&
+    (watchedValues.contractType !== 'dual' || !!watchedValues.secondarySignatureDataUrl) &&
+    watchedValues.isAgreed
   ]
 
   const handleNext = async () => {
@@ -122,6 +167,13 @@ export function ContractFormModal({
           data.signatureDataUrl = rawCanvas.toDataURL('image/png')
         }
       }
+      if (secondarySigCanvas.current && data.contractType === 'dual') {
+        const canvas = secondarySigCanvas.current as any
+        if (!canvas.isEmpty()) {
+          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
+          data.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
+        }
+      }
       await onSubmit(data)
       onOpenChange(false)
     } catch (error) {
@@ -141,7 +193,7 @@ export function ContractFormModal({
           <DialogTitle>合約續約/新增</DialogTitle>
           <DialogDescription>為現有客戶 {customer.name} 建立新合約。</DialogDescription>
         </div>
-        <div className="flex h-[70vh] min-h-[500px]">
+        <div className="flex h-[75vh] min-h-[550px]">
           {/* Sidebar */}
           <div className="w-64 bg-stone-50 border-r border-stone-200 p-8 flex flex-col">
             <div className="mb-10">
@@ -200,6 +252,65 @@ export function ContractFormModal({
                         <h2 className="text-2xl font-bold text-stone-900">合約設定</h2>
                         <p className="text-stone-500 text-sm">請輸入新合約的課程方案與效期。</p>
                       </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-stone-700 font-bold block text-xs">合約模式 *</Label>
+                        <div className="flex gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue('contractType', 'single')
+                              form.setValue('sharedWithCustomerId', null)
+                            }}
+                            className={cn(
+                              "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                              form.watch('contractType') !== 'dual'
+                                ? "bg-stone-900 border-stone-900 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                            )}
+                          >
+                            👤 單人合約
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue('contractType', 'dual')
+                            }}
+                            className={cn(
+                              "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                              form.watch('contractType') === 'dual'
+                                ? "bg-purple-600 border-purple-600 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                            )}
+                          >
+                            👥 雙人共享合約
+                          </button>
+                        </div>
+                      </div>
+
+                      {form.watch('contractType') === 'dual' && (
+                        <div className="p-5 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label className="text-purple-950 font-bold block text-xs">選擇共享學員 *</Label>
+                          <select
+                            value={form.watch('sharedWithCustomerId') || ''}
+                            onChange={(e) => form.setValue('sharedWithCustomerId', e.target.value || null)}
+                            className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                          >
+                            <option value="">-- 請選擇學員 --</option>
+                            {customers.filter(c => c.id !== customer.id).map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name} ({c.phone})
+                              </option>
+                            ))}
+                          </select>
+                          {form.watch('sharedWithCustomerId') && (
+                            <p className="text-[10px] text-purple-500 font-bold">
+                              提示：此續約將會由當前學員與 {customers.find(c => c.id === form.watch('sharedWithCustomerId'))?.name} 共同持有一份合約。
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
                           <Label>合約總堂數 *</Label>
@@ -242,19 +353,46 @@ export function ContractFormModal({
                           <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700">同意 R27 Fitness 健身教練服務契約條款</label>
                         </div>
 
-                        <div className={cn("space-y-2", !form.watch('isAgreed') && "opacity-30 pointer-events-none")}>
-                          <Label className="font-bold">學員數位簽名 *</Label>
-                          <div className="border-2 border-dashed border-stone-200 rounded-3xl bg-stone-50/50 p-2 relative h-48">
-                            <SignatureCanvas
-                              ref={sigCanvas}
-                              onEnd={() => form.setValue('signatureDataUrl', 'signed')}
-                              canvasProps={{ className: 'w-full h-full cursor-crosshair' }}
-                            />
-                            <Button variant="ghost" size="sm" className="absolute top-4 right-4 text-stone-400" onClick={() => {
-                              sigCanvas.current?.clear()
-                              form.setValue('signatureDataUrl', null)
-                            }}>清除</Button>
+                        <div className={cn(
+                          "grid gap-6 transition-all duration-500",
+                          form.watch('contractType') === 'dual' ? "grid-cols-2" : "grid-cols-1",
+                          !form.watch('isAgreed') && "opacity-30 pointer-events-none grayscale"
+                        )}>
+                          {/* Signature A */}
+                          <div className="relative">
+                            <Label className="font-bold text-stone-700 block mb-2">
+                              {form.watch('contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *'}
+                            </Label>
+                            <div className="border-2 border-dashed border-stone-200 rounded-3xl bg-white p-2 relative h-48">
+                              <SignatureCanvas
+                                ref={sigCanvas}
+                                onEnd={() => form.setValue('signatureDataUrl', 'signed')}
+                                canvasProps={{ className: 'w-full h-full cursor-crosshair' }}
+                              />
+                              <Button variant="ghost" size="sm" className="absolute top-4 right-4 text-stone-400" onClick={() => {
+                                sigCanvas.current?.clear()
+                                form.setValue('signatureDataUrl', null)
+                              }}>清除</Button>
+                            </div>
                           </div>
+
+                          {/* Signature B */}
+                          {form.watch('contractType') === 'dual' && (
+                            <div className="relative">
+                              <Label className="font-bold text-purple-950 block mb-2">甲方學員 B 簽名 *</Label>
+                              <div className="border-2 border-dashed border-purple-200 rounded-3xl bg-white p-2 relative h-48">
+                                <SignatureCanvas
+                                  ref={secondarySigCanvas}
+                                  onEnd={() => form.setValue('secondarySignatureDataUrl', 'signed')}
+                                  canvasProps={{ className: 'w-full h-full cursor-crosshair' }}
+                                />
+                                <Button variant="ghost" size="sm" className="absolute top-4 right-4 text-purple-400" onClick={() => {
+                                  secondarySigCanvas.current?.clear()
+                                  form.setValue('secondarySignatureDataUrl', null)
+                                }}>清除</Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

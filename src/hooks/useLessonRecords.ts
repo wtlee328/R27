@@ -65,8 +65,13 @@ export function useLessonRecords() {
   const createRecord = async (data: LessonRecordFormValues) => {
     if (!user) throw new Error('Not authenticated')
 
+    const attendeeIds = data.attendingCustomerIds && data.attendingCustomerIds.length > 0
+      ? data.attendingCustomerIds
+      : [data.customerId]
+
     const newRecordData = {
       ...data,
+      attendingCustomerIds: attendeeIds,
       sessionDate: Timestamp.fromDate(data.sessionDate),
       trainerId: user.uid,
       createdAt: serverTimestamp(),
@@ -76,27 +81,33 @@ export function useLessonRecords() {
     try {
       await runTransaction(db, async (transaction) => {
         const contractRef = doc(db, 'contracts', data.contractId)
-        const customerRef = doc(db, 'customers', data.customerId)
+        const attendeeRefs = attendeeIds.map(id => doc(db, 'customers', id))
 
         // READS FIRST
         const contractSnap = await transaction.get(contractRef)
-        const customerSnap = await transaction.get(customerRef)
+        const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
 
-        if (!contractSnap.exists()) throw new Error('找不到對應的合約，無法銷課')
-        if (!customerSnap.exists()) throw new Error('找不到客戶資料')
+        const attendeeNames = attendeeSnaps.map(snap => snap.exists() ? snap.data().name : '')
 
         // WRITES LATER
         const recordRef = doc(collection(db, 'lessonRecords'))
-        transaction.set(recordRef, newRecordData)
+        transaction.set(recordRef, {
+          ...newRecordData,
+          attendingCustomerNames: attendeeNames
+        })
 
         transaction.update(contractRef, {
           remainingSessions: increment(-data.sessionAmount),
           updatedAt: serverTimestamp()
         })
 
-        transaction.update(customerRef, {
-          historicalSessions: increment(data.sessionAmount),
-          updatedAt: serverTimestamp()
+        attendeeRefs.forEach((ref, index) => {
+          if (attendeeSnaps[index].exists()) {
+            transaction.update(ref, {
+              historicalSessions: increment(data.sessionAmount),
+              updatedAt: serverTimestamp()
+            })
+          }
         })
       })
 
@@ -120,10 +131,14 @@ export function useLessonRecords() {
         
         // 2. Read related docs (ALL READS)
         const contractRef = recordData.contractId ? doc(db, 'contracts', recordData.contractId) : null
-        const customerRef = recordData.customerId ? doc(db, 'customers', recordData.customerId) : null
         
+        const attendeeIds = recordData.attendingCustomerIds && recordData.attendingCustomerIds.length > 0
+          ? recordData.attendingCustomerIds
+          : [recordData.customerId]
+        const attendeeRefs = attendeeIds.map(id => doc(db, 'customers', id))
+
         const contractSnap = contractRef ? await transaction.get(contractRef) : null
-        const customerSnap = customerRef ? await transaction.get(customerRef) : null
+        const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
 
         // 3. Perform all WRITES
         if (contractRef && contractSnap?.exists()) {
@@ -133,12 +148,14 @@ export function useLessonRecords() {
           })
         }
 
-        if (customerRef && customerSnap?.exists()) {
-          transaction.update(customerRef, {
-            historicalSessions: increment(-recordData.sessionAmount),
-            updatedAt: serverTimestamp()
-          })
-        }
+        attendeeRefs.forEach((ref, index) => {
+          if (attendeeSnaps[index].exists()) {
+            transaction.update(ref, {
+              historicalSessions: increment(-recordData.sessionAmount),
+              updatedAt: serverTimestamp()
+            })
+          }
+        })
 
         transaction.delete(recordRef)
       })
@@ -159,13 +176,22 @@ export function useLessonRecords() {
         const recordSnap = await transaction.get(recordRef)
         if (!recordSnap.exists()) throw new Error('找不到該筆紀錄')
         
-        const oldData = recordSnap.data() as LessonRecord
+        const oldData = recordSnap.data() as any
         
         const contractRef = data.contractId ? doc(db, 'contracts', data.contractId) : null
-        const customerRef = data.customerId ? doc(db, 'customers', data.customerId) : null
-        
         const contractSnap = contractRef ? await transaction.get(contractRef) : null
-        const customerSnap = customerRef ? await transaction.get(customerRef) : null
+
+        const oldAttendeeIds = oldData.attendingCustomerIds && oldData.attendingCustomerIds.length > 0
+          ? oldData.attendingCustomerIds
+          : [oldData.customerId]
+
+        const newAttendeeIds = data.attendingCustomerIds && data.attendingCustomerIds.length > 0
+          ? data.attendingCustomerIds
+          : [data.customerId]
+
+        const uniqueAttendeeIds = Array.from(new Set([...oldAttendeeIds, ...newAttendeeIds]))
+        const attendeeRefs = uniqueAttendeeIds.map(aId => doc(db, 'customers', aId))
+        const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
 
         // WRITES LATER
         const diff = data.sessionAmount - oldData.sessionAmount
@@ -177,17 +203,43 @@ export function useLessonRecords() {
               updatedAt: serverTimestamp()
             })
           }
-
-          if (customerRef && customerSnap?.exists()) {
-            transaction.update(customerRef, {
-              historicalSessions: increment(diff),
-              updatedAt: serverTimestamp()
-            })
-          }
         }
+
+        uniqueAttendeeIds.forEach((aId, index) => {
+          const wasAttendee = oldAttendeeIds.includes(aId)
+          const isAttendee = newAttendeeIds.includes(aId)
+          const attendeeSnap = attendeeSnaps[index]
+          const attendeeRef = attendeeRefs[index]
+
+          if (attendeeSnap.exists()) {
+            let change = 0
+            if (wasAttendee && isAttendee) {
+              change = diff
+            } else if (wasAttendee && !isAttendee) {
+              change = -oldData.sessionAmount
+            } else if (!wasAttendee && isAttendee) {
+              change = data.sessionAmount
+            }
+
+            if (change !== 0) {
+              transaction.update(attendeeRef, {
+                historicalSessions: increment(change),
+                updatedAt: serverTimestamp()
+              })
+            }
+          }
+        })
+
+        const attendeeNames = newAttendeeIds.map(id => {
+          const idx = uniqueAttendeeIds.indexOf(id)
+          const snap = attendeeSnaps[idx]
+          return snap?.exists() ? snap.data().name : ''
+        })
 
         const updateData = {
           ...data,
+          attendingCustomerIds: newAttendeeIds,
+          attendingCustomerNames: attendeeNames,
           sessionDate: Timestamp.fromDate(data.sessionDate),
           updatedAt: serverTimestamp(),
         }

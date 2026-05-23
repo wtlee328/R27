@@ -16,6 +16,8 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { useContracts } from '../../hooks/useContracts'
 import type { LessonRecord } from '../../types'
 
+import { cn } from '@/lib/utils'
+
 interface LessonRecordWizardProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -41,6 +43,7 @@ export function LessonRecordWizard({
       sessionDate: new Date(),
       sessionAmount: 1,
       notes: '',
+      attendingCustomerIds: [],
     },
   })
 
@@ -54,6 +57,7 @@ export function LessonRecordWizard({
         sessionDate: initialData.sessionDate.toDate(),
         sessionAmount: initialData.sessionAmount,
         notes: initialData.notes || '',
+        attendingCustomerIds: initialData.attendingCustomerIds || [initialData.customerId],
       })
     } else {
       form.reset({
@@ -63,12 +67,20 @@ export function LessonRecordWizard({
         sessionDate: new Date(),
         sessionAmount: 1,
         notes: '',
+        attendingCustomerIds: [],
       })
     }
   }, [initialData, form])
 
   const selectedCustomerId = form.watch('customerId')
   const { contracts } = useContracts(selectedCustomerId)
+  const selectedContractId = form.watch('contractId')
+  const selectedContract = contracts.find(c => c.id === selectedContractId)
+
+  const partnerId = selectedContract?.customerIds && selectedContract.customerIds.length > 1
+    ? selectedContract.customerIds.find(id => id !== selectedCustomerId)
+    : selectedContract?.sharedWithCustomerId
+  const partner = partnerId ? customers.find(c => c.id === partnerId) : null
 
   const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const custId = e.target.value
@@ -76,9 +88,21 @@ export function LessonRecordWizard({
     form.setValue('customerId', custId)
     form.setValue('customerName', cust?.name || '')
     form.setValue('contractId', '') // reset contract
+    form.setValue('attendingCustomerIds', [custId])
   }
 
   const handleSubmit = async (data: LessonRecordFormValues) => {
+    // If it's a dual contract, make sure attendingCustomerIds has at least one item
+    if (selectedContract && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId)) {
+      const attendees = data.attendingCustomerIds || []
+      if (attendees.length === 0) {
+        form.setError('attendingCustomerIds', { type: 'manual', message: '請至少選擇一位上課學員' })
+        return
+      }
+    } else {
+      data.attendingCustomerIds = [data.customerId]
+    }
+
     setLoading(true)
     try {
       await onSubmit(data)
@@ -123,7 +147,20 @@ export function LessonRecordWizard({
             <Label>合約 *</Label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
-              {...form.register('contractId')}
+              {...form.register('contractId', {
+                onChange: (e) => {
+                  const conId = e.target.value
+                  const con = contracts.find(c => c.id === conId)
+                  if (con && (con.contractType === 'dual' || !!con.sharedWithCustomerId)) {
+                    const pId = con.customerIds && con.customerIds.length > 1
+                      ? con.customerIds.find(id => id !== selectedCustomerId)
+                      : con.sharedWithCustomerId
+                    form.setValue('attendingCustomerIds', [selectedCustomerId, pId].filter((id): id is string => !!id))
+                  } else {
+                    form.setValue('attendingCustomerIds', [selectedCustomerId])
+                  }
+                }
+              })}
               disabled={!selectedCustomerId}
             >
               <option value="" disabled>請選擇合約</option>
@@ -140,6 +177,62 @@ export function LessonRecordWizard({
               <p className="text-red-500 text-xs">{form.formState.errors.contractId.message}</p>
             )}
           </div>
+
+          {selectedContract && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId) && (
+            <div className="space-y-2 p-4 bg-purple-50/50 border border-purple-100 rounded-xl animate-in fade-in duration-300">
+              <Label className="text-purple-950 font-bold block text-xs">👥 雙人合約上課學員 (可多選) *</Label>
+              <div className="flex gap-4">
+                <label className={cn(
+                  "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                  (form.watch('attendingCustomerIds') || []).includes(selectedCustomerId)
+                    ? "bg-purple-600 border-purple-600 text-white"
+                    : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                )}>
+                  <input
+                    type="checkbox"
+                    checked={(form.watch('attendingCustomerIds') || []).includes(selectedCustomerId)}
+                    className="hidden"
+                    onChange={(e) => {
+                      const current = form.getValues('attendingCustomerIds') || []
+                      if (e.target.checked) {
+                        form.setValue('attendingCustomerIds', [...current, selectedCustomerId])
+                      } else {
+                        form.setValue('attendingCustomerIds', current.filter(id => id !== selectedCustomerId))
+                      }
+                    }}
+                  />
+                  👤 {customers.find(c => c.id === selectedCustomerId)?.name || '學員 A'}
+                </label>
+
+                {partner && (
+                  <label className={cn(
+                    "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
+                    (form.watch('attendingCustomerIds') || []).includes(partner.id)
+                      ? "bg-purple-600 border-purple-600 text-white"
+                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                  )}>
+                    <input
+                      type="checkbox"
+                      checked={(form.watch('attendingCustomerIds') || []).includes(partner.id)}
+                      className="hidden"
+                      onChange={(e) => {
+                        const current = form.getValues('attendingCustomerIds') || []
+                        if (e.target.checked) {
+                          form.setValue('attendingCustomerIds', [...current, partner.id])
+                        } else {
+                          form.setValue('attendingCustomerIds', current.filter(id => id !== partner.id))
+                        }
+                      }}
+                    />
+                    👤 {partner.name || '學員 B'}
+                  </label>
+                )}
+              </div>
+              {form.formState.errors.attendingCustomerIds && (
+                <p className="text-red-500 text-xs">{form.formState.errors.attendingCustomerIds.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
