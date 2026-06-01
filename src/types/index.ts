@@ -73,6 +73,8 @@ export interface Contract {
   signatureDataUrl: string | null
   secondarySignatureDataUrl: string | null
   isAgreed: boolean
+  paymentType?: 'single' | 'installments'
+  installmentCount?: number
   createdAt: Timestamp
   updatedAt: Timestamp
 }

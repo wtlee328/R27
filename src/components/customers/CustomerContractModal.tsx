@@ -162,18 +162,80 @@ export function CustomerContractModal({
 
                   {contract && (
                     <div className="mt-6 pt-6 border-t border-stone-200">
-                      <p className="font-bold text-stone-900 mb-3 underline decoration-brand-500 decoration-2 underline-offset-4">本合約效力範圍</p>
-                      <div className="grid grid-cols-2 gap-4 text-stone-900">
+                      <p className="font-bold text-stone-900 mb-3 underline decoration-brand-500 decoration-2 underline-offset-4">本合約效力範圍與付款明細</p>
+                      <div className="grid grid-cols-3 gap-4 text-stone-900 mb-4">
                         <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
                           <p className="text-[10px] text-stone-400 uppercase font-bold mb-1">合約堂數</p>
                           <p className="text-lg font-black">{contract.totalSessions} 堂</p>
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
+                        <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm col-span-2">
                           <p className="text-[10px] text-stone-400 uppercase font-bold mb-1">有效期限</p>
                           <p className="text-sm font-bold">
                             {format(contract.startDate.toDate(), 'yyyy/MM/dd')} - {format(contract.endDate.toDate(), 'yyyy/MM/dd')}
                           </p>
                         </div>
+                      </div>
+
+                      {/* 付款方式與明細 */}
+                      <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm text-xs">
+                        <div className="flex justify-between items-center mb-3 pb-2 border-b border-stone-100">
+                          <div>
+                            <span className="font-bold text-stone-900">付款方式：</span>
+                            <span className="text-stone-600">
+                              {contract.paymentType === 'installments' ? `分期付款 (${contract.installmentCount || 2} 期)` : '一次付清'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="font-bold text-stone-900">總金額：</span>
+                            <span className="text-brand-600 font-extrabold">NT$ {(contract.totalAmount || 0).toLocaleString()}</span>
+                            <span className="mx-2 text-stone-300">|</span>
+                            <span className="font-bold text-stone-900">已付：</span>
+                            <span className="text-green-600 font-extrabold">NT$ {(contract.paidAmount || 0).toLocaleString()}</span>
+                          </div>
+                        </div>
+
+                        {contract.paymentType === 'installments' && contract.installments && contract.installments.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="font-bold text-[10px] text-stone-400 uppercase tracking-wider">分期繳款明細</p>
+                            <div className="grid grid-cols-4 gap-2 text-[11px] font-bold text-stone-500 border-b border-stone-100 pb-1">
+                              <div>期數</div>
+                              <div>繳款金額</div>
+                              <div>應繳日期</div>
+                              <div className="text-right">狀態</div>
+                            </div>
+                            {contract.installments.map((inst: any, idx: number) => {
+                              const dueDateStr = inst.dueDate?.toDate 
+                                ? format(inst.dueDate.toDate(), 'yyyy/MM/dd') 
+                                : format(new Date(inst.dueDate), 'yyyy/MM/dd');
+                              const paidDateStr = inst.paidDate?.toDate
+                                ? format(inst.paidDate.toDate(), 'yyyy/MM/dd')
+                                : inst.paidDate ? format(new Date(inst.paidDate), 'yyyy/MM/dd') : '';
+
+                              return (
+                                <div key={inst.id || idx} className="grid grid-cols-4 gap-2 py-1 items-center border-b border-stone-50 last:border-0">
+                                  <div className="text-stone-900 font-bold">第 {idx + 1} 期</div>
+                                  <div className="text-stone-900">NT$ {inst.amount.toLocaleString()}</div>
+                                  <div>{dueDateStr}</div>
+                                  <div className="text-right">
+                                    {inst.status === 'paid' ? (
+                                      <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                        已收 {paidDateStr && `(${paidDateStr})`}
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                                        待收
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-green-600 font-bold flex items-center gap-1">
+                            ✅ 費用已於合約建立時一次付清
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

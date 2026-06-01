@@ -66,6 +66,8 @@ export function ContractFormModal({
       partnerMode: 'none',
       partnerId: null,
       partnerCustomerData: null,
+      paymentType: 'single',
+      installmentCount: 2,
     },
   })
 
@@ -79,7 +81,15 @@ export function ContractFormModal({
         pricePerSession: 0,
         totalAmount: 0,
         paidAmount: 0,
-        installments: [],
+        installments: [
+          {
+            id: `inst-single-${Date.now()}`,
+            amount: 0,
+            dueDate: new Date(),
+            paidDate: new Date(),
+            status: 'paid' as const,
+          }
+        ],
         startDate: new Date(),
         endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
         status: 'active',
@@ -90,6 +100,8 @@ export function ContractFormModal({
         partnerMode: 'none',
         partnerId: null,
         partnerCustomerData: null,
+        paymentType: 'single',
+        installmentCount: 2,
       })
       setCurrentStep(0)
 
@@ -166,15 +178,92 @@ export function ContractFormModal({
     return steps
   }, [watchedValues.partnerMode])
 
+  const generateDefaultInstallments = (total: number, count: number, startD: Date) => {
+    if (count < 2 || count > 6) return;
+    const base = Math.floor(total / count);
+    const remainder = total - base * count;
+    const amounts = Array(count).fill(base);
+    for (let i = 0; i < remainder; i++) {
+      amounts[i] += 1;
+    }
+
+    const currentInstallments = form.getValues('installments') || [];
+    const newInstallments = Array.from({ length: count }, (_, idx) => {
+      const existing = currentInstallments[idx];
+      const dueDate = existing?.dueDate 
+        ? new Date(existing.dueDate)
+        : (() => {
+            const d = new Date(startD);
+            d.setMonth(d.getMonth() + idx);
+            return d;
+          })();
+      
+      return {
+        id: existing?.id || `inst-${idx + 1}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        amount: amounts[idx],
+        dueDate: dueDate,
+        paidDate: idx === 0 ? new Date() : (existing?.paidDate ? new Date(existing.paidDate) : null),
+        status: idx === 0 ? 'paid' as const : (existing?.status || 'pending' as const),
+      };
+    });
+
+    form.setValue('installments', newInstallments);
+    const paidSum = newInstallments.reduce((sum, ins) => ins.status === 'paid' ? sum + ins.amount : sum, 0);
+    form.setValue('paidAmount', paidSum);
+  };
+
+  const generateSinglePaymentInstallments = (total: number, startD: Date) => {
+    const inst = [
+      {
+        id: `inst-single-${Date.now()}`,
+        amount: total,
+        dueDate: new Date(startD),
+        paidDate: new Date(),
+        status: 'paid' as const,
+      }
+    ];
+    form.setValue('installments', inst);
+    form.setValue('paidAmount', total);
+  };
+
+  const syncInstallments = (
+    type: 'single' | 'installments', 
+    count: number, 
+    total: number, 
+    startD: Date
+  ) => {
+    if (type === 'single') {
+      generateSinglePaymentInstallments(total, startD);
+    } else {
+      generateDefaultInstallments(total, count, startD);
+    }
+  };
+
   const stepStatus = useMemo(() => {
     return activeSteps.map((step) => {
       if (step.id === 'contract') {
-        return watchedValues.totalSessions > 0 &&
+        const hasBasicData = watchedValues.totalSessions > 0 &&
                watchedValues.pricePerSession > 0 &&
                !!watchedValues.startDate &&
                !!watchedValues.endDate &&
                (watchedValues.contractType !== 'dual' || watchedValues.partnerMode !== 'none') &&
-               (watchedValues.partnerMode !== 'existing' || !!watchedValues.sharedWithCustomerId)
+               (watchedValues.partnerMode !== 'existing' || !!watchedValues.sharedWithCustomerId);
+
+        if (!hasBasicData) return false;
+
+        if (watchedValues.paymentType === 'installments') {
+          if (!watchedValues.installments || watchedValues.installments.length !== watchedValues.installmentCount) return false;
+          const sum = watchedValues.installments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+          if (Math.abs(sum - watchedValues.totalAmount) > 0.01) return false;
+
+          for (let i = 0; i < watchedValues.installments.length - 1; i++) {
+            const currentVal = watchedValues.installments[i];
+            const nextVal = watchedValues.installments[i + 1];
+            if (!currentVal.dueDate || !nextVal.dueDate) return false;
+            if (new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) return false;
+          }
+        }
+        return true;
       }
       if (step.id === 'partner_basic') {
         const pData = watchedValues.partnerCustomerData
@@ -219,6 +308,12 @@ export function ContractFormModal({
     } else {
       form.setValue('pricePerSession', 0)
     }
+    syncInstallments(
+      form.getValues('paymentType') || 'single',
+      form.getValues('installmentCount') || 2,
+      totalAmount,
+      form.getValues('startDate') || new Date()
+    )
   }
 
   const handleTotalAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,6 +325,12 @@ export function ContractFormModal({
     } else {
       form.setValue('pricePerSession', 0)
     }
+    syncInstallments(
+      form.getValues('paymentType') || 'single',
+      form.getValues('installmentCount') || 2,
+      totalAmount,
+      form.getValues('startDate') || new Date()
+    )
   }
 
   const handleFinalSubmit = async (data: ContractFormValues) => {
@@ -470,6 +571,142 @@ export function ContractFormModal({
                           <Input type="date" {...form.register('endDate', { valueAsDate: true })} />
                         </div>
                       </div>
+
+                      {/* 付款方式與分期設定 */}
+                      <div className="space-y-4 border-t border-stone-100 pt-6">
+                        <div className="space-y-2">
+                          <Label className="text-stone-700 font-bold block text-xs">付款狀態 / 方式 *</Label>
+                          <div className="flex gap-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('paymentType', 'single');
+                                syncInstallments('single', 2, form.getValues('totalAmount') || 0, form.getValues('startDate') || new Date());
+                              }}
+                              className={cn(
+                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                form.watch('paymentType') !== 'installments'
+                                  ? "bg-stone-900 border-stone-900 text-white shadow-lg"
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}
+                            >
+                              💵 一次付清 (直接付清)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('paymentType', 'installments');
+                                syncInstallments('installments', form.getValues('installmentCount') || 2, form.getValues('totalAmount') || 0, form.getValues('startDate') || new Date());
+                              }}
+                              className={cn(
+                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                form.watch('paymentType') === 'installments'
+                                  ? "bg-brand-500 border-brand-500 text-white shadow-lg"
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}
+                            >
+                              💳 分期付款 (二到六期)
+                            </button>
+                          </div>
+                        </div>
+
+                        {form.watch('paymentType') === 'installments' && (
+                          <div className="p-5 bg-stone-50 border border-stone-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="flex justify-between items-center">
+                              <Label className="text-stone-700 font-bold block text-xs">選擇分期期數 *</Label>
+                              <select
+                                value={form.watch('installmentCount') || 2}
+                                onChange={(e) => {
+                                  const count = Number(e.target.value);
+                                  form.setValue('installmentCount', count);
+                                  syncInstallments('installments', count, form.getValues('totalAmount') || 0, form.getValues('startDate') || new Date());
+                                }}
+                                className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold focus:outline-none"
+                              >
+                                {[2, 3, 4, 5, 6].map(num => (
+                                  <option key={num} value={num}>{num} 期</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div className="space-y-3">
+                              {form.watch('installments')?.map((inst, idx) => {
+                                const isFirst = idx === 0;
+                                return (
+                                  <div key={inst.id || idx} className="grid grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-stone-200">
+                                    <div className="col-span-3 text-xs font-bold text-stone-700">
+                                      第 {idx + 1} 期
+                                      {isFirst && <span className="ml-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-normal">首期即付</span>}
+                                    </div>
+                                    <div className="col-span-4">
+                                      <Label className="text-[10px] text-stone-400 block mb-1">繳款金額 *</Label>
+                                      <Input
+                                        type="number"
+                                        value={inst.amount}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value) || 0;
+                                          const updated = [...(form.getValues('installments') || [])];
+                                          updated[idx] = { ...updated[idx], amount: val };
+                                          form.setValue('installments', updated);
+                                          
+                                          // Update contract paidAmount: sum of all installments with status === 'paid'
+                                          const paidSum = updated.reduce((sum, item) => item.status === 'paid' ? sum + item.amount : sum, 0);
+                                          form.setValue('paidAmount', paidSum);
+                                        }}
+                                        className="h-8 text-xs font-bold"
+                                        placeholder="金額"
+                                      />
+                                    </div>
+                                    <div className="col-span-5">
+                                      <Label className="text-[10px] text-stone-400 block mb-1">繳款日期 *</Label>
+                                      <Input
+                                        type="date"
+                                        value={inst.dueDate ? (inst.dueDate instanceof Date ? inst.dueDate.toISOString().split('T')[0] : new Date(inst.dueDate).toISOString().split('T')[0]) : ''}
+                                        onChange={(e) => {
+                                          const dateVal = e.target.value ? new Date(e.target.value) : new Date();
+                                          const updated = [...(form.getValues('installments') || [])];
+                                          updated[idx] = { ...updated[idx], dueDate: dateVal };
+                                          form.setValue('installments', updated);
+                                        }}
+                                        className="h-8 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* 防呆錯誤提示資訊 */}
+                            {(() => {
+                              const insts = form.watch('installments') || [];
+                              const sum = insts.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                              const total = form.watch('totalAmount') || 0;
+                              const isDiff = Math.abs(sum - total) > 0.01;
+                              
+                              let isDateError = false;
+                              for (let i = 0; i < insts.length - 1; i++) {
+                                const currentVal = insts[i];
+                                const nextVal = insts[i + 1];
+                                if (currentVal.dueDate && nextVal.dueDate && new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) {
+                                  isDateError = true;
+                                  break;
+                                }
+                              }
+
+                              if (isDiff || isDateError) {
+                                return (
+                                  <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[11px] font-bold space-y-1 border border-red-100">
+                                    {isDiff && <div>⚠️ 分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
+                                    {isDateError && <div>⚠️ 繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="bg-brand-50 p-6 rounded-2xl flex justify-between items-center">
                         <div>
                           <p className="text-[10px] font-bold text-brand-600 uppercase">單堂平均價格</p>
