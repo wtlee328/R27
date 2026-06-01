@@ -744,10 +744,16 @@ export function CustomerFormModal({
                         <div className="space-y-2">
                           <Label className="text-stone-700">合約開始日 *</Label>
                           <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                          {form.formState.errors.contract?.startDate && (
+                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.startDate.message}</p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">合約結束日 *</Label>
                           <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                          {form.formState.errors.contract?.endDate && (
+                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.endDate.message}</p>
+                          )}
                         </div>
 
                         {/* 付款方式與分期設定 */}

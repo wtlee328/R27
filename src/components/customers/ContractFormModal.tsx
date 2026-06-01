@@ -565,10 +565,16 @@ export function ContractFormModal({
                         <div className="space-y-2">
                           <Label>合約開始日 *</Label>
                           <Input type="date" {...form.register('startDate', { valueAsDate: true })} />
+                          {form.formState.errors.startDate && (
+                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.startDate.message}</p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label>合約結束日 *</Label>
                           <Input type="date" {...form.register('endDate', { valueAsDate: true })} />
+                          {form.formState.errors.endDate && (
+                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.endDate.message}</p>
+                          )}
                         </div>
                       </div>
 

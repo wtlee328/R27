@@ -262,6 +262,7 @@ export default function CustomersPage() {
         onOpenChange={setIsContractViewOpen}
         customer={selectedCustomer}
         contract={selectedContract}
+        onContractUpdated={refresh}
       />
     </div>
   )
