@@ -23,7 +23,8 @@ export default function CustomersPage() {
     thisMonthBirthdaysCount,
     updateCustomerProfile, 
     onboardNewCustomer, 
-    createContract 
+    createContract,
+    refresh
   } = useCustomers()
 
   // Modals visibility
@@ -262,6 +263,7 @@ export default function CustomersPage() {
         onOpenChange={setIsContractViewOpen}
         customer={selectedCustomer}
         contract={selectedContract}
+        onContractUpdated={refresh}
       />
     </div>
   )

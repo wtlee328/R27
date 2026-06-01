@@ -42,7 +42,7 @@ export const installmentSchema = z.object({
   status: z.enum(['pending', 'paid', 'overdue']),
 })
 
-export const contractFormSchema = z.object({
+export const baseContractFormSchema = z.object({
   customerId: z.string().min(1, '請選擇客戶'),
   sharedWithCustomerId: z.string().nullable().default(null),
   customerIds: z.array(z.string()).default([]),
@@ -64,21 +64,101 @@ export const contractFormSchema = z.object({
   signatureDataUrl: z.string().nullable().default(null),
   secondarySignatureDataUrl: z.string().nullable().default(null),
   isAgreed: z.boolean().default(false),
-  contractType: z.enum(['single', 'dual']).default('single'),
-  customerIds: z.array(z.string()).optional(),
-  primaryCustomerId: z.string().optional(),
   partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
   partnerId: z.string().nullable().optional().default(null),
   partnerCustomerData: customerFormSchema.nullable().optional().default(null),
+  paymentType: z.enum(['single', 'installments']).default('single'),
+  installmentCount: z.coerce.number().min(2).max(6).default(2),
+})
+
+export const contractFormSchema = baseContractFormSchema.superRefine((data, ctx) => {
+  if (data.startDate && data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endDate'],
+      message: '結束日期不能早於開始日期',
+    });
+  }
+
+  if (data.paymentType === 'installments') {
+    if (!data.installments || data.installments.length !== data.installmentCount) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: `分期期數必須為 ${data.installmentCount} 期`,
+      });
+    }
+    const sum = (data.installments || []).reduce((acc, curr) => acc + curr.amount, 0);
+    if (Math.abs(sum - data.totalAmount) > 0.01) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['installments'],
+        message: `分期金額總和 (${sum}元) 必須等於合約總金額 (${data.totalAmount}元)`,
+      });
+    }
+    const insts = data.installments || [];
+    for (let i = 0; i < insts.length - 1; i++) {
+      const currentVal = insts[i];
+      const nextVal = insts[i + 1];
+      if (currentVal && nextVal && currentVal.dueDate && nextVal.dueDate && new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['installments', i + 1, 'dueDate'],
+          message: `第 ${i + 2} 期的應付日期不能早於第 ${i + 1} 期`,
+        });
+      }
+    }
+  }
 })
 
 export type ContractFormValues = z.infer<typeof contractFormSchema>
 
 export const combinedCustomerContractSchema = customerFormSchema.extend({
-  contract: contractFormSchema.omit({ customerId: true }).optional(),
+  contract: baseContractFormSchema.omit({ customerId: true }).optional(),
   partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
   partnerId: z.string().nullable().optional().default(null),
   partnerCustomerData: customerFormSchema.nullable().optional().default(null),
+}).superRefine((data, ctx) => {
+  if (data.contract) {
+    const dataCon = data.contract;
+    if (dataCon.startDate && dataCon.endDate && new Date(dataCon.startDate) > new Date(dataCon.endDate)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'endDate'],
+        message: '結束日期不能早於開始日期',
+      });
+    }
+
+    if (dataCon.paymentType === 'installments') {
+      if (!dataCon.installments || dataCon.installments.length !== dataCon.installmentCount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contract', 'installments'],
+          message: `分期期數必須為 ${dataCon.installmentCount} 期`,
+        });
+      }
+      const sum = (dataCon.installments || []).reduce((acc, curr) => acc + curr.amount, 0);
+      if (Math.abs(sum - dataCon.totalAmount) > 0.01) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['contract', 'installments'],
+          message: `分期金額總和 (${sum}元) 必須等於合約總金額 (${dataCon.totalAmount}元)`,
+        });
+      }
+      const insts = dataCon.installments || [];
+      for (let i = 0; i < insts.length - 1; i++) {
+        const currentVal = insts[i];
+        const nextVal = insts[i + 1];
+        if (currentVal && nextVal && currentVal.dueDate && nextVal.dueDate && new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['contract', 'installments', i + 1, 'dueDate'],
+            message: `第 ${i + 2} 期的應付日期不能早於第 ${i + 1} 期`,
+          });
+        }
+      }
+    }
+  }
 })
 export type CombinedCustomerContractValues = z.infer<typeof combinedCustomerContractSchema>
 
