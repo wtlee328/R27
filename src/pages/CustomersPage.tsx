@@ -23,7 +23,8 @@ export default function CustomersPage() {
     thisMonthBirthdaysCount,
     updateCustomerProfile, 
     onboardNewCustomer, 
-    createContract 
+    createContract,
+    refresh
   } = useCustomers()
 
   // Modals visibility
