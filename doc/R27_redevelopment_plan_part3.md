@@ -277,6 +277,39 @@ export const FEATURES = {
 
 ---
 
+## 21. Trainer Lesson Usage Redesign Specification
+
+To enhance administrative oversight, the Trainer Lesson Usage (教練銷課) module has been refactored into a high-level **Admin Trainer Dashboard** with drill-down detailed reporting.
+
+### 21.1 Database Schema Additions
+1. **`trainers` Collection**:
+   - `id`: Unique identifier (e.g., `trainer-a`, `trainer-b`, `trainer-c`).
+   - `name`: Trainer's name.
+   - `email`: Contact email address.
+   - `phone`: Mobile number.
+   - `createdAt` / `updatedAt`: Standard timestamps.
+2. **Relationships & Associations**:
+   - Each `Customer` holds a `trainerId` field mapping to a specific trainer document.
+   - `Contract` and `LessonRecord` entities reference the corresponding `trainerId` to establish a relational link for transaction logs.
+
+### 21.2 Admin Trainer Dashboard Features
+- **Stat Cards**: Display system-wide aggregate metrics (Total remaining lessons, total history consumed lessons, and total trainers count).
+- **Interactive Trainer Directory**:
+  - List layout displaying trainer profiles alongside their respective aggregated metrics:
+    - **系統堂數 (System Lessons)**: Sum of all remaining sessions of active/ongoing contracts for assigned students.
+    - **總堂數 (Total Used Lessons)**: Sum of all consumed lesson counts recorded under the trainer.
+  - Sorting support on Trainer Name, System Lessons, and Total Used Lessons in ascending/descending order.
+  - Interactive clickable rows/cards to navigate into the trainer's detail view.
+
+### 21.3 Trainer Detail View & Drilling Down
+- Navigates to a dedicated panel/view showing the selected trainer's student records.
+- **Lesson Usage Ledger**:
+  - Displays Student Name, Lesson Date, Lessons Used, and Current Remaining Lessons.
+  - Features quick inline actions to edit or delete lesson records, recalculating contract allocations on the fly.
+  - Houses the "+ 新增銷課" wizard, scoped automatically to only display students assigned to the active trainer.
+
+---
+
 ## 20. Summary of Key Decisions
 
 | Decision | Choice | Key Reason |

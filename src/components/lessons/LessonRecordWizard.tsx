@@ -23,6 +23,7 @@ interface LessonRecordWizardProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (data: LessonRecordFormValues) => Promise<void>
   initialData?: LessonRecord | null
+  trainerId?: string
 }
 
 export function LessonRecordWizard({
@@ -30,9 +31,14 @@ export function LessonRecordWizard({
   onOpenChange,
   onSubmit,
   initialData,
+  trainerId,
 }: LessonRecordWizardProps) {
   const [loading, setLoading] = useState(false)
   const { customers } = useCustomers()
+  
+  const filteredCustomers = trainerId 
+    ? customers.filter(c => c.trainerId === trainerId)
+    : customers
   
   const form = useForm<LessonRecordFormValues>({
     resolver: zodResolver(lessonRecordFormSchema),
@@ -132,7 +138,7 @@ export function LessonRecordWizard({
               onChange={handleCustomerChange}
             >
               <option value="" disabled>請選擇客戶</option>
-              {customers.map((c) => (
+              {filteredCustomers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.phone})
                 </option>
