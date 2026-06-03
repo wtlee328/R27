@@ -72,6 +72,14 @@ export const baseContractFormSchema = z.object({
 })
 
 export const contractFormSchema = baseContractFormSchema.superRefine((data, ctx) => {
+  if (data.remainingSessions > data.totalSessions) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['remainingSessions'],
+      message: '剩餘堂數不能超過總堂數',
+    });
+  }
+
   if (data.startDate && data.endDate && new Date(data.startDate) > new Date(data.endDate)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,

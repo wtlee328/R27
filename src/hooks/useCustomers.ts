@@ -69,7 +69,31 @@ export function useCustomers() {
         ...doc.data(),
       })) as Contract[]
 
-      setContracts(contData)
+      // Data integrity check: for each contract, remain classes number should not exceed total classes number
+      const fixedContData = await Promise.all(
+        contData.map(async (c) => {
+          if (c.remainingSessions > c.totalSessions) {
+            console.warn(`Contract ${c.id} has remainingSessions (${c.remainingSessions}) > totalSessions (${c.totalSessions}). Fixing...`)
+            try {
+              const contractDocRef = doc(db, 'contracts', c.id)
+              await updateDoc(contractDocRef, {
+                remainingSessions: c.totalSessions,
+                updatedAt: serverTimestamp(),
+              })
+              return {
+                ...c,
+                remainingSessions: c.totalSessions,
+              }
+            } catch (err) {
+              console.error(`Failed to automatically repair contract ${c.id}:`, err)
+              return c
+            }
+          }
+          return c
+        })
+      )
+
+      setContracts(fixedContData)
     } catch (err: any) {
       console.error('Error fetching customers/contracts:', err)
       setError(err.message || '無法載入資料')

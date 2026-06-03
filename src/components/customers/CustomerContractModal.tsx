@@ -151,6 +151,9 @@ export function CustomerContractModal({
     if (editRemainingSessions < 0) {
       errors.push('剩餘堂數不能為負數')
     }
+    if (Number(editRemainingSessions) > Number(editTotalSessions)) {
+      errors.push('剩餘堂數不能大於總堂數')
+    }
     if (!editStartDate || !editEndDate) {
       errors.push('請選擇合約開始與結束日期')
     } else if (new Date(editStartDate) > new Date(editEndDate)) {
