@@ -12,6 +12,16 @@ export interface AppUser {
   updatedAt: Timestamp
 }
 
+// ─── Trainer ──────────────────────────────────────────────────
+export interface Trainer {
+  id: string
+  name: string
+  email: string
+  phone: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
 // ─── Customer ─────────────────────────────────────────────────
 export interface EmergencyContact {
   name: string

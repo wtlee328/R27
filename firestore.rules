@@ -34,6 +34,12 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Trainers collection
+    match /trainers/{trainerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // Customers — trainer sees own, admin sees all
     match /customers/{customerId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
