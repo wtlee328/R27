@@ -80,13 +80,13 @@ export function useTrainers() {
         const trainerContracts = contractsList.filter(
           (c) => assignedCustomerIds.includes(c.customerId) || assignedCustomerIds.includes(c.primaryCustomerId)
         )
-        const systemLessons = trainerContracts.reduce((sum, c) => sum + (c.remainingSessions || 0), 0)
+        const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
         // Find lesson records belonging to this trainer (or assigned customers)
         const trainerLessons = lessonRecordsList.filter(
           (lr) => lr.trainerId === t.id || assignedCustomerIds.includes(lr.customerId)
         )
-        const totalUsedLessons = trainerLessons.reduce((sum, lr) => sum + (lr.sessionAmount || 0), 0)
+        const totalUsedLessons = trainerLessons.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
 
         return {
           ...t,

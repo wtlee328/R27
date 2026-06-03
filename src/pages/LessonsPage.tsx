@@ -186,8 +186,8 @@ export default function LessonsPage() {
   }
 
   // Dashboard Stats
-  const totalSystemRemaining = trainers.reduce((sum, t) => sum + t.systemLessons, 0)
-  const totalHistoryConsumed = trainers.reduce((sum, t) => sum + t.totalUsedLessons, 0)
+  const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
+  const totalHistoryConsumed = trainers.reduce((sum, t) => sum + Number(t.totalUsedLessons || 0), 0)
 
   if (loadingTrainers || migrationRunning) {
     return (
