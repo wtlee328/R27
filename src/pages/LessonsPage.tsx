@@ -3,10 +3,11 @@ import { CalendarCheck, Activity, Users, ArrowLeft, ArrowUpDown, Search, UserChe
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
+import { TrainerOnboardModal } from '../components/lessons/TrainerOnboardModal'
 import { useLessonRecords } from '../hooks/useLessonRecords'
 import { useTrainers } from '../hooks/useTrainers'
 import { useCustomers } from '../hooks/useCustomers'
-import type { LessonRecordFormValues } from '../lib/validators'
+import type { LessonRecordFormValues, TrainerFormValues } from '../lib/validators'
 import type { LessonRecord } from '../types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -24,7 +25,7 @@ type SortOrder = 'asc' | 'desc'
 
 export default function LessonsPage() {
   const { records, createRecord, deleteRecord, updateRecord, refresh: refreshRecords } = useLessonRecords()
-  const { trainers, loading: loadingTrainers, runMigration, migrationRunning, refresh: refreshTrainers } = useTrainers()
+  const { trainers, loading: loadingTrainers, runMigration, migrationRunning, addTrainer, refresh: refreshTrainers } = useTrainers()
   const { customers, contracts, refresh: refreshCustomers } = useCustomers()
 
   // Selected trainer state (null = dashboard grid view, string = detail view)
@@ -40,6 +41,9 @@ export default function LessonsPage() {
   // Lesson Record Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<LessonRecord | null>(null)
+
+  // Trainer Onboarding state
+  const [isTrainerOnboardOpen, setIsTrainerOnboardOpen] = useState(false)
   
   // Delete record confirmation state
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -150,6 +154,10 @@ export default function LessonsPage() {
     }
   }
 
+  const handleTrainerOnboardSubmit = async (data: TrainerFormValues) => {
+    await addTrainer(data)
+  }
+
   // Dashboard Stats
   const totalSystemRemaining = trainers.reduce((sum, t) => sum + t.systemLessons, 0)
   const totalHistoryConsumed = trainers.reduce((sum, t) => sum + t.totalUsedLessons, 0)
@@ -177,11 +185,8 @@ export default function LessonsPage() {
               <p className="text-sm text-stone-500 mt-1">追蹤教練的課程堂數消耗與系統剩餘堂數</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleRefreshAll} className="font-semibold text-xs py-2 bg-white">
-                🔄 重新整理
-              </Button>
-              <Button variant="destructive" onClick={runMigration} className="font-semibold text-xs py-2">
-                ⚙️ 重置模擬資料
+              <Button onClick={() => setIsTrainerOnboardOpen(true)} className="font-semibold text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white">
+                + 新增教練
               </Button>
             </div>
           </div>
@@ -453,6 +458,12 @@ export default function LessonsPage() {
         onSubmit={handleWizardSubmit}
         initialData={editingRecord}
         trainerId={selectedTrainerId || undefined}
+      />
+
+      <TrainerOnboardModal
+        open={isTrainerOnboardOpen}
+        onOpenChange={setIsTrainerOnboardOpen}
+        onSubmit={handleTrainerOnboardSubmit}
       />
 
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

@@ -224,3 +224,13 @@ export const trialRecordFormSchema = z.object({
 })
 
 export type TrialRecordFormValues = z.infer<typeof trialRecordFormSchema>
+
+// ─── Trainer Onboarding Schemas ────────────────────────────────
+export const trainerFormSchema = z.object({
+  name: z.string().min(1, '請輸入教練姓名'),
+  email: z.string().email('請輸入有效的電子郵件'),
+  phone: z.string().min(1, '請輸入聯絡電話'),
+})
+
+export type TrainerFormValues = z.infer<typeof trainerFormSchema>
+

@@ -294,6 +294,10 @@ To enhance administrative oversight, the Trainer Lesson Usage (教練銷課) mod
 
 ### 21.2 Admin Trainer Dashboard Features
 - **Stat Cards**: Display system-wide aggregate metrics (Total remaining lessons, total history consumed lessons, and total trainers count).
+- **Trainer Onboarding Workflow**:
+  - A "+ 新增教練" (Add Trainer) button is provided on the dashboard page for administrators.
+  - Opens a modal dialog collecting the trainer's Name, Email, and Phone with Zod validation.
+  - Dynamically saves the new trainer as a real document in the database, automatically updating stats cards and directory list.
 - **Interactive Trainer Directory**:
   - List layout displaying trainer profiles alongside their respective aggregated metrics:
     - **系統堂數 (System Lessons)**: Sum of all remaining sessions of active/ongoing contracts for assigned students.
