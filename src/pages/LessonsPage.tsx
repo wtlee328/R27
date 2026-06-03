@@ -44,6 +44,9 @@ export default function LessonsPage() {
 
   // Trainer Onboarding state
   const [isTrainerOnboardOpen, setIsTrainerOnboardOpen] = useState(false)
+
+  // Tab state in trainer detailed view ('students' | 'history')
+  const [activeTab, setActiveTab] = useState<'students' | 'history'>('students')
   
   // Delete record confirmation state
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -115,7 +118,31 @@ export default function LessonsPage() {
       (r.attendingCustomerNames && r.attendingCustomerNames.some(name => name.toLowerCase().includes(query)))
     )
   }, [trainerRecords, searchQuery])
+  // Get students assigned to this trainer
+  const trainerStudents = useMemo(() => {
+    if (!selectedTrainerId) return []
+    return customers.filter(c => c.trainerId === selectedTrainerId)
+  }, [customers, selectedTrainerId])
 
+  // Filtered trainer students
+  const filteredTrainerStudents = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return trainerStudents
+    return trainerStudents.filter(c => 
+      c.name.toLowerCase().includes(query) ||
+      c.phone.includes(query)
+    )
+  }, [trainerStudents, searchQuery])
+
+  // Helper to get contracts for a specific student
+  const getStudentContracts = (studentId: string) => {
+    return contracts.filter(con => 
+      (con.customerIds && con.customerIds.includes(studentId)) || 
+      con.customerId === studentId ||
+      con.primaryCustomerId === studentId ||
+      con.sharedWithCustomerId === studentId
+    )
+  }
   // Helper to look up remaining sessions for a contract
   const getContractRemaining = (contractId: string) => {
     const contract = contracts.find(c => c.id === contractId)
@@ -356,98 +383,246 @@ export default function LessonsPage() {
             </div>
           )}
 
-          {/* Lesson Records Table */}
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-stone-900 text-base">學生上課銷課明細</h3>
-                <p className="text-xs text-stone-400 mt-0.5">顯示目前教練名下所有學生的歷史上課紀錄</p>
-              </div>
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                <input
-                  type="text"
-                  placeholder="搜尋學員姓名..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-            </div>
-
-            <div className="border border-stone-200 rounded-xl overflow-hidden bg-white">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-stone-50 text-stone-500 border-b border-stone-200 select-none">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">上課日期</th>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">學員姓名</th>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">消耗堂數</th>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">合約剩餘堂數</th>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">備註</th>
-                    <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {filteredTrainerRecords.map((r) => (
-                    <tr key={r.id} className="hover:bg-brand-50/10 transition-colors duration-150 group">
-                      <td className="px-6 py-4 text-stone-500 tabular-nums">
-                        {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '-'}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-stone-950">
-                        {r.attendingCustomerNames && r.attendingCustomerNames.length > 0
-                          ? r.attendingCustomerNames.join(' & ')
-                          : r.customerName}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-extrabold bg-sky-50 text-sky-700 border border-sky-200/60 tabular-nums">
-                          {r.sessionAmount} 堂
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center font-extrabold text-stone-700 tabular-nums">
-                        {getContractRemaining(r.contractId)} 堂
-                      </td>
-                      <td className="px-6 py-4 text-stone-500 max-w-xs truncate">{r.notes || '-'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-3 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            className="text-brand-500 hover:text-brand-600 text-xs font-bold transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleOpenEdit(r)
-                            }}
-                          >
-                            編輯
-                          </button>
-                          <button
-                            type="button"
-                            className="text-red-500 hover:text-red-600 text-xs font-bold transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setDeleteId(r.id)
-                            }}
-                          >
-                            刪除
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredTrainerRecords.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-16 text-center bg-white">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
-                          <span className="text-stone-400 text-lg">📖</span>
-                        </div>
-                        <p className="text-stone-500 text-sm font-medium">該教練目前沒有銷課明細</p>
-                        <p className="text-stone-400 text-xs mt-1">點擊右上方按鈕開始新增銷課</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          {/* TABS SWITCHER */}
+          <div className="flex border-b border-stone-200 mt-2">
+            <button
+              onClick={() => {
+                setActiveTab('students')
+                setSearchQuery('')
+              }}
+              className={cn(
+                "px-5 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2",
+                activeTab === 'students'
+                  ? "border-brand-500 text-brand-600 font-extrabold"
+                  : "border-transparent text-stone-500 hover:text-stone-700"
+              )}
+            >
+              👥 專屬學員名單 & 剩餘課堂
+              <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full text-xs font-semibold">
+                {trainerStudents.length}
+              </span>
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('history')
+                setSearchQuery('')
+              }}
+              className={cn(
+                "px-5 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2",
+                activeTab === 'history'
+                  ? "border-brand-500 text-brand-600 font-extrabold"
+                  : "border-transparent text-stone-500 hover:text-stone-700"
+              )}
+            >
+              📖 歷史上課銷課紀錄
+              <span className="bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full text-xs font-semibold">
+                {trainerRecords.length}
+              </span>
+            </button>
           </div>
+
+          {activeTab === 'students' ? (
+            /* Student List View */
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-stone-900 text-base">專屬學員與合約剩餘堂數</h3>
+                  <p className="text-xs text-stone-400 mt-0.5">顯示指派給此教練的學生以及他們目前合約的剩餘堂數細節</p>
+                </div>
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="搜尋學員姓名或電話..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="border border-stone-200 rounded-xl overflow-hidden bg-white">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-stone-50 text-stone-500 border-b border-stone-200 select-none">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">學員姓名</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">聯絡電話</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">進行中合約與剩餘堂數</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {filteredTrainerStudents.map((s) => {
+                      const studentContracts = getStudentContracts(s.id)
+                      return (
+                        <tr key={s.id} className="hover:bg-brand-50/10 transition-colors duration-150">
+                          <td className="px-6 py-5.5 font-bold text-stone-950 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center font-bold text-xs">
+                              {s.name.charAt(0)}
+                            </div>
+                            {s.name}
+                          </td>
+                          <td className="px-6 py-5.5 text-stone-600 font-mono">
+                            {s.phone}
+                          </td>
+                          <td className="px-6 py-5.5 space-y-3">
+                            {studentContracts.length === 0 ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-stone-100 text-stone-500 border border-stone-200">
+                                暫無合約
+                              </span>
+                            ) : (
+                              studentContracts.map((c) => {
+                                const percent = c.totalSessions ? Math.round((c.remainingSessions / c.totalSessions) * 100) : 0
+                                return (
+                                  <div key={c.id} className="bg-stone-50/80 border border-stone-200/60 rounded-xl p-3.5 space-y-2 max-w-lg">
+                                    <div className="flex justify-between items-center text-xs">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={cn(
+                                          "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
+                                          c.contractType === 'dual' 
+                                            ? "bg-purple-100 text-purple-700 border border-purple-200" 
+                                            : "bg-blue-100 text-blue-700 border border-blue-200"
+                                        )}>
+                                          {c.contractType === 'dual' ? '👥 雙人' : '👤 單人'}
+                                        </span>
+                                        <span className="text-stone-400 font-mono">#{c.id.substring(0, 8)}</span>
+                                      </div>
+                                      <span className="font-extrabold text-stone-900 tabular-nums">
+                                        剩餘 {c.remainingSessions} / 總共 {c.totalSessions} 堂
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Progress Bar */}
+                                    <div className="w-full bg-stone-200 rounded-full h-1.5">
+                                      <div 
+                                        className={cn(
+                                          "h-1.5 rounded-full transition-all duration-300",
+                                          percent <= 20 ? "bg-red-500" : percent <= 50 ? "bg-amber-500" : "bg-brand-600"
+                                        )}
+                                        style={{ width: `${percent}%` }}
+                                      />
+                                    </div>
+
+                                    {c.endDate && (
+                                      <div className="flex justify-between text-[10px] text-stone-400 font-semibold pt-1">
+                                        <span>到期日: {format(c.endDate.toDate(), 'yyyy/MM/dd')}</span>
+                                        {c.status === 'expiring' && (
+                                          <span className="text-red-500 font-bold animate-pulse">⚠️ 即將到期</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {filteredTrainerStudents.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="py-16 text-center text-stone-400 font-medium">
+                          此教練名下暫無對應的學生學員
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Historical Lesson Records View */
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-stone-900 text-base">學生上課銷課明細</h3>
+                  <p className="text-xs text-stone-400 mt-0.5">顯示目前教練名下所有學生的歷史上課紀錄</p>
+                </div>
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input
+                    type="text"
+                    placeholder="搜尋學員姓名..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              <div className="border border-stone-200 rounded-xl overflow-hidden bg-white">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-stone-50 text-stone-500 border-b border-stone-200 select-none">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">上課日期</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">學員姓名</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">消耗堂數</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-center">合約剩餘堂數</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider">備註</th>
+                      <th className="px-6 py-4 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100">
+                    {filteredTrainerRecords.map((r) => (
+                      <tr key={r.id} className="hover:bg-brand-50/10 transition-colors duration-150 group">
+                        <td className="px-6 py-4 text-stone-500 tabular-nums">
+                          {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '-'}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-stone-950">
+                          {r.attendingCustomerNames && r.attendingCustomerNames.length > 0
+                            ? r.attendingCustomerNames.join(' & ')
+                            : r.customerName}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-extrabold bg-sky-50 text-sky-700 border border-sky-200/60 tabular-nums">
+                            {r.sessionAmount} 堂
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center font-extrabold text-stone-700 tabular-nums">
+                          {getContractRemaining(r.contractId)} 堂
+                        </td>
+                        <td className="px-6 py-4 text-stone-500 max-w-xs truncate">{r.notes || '-'}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-3 opacity-80 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              className="text-brand-500 hover:text-brand-600 text-xs font-bold transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleOpenEdit(r)
+                              }}
+                            >
+                              編輯
+                            </button>
+                            <button
+                              type="button"
+                              className="text-red-500 hover:text-red-600 text-xs font-bold transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteId(r.id)
+                              }}
+                            >
+                              刪除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredTrainerRecords.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-16 text-center bg-white">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
+                            <span className="text-stone-400 text-lg">📖</span>
+                          </div>
+                          <p className="text-stone-500 text-sm font-medium">該教練目前沒有銷課明細</p>
+                          <p className="text-stone-400 text-xs mt-1">點擊右上方按鈕開始新增銷課</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
 
