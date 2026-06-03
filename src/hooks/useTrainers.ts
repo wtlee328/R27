@@ -5,6 +5,7 @@ import {
   writeBatch,
   doc,
   serverTimestamp,
+  setDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { Trainer, Customer, Contract, LessonRecord } from '../types'
@@ -204,6 +205,24 @@ export function useTrainers() {
     }
   }
 
+  const addTrainer = async (trainerData: { name: string; email: string; phone: string }) => {
+    try {
+      const trainersRef = collection(db, 'trainers')
+      const newTrainerRef = doc(trainersRef)
+      await setDoc(newTrainerRef, {
+        name: trainerData.name,
+        email: trainerData.email,
+        phone: trainerData.phone,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      await fetchTrainersData()
+    } catch (err: any) {
+      console.error('Error adding trainer:', err)
+      throw err
+    }
+  }
+
   useEffect(() => {
     fetchTrainersData()
   }, [fetchTrainersData])
@@ -214,6 +233,7 @@ export function useTrainers() {
     error,
     migrationRunning,
     runMigration,
+    addTrainer,
     refresh: fetchTrainersData,
   }
 }
