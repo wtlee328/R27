@@ -306,7 +306,10 @@ To enhance administrative oversight, the Trainer Lesson Usage (教練銷課) mod
   - Interactive clickable rows/cards to navigate into the trainer's detail view.
 
 ### 21.3 Trainer Detail View & Drilling Down
-- Navigates to a dedicated panel/view showing the selected trainer's student records.
+- Navigates to a dedicated panel/view showing the selected trainer's trainee directory and records.
+- **Tabbed Layout**:
+  - **👥 專屬學員名單 & 剩餘課堂 (Trainee Directory)**: Lists all trainees assigned to the trainer, showing each student's name, phone, and detailed active contracts (contract type, remaining classes / total classes, a visual progress bar, expiration dates, and alerts).
+  - **📖 歷史上課銷課紀錄 (Historical Logs)**: Houses the chronological ledger of completed lesson deductions.
 - **Lesson Usage Ledger**:
   - Displays Student Name, Lesson Date, Lessons Used, and Current Remaining Lessons.
   - Features quick inline actions to edit or delete lesson records, recalculating contract allocations on the fly.
