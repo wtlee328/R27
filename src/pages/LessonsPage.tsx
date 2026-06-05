@@ -376,7 +376,7 @@ export default function LessonsPage() {
                       {selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數'}: {t.totalUsedLessons} 堂
                     </span>
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                      累計使用堂數: {t.systemLessons} 堂
+                      累計剩餘堂數: {t.systemLessons} 堂
                     </span>
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs font-bold text-stone-600 transition-colors ml-1">
                       {isExpanded ? (
