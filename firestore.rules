@@ -43,8 +43,8 @@ service cloud.firestore {
     // Customers — trainer sees own, admin sees all
     match /customers/{customerId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update: if isOwnerOrAdmin(resource.data.trainerId);
       allow delete: if isOwnerOrAdmin(resource.data.trainerId);
       allow list: if isAdmin() ||
@@ -56,40 +56,40 @@ service cloud.firestore {
     match /contracts/{contractId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
       allow list: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
     // Lesson Records
     match /lessonRecords/{recordId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
     // Cash Flow Records
     match /cashFlowRecords/{recordId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
     // Trial Records
     match /trialRecords/{recordId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
     // Venue Rentals
     match /venueRentals/{rentalId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAuthenticated() &&
-                       request.resource.data.trainerId == request.auth.uid;
+      allow create: if isAdmin() ||
+                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
