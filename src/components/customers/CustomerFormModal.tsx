@@ -295,7 +295,7 @@ export function CustomerFormModal({
         const isComplete = stepFields.every(field => {
           const value = field.split('.').reduce((obj: any, key: any) => obj?.[key], watchedValues)
           if (Array.isArray(value)) return value.length > 0
-          if (typeof value === 'number') return value >= 0
+          if (typeof value === 'number') return value > 0
           return value !== undefined && value !== '' && value !== null
         })
         if (!isComplete) return false;
