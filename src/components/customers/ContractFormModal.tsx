@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, ChevronRight, ChevronLeft, FileText, ShieldCheck, User, Activity } from 'lucide-react'
+import { CheckCircle2, FileText, ShieldCheck, User, Activity } from 'lucide-react'
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
@@ -161,7 +161,7 @@ export function ContractFormModal({
       }
       fetchLastContract()
     }
-  }, [open, customer, form])
+  }, [open, customer, form, trainers])
 
   const watchedValues = form.watch()
 
@@ -202,6 +202,24 @@ export function ContractFormModal({
     }
     return steps
   }, [watchedValues.partnerMode])
+
+  const formatROCDate = (dateVal: any) => {
+    if (!dateVal) return { y: '   ', m: '  ', d: '  ' }
+    let d: Date
+    if (dateVal instanceof Date) {
+      d = dateVal
+    } else if (typeof dateVal === 'string') {
+      d = new Date(dateVal)
+    } else {
+      return { y: '   ', m: '  ', d: '  ' }
+    }
+    if (isNaN(d.getTime())) return { y: '   ', m: '  ', d: '  ' }
+    return {
+      y: (d.getFullYear() - 1911).toString(),
+      m: (d.getMonth() + 1).toString().padStart(2, '0'),
+      d: d.getDate().toString().padStart(2, '0')
+    }
+  }
 
   const generateDefaultInstallments = (total: number, count: number, startD: Date) => {
     if (count < 2 || count > 6) return;
@@ -1018,145 +1036,334 @@ export function ContractFormModal({
                       <h2 className="text-2xl font-bold text-stone-900">簽署確認</h2>
                       <div className="space-y-4">
                         {/* Contract Terms Box */}
-                        <div className="h-48 overflow-y-auto rounded-2xl border border-stone-200 bg-stone-50 p-6 text-xs text-stone-600 leading-relaxed space-y-4 font-serif">
-                          <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">R27 Fitness 健身教練服務定型化契約條款</h4>
-                          
-                          <section className="space-y-1 bg-white p-4 rounded-xl border border-stone-100 shadow-sm">
-                            <p className="font-bold text-stone-850">R27健身站（簡稱乙方）：</p>
-                            <p>公司名稱：紅二七健身有限公司 (R27 Fitness Station)</p>
-                            <p>負責人：郭沛霖 | 電話：0905396658</p>
-                            <p>履約地址：新北市淡水區中正東路二段68號</p>
-                            <p>公共意外責任險：已投保（效期：114/11/21-115/11/21）</p>
-                          </section>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700 font-bold text-sm">合約預覽與條款</Label>
+                          {(() => {
+                            const isDual = form.watch('contractType') === 'dual'
+                            const partnerMode = form.watch('partnerMode')
+                            const reviewDate = formatROCDate(form.watch('startDate') || new Date())
+                            
+                            // Primary Info
+                            const primaryInfo = {
+                              name: customer?.name || '',
+                              idNumber: customer?.idNumber || '',
+                              dobStr: (() => {
+                                const d = formatROCDate(customer?.dateOfBirth)
+                                return d.y ? `${d.y}/${d.m}/${d.d}` : ''
+                              })(),
+                              phone: customer?.phone || '',
+                              email: customer?.email || '',
+                              emergencyName: customer?.emergencyContact?.name || '',
+                              emergencyRelation: customer?.emergencyContact?.relation || '',
+                              emergencyPhone: customer?.emergencyContact?.phone || '',
+                            }
 
-                          <div className="space-y-4 px-2 text-[11px]">
-                            <div>
-                              <p className="font-bold text-stone-900">第一條（服務內容與異動通知）</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>乙方應依約定提供健身指導服務。</li>
-                                <li>乙方所提供服務內容與時間如有異動，應於 24小時前 通知甲方。</li>
-                                <li>通知方式：依甲方留存之電話、LINE 或電子郵件通知，或公告於官方社群網站。</li>
-                                <li>若乙方未依約定時間通知，甲方得請求於 7 日內提供同意之補課方案。</li>
-                              </ol>
-                            </div>
+                            // Partner Info
+                            let partnerInfo = null
+                            if (isDual) {
+                              if (partnerMode === 'existing') {
+                                const partnerObj = customers.find(c => c.id === form.watch('partnerId'))
+                                if (partnerObj) {
+                                  partnerInfo = {
+                                    name: partnerObj.name,
+                                    idNumber: partnerObj.idNumber || '',
+                                    dobStr: (() => {
+                                      const d = formatROCDate(partnerObj.dateOfBirth)
+                                      return d.y ? `${d.y}/${d.m}/${d.d}` : ''
+                                    })(),
+                                    phone: partnerObj.phone,
+                                    email: partnerObj.email || '',
+                                    emergencyName: partnerObj.emergencyContact?.name || '',
+                                    emergencyRelation: partnerObj.emergencyContact?.relation || '',
+                                    emergencyPhone: partnerObj.emergencyContact?.phone || '',
+                                  }
+                                }
+                              } else if (partnerMode === 'new') {
+                                partnerInfo = {
+                                  name: form.watch('partnerCustomerData.name'),
+                                  idNumber: form.watch('partnerCustomerData.idNumber'),
+                                  dobStr: (() => {
+                                    const d = formatROCDate(form.watch('partnerCustomerData.dateOfBirth'))
+                                    return d.y ? `${d.y}/${d.m}/${d.d}` : ''
+                                  })(),
+                                  phone: form.watch('partnerCustomerData.phone'),
+                                  email: form.watch('partnerCustomerData.email'),
+                                  emergencyName: form.watch('partnerCustomerData.emergencyContact.name'),
+                                  emergencyRelation: form.watch('partnerCustomerData.emergencyContact.relation'),
+                                  emergencyPhone: form.watch('partnerCustomerData.emergencyContact.phone'),
+                                }
+                              }
+                            }
 
-                            <div>
-                              <p className="font-bold text-stone-900">第二條（預約與請假規則）</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>預約制：需事先預約（LINE、電話或電子郵件通知）。</li>
-                                <li>請假時限：甲方取消或改期，應於課程開始前 24 小時 通知乙方。（乙方於3日內無償補課）</li>
-                                <li>未依約請假：乙方未依前項約定時間方式通知，在限期3日內提供甲方同意之補課方案。</li>
-                              </ol>
-                            </div>
+                            const coachA = trainers.find(t => t.id === form.watch('trainerId'))?.name || '未指定'
+                            const coachB = trainers.find(t => t.id === form.watch('secondaryTrainerId'))?.name
+                            const coachNames = isDual
+                              ? (coachB && coachB !== coachA ? `學員 A: ${coachA} / 學員 B: ${coachB}` : `${coachA} (同教練)`)
+                              : coachA
 
-                            <div>
-                              <p className="font-bold text-stone-900">第三條（課程暫停/請假機制）</p>
-                              <p className="pl-1">甲方若有下列事由之一，提出證明文件後，乙方應於七個工作日內辦理暫停課程期限順延，停權期間免繳課程費用：</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>出國逾一個月。</li>
-                                <li>傷害、疾病或身體不適致不宜運動。（未能事先提出者，得於事由發生後一個月內補辦）</li>
-                                <li>懷孕、育嬰、侍親之需要。</li>
-                                <li>服兵役。</li>
-                                <li>職務異動或遷居。</li>
-                                <li>其他不可歸責於甲方之事由（如疫情一級開設）。</li>
-                                <li>甲方於本條暫停（停權）期間仍具有健身中心會員資格，且於會員期限屆滿仍未完成堂數者，無需補足會籍，得繼續完成剩餘堂數。</li>
-                              </ol>
-                              <p className="mt-1 pl-1 text-[10px] text-amber-700 font-bold">
-                                註：修正：因傷病暫停超過六個月，經醫師證明不能運動者，致需終止契約，甲方得依規定辦理退費，乙方不收取手續費。
-                              </p>
-                            </div>
+                            const totalSessions = form.watch('totalSessions') || 0
+                            const totalAmount = form.watch('totalAmount') || 0
+                            const pricePerSession = totalSessions > 0 ? Math.round(totalAmount / totalSessions) : 0
+                            const startDate = formatROCDate(form.watch('startDate'))
+                            const endDate = formatROCDate(form.watch('endDate'))
+                            const paymentType = form.watch('paymentType')
+                            const installmentCount = form.watch('installmentCount') || 2
+                            const paymentTypeStr = paymentType === 'single'
+                              ? '☑ 單次付清  □ 分期付款'
+                              : `□ 單次付清  ☑ 分期付款（共 ${installmentCount} 期）`
 
-                            <div>
-                              <p className="font-bold text-stone-900">第四條（退費規定與計算公式）</p>
-                              <p className="pl-1">甲方得隨時通知乙方終止契約，退費標準依法規計算如下：</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>購買後七日內（未上課）：契約生效七日內尚未使用任何課程者，乙方應全額退還。如於7日內使用應適用第二款退費公式。</li>
-                                <li>購買後七日以上（或已上課）：若甲方因個人因素欲終止契約，退費金額計算如下：應退金額 ＝ 實繳總金額 －（已使用堂數 × 每堂單價）
-                                  <ul className="list-disc pl-4 mt-0.5 text-stone-500">
-                                    <li>已使用堂數包含：已上課堂數 + 曠課（未依規定請假）堂數。</li>
-                                    <li>每堂單價定義：契約總金額 ÷ (購買堂數 + 贈送堂數)。(註：贈送堂數一併納入分母計算，以確保消費者退費比例之公平)</li>
-                                  </ul>
-                                </li>
-                                <li>明確事先約定逐月分配使用堂數限制者：乙方應就剩餘之堂數乘以每堂平均價退費。但已到期且可歸責於甲方而未使用之堂數，得不予退費。</li>
-                                <li>手續費（違約金）：辦理前項退費時，乙方得收取手續費。手續費金額為：應退金額 × 20%（但最高以新臺幣 9,000 元為上限）。</li>
-                                <li>贈送課：贈送堂數不得超過總金額之 20%，退費時贈送堂數需一併納入計算。</li>
-                              </ol>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第五條（不可歸責於消費者之終止與效果）</p>
-                              <p className="pl-1">若因下列事由終止契約，乙方應按比例退費，且不得收取手續費或違約金：</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>指定教練無法執行業務（如離職），且甲方不同意替換教練。</li>
-                                <li>乙方變更履約地點，未經甲方同意。</li>
-                                <li>乙方暫停營業、歇業，或因天災、政府法令等不可抗力因素導致無法履約。</li>
-                                <li>甲方因不可歸責事由暫停課程超過一年。</li>
-                                <li>累積教練服務契約量（含同一業者不同教練），已達每週平均逾五堂課。</li>
-                                <li>退費規定：因前項第一款至第四款終止契約者，乙方不得收取手續費、違約金或任何名目費用。若因第五款（暫停課程超過一年）終止契約者，乙方得酌收手續費 $600。</li>
-                              </ol>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第六條（不可歸責雙方事由之終止與效果）</p>
-                              <p className="pl-1">
-                                因天災、戰亂、政府法令之新增或變更等不可抗力或其他不可歸責於雙方當事人之事由，致難以完成本契約之服務時，任何一方得終止契約，乙方應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費用、違約金或任何名目費用。
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第七條（可歸責消費者-業者終止契約）</p>
-                              <p className="pl-1">
-                                甲方於期限屆滿前，得隨時終止。契約期限屆滿後，未使用剩餘堂數，乙方得不予退費。甲方有影響乙方營運之不當行為且情節重大，經勸告無效者，乙方得終止契約，並應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費、違約金或任何名目費用。
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第八條（可歸責業者事由之終止與效果）</p>
-                              <p className="pl-1">
-                                因可歸責於乙方之事由致無法繼續提供約定服務，乙方應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費、違約金 or 任何名目之扣費。前項退費，乙方應準用第四條計算違約金（手續費）之標準，額外支付違約金予甲方。
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第九條（終止契約之通知及退款方式）</p>
-                              <p className="pl-1">
-                                甲方得以書面或雙方事先約定方式（如LINE、電子郵件等）通知終止契約，通知到達乙方時立即生效。乙方應於甲方通知後 15 個「工作日」內，將應退款項擇 □現金 □轉帳 方式退還予甲方（乙方應於簽收或確認後出具證明交予甲方收執）。
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="font-bold text-stone-900">第十條（贈品約款及其效果）</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>
-                                  乙方提供對甲方之贈品價值總計新臺幣 ________ 元，包括：
-                                  <div className="flex gap-4 mt-1 text-stone-500 font-semibold">
-                                    <span>□ 商品：________________</span>
-                                    <span>□ 課程堂數：____________</span>
-                                    <span>□ 其他：________________</span>
+                            return (
+                              <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
+                                <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
+                                  {/* Header */}
+                                  <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
+                                    <h1 className="text-base font-black text-stone-900 tracking-tight">R27 Fitness 健身教練課程契約書</h1>
+                                    <div className="flex justify-between text-[9px] font-bold text-stone-500">
+                                      <span>紅二七健身有限公司</span>
+                                      <span>合約編號：(系統自動產生)</span>
+                                    </div>
                                   </div>
-                                </li>
-                                <li>
-                                  乙方以商品及其他內容為贈品者（其價值不得逾契約總金額百分之二十），於契約終止時，不得向甲方請求返還該贈品，或主張自應返還費用當中扣除該贈品價額。
-                                </li>
-                              </ol>
-                            </div>
 
-                            <div>
-                              <p className="font-bold text-stone-900">第十一條（契約讓與）</p>
-                              <p className="pl-1">
-                                甲方經乙方同意，得將本契約讓與第三人（轉讓）。乙方得向甲方收取轉讓必要費用新台幣600元。
-                              </p>
-                            </div>
+                                  {/* Review Agreement */}
+                                  <div className="border border-stone-200 bg-stone-50/50 p-3.5 rounded-xl space-y-1.5">
+                                    <h3 className="font-bold text-stone-900 text-xs border-b border-stone-200 pb-1 flex justify-between">
+                                      <span>契約審閱權確認</span>
+                                    </h3>
+                                    <p className="leading-relaxed text-[11px]">
+                                      本契約於中華民國 <span className="underline font-bold px-1">{reviewDate.y || '   '}</span> 年 <span className="underline font-bold px-1">{reviewDate.m || '  '}</span> 月 <span className="underline font-bold px-1">{reviewDate.d || '  '}</span> 日交由消費者審閱。
+                                    </p>
+                                    <p className="font-bold text-stone-900 text-[11px]">
+                                      甲方確認已享有 三日以上 之契約審閱期間，並充分瞭解本契約條款內容。
+                                    </p>
+                                    <div className="flex justify-end items-center gap-2 pt-1">
+                                      <span className="font-bold text-stone-700 text-[10px]">簽名確認：</span>
+                                      <div className="w-28 h-6 border-b border-stone-400 flex items-center justify-center">
+                                        <span className="text-stone-300 italic text-[9px]">(請於下方簽署)</span>
+                                      </div>
+                                    </div>
+                                  </div>
 
-                            <div>
-                              <p className="font-bold text-stone-900">第十二條（爭議處理與管轄法院）</p>
-                              <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
-                                <li>本契約未盡事宜，悉依中華民國法律及教育部公告之相關規範辦理。</li>
-                                <li>甲乙雙方發生爭議時，甲方得依消費者保護法之規定申訴及申請調解，相關法令、習慣及誠信原則公平解決之。</li>
-                                <li>本契約涉訟時，雙方同意以臺灣士林地方法院為第一審管轄法院（因履約地淡水屬士林地院管轄），但不得排除消費者保護法第四十七條及民事訴訟法第四百三十六條之九規定之小額訴訟管轄法院之適用。</li>
-                              </ol>
-                            </div>
-                          </div>
+                                  {/* Parties */}
+                                  <div className="space-y-3">
+                                    <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1 flex justify-between">
+                                      <span>立契約書人</span>
+                                      {isDual && <span className="text-[9px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">👥 雙人共享合約模式</span>}
+                                    </h3>
+
+                                    {/* Primary Customer */}
+                                    <div className="space-y-1.5 bg-stone-50/60 p-2.5 rounded-xl border border-stone-150">
+                                      <div className="font-bold text-stone-800 border-b border-stone-200 pb-0.5 text-[9px]">
+                                        <span>會員姓名（簡稱甲方）{isDual && ' - 學員 A'}</span>
+                                      </div>
+                                      <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
+                                        <div className="col-span-2">姓名：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[50px]">{primaryInfo.name || '──────'}</span></div>
+                                        <div className="col-span-2">身分證字號：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{primaryInfo.idNumber || '──────'}</span></div>
+                                        <div className="col-span-2">生日：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{primaryInfo.dobStr || '──────'}</span></div>
+                                        <div className="col-span-3">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{primaryInfo.phone || '──────'}</span></div>
+                                        <div className="col-span-3">Email：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[120px] break-all">{primaryInfo.email || '──────'}</span></div>
+                                        <div className="col-span-2">緊急聯絡人：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">{primaryInfo.emergencyName || '──────'}</span></div>
+                                        <div className="col-span-2">關係：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[30px]">{primaryInfo.emergencyRelation || '──────'}</span></div>
+                                        <div className="col-span-2">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{primaryInfo.emergencyPhone || '──────'}</span></div>
+                                      </div>
+                                    </div>
+
+                                    {/* Partner Customer */}
+                                    {isDual && partnerInfo && (
+                                      <div className="space-y-1.5 bg-purple-50/30 p-2.5 rounded-xl border border-purple-100/60">
+                                        <div className="font-bold text-purple-900 border-b border-purple-200 pb-0.5 text-[9px]">
+                                          <span>會員姓名（簡稱甲方） - 學員 B</span>
+                                        </div>
+                                        <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
+                                          <div className="col-span-2">姓名：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[50px]">{partnerInfo.name || '──────'}</span></div>
+                                          <div className="col-span-2">身分證字號：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{partnerInfo.idNumber || '──────'}</span></div>
+                                          <div className="col-span-2">生日：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{partnerInfo.dobStr || '──────'}</span></div>
+                                          <div className="col-span-3">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partnerInfo.phone || '──────'}</span></div>
+                                          <div className="col-span-3">Email：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[120px] break-all">{partnerInfo.email || '──────'}</span></div>
+                                          <div className="col-span-2">緊急聯絡人：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">{partnerInfo.emergencyName || '──────'}</span></div>
+                                          <div className="col-span-2">關係：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[30px]">{partnerInfo.emergencyRelation || '──────'}</span></div>
+                                          <div className="col-span-2">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{partnerInfo.emergencyPhone || '──────'}</span></div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Company Details */}
+                                    <div className="space-y-1.5 bg-stone-50/60 p-2.5 rounded-xl border border-stone-150 text-stone-600 text-[10px]">
+                                      <div className="font-bold text-stone-850 border-b border-stone-200 pb-0.5 text-[9px]">
+                                        <span>R27健身站（簡稱乙方）</span>
+                                      </div>
+                                      <div className="grid grid-cols-3 gap-y-1 gap-x-2">
+                                        <div>公司名稱：<span className="font-bold text-stone-900">紅二七健身有限公司</span></div>
+                                        <div>負責人：<span className="font-bold text-stone-900">郭沛霖</span></div>
+                                        <div>電話：<span className="font-bold text-stone-900">0905396658</span></div>
+                                        <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-900">新北市淡水區中正東路二段68號</span></div>
+                                        <div>官方IG：<span className="font-bold text-stone-900 underline">r27fitness</span></div>
+                                        <div className="col-span-3">公共意外責任險：<span className="font-bold text-stone-900">已投保（效期：114/11/21-115/11/21）</span></div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Course Detail */}
+                                  <div className="space-y-3">
+                                    <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1">課程內容與費用明細</h3>
+                                    <div className="grid grid-cols-12 gap-y-1.5 gap-x-3 text-stone-600 text-[10px]">
+                                      <div className="col-span-6">課程名稱：<span className="font-bold text-stone-900">一對一私人教練</span></div>
+                                      <div className="col-span-6">教練比例：<span className="font-bold text-stone-900">1位教練對 {isDual ? '2' : '1'} 位學員</span></div>
+                                      <div className="col-span-12">指定教練：<span className="font-bold text-stone-900 bg-stone-50 px-2 py-0.5 rounded border border-stone-200">{coachNames}</span></div>
+                                      <div className="col-span-4">購買堂數：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">{totalSessions}</span> 堂</div>
+                                      <div className="col-span-4">契約總金額：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">NT$ {totalAmount.toLocaleString()}</span> 元</div>
+                                      <div className="col-span-4">每堂單價：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">NT$ {pricePerSession.toLocaleString()}</span> 元</div>
+                                      <div className="col-span-12 text-[9px] text-stone-400 font-bold italic mt-[-2px]">
+                                        （註：此單價為日後若發生「退費」時的計算基準）
+                                      </div>
+                                      <div className="col-span-12">
+                                        課程期限：自 <span className="font-bold text-stone-900 underline mx-0.5">{startDate.y || '   '}</span> 年 <span className="font-bold text-stone-900 underline mx-0.5">{startDate.m || '  '}</span> 月 <span className="font-bold text-stone-900 underline mx-0.5">{startDate.d || '  '}</span> 日起至 <span className="font-bold text-stone-900 underline mx-0.5">{endDate.y || '   '}</span> 年 <span className="font-bold text-stone-900 underline mx-0.5">{endDate.m || '  '}</span> 月 <span className="font-bold text-stone-900 underline mx-0.5">{endDate.d || '  '}</span> 日止
+                                      </div>
+                                      <div className="col-span-12 p-2.5 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
+                                        <div>付款方式：<span className="font-bold text-stone-900">{paymentTypeStr}</span></div>
+                                        {paymentType === 'installments' && (
+                                          <div className="text-[9px] text-stone-500 font-medium">
+                                            本課程共分 {installmentCount} 期支付。首期款項應於簽約時支付，後續各期款項應於約定期限前完成支付。
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Articles 1-12 */}
+                                  <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
+                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">R27 Fitness 健身教練服務定型化契約條款</h4>
+                                    
+                                    <div>
+                                      <p className="font-bold text-stone-900">第一條（服務內容與異動通知）</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>乙方應依約定提供健身指導服務。</li>
+                                        <li>乙方所提供服務內容與時間如有異動，應於 24小時前 通知甲方。</li>
+                                        <li>通知方式：依甲方留存之電話、LINE 或電子郵件通知，或公告於官方社群網站。</li>
+                                        <li>若乙方未依約定時間通知，甲方得請求於 7 日內提供同意之補課方案。</li>
+                                      </ol>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第二條（預約與請假規則）</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>預約制：需事先預約（LINE、電話或電子郵件通知）。</li>
+                                        <li>請假時限：甲方取消或改期，應於課程開始前 24 小時 通知乙方。（乙方於3日內無償補課）</li>
+                                        <li>未依約請假：乙方未依前項約定時間方式通知，在限期3日內提供甲方同意之補課方案。</li>
+                                      </ol>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第三條（課程暫停/請假機制）</p>
+                                      <p className="pl-1">甲方若有下列事由之一，提出證明文件後，乙方應於七個工作日內辦理暫停課程期限順延，停權期間免繳課程費用：</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>出國逾一個月。</li>
+                                        <li>傷害、疾病或身體不適致不宜運動。（未能事先提出者，得於事由發生後一個月內補辦）</li>
+                                        <li>懷孕、育嬰、侍親之需要。</li>
+                                        <li>服兵役。</li>
+                                        <li>職務異動或遷居。</li>
+                                        <li>其他不可歸責於甲方之事由（如疫情一級開設）。</li>
+                                        <li>甲方於本條暫停（停權）期間仍具有健身中心會員資格，且於會員期限屆滿仍未完成堂數者，無需補足會籍，得繼續完成剩餘堂數。</li>
+                                      </ol>
+                                      <p className="mt-1 pl-1 text-[10px] text-amber-700 font-bold">
+                                        註：修正：因傷病暫停超過六個月，經醫師證明不能運動者，致需終止契約，甲方得依規定辦理退費，乙方不收取手續費。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第四條（退費規定與計算公式）</p>
+                                      <p className="pl-1">甲方得隨時通知乙方終止契約，退費標準依法規計算如下：</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>購買後七日內（未上課）：契約生效七日內尚未使用任何課程者，乙方應全額退還。如於7日內使用應適用第二款退費公式。</li>
+                                        <li>購買後七日以上（或已上課）：若甲方因個人因素欲終止契約，退費金額計算如下：應退金額 ＝ 實繳總金額 －（已使用堂數 × 每堂單價）
+                                          <ul className="list-disc pl-4 mt-0.5 text-stone-500">
+                                            <li>已使用堂數包含：已上課堂數 + 曠課（未依規定請假）堂數。</li>
+                                            <li>每堂單價定義: 契約總金額 ÷ (購買堂數 + 贈送堂數)。(註: 贈送堂數一併納入分母計算，以確保消費者退費比例之公平)</li>
+                                          </ul>
+                                        </li>
+                                        <li>明確事先約定逐月分配使用堂數限制者：乙方應就剩餘之堂數乘以每堂平均價退費。但已到期且可歸責於甲方而未使用之堂數，得不予退費。</li>
+                                        <li>手續費（違約金）：辦理前項退費時，乙方得收取手續費。手續費金額為：應退金額 × 20%（但最高以新臺幣 9,000 元為上限）。</li>
+                                        <li>贈送課：贈送堂數不得超過總金額之 20%，退費時贈送堂數需一併納入計算。</li>
+                                      </ol>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第五條（不可歸責於消費者之終止與效果）</p>
+                                      <p className="pl-1">若因下列事由終止契約，乙方應按比例退費，且不得收取手續費或違約金：</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>指定教練無法執行業務（如離職），且甲方不同意替換教練。</li>
+                                        <li>乙方變更履約地點，未經甲方同意。</li>
+                                        <li>乙方暫停營業、歇業，或因天災、政府法令等不可抗力因素導致無法履約。</li>
+                                        <li>甲方因不可歸責事由暫停課程超過一年。</li>
+                                        <li>累積教練服務契約量（含同一業者不同教練），已達每週平均逾五堂課。</li>
+                                        <li>退費規定：因前項第一款至第四款終止契約者，乙方不得收取手續費、違約金或任何名目費用。若因第五款（暫停課程超過一年）終止契約者，乙方得酌收手續費 $600。</li>
+                                      </ol>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第六條（不可歸責雙方事由之終止與效果）</p>
+                                      <p className="pl-1">
+                                        因天災、戰亂、政府法令之新增或變更等不可抗力或其他不可歸責於雙方當事人之事由，致難以完成本契約之服務時，任何一方得終止契約，乙方應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費用、違約金或任何名目費用。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第七條（可歸責消費者-業者終止契約）</p>
+                                      <p className="pl-1">
+                                        甲方於期限屆滿前，得隨時終止。契約期限屆滿後，未使用剩餘堂數，乙方得不予退費。甲方有影響乙方營運之不當行為且情節重大，經勸告無效者，乙方得終止契約，並應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費、違約金或任何名目費用。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第八條（可歸責業者事由之終止與效果）</p>
+                                      <p className="pl-1">
+                                        因可歸責於乙方之事由致無法繼續提供約定服務，乙方應依未服務之堂數（含所贈與服務堂數）計算餘額退還予甲方，不得收取手續費、違約金或任何名目之扣費。前項退費，乙方應準用第四條計算違約金（手續費）之標準，額外支付違約金予甲方。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第九條（終止契約之通知及退款方式）</p>
+                                      <p className="pl-1">
+                                        甲方得以書面或雙方事先約定方式（如LINE、電子郵件等）通知終止契約，通知到達乙方時立即生效。乙方應於甲方通知後 15 個「工作日」內，將應退款項擇 □現金 □轉帳 方式退還予甲方（乙方應於簽收或確認後出具證明交予甲方收執）。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第十條（贈品約款及其效果）</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>
+                                          乙方提供對甲方之贈品價值總計新臺幣 ________ 元，包括：
+                                          <div className="flex gap-4 mt-1 text-stone-500 font-semibold">
+                                            <span>□ 商品：________________</span>
+                                            <span>□ 課程堂數：____________</span>
+                                            <span>□ 其他：________________</span>
+                                          </div>
+                                        </li>
+                                        <li>
+                                          乙方以商品及其他內容為贈品者（其價值不得逾契約總金額百分之二十），於契約終止時，不得向甲方請求返還該贈品，或主張自應返還費用當中扣除該贈品價額。
+                                        </li>
+                                      </ol>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第十一條（契約讓與）</p>
+                                      <p className="pl-1">
+                                        甲方經乙方同意，得將本契約讓與第三人（轉讓）。乙方得向甲方收取轉讓必要費用新台幣600元。
+                                      </p>
+                                    </div>
+
+                                    <div>
+                                      <p className="font-bold text-stone-900">第十二條（爭議處理與管轄法院）</p>
+                                      <ol className="list-decimal pl-4 space-y-0.5 mt-0.5">
+                                        <li>本契約未盡事宜，悉依中華民國法律及教育部公告之相關規範辦理。</li>
+                                        <li>甲乙雙方發生爭議時，甲方得依消費者保護法之規定申訴及申請調解，相關法令、習慣及誠信原則公平解決之。</li>
+                                        <li>本契約涉訟時，雙方同意以臺灣士林地方法院為第一審管轄法院（因履約地淡水屬士林地院管轄），但不得排除消費者保護法服務之訴訟管轄法院之適用。</li>
+                                      </ol>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })()}
                         </div>
 
                         {/* Agreement Checkbox */}
@@ -1166,9 +1373,9 @@ export function ContractFormModal({
                             id="agree-renewal"
                             checked={form.watch('isAgreed')}
                             onChange={e => form.setValue('isAgreed', e.target.checked)}
-                            className="w-5 h-5 rounded accent-brand-500"
+                            className="w-5 h-5 rounded accent-brand-500 cursor-pointer"
                           />
-                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700">同意 R27 Fitness 健身教練服務定型化契約條款</label>
+                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700 cursor-pointer">同意並簽署上述「R27 Fitness 健身教練課程契約書」</label>
                         </div>
 
                         <div className={cn(
