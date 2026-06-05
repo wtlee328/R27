@@ -197,6 +197,7 @@ export const lessonRecordFormSchema = z.object({
   customerId: z.string().min(1, '請選擇客戶'),
   customerName: z.string().min(1, '無效的客戶名稱'),
   contractId: z.string().min(1, '請選擇合約'),
+  trainerId: z.string().optional(),
   sessionDate: z.date({
     required_error: '請選擇上課日期',
   }),

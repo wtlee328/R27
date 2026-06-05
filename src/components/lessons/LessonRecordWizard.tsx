@@ -14,6 +14,7 @@ import { Label } from '../ui/label'
 import { lessonRecordFormSchema, type LessonRecordFormValues } from '../../lib/validators'
 import { useCustomers } from '../../hooks/useCustomers'
 import { useContracts } from '../../hooks/useContracts'
+import { useTrainers } from '../../hooks/useTrainers'
 import type { LessonRecord } from '../../types'
 
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function LessonRecordWizard({
 }: LessonRecordWizardProps) {
   const [loading, setLoading] = useState(false)
   const { customers } = useCustomers()
+  const { trainers } = useTrainers()
   
   const filteredCustomers = trainerId 
     ? customers.filter(c => c.trainerId === trainerId)
@@ -46,6 +48,7 @@ export function LessonRecordWizard({
       customerId: '',
       customerName: '',
       contractId: '',
+      trainerId: '',
       sessionDate: new Date(),
       sessionAmount: 1,
       notes: '',
@@ -60,6 +63,7 @@ export function LessonRecordWizard({
         customerId: initialData.customerId,
         customerName: initialData.customerName,
         contractId: initialData.contractId,
+        trainerId: initialData.trainerId || '',
         sessionDate: initialData.sessionDate.toDate(),
         sessionAmount: initialData.sessionAmount,
         notes: initialData.notes || '',
@@ -70,6 +74,7 @@ export function LessonRecordWizard({
         customerId: '',
         customerName: '',
         contractId: '',
+        trainerId: '',
         sessionDate: new Date(),
         sessionAmount: 1,
         notes: '',
@@ -82,6 +87,13 @@ export function LessonRecordWizard({
   const { contracts } = useContracts(selectedCustomerId)
   const selectedContractId = form.watch('contractId')
   const selectedContract = contracts.find(c => c.id === selectedContractId)
+
+  // Pre-select contract trainer when a contract is selected (only for new records)
+  useEffect(() => {
+    if (!initialData && selectedContract) {
+      form.setValue('trainerId', selectedContract.trainerId || '')
+    }
+  }, [selectedContract, initialData, form])
 
   const partnerId = selectedContract?.customerIds && selectedContract.customerIds.length > 1
     ? selectedContract.customerIds.find(id => id !== selectedCustomerId)
@@ -181,6 +193,32 @@ export function LessonRecordWizard({
             </select>
             {form.formState.errors.contractId && (
               <p className="text-red-500 text-xs">{form.formState.errors.contractId.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>授課教練 *</Label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
+              {...form.register('trainerId')}
+              disabled={!selectedCustomerId}
+            >
+              <option value="" disabled>請選擇授課教練</option>
+              {trainers.map((t) => {
+                const isContractTrainer = selectedContract && (
+                  selectedContract.trainerId === t.id ||
+                  (selectedContract as any).secondaryTrainerId === t.id
+                )
+                const isSubstitute = selectedContract && !isContractTrainer
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
+                  </option>
+                )
+              })}
+            </select>
+            {form.formState.errors.trainerId && (
+              <p className="text-red-500 text-xs">{form.formState.errors.trainerId.message}</p>
             )}
           </div>
 
