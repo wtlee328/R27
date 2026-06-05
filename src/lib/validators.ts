@@ -48,6 +48,8 @@ export const baseContractFormSchema = z.object({
   customerIds: z.array(z.string()).default([]),
   contractType: z.enum(['single', 'dual']).default('single'),
   primaryCustomerId: z.string().default(''),
+  trainerId: z.string().min(1, '請選擇教練'),
+  secondaryTrainerId: z.string().nullable().optional().default(null),
   totalSessions: z.coerce.number().min(1, '堂數必須大於 0'),
   remainingSessions: z.coerce.number().min(0, '剩餘堂數不能為負數'),
   pricePerSession: z.coerce.number().min(0, '單堂價格不能為負數'),

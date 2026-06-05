@@ -4,7 +4,7 @@ import {
   DialogContent,
 } from '../ui/dialog'
 import { format } from 'date-fns'
-import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp, collection, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
 import { Printer, X, Edit2, Trash2, Save, Plus, Trash, AlertTriangle, RefreshCw } from 'lucide-react'
@@ -54,6 +54,25 @@ export function CustomerContractModal({
   const [editPaymentType, setEditPaymentType] = React.useState<'single' | 'installments'>('single')
   const [editInstallmentCount, setEditInstallmentCount] = React.useState<number>(2)
   const [editInstallments, setEditInstallments] = React.useState<any[]>([])
+  const [editTrainerId, setEditTrainerId] = React.useState<string>('')
+  const [editSecondaryTrainerId, setEditSecondaryTrainerId] = React.useState<string | null>(null)
+  const [trainers, setTrainers] = React.useState<any[]>([])
+  const [isOneToTwo, setIsOneToTwo] = React.useState<boolean>(true)
+
+  React.useEffect(() => {
+    const fetchTrainers = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'trainers'))
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setTrainers(list)
+      } catch (err) {
+        console.error('Error fetching trainers in contract view modal:', err)
+      }
+    }
+    if (open) {
+      fetchTrainers()
+    }
+  }, [open])
 
   React.useEffect(() => {
     const fetchPartner = async () => {
@@ -95,6 +114,9 @@ export function CustomerContractModal({
       setEditEndDate(toDateString(contract.endDate))
       setEditPaymentType(contract.paymentType || 'single')
       setEditInstallmentCount(contract.installmentCount || 2)
+      setEditTrainerId(contract.trainerId || '')
+      setEditSecondaryTrainerId(contract.secondaryTrainerId || null)
+      setIsOneToTwo(!contract.secondaryTrainerId || contract.secondaryTrainerId === contract.trainerId)
       
       const mappedInsts = (contract.installments || []).map((inst: any) => ({
         id: inst.id,
@@ -206,7 +228,6 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(new Date(inst.paidDate)) : null,
         }))
       }
-      
       const updateData = {
         totalSessions: Number(editTotalSessions),
         remainingSessions: Number(editRemainingSessions),
@@ -217,10 +238,43 @@ export function CustomerContractModal({
         paymentType: editPaymentType,
         installmentCount: editPaymentType === 'installments' ? editInstallments.length : 1,
         installments: finalInstallments,
+        trainerId: editTrainerId,
+        secondaryTrainerId: editSecondaryTrainerId,
         updatedAt: serverTimestamp(),
       }
       
       await updateDoc(contractRef, updateData)
+
+      // Sync Customer A's trainer
+      if (editTrainerId) {
+        try {
+          await updateDoc(doc(db, 'customers', customer.id), {
+            trainerId: editTrainerId,
+            updatedAt: serverTimestamp()
+          })
+        } catch (err) {
+          console.error('Failed to sync Customer A trainer:', err)
+        }
+      }
+
+      // Sync Customer B's trainer if dual
+      const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
+      const partnerId = contract.customerIds && contract.customerIds.length > 1
+        ? contract.customerIds.find(id => id !== customer.id)
+        : contract.sharedWithCustomerId
+
+      if (isDual && partnerId) {
+        const syncTrainerId = editSecondaryTrainerId || editTrainerId
+        try {
+          await updateDoc(doc(db, 'customers', partnerId), {
+            trainerId: syncTrainerId,
+            updatedAt: serverTimestamp()
+          })
+        } catch (err) {
+          console.error('Failed to sync Customer B trainer:', err)
+        }
+      }
+
       setIsEditing(false)
       if (onContractUpdated) onContractUpdated()
       alert('合約更新成功！')
@@ -370,6 +424,109 @@ export function CustomerContractModal({
                     onChange={e => setEditEndDate(e.target.value)} 
                     className="bg-stone-50"
                   />
+                </div>
+
+                {/* 課程教練分配 */}
+                <div className="col-span-2 border-t border-b border-stone-100 py-6 my-2 space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-800 block">分配課程教練 *</label>
+                    <p className="text-[10px] text-stone-400">變更指導本合約學員的授課教練</p>
+                  </div>
+
+                  {(!contract.contractType || contract.contractType === 'single') ? (
+                    <div className="space-y-2 max-w-md">
+                      <label className="text-xs text-stone-500 font-medium block">授課教練</label>
+                      <select
+                        value={editTrainerId}
+                        onChange={(e) => {
+                          setEditTrainerId(e.target.value)
+                          setEditSecondaryTrainerId(null)
+                        }}
+                        className="w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                      >
+                        <option value="">-- 請選擇教練 --</option>
+                        {trainers.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="isOneToTwoEdit"
+                          checked={isOneToTwo}
+                          onChange={(e) => {
+                            const checked = e.target.checked
+                            setIsOneToTwo(checked)
+                            if (checked) {
+                              setEditSecondaryTrainerId(editTrainerId)
+                            } else {
+                              setEditSecondaryTrainerId(trainers[0]?.id || '')
+                            }
+                          }}
+                          className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
+                        />
+                        <label htmlFor="isOneToTwoEdit" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
+                          👥 1對2 同時間上課（共用同一位教練）
+                        </label>
+                      </div>
+
+                      {isOneToTwo ? (
+                        <div className="space-y-2 max-w-md pt-1">
+                          <label className="text-xs text-stone-500 font-medium block">共享授課教練</label>
+                          <select
+                            value={editTrainerId}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setEditTrainerId(val)
+                              setEditSecondaryTrainerId(val)
+                            }}
+                            className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                          >
+                            <option value="">-- 請選擇教練 --</option>
+                            {trainers.map((t) => (
+                              <option key={t.id} value={t.id}>{t.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-4 pt-1">
+                          <div className="space-y-2">
+                            <label className="text-xs text-stone-500 font-medium block">
+                              學員 A ({customer.name}) 的教練
+                            </label>
+                            <select
+                              value={editTrainerId}
+                              onChange={(e) => setEditTrainerId(e.target.value)}
+                              className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                            >
+                              <option value="">-- 請選擇教練 --</option>
+                              {trainers.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs text-stone-500 font-medium block">
+                              學員 B ({partner?.name || '共享學員'}) 的教練
+                            </label>
+                            <select
+                              value={editSecondaryTrainerId || ''}
+                              onChange={(e) => setEditSecondaryTrainerId(e.target.value)}
+                              className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                            >
+                              <option value="">-- 請選擇教練 --</option>
+                              {trainers.map((t) => (
+                                <option key={t.id} value={t.id}>{t.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -781,11 +938,27 @@ export function CustomerContractModal({
                       <div className="grid grid-cols-3 gap-4 text-stone-900 mb-4">
                         <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
                           <p className="text-[10px] text-stone-400 uppercase font-bold mb-1">合約堂數</p>
-                          <p className="text-lg font-black">{contract.totalSessions} 堂 (剩餘 {contract.remainingSessions} 堂)</p>
+                          <p className="text-sm font-black">{contract.totalSessions} 堂 (剩餘 {contract.remainingSessions} 堂)</p>
                         </div>
-                        <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm col-span-2">
+                        <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
+                          <p className="text-[10px] text-stone-400 uppercase font-bold mb-1">授課教練</p>
+                          <p className="text-xs font-bold leading-tight">
+                            {(() => {
+                              const coachA = trainers.find(t => t.id === contract.trainerId)?.name || '未指定';
+                              const coachB = trainers.find(t => t.id === contract.secondaryTrainerId)?.name;
+                              if (contract.contractType !== 'dual') {
+                                return coachA;
+                              }
+                              if (!coachB || contract.secondaryTrainerId === contract.trainerId) {
+                                return `👥 1對2 同教練: ${coachA}`;
+                              }
+                              return `👥 A: ${coachA} / B: ${coachB}`;
+                            })()}
+                          </p>
+                        </div>
+                        <div className="bg-white p-3 rounded-xl border border-stone-200 shadow-sm">
                           <p className="text-[10px] text-stone-400 uppercase font-bold mb-1">有效期限</p>
-                          <p className="text-sm font-bold">
+                          <p className="text-[11px] font-bold leading-tight">
                             {toDateString(contract.startDate) ? format(new Date(toDateString(contract.startDate)), 'yyyy/MM/dd') : ''} - {toDateString(contract.endDate) ? format(new Date(toDateString(contract.endDate)), 'yyyy/MM/dd') : ''}
                           </p>
                         </div>

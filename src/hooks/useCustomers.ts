@@ -218,13 +218,40 @@ export function useCustomers() {
         dueDate: Timestamp.fromDate(ensureDate(ins.dueDate)),
         paidDate: ins.paidDate ? Timestamp.fromDate(ensureDate(ins.paidDate)) : null,
       })),
-      trainerId: user.uid,
+      trainerId: data.trainerId || user.uid,
+      secondaryTrainerId: data.secondaryTrainerId || null,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
 
     const docRef = await addDoc(collection(db, 'contracts'), newContract)
     console.log('Contract created with ID:', docRef.id)
+
+    // Sync Customer A's trainer
+    if (data.trainerId) {
+      try {
+        await updateDoc(doc(db, 'customers', customerId), {
+          trainerId: data.trainerId,
+          updatedAt: serverTimestamp()
+        })
+      } catch (err) {
+        console.error('Failed to sync Customer A trainer:', err)
+      }
+    }
+
+    // Sync Customer B's trainer if dual
+    if (isDual && partnerId) {
+      const syncTrainerId = data.secondaryTrainerId || data.trainerId || user.uid
+      try {
+        await updateDoc(doc(db, 'customers', partnerId), {
+          trainerId: syncTrainerId,
+          updatedAt: serverTimestamp()
+        })
+      } catch (err) {
+        console.error('Failed to sync Customer B trainer:', err)
+      }
+    }
+
     await fetchAllData()
     return docRef.id
   }
@@ -277,7 +304,7 @@ export function useCustomers() {
         const partnerCustomer = {
           ...data.partnerCustomerData,
           dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
-          trainerId: user.uid,
+          trainerId: data.contract?.secondaryTrainerId || data.contract?.trainerId || user.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }
@@ -297,7 +324,7 @@ export function useCustomers() {
       const newCustomer = {
         ...customerData,
         dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
-        trainerId: user.uid,
+        trainerId: data.contract?.trainerId || user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
