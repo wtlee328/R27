@@ -373,10 +373,10 @@ export default function LessonsPage() {
 
                   <div className="flex flex-wrap items-center gap-2.5 self-stretch sm:self-auto justify-end">
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200">
-                      {selectedMonth === 'all' ? '累計已銷堂數' : '本月使用堂數'}: {t.totalUsedLessons} 堂
+                      {selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數'}: {t.totalUsedLessons} 堂
                     </span>
                     <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                      本月剩餘堂數: {t.systemLessons} 堂
+                      累計使用堂數: {t.systemLessons} 堂
                     </span>
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs font-bold text-stone-600 transition-colors ml-1">
                       {isExpanded ? (
