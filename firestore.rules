@@ -55,6 +55,7 @@ service cloud.firestore {
     // Contracts — same pattern
     match /contracts/{contractId} {
       allow read: if isOwnerOrAdmin(resource.data.trainerId);
+      allow list: if isAuthenticated();
       allow create: if isAuthenticated() &&
                        request.resource.data.trainerId == request.auth.uid;
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
@@ -90,6 +91,14 @@ service cloud.firestore {
       allow create: if isAuthenticated() &&
                        request.resource.data.trainerId == request.auth.uid;
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+    }
+
+    // Notifications — each user can only read/write their own
+    match /notifications/{notifId} {
+      allow read, list: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // System Config — admin only write, authenticated read
