@@ -66,6 +66,7 @@ export interface Installment {
 export interface Contract {
   id: string
   trainerId: string
+  secondaryTrainerId?: string
   customerId: string
   sharedWithCustomerId: string | null
   customerIds: string[]
@@ -93,6 +94,7 @@ export interface Contract {
 export interface LessonRecord {
   id: string
   trainerId: string
+  contractTrainerId?: string
   customerId: string
   customerName: string  // Denormalized for display
   contractId: string

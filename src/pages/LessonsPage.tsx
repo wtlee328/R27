@@ -106,15 +106,15 @@ export default function LessonsPage() {
       )
       const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
-      // Find lesson records belonging to this trainer (or assigned customers)
-      const trainerLessons = records.filter(
-        (lr) => lr.trainerId === t.id || assignedCustomerIds.includes(lr.customerId)
+      // Find lesson records taught by this trainer
+      const taughtLessons = records.filter(
+        (lr) => lr.trainerId === t.id
       )
 
       // Calculate used lessons for the selected month or all-time
       const filteredLessonsForMonth = selectedMonth === 'all'
-        ? trainerLessons
-        : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+        ? taughtLessons
+        : taughtLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
 
       const usedLessons = filteredLessonsForMonth.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
 
@@ -172,10 +172,9 @@ export default function LessonsPage() {
     if (editingRecord) {
       await updateRecord(editingRecord.id, data)
     } else {
-      // If we are creating from trainer view, pre-assign this trainer to the record
       const recordData = {
         ...data,
-        trainerId: selectedTrainerId || data.trainerId
+        trainerId: data.trainerId || selectedTrainerId || undefined
       }
       await createRecord(recordData)
     }
@@ -444,6 +443,7 @@ export default function LessonsPage() {
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">日期</th>
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">學生</th>
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">合約</th>
+                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">授課教練</th>
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider text-center">堂數</th>
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider text-right">金額</th>
                               <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">備註</th>
@@ -477,6 +477,28 @@ export default function LessonsPage() {
                                     ) : (
                                       <span className="text-stone-400 text-xs">-</span>
                                     )}
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    {(() => {
+                                      const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
+                                      const contractTrainerId = contract?.trainerId
+                                      const secondaryTrainerId = contract?.secondaryTrainerId
+                                      const isContractTrainer = contract && (
+                                        contractTrainerId === r.trainerId ||
+                                        secondaryTrainerId === r.trainerId
+                                      )
+                                      const isSubstitute = contract && !isContractTrainer
+                                      return (
+                                        <div className="flex flex-col">
+                                          <span className="font-bold text-stone-700">{teachingTrainerName}</span>
+                                          {isSubstitute && (
+                                            <span className="text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.2 w-fit mt-0.5">
+                                              代課
+                                            </span>
+                                          )}
+                                        </div>
+                                      )
+                                    })()}
                                   </td>
                                   <td className="px-5 py-3.5 text-center">
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-stone-100 text-stone-700 border border-stone-200/60 tabular-nums">

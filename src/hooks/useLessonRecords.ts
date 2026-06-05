@@ -32,22 +32,39 @@ export function useLessonRecords() {
     setError(null)
     try {
       const recordsRef = collection(db, 'lessonRecords')
-      let q
+      let data: LessonRecord[] = []
+
       if (user.role === 'admin') {
-        q = query(recordsRef, orderBy('sessionDate', 'desc'))
+        const q = query(recordsRef, orderBy('sessionDate', 'desc'))
+        const querySnapshot = await getDocs(q)
+        data = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as LessonRecord[]
       } else {
-        q = query(
+        // Run two queries and merge them to avoid composite index requirements
+        const q1 = query(
           recordsRef,
           where('trainerId', '==', user.uid),
           orderBy('sessionDate', 'desc')
         )
+        const q2 = query(
+          recordsRef,
+          where('contractTrainerId', '==', user.uid),
+          orderBy('sessionDate', 'desc')
+        )
+        
+        const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)])
+        const map = new Map<string, any>()
+        snap1.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }))
+        snap2.docs.forEach(doc => map.set(doc.id, { id: doc.id, ...doc.data() }))
+        
+        data = Array.from(map.values()).sort((a, b) => {
+          const tA = a.sessionDate?.seconds || 0
+          const tB = b.sessionDate?.seconds || 0
+          return tB - tA
+        }) as LessonRecord[]
       }
-
-      const querySnapshot = await getDocs(q)
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as LessonRecord[]
 
       setRecords(data)
     } catch (err: any) {
@@ -73,7 +90,6 @@ export function useLessonRecords() {
       ...data,
       attendingCustomerIds: attendeeIds,
       sessionDate: Timestamp.fromDate(data.sessionDate),
-      trainerId: user.uid,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -88,11 +104,17 @@ export function useLessonRecords() {
         const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
 
         const attendeeNames = attendeeSnaps.map(snap => snap.exists() ? snap.data().name : '')
+        
+        // Fallback trainerId to contract's trainerId if not specified in form data
+        const contractTrainerId = contractSnap.exists() ? contractSnap.data().trainerId : null
+        const finalTrainerId = data.trainerId || contractTrainerId || user.uid
 
         // WRITES LATER
         const recordRef = doc(collection(db, 'lessonRecords'))
         transaction.set(recordRef, {
           ...newRecordData,
+          trainerId: finalTrainerId,
+          contractTrainerId: contractTrainerId || finalTrainerId,
           attendingCustomerNames: attendeeNames
         })
 
@@ -236,8 +258,13 @@ export function useLessonRecords() {
           return snap?.exists() ? snap.data().name : ''
         })
 
+        const contractTrainerId = contractSnap?.exists() ? contractSnap.data().trainerId : null
+        const finalTrainerId = data.trainerId || contractTrainerId || oldData.trainerId || user.uid
+
         const updateData = {
           ...data,
+          trainerId: finalTrainerId,
+          contractTrainerId: contractTrainerId || finalTrainerId,
           attendingCustomerIds: newAttendeeIds,
           attendingCustomerNames: attendeeNames,
           sessionDate: Timestamp.fromDate(data.sessionDate),
