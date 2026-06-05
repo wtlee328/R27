@@ -6,6 +6,8 @@ import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, ChevronRight, ChevronLeft, User, FileText, Activity, ShieldCheck } from 'lucide-react'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,8 @@ export function CustomerFormModal({
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
   const secondarySigCanvas = useRef<SignatureCanvas>(null)
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [isOneToTwo, setIsOneToTwo] = useState(true)
 
   const defaultValues = useMemo(() => ({
     name: '',
@@ -62,6 +66,8 @@ export function CustomerFormModal({
     partnerCustomerData: null,
     contract: {
       sharedWithCustomerId: null,
+      trainerId: '',
+      secondaryTrainerId: null,
       totalSessions: 0,
       remainingSessions: 0,
       pricePerSession: 0,
@@ -95,6 +101,24 @@ export function CustomerFormModal({
   })
 
   useEffect(() => {
+    const fetchTrainers = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'trainers'))
+        const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        setTrainers(list)
+        if (list.length > 0 && !form.getValues('contract.trainerId')) {
+          form.setValue('contract.trainerId', list[0].id)
+        }
+      } catch (err) {
+        console.error('Error fetching trainers:', err)
+      }
+    }
+    if (open) {
+      fetchTrainers()
+    }
+  }, [open, form])
+
+  useEffect(() => {
     if (open) {
       if (initialData) {
         // Format dates to YYYY-MM-DD for HTML date inputs
@@ -111,15 +135,25 @@ export function CustomerFormModal({
             endDate: initialData.contract.endDate instanceof Date 
               ? initialData.contract.endDate.toISOString().split('T')[0] 
               : initialData.contract.endDate,
+            trainerId: initialData.contract.trainerId || (trainers[0]?.id || ''),
+            secondaryTrainerId: initialData.contract.secondaryTrainerId || null,
           } : undefined
         }
         form.reset(formattedData as any)
       } else {
-        form.reset(defaultValues as any)
+        const resetVals = {
+          ...defaultValues,
+          contract: {
+            ...defaultValues.contract,
+            trainerId: trainers[0]?.id || '',
+          }
+        }
+        form.reset(resetVals as any)
       }
       setCurrentStep(0)
+      setIsOneToTwo(true)
     }
-  }, [open, initialData, form])
+  }, [open, initialData, form, trainers, defaultValues])
 
   const watchedValues = form.watch()
 
@@ -728,6 +762,123 @@ export function CustomerFormModal({
                             )}
                           </div>
                         )}
+                        {/* 課程教練分配 */}
+                        <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
+                          <div className="space-y-1">
+                            <Label className="text-stone-700 font-bold block text-xs">分配課程教練 *</Label>
+                            <p className="text-[10px] text-stone-400">設定指導本合約學員的教練分配</p>
+                          </div>
+
+                          {watchedValues.contract?.contractType === 'single' ? (
+                            <div className="space-y-2 max-w-md">
+                              <Label className="text-xs text-stone-500 font-medium">授課教練</Label>
+                              <select
+                                value={form.watch('contract.trainerId') || ''}
+                                onChange={(e) => {
+                                  form.setValue('contract.trainerId', e.target.value)
+                                  form.setValue('contract.secondaryTrainerId', null)
+                                }}
+                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                              >
+                                <option value="">-- 請選擇教練 --</option>
+                                {trainers.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                              {form.formState.errors.contract?.trainerId && (
+                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id="isOneToTwoForm"
+                                  checked={isOneToTwo}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked
+                                    setIsOneToTwo(checked)
+                                    if (checked) {
+                                      form.setValue('contract.secondaryTrainerId', form.getValues('contract.trainerId'))
+                                    } else {
+                                      form.setValue('contract.secondaryTrainerId', trainers[0]?.id || '')
+                                    }
+                                  }}
+                                  className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
+                                />
+                                <label htmlFor="isOneToTwoForm" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
+                                  👥 1對2 同時間上課（共用同一位教練）
+                                </label>
+                              </div>
+
+                              {isOneToTwo ? (
+                                <div className="space-y-2 max-w-md pt-1">
+                                  <Label className="text-xs text-stone-500 font-medium">共享授課教練</Label>
+                                  <select
+                                    value={form.watch('contract.trainerId') || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value
+                                      form.setValue('contract.trainerId', val)
+                                      form.setValue('contract.secondaryTrainerId', val)
+                                    }}
+                                    className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                  >
+                                    <option value="">-- 請選擇教練 --</option>
+                                    {trainers.map((t) => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                  </select>
+                                  {form.formState.errors.contract?.trainerId && (
+                                    <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-4 pt-1">
+                                  <div className="space-y-2">
+                                    <Label className="text-xs text-stone-500 font-medium">
+                                      學員 A ({watchedValues.name || '主學員'}) 的教練
+                                    </Label>
+                                    <select
+                                      value={form.watch('contract.trainerId') || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value
+                                        form.setValue('contract.trainerId', val)
+                                      }}
+                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                    >
+                                      <option value="">-- 請選擇教練 --</option>
+                                      {trainers.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                      ))}
+                                    </select>
+                                    {form.formState.errors.contract?.trainerId && (
+                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                                    )}
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label className="text-xs text-stone-500 font-medium">
+                                      學員 B ({watchedValues.partnerMode === 'existing' ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
+                                    </Label>
+                                    <select
+                                      value={form.watch('contract.secondaryTrainerId') || ''}
+                                      onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
+                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                    >
+                                      <option value="">-- 請選擇教練 --</option>
+                                      {trainers.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                      ))}
+                                    </select>
+                                    {form.formState.errors.contract?.secondaryTrainerId && (
+                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
                         <div className="space-y-2">
                           <Label className="text-stone-700">合約總堂數 *</Label>
