@@ -181,3 +181,20 @@ export interface MonthFilter {
   year: number
   month: number | null // null = all months
 }
+
+// ─── Notifications ─────────────────────────────────────────────
+export type NotificationType = 'installment_due' | 'installment_overdue' | 'contract_expiring' | 'general'
+
+export interface AppNotification {
+  id: string
+  userId: string
+  type: NotificationType
+  title: string
+  message: string
+  isRead: boolean
+  contractId?: string
+  customerId?: string
+  customerName?: string
+  dueDate?: Timestamp
+  createdAt: Timestamp
+}

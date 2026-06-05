@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { useMenuStore, ALL_NAV_ITEMS, type NavItem } from '@/stores/menuStore'
 
@@ -60,7 +61,8 @@ export function Navbar() {
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <NotificationCenter />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2.5 outline-none group">
