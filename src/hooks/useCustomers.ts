@@ -16,6 +16,7 @@ import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import type { Customer, Contract } from '../types'
 import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
+import { generateContractNo, nextDailySequence } from '../lib/contractNo'
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -208,8 +209,18 @@ export function useCustomers() {
     delete (cleanData as any).partnerId
     delete (cleanData as any).partnerCustomerData
 
+    // ── Generate contract number (ROC date + daily sequence) ──
+    const today = new Date()
+    const allContractsSnap = await getDocs(collection(db, 'contracts'))
+    const existingNos = allContractsSnap.docs
+      .map(d => d.data().contractNo as string)
+      .filter(Boolean)
+    const seq = nextDailySequence(today, existingNos)
+    const contractNo = generateContractNo(today, seq)
+
     const newContract = {
       ...cleanData,
+      contractNo,
       customerId,
       sharedWithCustomerId: partnerId,
       customerIds,

@@ -65,6 +65,7 @@ export interface Installment {
 
 export interface Contract {
   id: string
+  contractNo?: string
   trainerId: string
   secondaryTrainerId?: string
   customerId: string
