@@ -154,8 +154,12 @@ export function useCustomers() {
 
   const updateCustomerProfile = async (id: string, data: CustomerFormValues) => {
     const customerRef = doc(db, 'customers', id)
+    // Strip any fields that don't belong on the customer document
+    // (contract, partnerMode, partnerId, partnerCustomerData may leak in from the combined form)
+    const { contract, partnerMode, partnerId, partnerCustomerData, ...profileData } = data as any
+    void contract; void partnerMode; void partnerId; void partnerCustomerData
     const updateData = {
-      ...data,
+      ...profileData,
       dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
       updatedAt: serverTimestamp(),
     }
