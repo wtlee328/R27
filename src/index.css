@@ -132,3 +132,72 @@
   .loading-spinner::after  { animation-delay: 0.2s; }
   .loading-spinner > span  { animation-delay: 0.4s; }
 }
+
+/* ─── Printing Styles ───────────────────────────────── */
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide the rest of the application */
+  #root,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset portal container styling */
+  div[data-radix-portal] {
+    position: static !important;
+    display: block !important;
+  }
+
+  /* Hide the overlay backdrops */
+  div[data-radix-portal] > [class*="bg-black"],
+  div[data-radix-portal] > [data-state] {
+    display: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Style dialog content for page-printing */
+  .contract-modal-content {
+    position: static !important;
+    transform: none !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  /* Make internal scrollable areas overflow visible */
+  .contract-modal-content .overflow-y-auto {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+  }
+
+  /* Printable contract sheet styles */
+  .printable-contract-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+}
+
