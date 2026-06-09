@@ -77,9 +77,10 @@ export function useNotifications() {
 
         const type = isOverdue ? 'installment_overdue' : 'installment_due'
         const title = isOverdue ? '分期款項逾期未付' : '分期款項即將到期'
+        const displayNo = (contract as any).contractNo || contract.id.slice(-6).toUpperCase()
         const message = isOverdue
-          ? `合約 ${contract.id.slice(-6).toUpperCase()} 有一筆 NT$${installment.amount.toLocaleString()} 的分期款項已於 ${formatDate(dueDate)} 逾期。`
-          : `合約 ${contract.id.slice(-6).toUpperCase()} 有一筆 NT$${installment.amount.toLocaleString()} 的分期款項將於 ${formatDate(dueDate)} 到期。`
+          ? `合約 ${displayNo} 有一筆 NT$${installment.amount.toLocaleString()} 的分期款項已於 ${formatDate(dueDate)} 逾期。`
+          : `合約 ${displayNo} 有一筆 NT$${installment.amount.toLocaleString()} 的分期款項將於 ${formatDate(dueDate)} 到期。`
 
         const newNotif = {
           userId: user.uid,
