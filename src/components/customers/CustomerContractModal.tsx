@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import {
   Dialog,
   DialogContent,
@@ -387,94 +388,9 @@ export function CustomerContractModal({
     return { y: '', m: '', d: '' }
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="contract-modal-content max-w-4xl h-[90vh] p-0 overflow-hidden border-none bg-stone-100 shadow-2xl flex flex-col">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-6 pr-14 py-4 bg-white border-b border-stone-200 print:hidden shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="font-bold text-stone-800">
-              {isEditing ? '編輯合約與付款設定' : '客戶合約檢視'}
-            </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAdmin() && !isDeleting && (
-              <>
-                {isEditing && (
-                  <Button
-                    onClick={handleSaveChanges}
-                    size="sm"
-                    className="bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md gap-1.5"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    儲存變更
-                  </Button>
-                )}
-
-                <Button
-                  variant={isEditing ? "outline" : "default"}
-                  size="sm"
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="gap-1.5 text-xs font-bold"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  {isEditing ? '取消編輯' : '編輯合約'}
-                </Button>
-                
-                {isEditing && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setIsDeleting(true)}
-                    className="gap-1.5 text-xs font-bold"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    刪除合約
-                  </Button>
-                )}
-              </>
-            )}
-            
-            {!isEditing && (
-              <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 text-xs font-bold">
-                <Printer className="w-4 h-4" />
-                列印合約
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 bg-stone-100 p-8 overflow-y-auto print:p-0 print:bg-white">
-          {isDeleting ? (
-            <div className="bg-white max-w-[210mm] mx-auto shadow-sm border border-stone-200 p-12 rounded-2xl text-center space-y-6 flex flex-col justify-center items-center min-h-[300px]">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-10 h-10 text-red-600 animate-bounce" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-black text-stone-900">確認要刪除此合約嗎？</h3>
-                <p className="text-sm text-stone-500 max-w-md">
-                  此動作將永久從系統中移除此學員的合約記錄與所有繳費狀態，且無法復原。
-                </p>
-              </div>
-              <div className="flex gap-4">
-                <Button variant="outline" onClick={() => setIsDeleting(false)} className="px-6 rounded-full font-bold">
-                  取消
-                </Button>
-                <Button variant="destructive" onClick={handleDeleteContract} className="px-6 rounded-full font-bold shadow-lg shadow-red-100">
-                  確定永久刪除
-                </Button>
-              </div>
-            </div>
-          ) : (
-            /* Contract Document Page (Editable or Read-Only based on isEditing) */
-            <div className="printable-contract-sheet max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col font-serif text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
-              {isEditing && (
-                <div className="absolute top-4 right-4 print:hidden flex gap-2">
-                  <Button onClick={handleSaveChanges} className="bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-md">
-                    儲存變更
-                  </Button>
-                </div>
-              )}
+  const renderContractSheet = () => {
+    return (
+      <div className="printable-contract-sheet max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col font-serif text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
 
               {/* Main Document Header */}
               <div className="text-center space-y-2 border-b-2 border-stone-800 pb-4">
@@ -1308,11 +1224,102 @@ export function CustomerContractModal({
                 <span>頁碼 1 / 1</span>
               </div>
             </div>
-          )}
-          {/* Bottom spacer for editing mode comfort */}
-          {isEditing && <div className="h-48 print:hidden" />}
-        </div>
-      </DialogContent>
-    </Dialog>
+    )
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="contract-modal-content max-w-4xl h-[90vh] p-0 overflow-hidden border-none bg-stone-100 shadow-2xl flex flex-col">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between px-6 pr-14 py-4 bg-white border-b border-stone-200 print:hidden shrink-0">
+            <div className="flex items-center gap-3">
+              <h2 className="font-bold text-stone-800">
+                {isEditing ? '編輯合約與付款設定' : '客戶合約檢視'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAdmin() && !isDeleting && (
+                <>
+                  {isEditing && (
+                    <Button
+                      onClick={handleSaveChanges}
+                      size="sm"
+                      className="bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md gap-1.5"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      儲存變更
+                    </Button>
+                  )}
+
+                  <Button
+                    variant={isEditing ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="gap-1.5 text-xs font-bold"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    {isEditing ? '取消編輯' : '編輯合約'}
+                  </Button>
+                  
+                  {isEditing && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setIsDeleting(true)}
+                      className="gap-1.5 text-xs font-bold"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      刪除合約
+                    </Button>
+                  )}
+                </>
+              )}
+              
+              {!isEditing && (
+                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 text-xs font-bold">
+                  <Printer className="w-4 h-4" />
+                  列印合約
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 bg-stone-100 p-8 overflow-y-auto print:p-0 print:bg-white">
+            {isDeleting ? (
+              <div className="bg-white max-w-[210mm] mx-auto shadow-sm border border-stone-200 p-12 rounded-2xl text-center space-y-6 flex flex-col justify-center items-center min-h-[300px]">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-10 h-10 text-red-600 animate-bounce" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-black text-stone-900">確認要刪除此合約嗎？</h3>
+                  <p className="text-sm text-stone-500 max-w-md">
+                    此動作將永久從系統中移除此學員的合約記錄與所有繳費狀態，且無法復原。
+                  </p>
+                </div>
+                <div className="flex gap-4">
+                  <Button variant="outline" onClick={() => setIsDeleting(false)} className="px-6 rounded-full font-bold">
+                    取消
+                  </Button>
+                  <Button variant="destructive" onClick={handleDeleteContract} className="px-6 rounded-full font-bold shadow-lg shadow-red-100">
+                    確定永久刪除
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              renderContractSheet()
+            )}
+            {/* Bottom spacer for editing mode comfort */}
+            {isEditing && <div className="h-48 print:hidden" />}
+          </div>
+        </DialogContent>
+      </Dialog>
+      {open && createPortal(
+        <div className="print-only-contract">
+          {renderContractSheet()}
+        </div>,
+        document.body
+      )}
+    </>
   )
 }
