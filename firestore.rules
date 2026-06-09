@@ -41,8 +41,10 @@ service cloud.firestore {
     }
 
     // Customers — trainer sees own, admin sees all
+    // read is open to all authenticated users so substitute trainers can fetch
+    // customers that belong to other trainers' dual/secondary contracts
     match /customers/{customerId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if isAuthenticated();
       allow create: if isAdmin() ||
                        (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
       allow update: if isOwnerOrAdmin(resource.data.trainerId);
