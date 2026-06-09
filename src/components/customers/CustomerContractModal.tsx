@@ -389,7 +389,7 @@ export function CustomerContractModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] p-0 overflow-hidden border-none bg-stone-100 shadow-2xl flex flex-col">
+      <DialogContent className="contract-modal-content max-w-4xl h-[90vh] p-0 overflow-hidden border-none bg-stone-100 shadow-2xl flex flex-col">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-6 pr-14 py-4 bg-white border-b border-stone-200 print:hidden shrink-0">
           <div className="flex items-center gap-3">
@@ -400,6 +400,17 @@ export function CustomerContractModal({
           <div className="flex items-center gap-2">
             {isAdmin() && !isDeleting && (
               <>
+                {isEditing && (
+                  <Button
+                    onClick={handleSaveChanges}
+                    size="sm"
+                    className="bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs shadow-md gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    儲存變更
+                  </Button>
+                )}
+
                 <Button
                   variant={isEditing ? "outline" : "default"}
                   size="sm"
@@ -456,7 +467,7 @@ export function CustomerContractModal({
             </div>
           ) : (
             /* Contract Document Page (Editable or Read-Only based on isEditing) */
-            <div className="max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col font-serif text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
+            <div className="printable-contract-sheet max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col font-serif text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
               {isEditing && (
                 <div className="absolute top-4 right-4 print:hidden flex gap-2">
                   <Button onClick={handleSaveChanges} className="bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs shadow-md">
@@ -1298,6 +1309,8 @@ export function CustomerContractModal({
               </div>
             </div>
           )}
+          {/* Bottom spacer for editing mode comfort */}
+          {isEditing && <div className="h-48 print:hidden" />}
         </div>
       </DialogContent>
     </Dialog>
