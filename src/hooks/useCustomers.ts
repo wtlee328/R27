@@ -33,22 +33,51 @@ export function useCustomers() {
     try {
       // 1. Fetch Customers
       const customersRef = collection(db, 'customers')
-      let qCust
+      let custData: Customer[] = []
+
       if (user.role === 'admin') {
-        qCust = query(customersRef, orderBy('createdAt', 'desc'))
+        const qCust = query(customersRef, orderBy('createdAt', 'desc'))
+        const snap = await getDocs(qCust)
+        custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
       } else {
-        qCust = query(
+        // Own customers (as primary trainer)
+        const qOwn = query(
           customersRef,
           where('trainerId', '==', user.uid),
           orderBy('createdAt', 'desc')
         )
-      }
+        const ownSnap = await getDocs(qOwn)
+        const ownMap = new Map<string, Customer>()
+        ownSnap.docs.forEach(d => ownMap.set(d.id, { id: d.id, ...d.data() } as Customer))
 
-      const custSnapshot = await getDocs(qCust)
-      const custData = custSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Customer[]
+        // Also include customers from contracts where this trainer is secondaryTrainerId
+        // (needed so substitute/secondary trainers can log lessons for other trainers' students)
+        const qSecondary = query(
+          collection(db, 'contracts'),
+          where('secondaryTrainerId', '==', user.uid)
+        )
+        const secondarySnap = await getDocs(qSecondary)
+        const extraCustomerIds = new Set<string>()
+        secondarySnap.docs.forEach(d => {
+          const data = d.data()
+          ;(data.customerIds || [data.customerId]).filter(Boolean).forEach((id: string) => {
+            if (!ownMap.has(id)) extraCustomerIds.add(id)
+          })
+        })
+
+        // Fetch extra customers by ID (in batches of 10 per Firestore 'in' limit)
+        const extraIds = Array.from(extraCustomerIds)
+        for (let i = 0; i < extraIds.length; i += 10) {
+          const batch = extraIds.slice(i, i + 10)
+          const qExtra = query(customersRef, where('__name__', 'in', batch))
+          const extraSnap = await getDocs(qExtra)
+          extraSnap.docs.forEach(d => {
+            if (!ownMap.has(d.id)) ownMap.set(d.id, { id: d.id, ...d.data() } as Customer)
+          })
+        }
+
+        custData = Array.from(ownMap.values())
+      }
 
       setCustomers(custData)
 

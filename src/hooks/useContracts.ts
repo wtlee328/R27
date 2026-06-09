@@ -14,48 +14,35 @@ export function useContracts(customerId?: string) {
     setLoading(true)
     try {
       const contractsRef = collection(db, 'contracts')
-      let q = query(contractsRef)
-
-      if (user.role !== 'admin') {
-        q = query(q, where('trainerId', '==', user.uid))
-      }
 
       if (customerId) {
-        q = query(q, where('customerId', '==', customerId))
-      }
-
-      const querySnapshot = await getDocs(q)
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Contract[]
-
-      // Also fetch shared and array-contains contracts
-      if (customerId) {
-        // Query by array
-        const arrayQ = query(collection(db, 'contracts'), where('customerIds', 'array-contains', customerId))
-        const arraySnapshot = await getDocs(arrayQ)
-        const arrayData = arraySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Contract[]
-
-        // Legacy Query by sharedWithCustomerId
-        const sharedQ = query(collection(db, 'contracts'), where('sharedWithCustomerId', '==', customerId))
-        const sharedSnapshot = await getDocs(sharedQ)
-        const sharedData = sharedSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Contract[]
-        
-        // Merge and deduplicate
-        const allData = [...data, ...arrayData, ...sharedData]
-        const unique = Array.from(new Map(allData.map(item => [item.id, item])).values())
-        setContracts(unique)
+        // When looking up a specific customer's contracts, don't restrict by trainerId —
+        // the trainerId filter breaks dual-contract partner lookups where the contract's
+        // primary customerId is a different customer.
+        // Use all 3 lookup strategies and merge results.
+        const [snap1, snap2, snap3] = await Promise.all([
+          getDocs(query(contractsRef, where('customerIds', 'array-contains', customerId))),
+          getDocs(query(contractsRef, where('customerId', '==', customerId))),
+          getDocs(query(contractsRef, where('sharedWithCustomerId', '==', customerId))),
+        ])
+        const map = new Map<string, Contract>()
+        ;[...snap1.docs, ...snap2.docs, ...snap3.docs].forEach(d =>
+          map.set(d.id, { id: d.id, ...d.data() } as Contract)
+        )
+        setContracts(
+          Array.from(map.values()).sort((a: any, b: any) =>
+            (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0)
+          )
+        )
       } else {
-        setContracts(data)
+        // No customerId: return all contracts visible to this user
+        let q = query(contractsRef)
+        if (user.role !== 'admin') {
+          q = query(q, where('trainerId', '==', user.uid))
+        }
+        const snap = await getDocs(q)
+        setContracts(snap.docs.map(d => ({ id: d.id, ...d.data() })) as Contract[])
       }
-      
     } catch (err) {
       console.error('Error fetching contracts:', err)
     } finally {

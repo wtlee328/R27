@@ -37,10 +37,10 @@ export function LessonRecordWizard({
   const [loading, setLoading] = useState(false)
   const { customers } = useCustomers()
   const { trainers } = useTrainers()
-  
-  const filteredCustomers = trainerId 
-    ? customers.filter(c => c.trainerId === trainerId)
-    : customers
+
+  // Show all accessible customers — the Firestore layer already scopes by role.
+  // Don't filter by trainerId here: substitute trainers need to see other trainers' students.
+  const filteredCustomers = customers
   
   const form = useForm<LessonRecordFormValues>({
     resolver: zodResolver(lessonRecordFormSchema),
@@ -187,7 +187,7 @@ export function LessonRecordWizard({
               )}
               {contracts.map((c) => (
                 <option key={c.id} value={c.id}>
-                  合約 {c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
+                  {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
                 </option>
               ))}
             </select>
