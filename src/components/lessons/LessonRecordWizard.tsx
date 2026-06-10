@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -41,6 +41,15 @@ export function LessonRecordWizard({
   // Show all accessible customers — the Firestore layer already scopes by role.
   // Don't filter by trainerId here: substitute trainers need to see other trainers' students.
   const filteredCustomers = customers
+
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const matchingCustomers = filteredCustomers.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (c.phone || '').includes(searchTerm)
+  )
   
   const form = useForm<LessonRecordFormValues>({
     resolver: zodResolver(lessonRecordFormSchema),
@@ -69,6 +78,7 @@ export function LessonRecordWizard({
         notes: initialData.notes || '',
         attendingCustomerIds: initialData.attendingCustomerIds || [initialData.customerId],
       })
+      setSearchTerm(initialData.customerName || '')
     } else {
       form.reset({
         customerId: '',
@@ -80,11 +90,26 @@ export function LessonRecordWizard({
         notes: '',
         attendingCustomerIds: [],
       })
+      setSearchTerm('')
     }
   }, [initialData, form])
 
   const selectedCustomerId = form.watch('customerId')
   const { contracts } = useContracts(selectedCustomerId)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+        const selectedCust = customers.find(c => c.id === selectedCustomerId)
+        setSearchTerm(selectedCust ? selectedCust.name : '')
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [selectedCustomerId, customers])
   const selectedContractId = form.watch('contractId')
   const selectedContract = contracts.find(c => c.id === selectedContractId)
 
@@ -142,20 +167,78 @@ export function LessonRecordWizard({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2 relative" ref={containerRef}>
             <Label>客戶 *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              value={selectedCustomerId}
-              onChange={handleCustomerChange}
-            >
-              <option value="" disabled>請選擇客戶</option>
-              {filteredCustomers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.phone})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="請輸入客戶名稱或電話搜尋..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setIsOpen(true)
+                  if (!e.target.value) {
+                    form.setValue('customerId', '')
+                    form.setValue('customerName', '')
+                    form.setValue('contractId', '')
+                    form.setValue('attendingCustomerIds', [])
+                  }
+                }}
+                onFocus={() => setIsOpen(true)}
+                className="w-full text-sm pr-12 animate-in fade-in duration-300"
+              />
+              {selectedCustomerId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('')
+                    form.setValue('customerId', '')
+                    form.setValue('customerName', '')
+                    form.setValue('contractId', '')
+                    form.setValue('attendingCustomerIds', [])
+                    setIsOpen(true)
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+                >
+                  清除
+                </button>
+              )}
+            </div>
+
+            {isOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-stone-100 animate-in fade-in duration-200">
+                {matchingCustomers.length === 0 ? (
+                  <div className="p-3 text-xs text-stone-500 text-center">
+                    找不到符合的客戶
+                  </div>
+                ) : (
+                  matchingCustomers.map((c) => {
+                    const isSelected = c.id === selectedCustomerId
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          form.setValue('customerId', c.id)
+                          form.setValue('customerName', c.name)
+                          form.setValue('contractId', '') // reset contract
+                          form.setValue('attendingCustomerIds', [c.id])
+                          setSearchTerm(c.name)
+                          setIsOpen(false)
+                        }}
+                        className={cn(
+                          "w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-stone-50 flex flex-col gap-0.5",
+                          isSelected ? "bg-brand-50 hover:bg-brand-100" : ""
+                        )}
+                      >
+                        <span className="font-bold text-stone-900">{c.name}</span>
+                        <span className="text-stone-500 text-[10px]">{c.phone || '無電話資訊'}</span>
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            )}
             {form.formState.errors.customerId && (
               <p className="text-red-500 text-xs">{form.formState.errors.customerId.message}</p>
             )}
