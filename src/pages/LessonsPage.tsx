@@ -25,7 +25,7 @@ type SortOrder = 'asc' | 'desc'
 
 export default function LessonsPage() {
   const { records, createRecord, deleteRecord, updateRecord, refresh: refreshRecords } = useLessonRecords()
-  const { trainers, loading: loadingTrainers, migrationRunning, addTrainer, refresh: refreshTrainers } = useTrainers()
+  const { trainers, loading: loadingTrainers, migrationRunning, addTrainer, deleteTrainer, refresh: refreshTrainers } = useTrainers()
   const { customers, contracts, refresh: refreshCustomers } = useCustomers()
 
   // Selected trainer state (null = dashboard grid view, string = expanded trainer card)
@@ -72,6 +72,9 @@ export default function LessonsPage() {
   
   // Delete record confirmation state
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  // Delete trainer confirmation state
+  const [deleteTrainerId, setDeleteTrainerId] = useState<string | null>(null)
 
   // Handle sorting trigger
   const handleSort = (field: SortField) => {
@@ -185,6 +188,15 @@ export default function LessonsPage() {
     if (deleteId) {
       await deleteRecord(deleteId)
       setDeleteId(null)
+      await handleRefreshAll()
+    }
+  }
+
+  const handleDeleteTrainer = async () => {
+    if (deleteTrainerId) {
+      await deleteTrainer(deleteTrainerId)
+      setSelectedTrainerId(null)
+      setDeleteTrainerId(null)
       await handleRefreshAll()
     }
   }
@@ -425,12 +437,24 @@ export default function LessonsPage() {
                         </button>
                       </div>
 
-                      <Button 
-                        onClick={handleOpenCreate} 
-                        className="px-3.5 py-1.5 text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-xl self-end sm:self-auto"
-                      >
-                        + 新增銷課紀錄
-                      </Button>
+                      <div className="flex gap-2 self-end sm:self-auto">
+                        <Button 
+                          variant="destructive"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleteTrainerId(t.id)
+                          }}
+                          className="px-3.5 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                        >
+                          刪除教練
+                        </Button>
+                        <Button 
+                          onClick={handleOpenCreate} 
+                          className="px-3.5 py-1.5 text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-xl"
+                        >
+                          + 新增銷課紀錄
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Tab Panels */}
@@ -662,6 +686,28 @@ export default function LessonsPage() {
               取消
             </Button>
             <Button variant="destructive" onClick={handleDeleteRecord} className="flex-1 font-semibold">
+              確認刪除
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTrainerId} onOpenChange={(open) => !open && setDeleteTrainerId(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+              <ShieldAlert className="w-6 h-6 text-red-600" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-stone-900">確認刪除教練？</DialogTitle>
+            <DialogDescription className="text-stone-500 mt-2 text-xs leading-relaxed">
+              刪除此教練後，該教練的資料將會被移除。原專屬學員及合約將會失去教練關聯（但不會被刪除，您需要手動將其重新指派給其他教練）。此操作無法復原。
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex gap-3">
+            <Button variant="outline" onClick={() => setDeleteTrainerId(null)} className="flex-1 font-semibold">
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteTrainer} className="flex-1 font-semibold">
               確認刪除
             </Button>
           </DialogFooter>
