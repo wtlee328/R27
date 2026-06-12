@@ -364,11 +364,29 @@ export function useCustomers() {
       delete (customerData as any).partnerMode
       delete (customerData as any).partnerId
       delete (customerData as any).partnerCustomerData
+      delete (customerData as any).bindExistingContractMode
+      delete (customerData as any).existingContractId
+
+      let finalTrainerId = user.uid
+      let existingContractData: any = null
+
+      if (data.bindExistingContractMode && data.existingContractId) {
+        console.log('Onboarding: Binding to existing contract:', data.existingContractId)
+        const contractSnap = await getDoc(doc(db, 'contracts', data.existingContractId))
+        if (contractSnap.exists()) {
+          existingContractData = contractSnap.data()
+          if (existingContractData.trainerId) {
+            finalTrainerId = existingContractData.trainerId
+          }
+        }
+      } else if (data.contract?.trainerId) {
+        finalTrainerId = data.contract.trainerId
+      }
 
       const newCustomer = {
         ...customerData,
         dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
-        trainerId: data.contract?.trainerId || user.uid,
+        trainerId: finalTrainerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -376,19 +394,41 @@ export function useCustomers() {
       const customerDoc = await addDoc(collection(db, 'customers'), newCustomer)
       const customerId = customerDoc.id
 
-      // 2. Create Initial Contract if provided
-      const totalSessions = Number(data.contract?.totalSessions || 0)
-      if (data.contract && totalSessions > 0) {
-        console.log('Onboarding: Creating initial contract...')
-        const contractData = {
-          ...data.contract,
-          sharedWithCustomerId: finalPartnerId,
-          contractType: finalPartnerId ? 'dual' as const : 'single' as const,
-          customerIds: finalPartnerId ? [customerId, finalPartnerId] : [customerId],
+      // 2. Create or Update Contract
+      if (data.bindExistingContractMode && data.existingContractId && existingContractData) {
+        console.log('Onboarding: Linking new customer to existing contract...')
+        const existingContractRef = doc(db, 'contracts', data.existingContractId)
+        
+        const currentCustomerIds = existingContractData.customerIds || []
+        const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
+        
+        const contractUpdate: any = {
+          contractType: 'dual',
+          customerIds: updatedCustomerIds,
+          sharedWithCustomerId: customerId,
+          updatedAt: serverTimestamp(),
         }
-        await createContract(customerId, contractData as any)
+
+        if (data.contract?.secondarySignatureDataUrl) {
+          contractUpdate.secondarySignatureDataUrl = data.contract.secondarySignatureDataUrl
+        }
+        
+        await updateDoc(existingContractRef, contractUpdate)
+        console.log('Onboarding: Existing contract updated successfully.')
       } else {
-        console.log('Onboarding: No contract sessions provided, skipping contract creation.')
+        const totalSessions = Number(data.contract?.totalSessions || 0)
+        if (data.contract && totalSessions > 0) {
+          console.log('Onboarding: Creating initial contract...')
+          const contractData = {
+            ...data.contract,
+            sharedWithCustomerId: finalPartnerId,
+            contractType: finalPartnerId ? 'dual' as const : 'single' as const,
+            customerIds: finalPartnerId ? [customerId, finalPartnerId] : [customerId],
+          }
+          await createContract(customerId, contractData as any)
+        } else {
+          console.log('Onboarding: No contract sessions provided, skipping contract creation.')
+        }
       }
 
       // 3. Final refresh

@@ -238,6 +238,7 @@ export default function CustomersPage() {
         onSubmit={handleOnboardingSubmit}
         isEditMode={isEditingProfile}
         customers={customers}
+        contracts={contracts}
         initialData={selectedCustomer ? {
           name: selectedCustomer.name,
           phone: selectedCustomer.phone,
