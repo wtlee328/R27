@@ -19,6 +19,7 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { combinedCustomerContractSchema, type CombinedCustomerContractValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
+import type { Customer, Contract } from '../../types'
 
 interface CustomerFormModalProps {
   open: boolean
@@ -27,6 +28,7 @@ interface CustomerFormModalProps {
   initialData?: Partial<CombinedCustomerContractValues>
   isEditMode?: boolean
   customers?: Customer[]
+  contracts?: Contract[]
 }
 
 const STEPS = [
@@ -43,6 +45,7 @@ export function CustomerFormModal({
   initialData,
   isEditMode = false,
   customers = [],
+  contracts = [],
 }: CustomerFormModalProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -50,6 +53,7 @@ export function CustomerFormModal({
   const secondarySigCanvas = useRef<SignatureCanvas>(null)
   const [trainers, setTrainers] = useState<any[]>([])
   const [isOneToTwo, setIsOneToTwo] = useState(true)
+  const [selectedExistingCustomerId, setSelectedExistingCustomerId] = useState<string>('')
 
   const defaultValues = useMemo(() => ({
     name: '',
@@ -64,6 +68,8 @@ export function CustomerFormModal({
     partnerMode: 'none' as const,
     partnerId: null,
     partnerCustomerData: null,
+    bindExistingContractMode: false,
+    existingContractId: null,
     contract: {
       sharedWithCustomerId: null,
       trainerId: '',
@@ -99,6 +105,20 @@ export function CustomerFormModal({
     mode: 'onChange',
     defaultValues: defaultValues as any,
   })
+
+  const existingCustomerContracts = useMemo(() => {
+    if (!selectedExistingCustomerId) return []
+    return contracts.filter(c => 
+      c.customerId === selectedExistingCustomerId || 
+      c.customerIds?.includes(selectedExistingCustomerId)
+    )
+  }, [selectedExistingCustomerId, contracts])
+
+  const selectedContract = useMemo(() => {
+    const cid = form.watch('existingContractId')
+    if (!cid) return null
+    return contracts.find(c => c.id === cid) || null
+  }, [form.watch('existingContractId'), contracts])
 
   useEffect(() => {
     const fetchTrainers = async () => {
@@ -156,6 +176,28 @@ export function CustomerFormModal({
   }, [open, initialData, form, trainers, defaultValues])
 
   const watchedValues = form.watch()
+
+  const partnerNameStr = useMemo(() => {
+    const isBindMode = watchedValues.bindExistingContractMode
+    if (isBindMode) {
+      return customers.find(c => c.id === selectedExistingCustomerId)?.name || '原合約成員'
+    }
+    return watchedValues.partnerMode === 'existing'
+      ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '已選學員')
+      : (watchedValues.partnerCustomerData?.name || '新學員')
+  }, [watchedValues.bindExistingContractMode, watchedValues.partnerMode, watchedValues.partnerId, watchedValues.partnerCustomerData, selectedExistingCustomerId, customers])
+
+  const displayAmount = useMemo(() => {
+    return watchedValues.bindExistingContractMode
+      ? selectedContract?.totalAmount 
+      : watchedValues.contract?.totalAmount
+  }, [watchedValues.bindExistingContractMode, selectedContract, watchedValues.contract?.totalAmount])
+
+  const displaySessions = useMemo(() => {
+    return watchedValues.bindExistingContractMode
+      ? selectedContract?.totalSessions 
+      : watchedValues.contract?.totalSessions
+  }, [watchedValues.bindExistingContractMode, selectedContract, watchedValues.contract?.totalSessions])
 
   const activeSteps = useMemo(() => {
     if (isEditMode) return STEPS.slice(0, 2)
@@ -283,6 +325,10 @@ export function CustomerFormModal({
   const stepStatus = useMemo(() => {
     return activeSteps.map((step) => {
       if (step.id === 'signature') {
+        const isBindMode = !!watchedValues.bindExistingContractMode
+        if (isBindMode) {
+          return !!watchedValues.contract?.signatureDataUrl
+        }
         const isDual = watchedValues.contract?.contractType === 'dual' || watchedValues.partnerMode !== 'none'
         if (isDual) {
           return !!watchedValues.contract?.signatureDataUrl && !!watchedValues.contract?.secondarySignatureDataUrl
@@ -291,6 +337,11 @@ export function CustomerFormModal({
       }
 
       if (step.id === 'contract') {
+        const isBindMode = !!watchedValues.bindExistingContractMode
+        if (isBindMode) {
+          return !!watchedValues.existingContractId
+        }
+
         const stepFields = step.fields as any[]
         const isComplete = stepFields.every(field => {
           const value = field.split('.').reduce((obj: any, key: any) => obj?.[key], watchedValues)
@@ -331,7 +382,12 @@ export function CustomerFormModal({
 
   const handleNext = async () => {
     const fieldsToValidate = activeSteps[currentStep].fields as any[]
-    const isValid = await form.trigger(fieldsToValidate)
+    const isContractStep = activeSteps[currentStep].id === 'contract'
+    const isBindMode = form.getValues('bindExistingContractMode')
+    
+    const isValid = (isContractStep && isBindMode)
+      ? !!form.getValues('existingContractId')
+      : await form.trigger(fieldsToValidate)
     
     if (isValid && currentStep < activeSteps.length - 1) {
       setCurrentStep(prev => prev + 1)
@@ -669,92 +725,76 @@ export function CustomerFormModal({
                             <button
                               type="button"
                               onClick={() => {
+                                form.setValue('bindExistingContractMode', false)
                                 form.setValue('contract.contractType', 'single')
                                 form.setValue('partnerMode', 'none')
                                 form.setValue('partnerId', null)
                                 form.setValue('partnerCustomerData', null)
+                                form.setValue('existingContractId', null)
                               }}
                               className={cn(
                                 "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
-                                form.watch('contract.contractType') !== 'dual'
+                                (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') !== 'dual')
                                   ? "bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-200"
                                   : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                               )}
                             >
-                              👤 單人合約
+                              👤 建立新單人合約
                             </button>
                             <button
                               type="button"
                               onClick={() => {
+                                form.setValue('bindExistingContractMode', false)
                                 form.setValue('contract.contractType', 'dual')
                                 form.setValue('partnerMode', 'existing')
+                                form.setValue('existingContractId', null)
                               }}
                               className={cn(
                                 "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
-                                form.watch('contract.contractType') === 'dual'
+                                (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') === 'dual')
                                   ? "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-100"
                                   : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                               )}
                             >
-                              👥 雙人共享合約
+                              👥 建立新雙人合約
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('bindExistingContractMode', true)
+                                form.setValue('contract.contractType', 'dual')
+                                form.setValue('partnerMode', 'none')
+                                form.setValue('partnerId', null)
+                                form.setValue('partnerCustomerData', null)
+                                form.setValue('existingContractId', null)
+                                setSelectedExistingCustomerId('')
+                              }}
+                              className={cn(
+                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                form.watch('bindExistingContractMode')
+                                  ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100"
+                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                              )}
+                            >
+                              🔗 連結現有合約
                             </button>
                           </div>
                         </div>
 
-                        {form.watch('contract.contractType') === 'dual' && (
-                          <div className="col-span-2 p-6 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                            <Label className="text-purple-950 font-bold block text-sm">👥 共享學員綁定方式 *</Label>
-                            <div className="flex gap-4">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  form.setValue('partnerMode', 'existing')
-                                  form.setValue('partnerCustomerData', null)
-                                }}
-                                className={cn(
-                                  "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
-                                  form.watch('partnerMode') === 'existing'
-                                    ? "bg-purple-600 border-purple-600 text-white"
-                                    : "bg-white border-stone-200 text-stone-600"
-                                )}
-                              >
-                                🔗 連結系統現有客戶
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  form.setValue('partnerMode', 'new')
-                                  form.setValue('partnerId', null)
-                                  form.setValue('partnerCustomerData', {
-                                    name: '',
-                                    idNumber: '',
-                                    phone: '',
-                                    email: '',
-                                    dateOfBirth: new Date(),
-                                    historicalSessions: 0,
-                                    emergencyContact: { name: '', relation: '', phone: '' },
-                                    sharedContractCustomerId: null,
-                                    medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                                  })
-                                }}
-                                className={cn(
-                                  "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
-                                  form.watch('partnerMode') === 'new'
-                                    ? "bg-purple-600 border-purple-600 text-white"
-                                    : "bg-white border-stone-200 text-stone-600"
-                                )}
-                              >
-                                ➕ 新增全新客戶
-                              </button>
-                            </div>
-
-                            {form.watch('partnerMode') === 'existing' && (
-                              <div className="space-y-2 pt-2">
-                                <Label className="text-xs text-purple-900 font-medium">選擇現有學員 *</Label>
+                        {/* 連結現有合約 */}
+                        {form.watch('bindExistingContractMode') && (
+                          <div className="col-span-2 p-6 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label className="text-blue-950 font-bold block text-sm">🔗 連結現有合約 *</Label>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-xs text-blue-900 font-medium">選擇現有學員 *</Label>
                                 <select
-                                  value={form.watch('partnerId') || ''}
-                                  onChange={(e) => form.setValue('partnerId', e.target.value || null)}
-                                  className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                  value={selectedExistingCustomerId}
+                                  onChange={(e) => {
+                                    setSelectedExistingCustomerId(e.target.value)
+                                    form.setValue('existingContractId', null)
+                                  }}
+                                  className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                 >
                                   <option value="">-- 請選擇學員 --</option>
                                   {customers.map((c) => (
@@ -763,82 +803,150 @@ export function CustomerFormModal({
                                     </option>
                                   ))}
                                 </select>
-                                {form.watch('partnerId') && (
-                                  <p className="text-[10px] text-purple-500 font-bold">
-                                    提示：此合約將會由您當前建立的客戶與 {customers.find(c => c.id === form.watch('partnerId'))?.name} 共同持有一份合約。
-                                  </p>
-                                )}
                               </div>
-                            )}
+                              <div className="space-y-2">
+                                <Label className="text-xs text-blue-900 font-medium">選擇其現有合約 *</Label>
+                                <select
+                                  value={form.watch('existingContractId') || ''}
+                                  onChange={(e) => form.setValue('existingContractId', e.target.value || null)}
+                                  disabled={!selectedExistingCustomerId}
+                                  className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
+                                >
+                                  <option value="">-- 請選擇合約 --</option>
+                                  {existingCustomerContracts.map((c) => {
+                                    const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
+                                    return (
+                                      <option key={c.id} value={c.id}>
+                                        合約編號: {c.contractNumber || c.id.substring(0, 8)} ({c.totalSessions} 堂, 教練: {trainerName})
+                                      </option>
+                                    )
+                                  })}
+                                </select>
+                              </div>
+                            </div>
 
-                            {form.watch('partnerMode') === 'new' && (
-                              <div className="pt-2">
-                                <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
-                                  ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
+                            {selectedContract && (
+                              <div className="mt-4 p-4 bg-white rounded-xl border border-blue-100 space-y-2 text-xs text-stone-600 shadow-sm">
+                                <h4 className="font-bold text-blue-950 text-sm border-b border-stone-100 pb-1.5 flex justify-between items-center">
+                                  <span>合約詳細資訊</span>
+                                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-normal text-[10px]">
+                                    {selectedContract.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'}
+                                  </span>
+                                </h4>
+                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-1 text-[11px]">
+                                  <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
+                                  <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                  <div>總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
+                                  <div>剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
+                                  <div>合約金額: <span className="font-bold text-stone-900">NT$ {selectedContract.totalAmount.toLocaleString()}</span></div>
+                                  <div>已付金額: <span className="font-bold text-stone-900">NT$ {selectedContract.paidAmount.toLocaleString()}</span></div>
+                                  <div className="col-span-2">合約期間: <span className="font-bold text-stone-900">
+                                    {selectedContract.startDate ? new Date(selectedContract.startDate.seconds ? selectedContract.startDate.seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''} 
+                                    {' ~ '}
+                                    {selectedContract.endDate ? new Date(selectedContract.endDate.seconds ? selectedContract.endDate.seconds * 1000 : selectedContract.endDate).toLocaleDateString() : ''}
+                                  </span></div>
                                 </div>
                               </div>
                             )}
                           </div>
                         )}
-                        {/* 課程教練分配 */}
-                        <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
-                          <div className="space-y-1">
-                            <Label className="text-stone-700 font-bold block text-xs">分配課程教練 *</Label>
-                            <p className="text-[10px] text-stone-400">設定指導本合約學員的教練分配</p>
-                          </div>
 
-                          {watchedValues.contract?.contractType === 'single' ? (
-                            <div className="space-y-2 max-w-md">
-                              <Label className="text-xs text-stone-500 font-medium">授課教練</Label>
-                              <select
-                                value={form.watch('contract.trainerId') || ''}
-                                onChange={(e) => {
-                                  form.setValue('contract.trainerId', e.target.value)
-                                  form.setValue('contract.secondaryTrainerId', null)
-                                }}
-                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                              >
-                                <option value="">-- 請選擇教練 --</option>
-                                {trainers.map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                              </select>
-                              {form.formState.errors.contract?.trainerId && (
-                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id="isOneToTwoForm"
-                                  checked={isOneToTwo}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked
-                                    setIsOneToTwo(checked)
-                                    if (checked) {
-                                      form.setValue('contract.secondaryTrainerId', form.getValues('contract.trainerId'))
-                                    } else {
-                                      form.setValue('contract.secondaryTrainerId', trainers[0]?.id || '')
-                                    }
-                                  }}
-                                  className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
-                                />
-                                <label htmlFor="isOneToTwoForm" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
-                                  👥 1對2 同時間上課（共用同一位教練）
-                                </label>
+                        {!form.watch('bindExistingContractMode') && (
+                          <>
+                            {form.watch('contract.contractType') === 'dual' && (
+                              <div className="col-span-2 p-6 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Label className="text-purple-950 font-bold block text-sm">👥 共享學員綁定方式 *</Label>
+                                <div className="flex gap-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      form.setValue('partnerMode', 'existing')
+                                      form.setValue('partnerCustomerData', null)
+                                    }}
+                                    className={cn(
+                                      "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                      form.watch('partnerMode') === 'existing'
+                                        ? "bg-purple-600 border-purple-600 text-white"
+                                        : "bg-white border-stone-200 text-stone-600"
+                                    )}
+                                  >
+                                    🔗 連結系統現有客戶
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      form.setValue('partnerMode', 'new')
+                                      form.setValue('partnerId', null)
+                                      form.setValue('partnerCustomerData', {
+                                        name: '',
+                                        idNumber: '',
+                                        phone: '',
+                                        email: '',
+                                        dateOfBirth: new Date(),
+                                        historicalSessions: 0,
+                                        emergencyContact: { name: '', relation: '', phone: '' },
+                                        sharedContractCustomerId: null,
+                                        medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                      })
+                                    }}
+                                    className={cn(
+                                      "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                      form.watch('partnerMode') === 'new'
+                                        ? "bg-purple-600 border-purple-600 text-white"
+                                        : "bg-white border-stone-200 text-stone-600"
+                                    )}
+                                  >
+                                    ➕ 新增全新客戶
+                                  </button>
+                                </div>
+
+                                {form.watch('partnerMode') === 'existing' && (
+                                  <div className="space-y-2 pt-2">
+                                    <Label className="text-xs text-purple-900 font-medium">選擇現有學員 *</Label>
+                                    <select
+                                      value={form.watch('partnerId') || ''}
+                                      onChange={(e) => form.setValue('partnerId', e.target.value || null)}
+                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                    >
+                                      <option value="">-- 請選擇學員 --</option>
+                                      {customers.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.name} ({c.phone})
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {form.watch('partnerId') && (
+                                      <p className="text-[10px] text-purple-500 font-bold">
+                                        提示：此合約將會由您當前建立的客戶與 {customers.find(c => c.id === form.watch('partnerId'))?.name} 共同持有一份合約。
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {form.watch('partnerMode') === 'new' && (
+                                  <div className="pt-2">
+                                    <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
+                                      ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {/* 課程教練分配 */}
+                            <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
+                              <div className="space-y-1">
+                                <Label className="text-stone-700 font-bold block text-xs">分配課程教練 *</Label>
+                                <p className="text-[10px] text-stone-400">設定指導本合約學員的教練分配</p>
                               </div>
 
-                              {isOneToTwo ? (
-                                <div className="space-y-2 max-w-md pt-1">
-                                  <Label className="text-xs text-stone-500 font-medium">共享授課教練</Label>
+                              {watchedValues.contract?.contractType === 'single' ? (
+                                <div className="space-y-2 max-w-md">
+                                  <Label className="text-xs text-stone-500 font-medium">授課教練</Label>
                                   <select
                                     value={form.watch('contract.trainerId') || ''}
                                     onChange={(e) => {
-                                      const val = e.target.value
-                                      form.setValue('contract.trainerId', val)
-                                      form.setValue('contract.secondaryTrainerId', val)
+                                      form.setValue('contract.trainerId', e.target.value)
+                                      form.setValue('contract.secondaryTrainerId', null)
                                     }}
                                     className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
                                   >
@@ -852,224 +960,270 @@ export function CustomerFormModal({
                                   )}
                                 </div>
                               ) : (
-                                <div className="grid grid-cols-2 gap-4 pt-1">
-                                  <div className="space-y-2">
-                                    <Label className="text-xs text-stone-500 font-medium">
-                                      學員 A ({watchedValues.name || '主學員'}) 的教練
-                                    </Label>
-                                    <select
-                                      value={form.watch('contract.trainerId') || ''}
+                                <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id="isOneToTwoForm"
+                                      checked={isOneToTwo}
                                       onChange={(e) => {
-                                        const val = e.target.value
-                                        form.setValue('contract.trainerId', val)
+                                        const checked = e.target.checked
+                                        setIsOneToTwo(checked)
+                                        if (checked) {
+                                          form.setValue('contract.secondaryTrainerId', form.getValues('contract.trainerId'))
+                                        } else {
+                                          form.setValue('contract.secondaryTrainerId', trainers[0]?.id || '')
+                                        }
                                       }}
-                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                    >
-                                      <option value="">-- 請選擇教練 --</option>
-                                      {trainers.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                    {form.formState.errors.contract?.trainerId && (
-                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
-                                    )}
+                                      className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
+                                    />
+                                    <label htmlFor="isOneToTwoForm" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
+                                      👥 1對2 同時間上課（共用同一位教練）
+                                    </label>
                                   </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-xs text-stone-500 font-medium">
-                                      學員 B ({watchedValues.partnerMode === 'existing' ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
-                                    </Label>
-                                    <select
-                                      value={form.watch('contract.secondaryTrainerId') || ''}
-                                      onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
-                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                    >
-                                      <option value="">-- 請選擇教練 --</option>
-                                      {trainers.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                    {form.formState.errors.contract?.secondaryTrainerId && (
-                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
-                                    )}
-                                  </div>
+
+                                  {isOneToTwo ? (
+                                    <div className="space-y-2 max-w-md pt-1">
+                                      <Label className="text-xs text-stone-500 font-medium">共享授課教練</Label>
+                                      <select
+                                        value={form.watch('contract.trainerId') || ''}
+                                        onChange={(e) => {
+                                          const val = e.target.value
+                                          form.setValue('contract.trainerId', val)
+                                          form.setValue('contract.secondaryTrainerId', val)
+                                        }}
+                                        className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                      >
+                                        <option value="">-- 請選擇教練 --</option>
+                                        {trainers.map((t) => (
+                                          <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                      </select>
+                                      {form.formState.errors.contract?.trainerId && (
+                                        <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-4 pt-1">
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-stone-500 font-medium">
+                                          學員 A ({watchedValues.name || '主學員'}) 的教練
+                                        </Label>
+                                        <select
+                                          value={form.watch('contract.trainerId') || ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value
+                                            form.setValue('contract.trainerId', val)
+                                          }}
+                                          className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                        >
+                                          <option value="">-- 請選擇教練 --</option>
+                                          {trainers.map((t) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                          ))}
+                                        </select>
+                                        {form.formState.errors.contract?.trainerId && (
+                                          <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                                        )}
+                                      </div>
+                                      <div className="space-y-2">
+                                        <Label className="text-xs text-stone-500 font-medium">
+                                          學員 B ({watchedValues.partnerMode === 'existing' ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
+                                        </Label>
+                                        <select
+                                          value={form.watch('contract.secondaryTrainerId') || ''}
+                                          onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
+                                          className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                                        >
+                                          <option value="">-- 請選擇教練 --</option>
+                                          {trainers.map((t) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                          ))}
+                                        </select>
+                                        {form.formState.errors.contract?.secondaryTrainerId && (
+                                          <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
-                          )}
-                        </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">合約總堂數 *</Label>
-                          <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="bg-stone-50 border-stone-200" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">合約總金額 (Total Lesson Fee) *</Label>
-                          <Input type="number" {...form.register('contract.totalAmount')} onChange={handleTotalAmountChange} className="bg-stone-50 border-stone-200" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">已付金額</Label>
-                          <Input type="number" {...form.register('contract.paidAmount')} className="bg-stone-50 border-stone-200" readOnly={form.watch('contract.paymentType') === 'installments'} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">合約開始日 *</Label>
-                          <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
-                          {form.formState.errors.contract?.startDate && (
-                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.startDate.message}</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">合約結束日 *</Label>
-                          <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
-                          {form.formState.errors.contract?.endDate && (
-                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.endDate.message}</p>
-                          )}
-                        </div>
-
-                        {/* 付款方式與分期設定 */}
-                        <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
-                          <Label className="text-stone-700 font-bold block text-xs">付款狀態 / 方式 *</Label>
-                          <div className="flex gap-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                form.setValue('contract.paymentType', 'single');
-                                syncInstallments('single', 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
-                              }}
-                              className={cn(
-                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
-                                form.watch('contract.paymentType') !== 'installments'
-                                  ? "bg-stone-900 border-stone-900 text-white shadow-lg"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
-                              )}
-                            >
-                              💵 一次付清 (直接付清)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                form.setValue('contract.paymentType', 'installments');
-                                syncInstallments('installments', form.getValues('contract.installmentCount') || 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
-                              }}
-                              className={cn(
-                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
-                                form.watch('contract.paymentType') === 'installments'
-                                  ? "bg-brand-500 border-brand-500 text-white shadow-lg"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
-                              )}
-                            >
-                              💳 分期付款 (二到六期)
-                            </button>
-                          </div>
-
-                          {form.watch('contract.paymentType') === 'installments' && (
-                            <div className="p-5 bg-stone-50 border border-stone-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                              <div className="flex justify-between items-center">
-                                <Label className="text-stone-700 font-bold block text-xs">選擇分期期數 *</Label>
-                                <select
-                                  value={form.watch('contract.installmentCount') || 2}
-                                  onChange={(e) => {
-                                    const count = Number(e.target.value);
-                                    form.setValue('contract.installmentCount', count);
-                                    syncInstallments('installments', count, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
-                                  }}
-                                  className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold focus:outline-none"
-                                >
-                                  {[2, 3, 4, 5, 6].map(num => (
-                                    <option key={num} value={num}>{num} 期</option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              <div className="space-y-3">
-                                {form.watch('contract.installments')?.map((inst, idx) => {
-                                  const isFirst = idx === 0;
-                                  return (
-                                    <div key={inst.id || idx} className="grid grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-stone-200">
-                                      <div className="col-span-3 text-xs font-bold text-stone-700">
-                                        第 {idx + 1} 期
-                                        {isFirst && <span className="ml-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-normal">首期即付</span>}
-                                      </div>
-                                      <div className="col-span-4">
-                                        <Label className="text-[10px] text-stone-400 block mb-1">繳款金額 *</Label>
-                                        <Input
-                                          type="number"
-                                          value={inst.amount}
-                                          onChange={(e) => {
-                                            const val = Number(e.target.value) || 0;
-                                            const updated = [...(form.getValues('contract.installments') || [])];
-                                            updated[idx] = { ...updated[idx], amount: val };
-                                            form.setValue('contract.installments', updated);
-                                            
-                                            // Update contract paidAmount: sum of all installments with status === 'paid'
-                                            const paidSum = updated.reduce((sum, item) => item.status === 'paid' ? sum + item.amount : sum, 0);
-                                            form.setValue('contract.paidAmount', paidSum);
-                                          }}
-                                          className="h-8 text-xs font-bold bg-stone-50 border-stone-200"
-                                          placeholder="金額"
-                                        />
-                                      </div>
-                                      <div className="col-span-5">
-                                        <Label className="text-[10px] text-stone-400 block mb-1">繳款日期 *</Label>
-                                        <Input
-                                          type="date"
-                                          value={inst.dueDate ? (inst.dueDate instanceof Date ? inst.dueDate.toISOString().split('T')[0] : new Date(inst.dueDate).toISOString().split('T')[0]) : ''}
-                                          onChange={(e) => {
-                                            const dateVal = e.target.value ? new Date(e.target.value) : new Date();
-                                            const updated = [...(form.getValues('contract.installments') || [])];
-                                            updated[idx] = { ...updated[idx], dueDate: dateVal };
-                                            form.setValue('contract.installments', updated);
-                                          }}
-                                          className="h-8 text-xs bg-stone-50 border-stone-200"
-                                        />
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              {/* 防呆錯誤提示資訊 */}
-                              {(() => {
-                                const insts = form.watch('contract.installments') || [];
-                                const sum = insts.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-                                const total = form.watch('contract.totalAmount') || 0;
-                                const isDiff = Math.abs(sum - total) > 0.01;
-                                
-                                let isDateError = false;
-                                for (let i = 0; i < insts.length - 1; i++) {
-                                  const currentVal = insts[i];
-                                  const nextVal = insts[i + 1];
-                                  if (currentVal.dueDate && nextVal.dueDate && new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) {
-                                    isDateError = true;
-                                    break;
-                                  }
-                                }
-
-                                if (isDiff || isDateError) {
-                                  return (
-                                    <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[11px] font-bold space-y-1 border border-red-100 col-span-12">
-                                      {isDiff && <div>⚠️ 分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
-                                      {isDateError && <div>⚠️ 繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
+                            <div className="space-y-2">
+                              <Label className="text-stone-700">合約總堂數 *</Label>
+                              <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="bg-stone-50 border-stone-200" />
                             </div>
-                          )}
-                        </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700">合約總金額 (Total Lesson Fee) *</Label>
+                              <Input type="number" {...form.register('contract.totalAmount')} onChange={handleTotalAmountChange} className="bg-stone-50 border-stone-200" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700">已付金額</Label>
+                              <Input type="number" {...form.register('contract.paidAmount')} className="bg-stone-50 border-stone-200" readOnly={form.watch('contract.paymentType') === 'installments'} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700">合約開始日 *</Label>
+                              <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                              {form.formState.errors.contract?.startDate && (
+                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.startDate.message}</p>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700">合約結束日 *</Label>
+                              <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                              {form.formState.errors.contract?.endDate && (
+                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.endDate.message}</p>
+                              )}
+                            </div>
+
+                            {/* 付款方式與分期設定 */}
+                            <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
+                              <Label className="text-stone-700 font-bold block text-xs">付款狀態 / 方式 *</Label>
+                              <div className="flex gap-4">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    form.setValue('contract.paymentType', 'single');
+                                    syncInstallments('single', 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
+                                  }}
+                                  className={cn(
+                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                    form.watch('contract.paymentType') !== 'installments'
+                                      ? "bg-stone-900 border-stone-900 text-white shadow-lg"
+                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  )}
+                                >
+                                  💵 一次付清 (直接付清)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    form.setValue('contract.paymentType', 'installments');
+                                    syncInstallments('installments', form.getValues('contract.installmentCount') || 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
+                                  }}
+                                  className={cn(
+                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                    form.watch('contract.paymentType') === 'installments'
+                                      ? "bg-brand-500 border-brand-500 text-white shadow-lg"
+                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  )}
+                                >
+                                  💳 分期付款 (二到六期)
+                                </button>
+                              </div>
+
+                              {form.watch('contract.paymentType') === 'installments' && (
+                                <div className="p-5 bg-stone-50 border border-stone-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                  <div className="flex justify-between items-center">
+                                    <Label className="text-stone-700 font-bold block text-xs">選擇分期期數 *</Label>
+                                    <select
+                                      value={form.watch('contract.installmentCount') || 2}
+                                      onChange={(e) => {
+                                        const count = Number(e.target.value);
+                                        form.setValue('contract.installmentCount', count);
+                                        syncInstallments('installments', count, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
+                                      }}
+                                      className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold focus:outline-none"
+                                    >
+                                      {[2, 3, 4, 5, 6].map(num => (
+                                        <option key={num} value={num}>{num} 期</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    {form.watch('contract.installments')?.map((inst, idx) => {
+                                      const isFirst = idx === 0;
+                                      return (
+                                        <div key={inst.id || idx} className="grid grid-cols-12 gap-3 items-center bg-white p-3 rounded-xl border border-stone-200">
+                                          <div className="col-span-3 text-xs font-bold text-stone-700">
+                                            第 {idx + 1} 期
+                                            {isFirst && <span className="ml-1 text-[10px] text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full font-normal">首期即付</span>}
+                                          </div>
+                                          <div className="col-span-4">
+                                            <Label className="text-[10px] text-stone-400 block mb-1">繳款金額 *</Label>
+                                            <Input
+                                              type="number"
+                                              value={inst.amount}
+                                              onChange={(e) => {
+                                                const val = Number(e.target.value) || 0;
+                                                const updated = [...(form.getValues('contract.installments') || [])];
+                                                updated[idx] = { ...updated[idx], amount: val };
+                                                form.setValue('contract.installments', updated);
+                                                
+                                                const paidSum = updated.reduce((sum, item) => item.status === 'paid' ? sum + item.amount : sum, 0);
+                                                form.setValue('contract.paidAmount', paidSum);
+                                              }}
+                                              className="h-8 text-xs font-bold bg-stone-50 border-stone-200"
+                                              placeholder="金額"
+                                            />
+                                          </div>
+                                          <div className="col-span-5">
+                                            <Label className="text-[10px] text-stone-400 block mb-1">繳款日期 *</Label>
+                                            <Input
+                                              type="date"
+                                              value={inst.dueDate ? (inst.dueDate instanceof Date ? inst.dueDate.toISOString().split('T')[0] : new Date(inst.dueDate).toISOString().split('T')[0]) : ''}
+                                              onChange={(e) => {
+                                                const dateVal = e.target.value ? new Date(e.target.value) : new Date();
+                                                const updated = [...(form.getValues('contract.installments') || [])];
+                                                updated[idx] = { ...updated[idx], dueDate: dateVal };
+                                                form.setValue('contract.installments', updated);
+                                              }}
+                                              className="h-8 text-xs bg-stone-50 border-stone-200"
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {(() => {
+                                    const insts = form.watch('contract.installments') || [];
+                                    const sum = insts.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+                                    const total = form.watch('contract.totalAmount') || 0;
+                                    const isDiff = Math.abs(sum - total) > 0.01;
+                                    
+                                    let isDateError = false;
+                                    for (let i = 0; i < insts.length - 1; i++) {
+                                      const currentVal = insts[i];
+                                      const nextVal = insts[i + 1];
+                                      if (currentVal.dueDate && nextVal.dueDate && new Date(currentVal.dueDate) > new Date(nextVal.dueDate)) {
+                                        isDateError = true;
+                                        break;
+                                      }
+                                    }
+
+                                    if (isDiff || isDateError) {
+                                      return (
+                                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[11px] font-bold space-y-1 border border-red-100 col-span-12">
+                                          {isDiff && <div>⚠️ 分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
+                                          {isDateError && <div>⚠️ 繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
                       </div>
                       
-                      <div className="mt-6 p-6 bg-brand-50 rounded-2xl border border-brand-100 flex items-center justify-between">
-                        <div>
-                          <Label className="text-brand-600 text-xs font-bold uppercase mb-1">單堂平均價格</Label>
-                          <div className="text-2xl font-black text-brand-950">
-                            NT$ {(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      {!form.watch('bindExistingContractMode') && (
+                        <div className="mt-6 p-6 bg-brand-50 rounded-2xl border border-brand-100 flex items-center justify-between">
+                          <div>
+                            <Label className="text-brand-600 text-xs font-bold uppercase mb-1">單堂平均價格</Label>
+                            <div className="text-2xl font-black text-brand-950">
+                              NT$ {(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                          <div className="text-right text-stone-400 text-xs">
+                            根據總金額與堂數自動計算
                           </div>
                         </div>
-                        <div className="text-right text-stone-400 text-xs">
-                          根據總金額與堂數自動計算
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
@@ -1238,16 +1392,14 @@ export function CustomerFormModal({
                                 {form.watch('contract.contractType') === 'dual' && (
                                   <>
                                     {' ＆ '}
-                                    {form.watch('partnerMode') === 'existing'
-                                      ? (customers.find(c => c.id === form.watch('partnerId'))?.name || '已選學員')
-                                      : (form.watch('partnerCustomerData.name') || '新學員')}
+                                    {partnerNameStr}
                                   </>
                                 )}
                               </h3>
                             </div>
                             <div className="text-right">
                               <p className="text-white/60 text-[10px] uppercase font-bold tracking-widest">合約總金額</p>
-                              <p className="text-xl font-bold text-brand-400">NT$ {form.watch('contract.totalAmount')?.toLocaleString()}</p>
+                              <p className="text-xl font-bold text-brand-400">NT$ {displayAmount?.toLocaleString() || '0'}</p>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-sm pt-2 border-t border-white/10">
@@ -1257,7 +1409,7 @@ export function CustomerFormModal({
                             </div>
                             <div>
                               <p className="text-white/40 text-[10px] uppercase font-bold">合約堂數</p>
-                              <p>{form.watch('contract.totalSessions')} 堂</p>
+                              <p>{displaySessions || 0} 堂</p>
                             </div>
                           </div>
                         </div>
@@ -1338,6 +1490,53 @@ export function CustomerFormModal({
                             const paymentTypeStr = paymentType === 'single'
                               ? '☑ 單次付清  □ 分期付款'
                               : `□ 單次付清  ☑ 分期付款（共 ${installmentCount} 期）`
+
+                            const isBindMode = form.watch('bindExistingContractMode')
+                            if (isBindMode) {
+                              return (
+                                <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
+                                  <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
+                                    <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
+                                      <h1 className="text-base font-black text-stone-900 tracking-tight">R27 Fitness 連結現有合約同意書</h1>
+                                      <div className="flex justify-between text-[9px] font-bold text-stone-500">
+                                        <span>紅二七健身有限公司</span>
+                                        <span>連結合約編號：{selectedContract?.contractNumber || selectedContract?.id?.substring(0, 8)}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl space-y-2 text-xs">
+                                      <p className="font-bold">⚠️ 連結共享合約說明：</p>
+                                      <p>本同意書旨在確認新學員 <span className="font-bold underline">{primaryInfo.name}</span> 加入並連結原屬於學員 <span className="font-bold underline">{partnerNameStr}</span> 之現有合約（合約編號：{selectedContract?.contractNumber || selectedContract?.id}）。</p>
+                                      <p>新學員簽署後，該合約將轉為「雙人共享合約」，雙方可共同使用合約內剩餘之 {selectedContract?.remainingSessions} 堂課程，並共同遵守原合約之所有條款與請假、退費規定。</p>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                      <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1">現有合約內容</h3>
+                                      <div className="grid grid-cols-2 gap-y-1.5 text-stone-600 text-[10px]">
+                                        <div>原合約持有人：<span className="font-bold text-stone-900">{partnerNameStr}</span></div>
+                                        <div>新加入持有人：<span className="font-bold text-stone-900">{primaryInfo.name}</span></div>
+                                        <div>合約總堂數：<span className="font-bold text-stone-900">{selectedContract?.totalSessions} 堂</span></div>
+                                        <div>剩餘堂數：<span className="font-bold text-stone-900">{selectedContract?.remainingSessions} 堂</span></div>
+                                        <div>合約總金額：<span className="font-bold text-stone-900">NT$ {selectedContract?.totalAmount.toLocaleString()}</span></div>
+                                        <div>授課教練：<span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract?.trainerId)?.name || '未指定'}</span></div>
+                                        <div className="col-span-2">合約期間：<span className="font-bold text-stone-900">
+                                          {selectedContract?.startDate ? new Date(selectedContract.startDate.seconds ? selectedContract.startDate.seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''}
+                                          {' ~ '}
+                                          {selectedContract?.endDate ? new Date(selectedContract.endDate.seconds ? selectedContract.endDate.seconds * 1000 : selectedContract.endDate).toLocaleDateString() : ''}
+                                        </span></div>
+                                      </div>
+                                    </div>
+
+                                    <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
+                                      <p className="font-bold text-stone-900">學員共同簽約同意條款</p>
+                                      <p>1. 雙方同意本合約之堂數為共享額度，任一方上課皆會扣除剩餘堂數。</p>
+                                      <p>2. 雙方已充分閱讀並同意 R27 Fitness 私人教練服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
+                                      <p>3. 簽署本同意書後，本合約變更立即生效，雙方不得有異議。</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            }
 
                             return (
                               <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
@@ -1610,34 +1809,57 @@ export function CustomerFormModal({
                         {/* Signature Area */}
                         <div className={cn(
                           "grid gap-6 transition-all duration-500",
-                          form.watch('contract.contractType') === 'dual' ? "grid-cols-2" : "grid-cols-1",
+                          (form.watch('contract.contractType') === 'dual' && !form.watch('bindExistingContractMode')) ? "grid-cols-2" : "grid-cols-1",
                           !form.watch('contract.isAgreed') ? "opacity-30 pointer-events-none grayscale" : "opacity-100"
                         )}>
                           {/* Signature A */}
                           <div className="relative">
                             <Label className="text-stone-700 font-bold mb-2 block">
-                              {form.watch('contract.contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *'}
+                              {form.watch('bindExistingContractMode') 
+                                ? '新加入學員數位簽名 *' 
+                                : (form.watch('contract.contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *')}
                             </Label>
                             <div className="border-2 border-dashed border-stone-300 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
-                              {form.watch('contract.signatureDataUrl') && form.watch('contract.signatureDataUrl') !== 'signed' && (
-                                <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
-                                  <img 
-                                    src={form.watch('contract.signatureDataUrl')!} 
-                                    alt="Signature A" 
-                                    className="max-h-full max-w-full object-contain"
-                                  />
-                                </div>
-                              )}
+                              {form.watch('bindExistingContractMode') 
+                                ? (form.watch('contract.secondarySignatureDataUrl') && form.watch('contract.secondarySignatureDataUrl') !== 'signed' && (
+                                    <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
+                                      <img 
+                                        src={form.watch('contract.secondarySignatureDataUrl')!} 
+                                        alt="Signature A" 
+                                        className="max-h-full max-w-full object-contain"
+                                      />
+                                    </div>
+                                  ))
+                                : (form.watch('contract.signatureDataUrl') && form.watch('contract.signatureDataUrl') !== 'signed' && (
+                                    <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
+                                      <img 
+                                        src={form.watch('contract.signatureDataUrl')!} 
+                                        alt="Signature A" 
+                                        className="max-h-full max-w-full object-contain"
+                                      />
+                                    </div>
+                                  ))
+                              }
                               <SignatureCanvas
                                 ref={sigCanvas}
-                                onEnd={() => form.setValue('contract.signatureDataUrl', 'signed')}
+                                onEnd={() => {
+                                  if (form.watch('bindExistingContractMode')) {
+                                    form.setValue('contract.secondarySignatureDataUrl', 'signed')
+                                  } else {
+                                    form.setValue('contract.signatureDataUrl', 'signed')
+                                  }
+                                }}
                                 canvasProps={{ className: 'w-full h-48 rounded-2xl bg-white cursor-crosshair' }}
                               />
                             </div>
                             <div className="absolute right-6 top-10 z-20 flex gap-2">
                               <Button type="button" variant="ghost" size="sm" onClick={() => {
                                 sigCanvas.current?.clear()
-                                form.setValue('contract.signatureDataUrl', null)
+                                if (form.watch('bindExistingContractMode')) {
+                                  form.setValue('contract.secondarySignatureDataUrl', null)
+                                } else {
+                                  form.setValue('contract.signatureDataUrl', null)
+                                }
                               }} className="h-8 text-xs text-stone-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
                                 清除
                               </Button>
@@ -1645,7 +1867,7 @@ export function CustomerFormModal({
                           </div>
 
                           {/* Signature B */}
-                          {form.watch('contract.contractType') === 'dual' && (
+                          {form.watch('contract.contractType') === 'dual' && !form.watch('bindExistingContractMode') && (
                             <div className="relative">
                               <Label className="text-purple-950 font-bold mb-2 block">甲方學員 B 簽名 *</Label>
                               <div className="border-2 border-dashed border-purple-200 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">

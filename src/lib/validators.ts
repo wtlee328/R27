@@ -124,13 +124,67 @@ export const contractFormSchema = baseContractFormSchema.superRefine((data, ctx)
 export type ContractFormValues = z.infer<typeof contractFormSchema>
 
 export const combinedCustomerContractSchema = customerFormSchema.extend({
-  contract: baseContractFormSchema.omit({ customerId: true }).optional(),
+  contract: baseContractFormSchema.omit({ customerId: true }).extend({
+    trainerId: z.string().optional().or(z.literal('')),
+    totalSessions: z.coerce.number().optional(),
+    totalAmount: z.coerce.number().optional(),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
+  }).optional(),
   partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
   partnerId: z.string().nullable().optional().default(null),
   partnerCustomerData: customerFormSchema.nullable().optional().default(null),
+  bindExistingContractMode: z.boolean().optional().default(false),
+  existingContractId: z.string().nullable().optional().default(null),
 }).superRefine((data, ctx) => {
+  if (data.bindExistingContractMode) {
+    if (!data.existingContractId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['existingContractId'],
+        message: '請選擇要連結的現有合約',
+      });
+    }
+    return;
+  }
+
   if (data.contract) {
     const dataCon = data.contract;
+    if (!dataCon.trainerId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'trainerId'],
+        message: '請選擇教練',
+      });
+    }
+    if (dataCon.totalSessions === undefined || dataCon.totalSessions === null || Number(dataCon.totalSessions) < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'totalSessions'],
+        message: '堂數必須大於 0',
+      });
+    }
+    if (dataCon.totalAmount === undefined || dataCon.totalAmount === null || Number(dataCon.totalAmount) < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'totalAmount'],
+        message: '總金額必須大於 0',
+      });
+    }
+    if (!dataCon.startDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'startDate'],
+        message: '請選擇合約開始日期',
+      });
+    }
+    if (!dataCon.endDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['contract', 'endDate'],
+        message: '請選擇合約結束日期',
+      });
+    }
     if (dataCon.startDate && dataCon.endDate && new Date(dataCon.startDate) > new Date(dataCon.endDate)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -148,7 +202,7 @@ export const combinedCustomerContractSchema = customerFormSchema.extend({
         });
       }
       const sum = (dataCon.installments || []).reduce((acc, curr) => acc + curr.amount, 0);
-      if (Math.abs(sum - dataCon.totalAmount) > 0.01) {
+      if (Math.abs(sum - (Number(dataCon.totalAmount) || 0)) > 0.01) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['contract', 'installments'],
