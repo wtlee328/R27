@@ -6,6 +6,7 @@ import {
   doc,
   serverTimestamp,
   setDoc,
+  deleteDoc,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import type { Trainer, Customer, Contract, LessonRecord } from '../types'
@@ -223,6 +224,17 @@ export function useTrainers() {
     }
   }
 
+  const deleteTrainer = async (trainerId: string) => {
+    try {
+      const trainerRef = doc(db, 'trainers', trainerId)
+      await deleteDoc(trainerRef)
+      await fetchTrainersData()
+    } catch (err) {
+      console.error('Error deleting trainer:', err)
+      throw err
+    }
+  }
+
   useEffect(() => {
     fetchTrainersData()
   }, [fetchTrainersData])
@@ -234,6 +246,7 @@ export function useTrainers() {
     migrationRunning,
     runMigration,
     addTrainer,
+    deleteTrainer,
     refresh: fetchTrainersData,
   }
 }
