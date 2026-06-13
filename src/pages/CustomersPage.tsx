@@ -239,7 +239,7 @@ export default function CustomersPage() {
         )}
 
         {/* Installment Payment Management Section */}
-        {pendingInstallmentItems.length > 0 && (
+        {activeFilter === 'pending_collection' && pendingInstallmentItems.length > 0 && (
           <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-4">
               <div className="flex items-center gap-3">
