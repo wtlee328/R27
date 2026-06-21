@@ -339,7 +339,7 @@ export function CustomerFormModal({
       if (step.id === 'contract') {
         const isBindMode = !!watchedValues.bindExistingContractMode
         if (isBindMode) {
-          return !!watchedValues.existingContractId
+          return !!watchedValues.existingContractId && !!watchedValues.contract?.secondaryTrainerId
         }
 
         const stepFields = step.fields as any[]
@@ -386,7 +386,7 @@ export function CustomerFormModal({
     const isBindMode = form.getValues('bindExistingContractMode')
     
     const isValid = (isContractStep && isBindMode)
-      ? !!form.getValues('existingContractId')
+      ? (!!form.getValues('existingContractId') && !!form.getValues('contract.secondaryTrainerId'))
       : await form.trigger(fieldsToValidate)
     
     if (isValid && currentStep < activeSteps.length - 1) {
@@ -434,8 +434,13 @@ export function CustomerFormModal({
   }
 
   const handleFinalSubmit = async (data: CombinedCustomerContractValues) => {
-    // Validate all active fields first
-    const allActiveFields = activeSteps.flatMap(s => s.fields) as any[]
+    // Validate all active fields first.
+    // When in bindExistingContractMode, skip contract creation fields (totalSessions,
+    // totalAmount, startDate, endDate) since they belong to the existing contract.
+    const contractCreationFields = ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate']
+    const isBindMode = form.getValues('bindExistingContractMode')
+    const allActiveFields = (activeSteps.flatMap(s => s.fields) as string[])
+      .filter(f => !(isBindMode && contractCreationFields.includes(f))) as any[]
     const isValid = await form.trigger(allActiveFields)
     if (!isValid) {
       alert('請確認所有步驟欄位填寫正確。')
@@ -848,6 +853,25 @@ export function CustomerFormModal({
                                 </div>
                               </div>
                             )}
+
+                            {/* 第二位學員的授課教練選擇 */}
+                            <div className="space-y-2 pt-2">
+                              <Label className="text-blue-950 font-bold block text-xs">第二位學員的授課教練 *</Label>
+                              <p className="text-[10px] text-blue-700">請為即將加入此合約的第二位學員選擇授課教練</p>
+                              <select
+                                value={form.watch('contract.secondaryTrainerId') || ''}
+                                onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value || null)}
+                                className="w-full h-10 rounded-xl border border-blue-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              >
+                                <option value="">-- 請選擇教練 --</option>
+                                {trainers.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                              {form.formState.errors.contract?.secondaryTrainerId && (
+                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
+                              )}
+                            </div>
                           </div>
                         )}
 
