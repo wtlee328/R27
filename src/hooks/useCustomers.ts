@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -402,10 +403,14 @@ export function useCustomers() {
         const currentCustomerIds = existingContractData.customerIds || []
         const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
         
+        // Use the selected secondaryTrainerId for the new (second) customer
+        const secondaryTrainerId = data.contract?.secondaryTrainerId || existingContractData.trainerId || user.uid
+
         const contractUpdate: any = {
           contractType: 'dual',
           customerIds: updatedCustomerIds,
           sharedWithCustomerId: customerId,
+          secondaryTrainerId,
           updatedAt: serverTimestamp(),
         }
 
@@ -414,6 +419,17 @@ export function useCustomers() {
         }
         
         await updateDoc(existingContractRef, contractUpdate)
+
+        // Sync the new customer's trainerId to the selected secondary trainer
+        try {
+          await updateDoc(doc(db, 'customers', customerId), {
+            trainerId: secondaryTrainerId,
+            updatedAt: serverTimestamp(),
+          })
+        } catch (err) {
+          console.error('Failed to sync new customer trainer:', err)
+        }
+
         console.log('Onboarding: Existing contract updated successfully.')
       } else {
         const totalSessions = Number(data.contract?.totalSessions || 0)
