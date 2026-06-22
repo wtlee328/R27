@@ -48,13 +48,7 @@ export function CustomerDetailsModal({
   const [loading, setLoading] = useState(false)
   const { fetchCustomerContracts } = useCustomers()
 
-  useEffect(() => {
-    if (open && customer) {
-      loadContracts()
-    }
-  }, [open, customer])
-
-  const loadContracts = async () => {
+  async function loadContracts() {
     if (!customer) return
     setLoading(true)
     console.log('Modal: Loading contracts for', customer.name)
@@ -97,6 +91,12 @@ export function CustomerDetailsModal({
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (open && customer) {
+      loadContracts()
+    }
+  }, [open, customer])
 
   if (!customer) return null
 
