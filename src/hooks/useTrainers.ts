@@ -105,7 +105,7 @@ export function useTrainers() {
     }
   }, [])
 
-  const runMigration = async () => {
+  async function runMigration() {
     setMigrationRunning(true)
     try {
       const mockTrainers = [
