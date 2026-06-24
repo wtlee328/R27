@@ -352,9 +352,9 @@ export default function LessonsPage() {
               .filter(c => c.trainerId === t.id)
               .map(c => c.id)
 
-            // Find lesson records belonging to this trainer (or assigned customers)
+            // Find lesson records belonging to this trainer (the trainer who actually taught/provided the class)
             const trainerLessons = records.filter(lr => 
-              lr.trainerId === t.id || trainerStudentIds.includes(lr.customerId)
+              lr.trainerId === t.id
             )
 
             // Filter by selected month
