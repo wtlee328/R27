@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -52,7 +52,7 @@ export function LessonRecordWizard({
   )
 
   // Prioritize trainer's own customers at the top of the list, label other trainers' customers as substitute ("代課")
-  const orderedMatchingCustomers = React.useMemo(() => {
+  const orderedMatchingCustomers = useMemo(() => {
     if (!trainerId) {
       return matchingCustomers.map(c => ({ ...c, isSubstitute: false }))
     }
