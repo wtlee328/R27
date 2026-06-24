@@ -237,6 +237,15 @@ export default function LessonsPage() {
           <p className="text-sm text-stone-500 mt-1">追蹤教練的課程堂數消耗與系統剩餘堂數</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            onClick={() => {
+              setSelectedTrainerId(null)
+              handleOpenCreate()
+            }} 
+            className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl"
+          >
+            新增銷課
+          </Button>
           <Button onClick={() => setIsTrainerOnboardOpen(true)} className="font-semibold text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl">
             + 新增教練
           </Button>
@@ -449,7 +458,10 @@ export default function LessonsPage() {
                           刪除教練
                         </Button>
                         <Button 
-                          onClick={handleOpenCreate} 
+                          onClick={() => {
+                            setSelectedTrainerId(t.id)
+                            handleOpenCreate()
+                          }} 
                           className="px-3.5 py-1.5 text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-xl"
                         >
                           + 新增銷課紀錄

@@ -50,6 +50,20 @@ export function LessonRecordWizard({
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.phone || '').includes(searchTerm)
   )
+
+  // Prioritize trainer's own customers at the top of the list, label other trainers' customers as substitute ("代課")
+  const orderedMatchingCustomers = React.useMemo(() => {
+    if (!trainerId) {
+      return matchingCustomers.map(c => ({ ...c, isSubstitute: false }))
+    }
+    const own = matchingCustomers
+      .filter(c => c.trainerId === trainerId)
+      .map(c => ({ ...c, isSubstitute: false }))
+    const others = matchingCustomers
+      .filter(c => c.trainerId !== trainerId)
+      .map(c => ({ ...c, isSubstitute: true }))
+    return [...own, ...others]
+  }, [matchingCustomers, trainerId])
   
   const form = useForm<LessonRecordFormValues>({
     resolver: zodResolver(lessonRecordFormSchema),
@@ -57,7 +71,7 @@ export function LessonRecordWizard({
       customerId: '',
       customerName: '',
       contractId: '',
-      trainerId: '',
+      trainerId: trainerId || '',
       sessionDate: new Date(),
       sessionAmount: 1,
       notes: '',
@@ -72,7 +86,7 @@ export function LessonRecordWizard({
         customerId: initialData.customerId,
         customerName: initialData.customerName,
         contractId: initialData.contractId,
-        trainerId: initialData.trainerId || '',
+        trainerId: initialData.trainerId || trainerId || '',
         sessionDate: initialData.sessionDate.toDate(),
         sessionAmount: initialData.sessionAmount,
         notes: initialData.notes || '',
@@ -84,7 +98,7 @@ export function LessonRecordWizard({
         customerId: '',
         customerName: '',
         contractId: '',
-        trainerId: '',
+        trainerId: trainerId || '',
         sessionDate: new Date(),
         sessionAmount: 1,
         notes: '',
@@ -92,7 +106,7 @@ export function LessonRecordWizard({
       })
       setSearchTerm('')
     }
-  }, [initialData, form])
+  }, [initialData, form, trainerId])
 
   const selectedCustomerId = form.watch('customerId')
   const { contracts } = useContracts(selectedCustomerId)
@@ -116,9 +130,13 @@ export function LessonRecordWizard({
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
     if (!initialData && selectedContract) {
-      form.setValue('trainerId', selectedContract.trainerId || '')
+      if (trainerId) {
+        form.setValue('trainerId', trainerId)
+      } else {
+        form.setValue('trainerId', selectedContract.trainerId || '')
+      }
     }
-  }, [selectedContract, initialData, form])
+  }, [selectedContract, initialData, form, trainerId])
 
   const partnerId = selectedContract?.customerIds && selectedContract.customerIds.length > 1
     ? selectedContract.customerIds.find(id => id !== selectedCustomerId)
@@ -207,12 +225,12 @@ export function LessonRecordWizard({
 
             {isOpen && (
               <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-stone-100 animate-in fade-in duration-200">
-                {matchingCustomers.length === 0 ? (
+                {orderedMatchingCustomers.length === 0 ? (
                   <div className="p-3 text-xs text-stone-500 text-center">
                     找不到符合的客戶
                   </div>
                 ) : (
-                  matchingCustomers.map((c) => {
+                  orderedMatchingCustomers.map((c) => {
                     const isSelected = c.id === selectedCustomerId
                     return (
                       <button
@@ -231,7 +249,16 @@ export function LessonRecordWizard({
                           isSelected ? "bg-brand-50 hover:bg-brand-100" : ""
                         )}
                       >
-                        <span className="font-bold text-stone-900">{c.name}</span>
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-bold text-stone-900">
+                            {c.name}
+                            {c.isSubstitute && (
+                              <span className="ml-2 text-[9px] font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded">
+                                代課
+                              </span>
+                            )}
+                          </span>
+                        </div>
                         <span className="text-stone-500 text-[10px]">{c.phone || '無電話資訊'}</span>
                       </button>
                     )
@@ -281,25 +308,40 @@ export function LessonRecordWizard({
 
           <div className="space-y-2">
             <Label>授課教練 *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
-              {...form.register('trainerId')}
-              disabled={!selectedCustomerId}
-            >
-              <option value="" disabled>請選擇授課教練</option>
-              {trainers.map((t) => {
-                const isContractTrainer = selectedContract && (
-                  selectedContract.trainerId === t.id ||
-                  (selectedContract as any).secondaryTrainerId === t.id
-                )
-                const isSubstitute = selectedContract && !isContractTrainer
-                return (
-                  <option key={t.id} value={t.id}>
-                    {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
-                  </option>
-                )
-              })}
-            </select>
+            {trainerId ? (
+              <>
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm bg-stone-50 text-stone-550 border-stone-200 cursor-not-allowed select-none"
+                  value={trainerId}
+                  disabled
+                >
+                  {trainers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <input type="hidden" {...form.register('trainerId')} value={trainerId} />
+              </>
+            ) : (
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
+                {...form.register('trainerId')}
+                disabled={!selectedCustomerId}
+              >
+                <option value="" disabled>請選擇授課教練</option>
+                {trainers.map((t) => {
+                  const isContractTrainer = selectedContract && (
+                    selectedContract.trainerId === t.id ||
+                    (selectedContract as any).secondaryTrainerId === t.id
+                  )
+                  const isSubstitute = selectedContract && !isContractTrainer
+                  return (
+                    <option key={t.id} value={t.id}>
+                      {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
+                    </option>
+                  )
+                })}
+              </select>
+            )}
             {form.formState.errors.trainerId && (
               <p className="text-red-500 text-xs">{form.formState.errors.trainerId.message}</p>
             )}
