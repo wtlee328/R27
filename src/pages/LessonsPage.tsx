@@ -215,7 +215,24 @@ export default function LessonsPage() {
 
   // Dashboard Stats
   const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
-  const totalHistoryConsumed = trainers.reduce((sum, t) => sum + Number(t.totalUsedLessons || 0), 0)
+
+  // Calculate current month's consumed lessons and monthly revenue amount across all records
+  const currentMonthStr = format(new Date(), 'yyyy/MM')
+  
+  const currentMonthRecords = records.filter(r => 
+    r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === currentMonthStr
+  )
+
+  const currentMonthConsumed = currentMonthRecords.reduce(
+    (sum, r) => sum + Number(r.sessionAmount || 0), 
+    0
+  )
+
+  const currentMonthRevenue = currentMonthRecords.reduce((sum, r) => {
+    const contract = contracts.find(c => c.id === r.contractId)
+    const price = contract ? contract.pricePerSession : 0
+    return sum + (Number(r.sessionAmount || 0) * price)
+  }, 0)
 
   if (loadingTrainers || migrationRunning) {
     return (
@@ -261,16 +278,16 @@ export default function LessonsPage() {
           subtitle="目前合約中所有未消耗的堂數"
         />
         <StatCard
-          title="累計已銷總堂數"
-          value={`${totalHistoryConsumed} 堂`}
+          title="當月已銷總堂數"
+          value={`${currentMonthConsumed} 堂`}
           icon={Activity}
-          subtitle="全館累計上課堂數"
+          subtitle="當月累計上課堂數"
         />
         <StatCard
-          title="登錄教練人數"
-          value={`${trainers.length} 位`}
+          title="當月已銷總金額"
+          value={`NT$ ${currentMonthRevenue.toLocaleString()}`}
           icon={Users}
-          subtitle="教練獨立名冊與銷課統計"
+          subtitle="當月銷課金額加總"
         />
       </div>
 
