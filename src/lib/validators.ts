@@ -262,10 +262,11 @@ export const lessonRecordFormSchema = z.object({
 
 export type LessonRecordFormValues = z.infer<typeof lessonRecordFormSchema>
 
-// ─── Venue Rental Schemas ────────────────────────────────────
-
 export const venueRentalFormSchema = z.object({
-  renterName: z.string().min(1, '請輸入承租人名稱'),
+  renterTrainerId: z.string().min(1, '請選擇承租人（教練）'),
+  selectedRenterCustomerId: z.string().optional(),
+  newRenterCustomerName: z.string().optional(),
+  renterName: z.string().optional(), // Derived/fallback
   date: z.date({
     required_error: '請選擇場租日期',
   }),

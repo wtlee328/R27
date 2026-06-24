@@ -144,11 +144,12 @@ export interface TrialRecord {
   updatedAt: Timestamp
 }
 
-// ─── Venue Rental ─────────────────────────────────────────────
 export interface VenueRental {
   id: string
-  trainerId: string
-  renterName: string
+  trainerId: string // Record owner
+  renterTrainerId?: string // Chosen renter trainer
+  renterCustomerId?: string // Chosen renter customer (from custom sub-list)
+  renterName: string // Display name or custom name
   date: Timestamp
   amount: number
   cashFlowRecordId: string
