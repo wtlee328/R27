@@ -370,7 +370,10 @@ export function LessonRecordWizard({
                       }
                     }}
                   />
-                  👤 {customers.find(c => c.id === selectedCustomerId)?.name || '學員 A'}
+                  <span>
+                    {(form.watch('attendingCustomerIds') || []).includes(selectedCustomerId) ? '☑' : '☐'}{' '}
+                    👤 {customers.find(c => c.id === selectedCustomerId)?.name || '學員 A'}
+                  </span>
                 </label>
 
                 {partner && (
@@ -393,7 +396,10 @@ export function LessonRecordWizard({
                         }
                       }}
                     />
-                    👤 {partner.name || '學員 B'}
+                    <span>
+                      {(form.watch('attendingCustomerIds') || []).includes(partner.id) ? '☑' : '☐'}{' '}
+                      👤 {partner.name || '學員 B'}
+                    </span>
                   </label>
                 )}
               </div>
