@@ -284,6 +284,7 @@ export const trialRecordFormSchema = z.object({
   date: z.date({
     required_error: '請選擇體驗日期',
   }),
+  trialTrainerId: z.string().min(1, '請選擇體驗課教練'),
   outcome: z.enum(['pending', 'converted', 'not_converted']).default('pending'),
   notes: z.string().optional().default(''),
 })

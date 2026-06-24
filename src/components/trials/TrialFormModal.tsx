@@ -12,6 +12,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { trialRecordFormSchema, type TrialRecordFormValues } from '../../lib/validators'
+import { useTrainers } from '../../hooks/useTrainers'
 
 interface TrialFormModalProps {
   open: boolean
@@ -21,6 +22,7 @@ interface TrialFormModalProps {
 
 export function TrialFormModal({ open, onOpenChange, onSubmit }: TrialFormModalProps) {
   const [loading, setLoading] = useState(false)
+  const { trainers } = useTrainers()
 
   const form = useForm<TrialRecordFormValues>({
     resolver: zodResolver(trialRecordFormSchema),
@@ -29,6 +31,7 @@ export function TrialFormModal({ open, onOpenChange, onSubmit }: TrialFormModalP
       phone: '',
       email: '',
       date: new Date(),
+      trialTrainerId: '',
       outcome: 'pending',
       notes: '',
     },
@@ -93,6 +96,24 @@ export function TrialFormModal({ open, onOpenChange, onSubmit }: TrialFormModalP
                 <option value="not_converted">未成交 (Not Converted)</option>
               </select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>體驗課教練 *</Label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm bg-white"
+              {...form.register('trialTrainerId')}
+            >
+              <option value="">選擇教練</option>
+              {trainers.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            {form.formState.errors.trialTrainerId && (
+              <p className="text-red-500 text-xs">{form.formState.errors.trialTrainerId.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">

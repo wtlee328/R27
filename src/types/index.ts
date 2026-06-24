@@ -132,7 +132,8 @@ export type TrialOutcome = 'pending' | 'converted' | 'not_converted'
 
 export interface TrialRecord {
   id: string
-  trainerId: string
+  trainerId: string // Record owner
+  trialTrainerId?: string // The trainer who provided the trial class (making optional for backward compatibility)
   clientName: string
   phone: string
   email: string
