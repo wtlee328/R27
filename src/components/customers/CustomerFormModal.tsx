@@ -327,7 +327,7 @@ export function CustomerFormModal({
       if (step.id === 'signature') {
         const isBindMode = !!watchedValues.bindExistingContractMode
         if (isBindMode) {
-          return !!watchedValues.contract?.signatureDataUrl
+          return !!watchedValues.contract?.secondarySignatureDataUrl
         }
         const isDual = watchedValues.contract?.contractType === 'dual' || watchedValues.partnerMode !== 'none'
         if (isDual) {
@@ -456,7 +456,11 @@ export function CustomerFormModal({
         const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
         if (!isEmpty) {
           const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-          data.contract!.signatureDataUrl = rawCanvas.toDataURL('image/png')
+          if (isBindMode) {
+            data.contract!.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
+          } else {
+            data.contract!.signatureDataUrl = rawCanvas.toDataURL('image/png')
+          }
         }
       }
 
