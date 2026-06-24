@@ -216,19 +216,17 @@ export default function LessonsPage() {
   // Dashboard Stats
   const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
 
-  // Calculate current month's consumed lessons and monthly revenue amount across all records
-  const currentMonthStr = format(new Date(), 'yyyy/MM')
-  
-  const currentMonthRecords = records.filter(r => 
-    r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === currentMonthStr
-  )
+  // Calculate selected month's consumed lessons and revenue amount across all records
+  const selectedMonthRecords = selectedMonth === 'all'
+    ? records
+    : records.filter(r => r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
 
-  const currentMonthConsumed = currentMonthRecords.reduce(
+  const selectedMonthConsumed = selectedMonthRecords.reduce(
     (sum, r) => sum + Number(r.sessionAmount || 0), 
     0
   )
 
-  const currentMonthRevenue = currentMonthRecords.reduce((sum, r) => {
+  const selectedMonthRevenue = selectedMonthRecords.reduce((sum, r) => {
     const contract = contracts.find(c => c.id === r.contractId)
     const price = contract ? contract.pricePerSession : 0
     return sum + (Number(r.sessionAmount || 0) * price)
@@ -278,16 +276,16 @@ export default function LessonsPage() {
           subtitle="目前合約中所有未消耗的堂數"
         />
         <StatCard
-          title="當月已銷總堂數"
-          value={`${currentMonthConsumed} 堂`}
+          title={selectedMonth === 'all' ? '累計已銷總堂數' : '當月已銷總堂數'}
+          value={`${selectedMonthConsumed} 堂`}
           icon={Activity}
-          subtitle="當月累計上課堂數"
+          subtitle={selectedMonth === 'all' ? '歷史累計上課堂數' : '當月累計上課堂數'}
         />
         <StatCard
-          title="當月已銷總金額"
-          value={`NT$ ${currentMonthRevenue.toLocaleString()}`}
+          title={selectedMonth === 'all' ? '累計已銷總金額' : '當月已銷總金額'}
+          value={`NT$ ${selectedMonthRevenue.toLocaleString()}`}
           icon={Users}
-          subtitle="當月銷課金額加總"
+          subtitle={selectedMonth === 'all' ? '歷史累計上課金額加總' : '當月銷課金額加總'}
         />
       </div>
 
