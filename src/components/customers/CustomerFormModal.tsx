@@ -1278,6 +1278,10 @@ export function CustomerFormModal({
                           <Label className="text-stone-700">出生年月日 *</Label>
                           <Input type="date" {...form.register('partnerCustomerData.dateOfBirth', { valueAsDate: true })} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
                         </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">歷史已上堂數</Label>
+                          <Input type="number" {...form.register('partnerCustomerData.historicalSessions')} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        </div>
                       </div>
                       <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 space-y-4">
                         <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
