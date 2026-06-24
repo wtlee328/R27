@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react'
+import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
@@ -284,7 +284,9 @@ export default function LessonsPage() {
         <StatCard
           title={selectedMonth === 'all' ? '累計已銷總金額' : '當月已銷總金額'}
           value={`NT$ ${selectedMonthRevenue.toLocaleString()}`}
-          icon={Users}
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
           subtitle={selectedMonth === 'all' ? '歷史累計上課金額加總' : '當月銷課金額加總'}
         />
       </div>
