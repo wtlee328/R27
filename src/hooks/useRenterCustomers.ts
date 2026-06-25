@@ -30,8 +30,7 @@ export function useRenterCustomers(trainerId?: string) {
       const ref = collection(db, 'renterCustomers')
       const q = query(
         ref,
-        where('trainerId', '==', trainerId),
-        orderBy('createdAt', 'desc')
+        where('trainerId', '==', trainerId)
       )
       const snapshot = await getDocs(q)
       const data = snapshot.docs.map(doc => ({
