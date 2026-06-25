@@ -99,7 +99,7 @@ export function LessonRecordWizard({
         customerName: '',
         contractId: '',
         trainerId: trainerId || '',
-        sessionDate: new Date(),
+        sessionDate: new Date().toISOString().split('T')[0] as any,
         sessionAmount: 1,
         notes: '',
         attendingCustomerIds: [],

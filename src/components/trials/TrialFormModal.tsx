@@ -30,7 +30,7 @@ export function TrialFormModal({ open, onOpenChange, onSubmit }: TrialFormModalP
       clientName: '',
       phone: '',
       email: '',
-      date: new Date(),
+      date: new Date().toISOString().split('T')[0] as any,
       trialTrainerId: '',
       outcome: 'pending',
       notes: '',

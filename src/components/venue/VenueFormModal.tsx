@@ -32,7 +32,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit }: VenueFormModalP
       selectedRenterCustomerId: '',
       newRenterCustomerName: '',
       renterName: '',
-      date: new Date(),
+      date: new Date().toISOString().split('T')[0] as any,
       amount: 0,
       notes: '',
     },
