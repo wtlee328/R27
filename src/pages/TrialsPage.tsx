@@ -65,23 +65,6 @@ export default function TrialsPage() {
         <Button onClick={() => setIsModalOpen(true)}>+ 新增體驗客</Button>
       </div>
 
-      {/* MONTH FILTER */}
-      <div className="flex items-center gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-sm w-fit select-none">
-        <span className="text-sm font-bold text-stone-700">選擇月份</span>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="bg-white border border-stone-200 text-stone-950 px-3 py-1.5 rounded-xl text-sm font-black shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-        >
-          <option value="all">全部月份</option>
-          {monthOptions.map((m) => (
-            <option key={m} value={m}>
-              {m.replace('/', ' 年 ')} 月
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           title={selectedMonth === 'all' ? '累計體驗人數' : '當月體驗人數'}
@@ -103,15 +86,35 @@ export default function TrialsPage() {
         />
       </div>
 
-      {loading ? (
-        <div className="loading-spinner"><span /></div>
-      ) : (
-        <TrialTable 
-          trials={filteredTrials} 
-          onDelete={deleteTrial} 
-          onUpdateStatus={handleUpdateStatus}
-        />
-      )}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-stone-700 select-none">選擇月份</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-white border border-stone-200 text-stone-950 px-3 py-1.5 rounded-xl text-sm font-black shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+            >
+              <option value="all">全部月份</option>
+              {monthOptions.map((m) => (
+                <option key={m} value={m}>
+                  {m.replace('/', ' 年 ')} 月
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="loading-spinner"><span /></div>
+        ) : (
+          <TrialTable 
+            trials={filteredTrials} 
+            onDelete={deleteTrial} 
+            onUpdateStatus={handleUpdateStatus}
+          />
+        )}
+      </div>
 
       <TrialFormModal
         open={isModalOpen}
