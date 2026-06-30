@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { LessonRecord } from '../types'
 import type { LessonRecordFormValues } from '../lib/validators'
 
@@ -24,6 +25,7 @@ export function useLessonRecords() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchRecords = useCallback(async () => {
     if (!user) return
@@ -35,7 +37,11 @@ export function useLessonRecords() {
       let data: LessonRecord[] = []
 
       if (user.role === 'admin') {
-        const q = query(recordsRef, orderBy('sessionDate', 'desc'))
+        const q = query(
+          recordsRef,
+          where('centerId', '==', centerId),
+          orderBy('sessionDate', 'desc')
+        )
         const querySnapshot = await getDocs(q)
         data = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -45,11 +51,13 @@ export function useLessonRecords() {
         // Run two queries and merge them to avoid composite index requirements
         const q1 = query(
           recordsRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid),
           orderBy('sessionDate', 'desc')
         )
         const q2 = query(
           recordsRef,
+          where('centerId', '==', centerId),
           where('contractTrainerId', '==', user.uid),
           orderBy('sessionDate', 'desc')
         )
@@ -73,7 +81,7 @@ export function useLessonRecords() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, centerId])
 
   useEffect(() => {
     fetchRecords()
@@ -90,6 +98,7 @@ export function useLessonRecords() {
       ...data,
       attendingCustomerIds: attendeeIds,
       sessionDate: Timestamp.fromDate(data.sessionDate),
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }

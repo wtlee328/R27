@@ -20,9 +20,11 @@ import {
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { useMenuStore, ALL_NAV_ITEMS, type NavItem } from '@/stores/menuStore'
+import { useCenterStore } from '@/stores/centerStore'
 
 export function Navbar() {
   const { user } = useAuthStore()
+  const { centerId, setCenterId } = useCenterStore()
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore()
   const order = useMenuStore((state) => state.order)
   const navigate = useNavigate()
@@ -42,11 +44,44 @@ export function Navbar() {
     return true
   })
 
+  // Reusable center switcher dropdown content
+  const CenterSwitcher = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+            <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+          </div>
+          <span className="text-[7px] text-stone-600">▼</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-52 mt-1">
+        <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setCenterId('r27')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>R27 Fitness</span>
+          {centerId === 'r27' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setCenterId('coffit')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>Coffit</span>
+          {centerId === 'coffit' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <>
-      {/* ... top bar ... */}
+      {/* ── Top bar ──────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-stone-950 flex items-center px-2 gap-3 shadow-lg shadow-black/10">
-        {/* ... mobile toggle ... */}
+        {/* Mobile hamburger */}
         <button
           onClick={toggleSidebar}
           className="lg:hidden rounded-lg p-2 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
@@ -55,12 +90,20 @@ export function Navbar() {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
+        {/* Logo — visible on all screen sizes, aligned left in top bar */}
         <div className="flex items-center h-full">
-          <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
+          {centerId === 'r27' ? (
+            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain translate-y-4" />
+          ) : (
+            <div className="flex items-center text-white font-semibold tracking-widest text-base pl-2 select-none">
+              COFFIT
+            </div>
+          )}
         </div>
 
         <div className="flex-1" />
 
+        {/* Right side: notifications + profile */}
         <div className="flex items-center gap-2">
           <NotificationCenter />
           <DropdownMenu>
@@ -114,12 +157,18 @@ export function Navbar() {
       {/* ── Sidebar ─────────────────────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 transition-transform duration-300 ease-out',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 border-r border-stone-900/50 flex flex-col transition-transform duration-300 ease-out',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        <nav className="flex flex-col gap-1 p-3 pt-4">
+        {/* Switcher — top of sidebar, all screen sizes */}
+        <div className="px-3 py-2 border-b border-stone-900/40 shrink-0">
+          <CenterSwitcher />
+        </div>
+
+        {/* Navigation list */}
+        <nav className="flex-1 flex flex-col gap-1 p-3 pt-3 overflow-y-auto">
           {filteredNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -142,9 +191,9 @@ export function Navbar() {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 bg-stone-950 shrink-0">
           <p className="text-[11px] text-stone-600 text-center">
-            © {new Date().getFullYear()} R27+ FITNESS
+            © {new Date().getFullYear()} {centerId === 'r27' ? 'R27+ FITNESS' : 'COFFIT'}
           </p>
         </div>
       </aside>

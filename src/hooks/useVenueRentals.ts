@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { VenueRental } from '../types'
 import type { VenueRentalFormValues } from '../lib/validators'
 
@@ -20,6 +21,7 @@ export function useVenueRentals() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchRentals = useCallback(async () => {
     if (!user) return
@@ -30,10 +32,15 @@ export function useVenueRentals() {
       const rentalsRef = collection(db, 'venueRentals')
       let q
       if (user.role === 'admin') {
-        q = query(rentalsRef, orderBy('date', 'desc'))
+        q = query(
+          rentalsRef,
+          where('centerId', '==', centerId),
+          orderBy('date', 'desc')
+        )
       } else {
         q = query(
           rentalsRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid),
           orderBy('date', 'desc')
         )
@@ -52,7 +59,7 @@ export function useVenueRentals() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, centerId])
 
   useEffect(() => {
     fetchRentals()
@@ -78,6 +85,7 @@ export function useVenueRentals() {
       notes: data.notes,
       source: 'venue_rental',
       sourceId: rentalRef.id,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -91,6 +99,7 @@ export function useVenueRentals() {
       renterCustomerId: data.selectedRenterCustomerId || '',
       trainerId: user.uid,
       cashFlowRecordId: cashFlowRef.id,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }

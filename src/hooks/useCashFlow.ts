@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { CashFlowRecord } from '../types'
 import type { CashFlowFormValues } from '../lib/validators'
 
@@ -22,6 +23,7 @@ export function useCashFlow() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchRecords = useCallback(async () => {
     if (!user) return
@@ -32,10 +34,15 @@ export function useCashFlow() {
       const recordsRef = collection(db, 'cashFlowRecords')
       let q
       if (user.role === 'admin') {
-        q = query(recordsRef, orderBy('date', 'desc'))
+        q = query(
+          recordsRef,
+          where('centerId', '==', centerId),
+          orderBy('date', 'desc')
+        )
       } else {
         q = query(
           recordsRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid),
           orderBy('date', 'desc')
         )
@@ -54,7 +61,7 @@ export function useCashFlow() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, centerId])
 
   useEffect(() => {
     fetchRecords()
@@ -67,6 +74,7 @@ export function useCashFlow() {
       ...data,
       date: Timestamp.fromDate(data.date),
       trainerId: user.uid,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }

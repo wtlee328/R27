@@ -9,9 +9,11 @@ import {
   orderBy,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useCenterStore } from '../stores/centerStore'
 
 export interface RenterCustomer {
   id: string
+  centerId?: string
   trainerId: string
   name: string
   createdAt: any
@@ -21,6 +23,7 @@ export function useRenterCustomers(trainerId?: string) {
   const [customers, setCustomers] = useState<RenterCustomer[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { centerId } = useCenterStore()
 
   const fetchRenterCustomers = useCallback(async () => {
     if (!trainerId) return
@@ -30,6 +33,7 @@ export function useRenterCustomers(trainerId?: string) {
       const ref = collection(db, 'renterCustomers')
       const q = query(
         ref,
+        where('centerId', '==', centerId),
         where('trainerId', '==', trainerId)
       )
       const snapshot = await getDocs(q)
@@ -44,7 +48,7 @@ export function useRenterCustomers(trainerId?: string) {
     } finally {
       setLoading(false)
     }
-  }, [trainerId])
+  }, [trainerId, centerId])
 
   useEffect(() => {
     fetchRenterCustomers()
@@ -56,6 +60,7 @@ export function useRenterCustomers(trainerId?: string) {
     const newDoc = {
       trainerId,
       name,
+      centerId,
       createdAt: serverTimestamp()
     }
     const docRef = await addDoc(ref, newDoc)

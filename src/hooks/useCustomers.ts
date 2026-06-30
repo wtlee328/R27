@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { Customer, Contract } from '../types'
 import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import { generateContractNo, nextDailySequence } from '../lib/contractNo'
@@ -25,6 +26,7 @@ export function useCustomers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchAllData = useCallback(async () => {
     if (!user) return
@@ -37,13 +39,18 @@ export function useCustomers() {
       let custData: Customer[] = []
 
       if (user.role === 'admin') {
-        const qCust = query(customersRef, orderBy('createdAt', 'desc'))
+        const qCust = query(
+          customersRef,
+          where('centerId', '==', centerId),
+          orderBy('createdAt', 'desc')
+        )
         const snap = await getDocs(qCust)
         custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
       } else {
         // Own customers (as primary trainer)
         const qOwn = query(
           customersRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid),
           orderBy('createdAt', 'desc')
         )
@@ -55,6 +62,7 @@ export function useCustomers() {
         // (needed so substitute/secondary trainers can log lessons for other trainers' students)
         const qSecondary = query(
           collection(db, 'contracts'),
+          where('centerId', '==', centerId),
           where('secondaryTrainerId', '==', user.uid)
         )
         const secondarySnap = await getDocs(qSecondary)
@@ -70,7 +78,11 @@ export function useCustomers() {
         const extraIds = Array.from(extraCustomerIds)
         for (let i = 0; i < extraIds.length; i += 10) {
           const batch = extraIds.slice(i, i + 10)
-          const qExtra = query(customersRef, where('__name__', 'in', batch))
+          const qExtra = query(
+            customersRef,
+            where('centerId', '==', centerId),
+            where('__name__', 'in', batch)
+          )
           const extraSnap = await getDocs(qExtra)
           extraSnap.docs.forEach(d => {
             if (!ownMap.has(d.id)) ownMap.set(d.id, { id: d.id, ...d.data() } as Customer)
@@ -86,10 +98,11 @@ export function useCustomers() {
       const contractsRef = collection(db, 'contracts')
       let qCont
       if (user.role === 'admin') {
-        qCont = query(contractsRef)
+        qCont = query(contractsRef, where('centerId', '==', centerId))
       } else {
         qCont = query(
           contractsRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid)
         )
       }
@@ -131,7 +144,7 @@ export function useCustomers() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, centerId])
 
   useEffect(() => {
     fetchAllData()
@@ -174,6 +187,7 @@ export function useCustomers() {
       ...data,
       dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
       trainerId: user.uid,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -219,6 +233,7 @@ export function useCustomers() {
         ...data.partnerCustomerData,
         dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
         trainerId: user.uid,
+        centerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
@@ -241,7 +256,9 @@ export function useCustomers() {
 
     // ── Generate contract number (ROC date + daily sequence) ──
     const today = new Date()
-    const allContractsSnap = await getDocs(collection(db, 'contracts'))
+    const allContractsSnap = await getDocs(
+      query(collection(db, 'contracts'), where('centerId', '==', centerId))
+    )
     const existingNos = allContractsSnap.docs
       .map(d => d.data().contractNo as string)
       .filter(Boolean)
@@ -265,6 +282,7 @@ export function useCustomers() {
       })),
       trainerId: data.trainerId || user.uid,
       secondaryTrainerId: data.secondaryTrainerId || null,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
@@ -305,9 +323,9 @@ export function useCustomers() {
     console.log('Fetching contracts for customer:', customerId)
     const contractsRef = collection(db, 'contracts')
     
-    const q1 = query(contractsRef, where('customerIds', 'array-contains', customerId))
-    const q2 = query(contractsRef, where('customerId', '==', customerId))
-    const q3 = query(contractsRef, where('sharedWithCustomerId', '==', customerId))
+    const q1 = query(contractsRef, where('centerId', '==', centerId), where('customerIds', 'array-contains', customerId))
+    const q2 = query(contractsRef, where('centerId', '==', centerId), where('customerId', '==', customerId))
+    const q3 = query(contractsRef, where('centerId', '==', centerId), where('sharedWithCustomerId', '==', customerId))
     
     const [snap1, snap2, snap3] = await Promise.all([
       getDocs(q1),
@@ -350,6 +368,7 @@ export function useCustomers() {
           ...data.partnerCustomerData,
           dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
           trainerId: data.contract?.secondaryTrainerId || data.contract?.trainerId || user.uid,
+          centerId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }
@@ -388,6 +407,7 @@ export function useCustomers() {
         ...customerData,
         dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
         trainerId: finalTrainerId,
+        centerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       }
