@@ -113,6 +113,17 @@ export const CHRONIC_CONDITIONS = [
   '自體免疫疾病',
 ]
 
+// ─── Centers ──────────────────────────────────────────────────
+export const CENTERS = {
+  R27: 'r27',
+  COFFIT: 'coffit',
+} as const
+
+export const CENTER_LABELS = {
+  [CENTERS.R27]: 'R27 Fitness',
+  [CENTERS.COFFIT]: 'Coffit',
+} as const
+
 // ─── Firestore collection names ───────────────────────────────
 export const COLLECTIONS = {
   USERS: 'users',
@@ -123,4 +134,8 @@ export const COLLECTIONS = {
   TRIAL_RECORDS: 'trialRecords',
   VENUE_RENTALS: 'venueRentals',
   SYSTEM_CONFIG: 'systemConfig',
+  TRAINERS: 'trainers',
+  NOTIFICATIONS: 'notifications',
+  RENTER_CUSTOMERS: 'renterCustomers',
 } as const
+

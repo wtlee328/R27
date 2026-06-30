@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { TrialRecord } from '../types'
 import type { TrialRecordFormValues } from '../lib/validators'
 
@@ -22,6 +23,7 @@ export function useTrials() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchTrials = useCallback(async () => {
     if (!user) return
@@ -32,10 +34,15 @@ export function useTrials() {
       const trialsRef = collection(db, 'trialRecords')
       let q
       if (user.role === 'admin') {
-        q = query(trialsRef, orderBy('date', 'desc'))
+        q = query(
+          trialsRef,
+          where('centerId', '==', centerId),
+          orderBy('date', 'desc')
+        )
       } else {
         q = query(
           trialsRef,
+          where('centerId', '==', centerId),
           where('trainerId', '==', user.uid),
           orderBy('date', 'desc')
         )
@@ -54,7 +61,7 @@ export function useTrials() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+  }, [user, centerId])
 
   useEffect(() => {
     fetchTrials()
@@ -67,6 +74,7 @@ export function useTrials() {
       ...data,
       date: Timestamp.fromDate(data.date),
       trainerId: user.uid,
+      centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }

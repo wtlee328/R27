@@ -7,8 +7,11 @@ import {
   serverTimestamp,
   setDoc,
   deleteDoc,
+  query,
+  where,
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useCenterStore } from '../stores/centerStore'
 import type { Trainer, Customer, Contract, LessonRecord } from '../types'
 
 export interface TrainerWithMetrics {
@@ -25,6 +28,7 @@ export function useTrainers() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [migrationRunning, setMigrationRunning] = useState(false)
+  const { centerId } = useCenterStore()
 
   const fetchTrainersData = useCallback(async () => {
     setLoading(true)
@@ -36,14 +40,14 @@ export function useTrainers() {
       const lessonRecordsRef = collection(db, 'lessonRecords')
 
       const [trainersSnap, customersSnap, contractsSnap, lessonRecordsSnap] = await Promise.all([
-        getDocs(trainersRef),
-        getDocs(customersRef),
-        getDocs(contractsRef),
-        getDocs(lessonRecordsRef),
+        getDocs(query(trainersRef, where('centerId', '==', centerId))),
+        getDocs(query(customersRef, where('centerId', '==', centerId))),
+        getDocs(query(contractsRef, where('centerId', '==', centerId))),
+        getDocs(query(lessonRecordsRef, where('centerId', '==', centerId))),
       ])
 
-      // If trainers collection is empty, trigger an auto-migration/seeding
-      if (trainersSnap.empty) {
+      // If trainers collection is empty and we are in r27, trigger an auto-migration/seeding
+      if (trainersSnap.empty && centerId === 'r27') {
         setLoading(false)
         await runMigration()
         return
@@ -103,7 +107,7 @@ export function useTrainers() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [centerId])
 
   async function runMigration() {
     setMigrationRunning(true)
@@ -125,6 +129,7 @@ export function useTrainers() {
             name: trainer.name,
             email: trainer.email,
             phone: trainer.phone,
+            centerId: 'r27',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
           })
@@ -214,6 +219,7 @@ export function useTrainers() {
         name: trainerData.name,
         email: trainerData.email,
         phone: trainerData.phone,
+        centerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })

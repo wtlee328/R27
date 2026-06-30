@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { Contract } from '../types'
 
 export function useContracts(customerId?: string) {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   const fetchContracts = useCallback(async () => {
     if (!user) return
@@ -21,9 +23,9 @@ export function useContracts(customerId?: string) {
         // primary customerId is a different customer.
         // Use all 3 lookup strategies and merge results.
         const [snap1, snap2, snap3] = await Promise.all([
-          getDocs(query(contractsRef, where('customerIds', 'array-contains', customerId))),
-          getDocs(query(contractsRef, where('customerId', '==', customerId))),
-          getDocs(query(contractsRef, where('sharedWithCustomerId', '==', customerId))),
+          getDocs(query(contractsRef, where('centerId', '==', centerId), where('customerIds', 'array-contains', customerId))),
+          getDocs(query(contractsRef, where('centerId', '==', centerId), where('customerId', '==', customerId))),
+          getDocs(query(contractsRef, where('centerId', '==', centerId), where('sharedWithCustomerId', '==', customerId))),
         ])
         const map = new Map<string, Contract>()
         ;[...snap1.docs, ...snap2.docs, ...snap3.docs].forEach(d =>
@@ -36,7 +38,7 @@ export function useContracts(customerId?: string) {
         )
       } else {
         // No customerId: return all contracts visible to this user
-        let q = query(contractsRef)
+        let q = query(contractsRef, where('centerId', '==', centerId))
         if (user.role !== 'admin') {
           q = query(q, where('trainerId', '==', user.uid))
         }
@@ -48,7 +50,7 @@ export function useContracts(customerId?: string) {
     } finally {
       setLoading(false)
     }
-  }, [user, customerId])
+  }, [user, customerId, centerId])
 
   useEffect(() => {
     fetchContracts()

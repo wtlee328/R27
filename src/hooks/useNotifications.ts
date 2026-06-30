@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
+import { useCenterStore } from '../stores/centerStore'
 import type { AppNotification } from '../types'
 import type { Contract } from '../types'
 
@@ -32,6 +33,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([])
   const [loading, setLoading] = useState(true)
   const { user } = useAuthStore()
+  const { centerId } = useCenterStore()
 
   // ── Generate installment notifications (idempotent) ──────────
   const generateInstallmentNotifications = useCallback(async (contracts: Contract[]) => {
@@ -44,7 +46,11 @@ export function useNotifications() {
 
     // Fetch existing notification keys so we don't duplicate
     const existingRef = collection(db, 'notifications')
-    const existingQuery = query(existingRef, where('userId', '==', user.uid))
+    const existingQuery = query(
+      existingRef,
+      where('centerId', '==', centerId),
+      where('userId', '==', user.uid)
+    )
     const existingSnap = await getDocs(existingQuery)
     const existingKeys = new Set<string>(
       existingSnap.docs
@@ -92,6 +98,7 @@ export function useNotifications() {
           customerId: contract.customerId,
           notificationKey: key,
           dueDate: installment.dueDate,
+          centerId,
           createdAt: serverTimestamp(),
         }
 
@@ -108,14 +115,18 @@ export function useNotifications() {
     if (batchCount > 0) {
       await batch.commit()
     }
-  }, [user])
+  }, [user, centerId])
 
   // ── Subscribe to notifications in real-time ──────────────────
   useEffect(() => {
     if (!user) return
 
     const notifRef = collection(db, 'notifications')
-    const q = query(notifRef, where('userId', '==', user.uid))
+    const q = query(
+      notifRef,
+      where('centerId', '==', centerId),
+      where('userId', '==', user.uid)
+    )
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(d => ({
@@ -136,7 +147,7 @@ export function useNotifications() {
     })
 
     return () => unsubscribe()
-  }, [user])
+  }, [user, centerId])
 
   // ── Generate notifications when hook mounts ──────────────────
   useEffect(() => {
@@ -148,9 +159,13 @@ export function useNotifications() {
         const contractsRef = collection(db, 'contracts')
         let q
         if (user.role === 'admin') {
-          q = query(contractsRef)
+          q = query(contractsRef, where('centerId', '==', centerId))
         } else {
-          q = query(contractsRef, where('trainerId', '==', user.uid))
+          q = query(
+            contractsRef,
+            where('centerId', '==', centerId),
+            where('trainerId', '==', user.uid)
+          )
         }
         const snap = await getDocs(q)
         const contracts = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Contract[]
@@ -161,7 +176,7 @@ export function useNotifications() {
     }
 
     fetchAndGenerate()
-  }, [user, generateInstallmentNotifications])
+  }, [user, centerId, generateInstallmentNotifications])
 
   // ── Actions ──────────────────────────────────────────────────
   const markAsRead = useCallback(async (notificationId: string) => {

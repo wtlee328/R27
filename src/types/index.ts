@@ -15,6 +15,7 @@ export interface AppUser {
 // ─── Trainer ──────────────────────────────────────────────────
 export interface Trainer {
   id: string
+  centerId?: string
   name: string
   email: string
   phone: string
@@ -37,6 +38,7 @@ export interface MedicalHistory {
 
 export interface Customer {
   id: string
+  centerId?: string
   trainerId: string
   name: string
   idNumber: string
@@ -65,6 +67,7 @@ export interface Installment {
 
 export interface Contract {
   id: string
+  centerId?: string
   contractNo?: string
   trainerId: string
   secondaryTrainerId?: string
@@ -94,6 +97,7 @@ export interface Contract {
 // ─── Lesson Record ────────────────────────────────────────────
 export interface LessonRecord {
   id: string
+  centerId?: string
   trainerId: string
   contractTrainerId?: string
   customerId: string
@@ -113,6 +117,7 @@ export type CashFlowSource = 'manual' | 'venue_rental' | 'csv_import' | 'lesson'
 
 export interface CashFlowRecord {
   id: string
+  centerId?: string
   trainerId: string
   date: Timestamp
   debitCategory: string
@@ -132,6 +137,7 @@ export type TrialOutcome = 'pending' | 'converted' | 'not_converted'
 
 export interface TrialRecord {
   id: string
+  centerId?: string
   trainerId: string // Record owner
   trialTrainerId?: string // The trainer who provided the trial class (making optional for backward compatibility)
   clientName: string
@@ -146,6 +152,7 @@ export interface TrialRecord {
 
 export interface VenueRental {
   id: string
+  centerId?: string
   trainerId: string // Record owner
   renterTrainerId?: string // Chosen renter trainer
   renterCustomerId?: string // Chosen renter customer (from custom sub-list)
@@ -190,6 +197,7 @@ export type NotificationType = 'installment_due' | 'installment_overdue' | 'cont
 
 export interface AppNotification {
   id: string
+  centerId?: string
   userId: string
   type: NotificationType
   title: string

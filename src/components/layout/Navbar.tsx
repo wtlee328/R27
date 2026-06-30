@@ -20,9 +20,11 @@ import {
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { useMenuStore, ALL_NAV_ITEMS, type NavItem } from '@/stores/menuStore'
+import { useCenterStore } from '@/stores/centerStore'
 
 export function Navbar() {
   const { user } = useAuthStore()
+  const { centerId, setCenterId } = useCenterStore()
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore()
   const order = useMenuStore((state) => state.order)
   const navigate = useNavigate()
@@ -55,8 +57,47 @@ export function Navbar() {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        <div className="flex items-center h-full">
-          <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
+        <div className="flex items-center h-full gap-2 sm:gap-3">
+          <div className="flex items-center h-full">
+            {centerId === 'r27' ? (
+              <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
+            ) : (
+              <div className="flex items-center gap-1.5 text-white font-bold tracking-wider text-sm pl-2 select-none">
+                <span className="text-brand-500 text-lg">C</span>OFFIT
+              </div>
+            )}
+          </div>
+          
+          <div className="h-5 w-[1px] bg-stone-850 self-center" />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1 px-2 py-1 rounded-md border border-stone-800 bg-stone-900/50 hover:bg-stone-905 hover:border-stone-700 text-stone-300 hover:text-white transition-all text-[11px] font-medium select-none outline-none">
+                <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+                <span className="hidden sm:inline">{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+                <span className="sm:hidden">{centerId === 'r27' ? 'R27' : 'Coffit'}</span>
+                <span className="text-[8px] text-stone-500">▼</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48 mt-1">
+              <DropdownMenuLabel>切換場館</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => setCenterId('r27')}
+                className={cn("flex items-center justify-between cursor-pointer text-xs", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+              >
+                <span>R27 Fitness</span>
+                {centerId === 'r27' && <span className="text-xs">●</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setCenterId('coffit')}
+                className={cn("flex items-center justify-between cursor-pointer text-xs", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+              >
+                <span>Coffit</span>
+                {centerId === 'coffit' && <span className="text-xs">●</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <div className="flex-1" />
@@ -144,7 +185,7 @@ export function Navbar() {
         {/* Sidebar footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
           <p className="text-[11px] text-stone-600 text-center">
-            © {new Date().getFullYear()} R27+ FITNESS
+            © {new Date().getFullYear()} {centerId === 'r27' ? 'R27+ FITNESS' : 'COFFIT'}
           </p>
         </div>
       </aside>
