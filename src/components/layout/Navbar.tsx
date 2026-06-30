@@ -129,52 +129,91 @@ export function Navbar() {
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        {/* Logo Section (Desktop Only) */}
-        <div className="hidden lg:flex justify-center items-center h-20 border-b border-stone-900/40 shrink-0">
-          {centerId === 'r27' ? (
-            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[95px] w-auto object-contain transform translate-y-3" />
-          ) : (
-            <div className="flex items-center gap-1 text-white font-extrabold tracking-widest text-base select-none">
-              <span className="text-brand-500 text-xl">C</span>OFFIT
-            </div>
-          )}
+        {/* Logo + Switcher header (Desktop Only) */}
+        <div className="hidden lg:flex flex-col shrink-0">
+          {/* Logo */}
+          <div className="flex justify-center items-end h-14 px-4 pt-3">
+            {centerId === 'r27' ? (
+              <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[62px] w-auto object-contain" />
+            ) : (
+              <div className="flex items-center gap-1 text-white font-extrabold tracking-widest text-lg select-none pb-1">
+                <span className="text-brand-500 text-2xl">C</span>OFFIT
+              </div>
+            )}
+          </div>
+
+          {/* Switcher */}
+          <div className="px-3 py-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+                    <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+                  </div>
+                  <span className="text-[7px] text-stone-600">▼</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-52 mt-1">
+                <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => setCenterId('r27')}
+                  className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+                >
+                  <span>R27 Fitness</span>
+                  {centerId === 'r27' && <span className="text-[8px]">●</span>}
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setCenterId('coffit')}
+                  className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+                >
+                  <span>Coffit</span>
+                  {centerId === 'coffit' && <span className="text-[8px]">●</span>}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-3 border-b border-stone-900/60" />
         </div>
 
-        {/* Switcher Section (Both Mobile & Desktop in Sidebar) */}
-        <div className="p-3 border-b border-stone-900/40 shrink-0">
+        {/* Switcher for Mobile (no logo, sidebar slides in over top bar) */}
+        <div className="lg:hidden px-3 py-2 border-b border-stone-900/40 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-stone-850 bg-stone-900/40 hover:bg-stone-900 hover:border-stone-800 text-stone-300 hover:text-white transition-all text-xs font-semibold select-none outline-none">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-brand-500 shrink-0" />
+              <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
                   <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
                 </div>
-                <span className="text-[8px] text-stone-500">▼</span>
+                <span className="text-[7px] text-stone-600">▼</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" className="w-52 mt-1">
               <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-stone-800" />
+              <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={() => setCenterId('r27')}
                 className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
               >
                 <span>R27 Fitness</span>
-                {centerId === 'r27' && <span className="text-xs">●</span>}
+                {centerId === 'r27' && <span className="text-[8px]">●</span>}
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setCenterId('coffit')}
                 className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
               >
                 <span>Coffit</span>
-                {centerId === 'coffit' && <span className="text-xs">●</span>}
+                {centerId === 'coffit' && <span className="text-[8px]">●</span>}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
         {/* Navigation list */}
-        <nav className="flex-1 flex flex-col gap-1 p-3 pt-4 overflow-y-auto">
+        <nav className="flex-1 flex flex-col gap-1 p-3 pt-3 overflow-y-auto">
           {filteredNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
