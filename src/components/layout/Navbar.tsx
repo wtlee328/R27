@@ -165,7 +165,7 @@ export function Navbar() {
         {/* ── Desktop: Logo + Switcher ────────────────── */}
         <div className="hidden lg:flex flex-col shrink-0">
           {/* Logo */}
-          <div className="flex justify-center items-center px-4 py-1">
+          <div className="flex justify-center items-center px-4">
             {centerId === 'r27' ? (
               <img
                 src="/assets/logos/on-dark/logo-small.png"
@@ -173,7 +173,7 @@ export function Navbar() {
                 className="h-[68px] w-auto object-contain"
               />
             ) : (
-              <div className="flex items-center gap-0.5 text-white font-extrabold tracking-widest text-xl select-none">
+              <div className="flex items-center gap-0.5 text-white font-extrabold tracking-widest text-xl select-none py-4">
                 <span className="text-brand-500 text-2xl">C</span>OFFIT
               </div>
             )}
