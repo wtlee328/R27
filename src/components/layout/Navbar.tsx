@@ -95,8 +95,8 @@ export function Navbar() {
           {centerId === 'r27' ? (
             <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain translate-y-4" />
           ) : (
-            <div className="flex items-center gap-1 text-white font-bold tracking-wider text-sm pl-1 select-none">
-              <span className="text-brand-500 text-lg">C</span>OFFIT
+            <div className="flex items-center text-white font-semibold tracking-widest text-base pl-2 select-none">
+              COFFIT
             </div>
           )}
         </div>
