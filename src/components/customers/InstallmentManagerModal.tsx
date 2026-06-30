@@ -147,12 +147,6 @@ export function InstallmentManagerModal({
           <div>
             <DialogTitle className="text-lg font-bold text-stone-900">分期收款管理</DialogTitle>
           </div>
-          <button 
-            onClick={() => onOpenChange(false)}
-            className="absolute top-0 right-0 p-1.5 hover:bg-stone-200/50 rounded-xl transition-colors text-stone-400 hover:text-stone-700"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </DialogHeader>
 
         {/* Customer & Contract Summary */}

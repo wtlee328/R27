@@ -11,6 +11,7 @@ import {
 } from '../ui/dialog'
 import { Button } from '../ui/button'
 import { AlertCircle, Trash2 } from 'lucide-react'
+import { useTrainers } from '../../hooks/useTrainers'
 
 export function TrialTable({
   trials,
@@ -22,6 +23,7 @@ export function TrialTable({
   onUpdateStatus: (id: string, newStatus: 'pending' | 'converted' | 'not_converted') => void
 }) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const { trainers } = useTrainers()
 
   const handleDelete = () => {
     if (deleteId) {
@@ -51,6 +53,7 @@ export function TrialTable({
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">體驗日期</th>
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">姓名</th>
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">聯絡電話</th>
+              <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">體驗課教練</th>
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">備註</th>
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-center">結果狀態</th>
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
@@ -64,6 +67,9 @@ export function TrialTable({
                 </td>
                 <td className="px-5 py-3.5 font-medium text-stone-900">{r.clientName}</td>
                 <td className="px-5 py-3.5 text-stone-600 tabular-nums">{r.phone}</td>
+                <td className="px-5 py-3.5 text-stone-700 font-medium">
+                  {trainers.find((t) => t.id === r.trialTrainerId)?.name || '未指定'}
+                </td>
                 <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
                 <td className="px-5 py-3.5 text-center">
                   <select

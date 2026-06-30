@@ -755,7 +755,19 @@ export function CustomerFormModal({
                               onClick={() => {
                                 form.setValue('bindExistingContractMode', false)
                                 form.setValue('contract.contractType', 'dual')
-                                form.setValue('partnerMode', 'existing')
+                                form.setValue('partnerMode', 'new')
+                                form.setValue('partnerId', null)
+                                form.setValue('partnerCustomerData', {
+                                  name: '',
+                                  idNumber: '',
+                                  phone: '',
+                                  email: '',
+                                  dateOfBirth: new Date(),
+                                  historicalSessions: 0,
+                                  emergencyContact: { name: '', relation: '', phone: '' },
+                                  sharedContractCustomerId: null,
+                                  medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                })
                                 form.setValue('existingContractId', null)
                               }}
                               className={cn(
@@ -883,81 +895,9 @@ export function CustomerFormModal({
                           <>
                             {form.watch('contract.contractType') === 'dual' && (
                               <div className="col-span-2 p-6 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <Label className="text-purple-950 font-bold block text-sm">👥 共享學員綁定方式 *</Label>
-                                <div className="flex gap-4">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      form.setValue('partnerMode', 'existing')
-                                      form.setValue('partnerCustomerData', null)
-                                    }}
-                                    className={cn(
-                                      "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
-                                      form.watch('partnerMode') === 'existing'
-                                        ? "bg-purple-600 border-purple-600 text-white"
-                                        : "bg-white border-stone-200 text-stone-600"
-                                    )}
-                                  >
-                                    🔗 連結系統現有客戶
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      form.setValue('partnerMode', 'new')
-                                      form.setValue('partnerId', null)
-                                      form.setValue('partnerCustomerData', {
-                                        name: '',
-                                        idNumber: '',
-                                        phone: '',
-                                        email: '',
-                                        dateOfBirth: new Date(),
-                                        historicalSessions: 0,
-                                        emergencyContact: { name: '', relation: '', phone: '' },
-                                        sharedContractCustomerId: null,
-                                        medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                                      })
-                                    }}
-                                    className={cn(
-                                      "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
-                                      form.watch('partnerMode') === 'new'
-                                        ? "bg-purple-600 border-purple-600 text-white"
-                                        : "bg-white border-stone-200 text-stone-600"
-                                    )}
-                                  >
-                                    ➕ 新增全新客戶
-                                  </button>
+                                <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
+                                  ✨ 此合約模式為雙人合約。下一步我們將會引導您填寫第二位全新學員的基本資料與健康狀態。
                                 </div>
-
-                                {form.watch('partnerMode') === 'existing' && (
-                                  <div className="space-y-2 pt-2">
-                                    <Label className="text-xs text-purple-900 font-medium">選擇現有學員 *</Label>
-                                    <select
-                                      value={form.watch('partnerId') || ''}
-                                      onChange={(e) => form.setValue('partnerId', e.target.value || null)}
-                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
-                                    >
-                                      <option value="">-- 請選擇學員 --</option>
-                                      {customers.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name} ({c.phone})
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {form.watch('partnerId') && (
-                                      <p className="text-[10px] text-purple-500 font-bold">
-                                        提示：此合約將會由您當前建立的客戶與 {customers.find(c => c.id === form.watch('partnerId'))?.name} 共同持有一份合約。
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {form.watch('partnerMode') === 'new' && (
-                                  <div className="pt-2">
-                                    <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
-                                      ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             )}
                             {/* 課程教練分配 */}

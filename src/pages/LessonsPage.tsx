@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp } from 'lucide-react'
+import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
@@ -215,7 +215,22 @@ export default function LessonsPage() {
 
   // Dashboard Stats
   const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
-  const totalHistoryConsumed = trainers.reduce((sum, t) => sum + Number(t.totalUsedLessons || 0), 0)
+
+  // Calculate selected month's consumed lessons and revenue amount across all records
+  const selectedMonthRecords = selectedMonth === 'all'
+    ? records
+    : records.filter(r => r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+
+  const selectedMonthConsumed = selectedMonthRecords.reduce(
+    (sum, r) => sum + Number(r.sessionAmount || 0), 
+    0
+  )
+
+  const selectedMonthRevenue = selectedMonthRecords.reduce((sum, r) => {
+    const contract = contracts.find(c => c.id === r.contractId)
+    const price = contract ? contract.pricePerSession : 0
+    return sum + (Number(r.sessionAmount || 0) * price)
+  }, 0)
 
   if (loadingTrainers || migrationRunning) {
     return (
@@ -261,16 +276,18 @@ export default function LessonsPage() {
           subtitle="目前合約中所有未消耗的堂數"
         />
         <StatCard
-          title="累計已銷總堂數"
-          value={`${totalHistoryConsumed} 堂`}
+          title={selectedMonth === 'all' ? '累計已銷總堂數' : '當月已銷總堂數'}
+          value={`${selectedMonthConsumed} 堂`}
           icon={Activity}
-          subtitle="全館累計上課堂數"
+          subtitle={selectedMonth === 'all' ? '歷史累計上課堂數' : '當月累計上課堂數'}
         />
         <StatCard
-          title="登錄教練人數"
-          value={`${trainers.length} 位`}
-          icon={Users}
-          subtitle="教練獨立名冊與銷課統計"
+          title={selectedMonth === 'all' ? '累計已銷總金額' : '當月已銷總金額'}
+          value={`NT$ ${selectedMonthRevenue.toLocaleString()}`}
+          icon={DollarSign}
+          iconColor="text-emerald-600"
+          iconBg="bg-emerald-50"
+          subtitle={selectedMonth === 'all' ? '歷史累計上課金額加總' : '當月銷課金額加總'}
         />
       </div>
 
@@ -352,9 +369,9 @@ export default function LessonsPage() {
               .filter(c => c.trainerId === t.id)
               .map(c => c.id)
 
-            // Find lesson records belonging to this trainer (or assigned customers)
+            // Find lesson records belonging to this trainer (the trainer who actually taught/provided the class)
             const trainerLessons = records.filter(lr => 
-              lr.trainerId === t.id || trainerStudentIds.includes(lr.customerId)
+              lr.trainerId === t.id
             )
 
             // Filter by selected month

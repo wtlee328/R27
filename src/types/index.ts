@@ -132,7 +132,8 @@ export type TrialOutcome = 'pending' | 'converted' | 'not_converted'
 
 export interface TrialRecord {
   id: string
-  trainerId: string
+  trainerId: string // Record owner
+  trialTrainerId?: string // The trainer who provided the trial class (making optional for backward compatibility)
   clientName: string
   phone: string
   email: string
@@ -143,11 +144,12 @@ export interface TrialRecord {
   updatedAt: Timestamp
 }
 
-// ─── Venue Rental ─────────────────────────────────────────────
 export interface VenueRental {
   id: string
-  trainerId: string
-  renterName: string
+  trainerId: string // Record owner
+  renterTrainerId?: string // Chosen renter trainer
+  renterCustomerId?: string // Chosen renter customer (from custom sub-list)
+  renterName: string // Display name or custom name
   date: Timestamp
   amount: number
   cashFlowRecordId: string

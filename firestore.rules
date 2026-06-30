@@ -95,6 +95,11 @@ service cloud.firestore {
       allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
     }
 
+    // Renter Customers
+    match /renterCustomers/{customerId} {
+      allow read, write: if isAuthenticated();
+    }
+
     // Notifications — each user can only read/write their own
     match /notifications/{notifId} {
       allow read, list: if isAuthenticated() && request.auth.uid == resource.data.userId;

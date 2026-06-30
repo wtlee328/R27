@@ -74,7 +74,7 @@ export function useVenueRentals() {
       debitAmount: data.amount,
       creditCategory: '場租收入', // Revenue
       creditAmount: data.amount,
-      description: `場租收入 - ${data.renterName}`,
+      description: `場租收入 - ${data.renterName || ''}`,
       notes: data.notes,
       source: 'venue_rental',
       sourceId: rentalRef.id,
@@ -83,8 +83,12 @@ export function useVenueRentals() {
     }
 
     const rentalData = {
-      ...data,
       date: Timestamp.fromDate(data.date),
+      amount: data.amount,
+      notes: data.notes,
+      renterName: data.renterName || '',
+      renterTrainerId: data.renterTrainerId,
+      renterCustomerId: data.selectedRenterCustomerId || '',
       trainerId: user.uid,
       cashFlowRecordId: cashFlowRef.id,
       createdAt: serverTimestamp(),
