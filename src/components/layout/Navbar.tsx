@@ -57,7 +57,7 @@ export function Navbar() {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        <div className="flex items-center h-full gap-2 sm:gap-3">
+        <div className="flex items-center h-full gap-2 sm:gap-3 lg:hidden">
           <div className="flex items-center h-full">
             {centerId === 'r27' ? (
               <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
@@ -67,37 +67,6 @@ export function Navbar() {
               </div>
             )}
           </div>
-          
-          <div className="h-5 w-[1px] bg-stone-850 self-center" />
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 px-2 py-1 rounded-md border border-stone-800 bg-stone-900/50 hover:bg-stone-905 hover:border-stone-700 text-stone-300 hover:text-white transition-all text-[11px] font-medium select-none outline-none">
-                <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
-                <span className="hidden sm:inline">{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
-                <span className="sm:hidden">{centerId === 'r27' ? 'R27' : 'Coffit'}</span>
-                <span className="text-[8px] text-stone-500">▼</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48 mt-1">
-              <DropdownMenuLabel>切換場館</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => setCenterId('r27')}
-                className={cn("flex items-center justify-between cursor-pointer text-xs", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
-              >
-                <span>R27 Fitness</span>
-                {centerId === 'r27' && <span className="text-xs">●</span>}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setCenterId('coffit')}
-                className={cn("flex items-center justify-between cursor-pointer text-xs", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
-              >
-                <span>Coffit</span>
-                {centerId === 'coffit' && <span className="text-xs">●</span>}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         <div className="flex-1" />
@@ -155,12 +124,57 @@ export function Navbar() {
       {/* ── Sidebar ─────────────────────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 transition-transform duration-300 ease-out',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 transition-transform duration-300 ease-out border-r border-stone-900/50 flex flex-col',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        <nav className="flex flex-col gap-1 p-3 pt-4">
+        {/* Logo Section (Desktop Only) */}
+        <div className="hidden lg:flex justify-center items-center h-20 border-b border-stone-900/40 shrink-0">
+          {centerId === 'r27' ? (
+            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[95px] w-auto object-contain transform translate-y-3" />
+          ) : (
+            <div className="flex items-center gap-1 text-white font-extrabold tracking-widest text-base select-none">
+              <span className="text-brand-500 text-xl">C</span>OFFIT
+            </div>
+          )}
+        </div>
+
+        {/* Switcher Section (Both Mobile & Desktop in Sidebar) */}
+        <div className="p-3 border-b border-stone-900/40 shrink-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center justify-between w-full px-3 py-2.5 rounded-lg border border-stone-850 bg-stone-900/40 hover:bg-stone-900 hover:border-stone-800 text-stone-300 hover:text-white transition-all text-xs font-semibold select-none outline-none">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-brand-500 shrink-0" />
+                  <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+                </div>
+                <span className="text-[8px] text-stone-500">▼</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-52 mt-1">
+              <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-stone-800" />
+              <DropdownMenuItem 
+                onClick={() => setCenterId('r27')}
+                className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+              >
+                <span>R27 Fitness</span>
+                {centerId === 'r27' && <span className="text-xs">●</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setCenterId('coffit')}
+                className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+              >
+                <span>Coffit</span>
+                {centerId === 'coffit' && <span className="text-xs">●</span>}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Navigation list */}
+        <nav className="flex-1 flex flex-col gap-1 p-3 pt-4 overflow-y-auto">
           {filteredNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -183,7 +197,7 @@ export function Navbar() {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-stone-950">
           <p className="text-[11px] text-stone-600 text-center">
             © {new Date().getFullYear()} {centerId === 'r27' ? 'R27+ FITNESS' : 'COFFIT'}
           </p>
