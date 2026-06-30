@@ -90,8 +90,8 @@ export function Navbar() {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        {/* Mobile logo (hidden on desktop — logo lives in sidebar) */}
-        <div className="flex items-center h-full lg:hidden">
+        {/* Logo — visible on all screen sizes, aligned left in top bar */}
+        <div className="flex items-center h-full">
           {centerId === 'r27' ? (
             <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
           ) : (
@@ -162,33 +162,8 @@ export function Navbar() {
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        {/* ── Desktop: Logo + Switcher ────────────────── */}
-        <div className="hidden lg:flex flex-col shrink-0">
-          {/* Logo */}
-          <div className="flex justify-center items-center px-4">
-            {centerId === 'r27' ? (
-              <img
-                src="/assets/logos/on-dark/logo-small.png"
-                alt="R27"
-                className="h-[68px] w-auto object-contain"
-              />
-            ) : (
-              <div className="flex items-center gap-0.5 text-white font-extrabold tracking-widest text-xl select-none py-4">
-                <span className="text-brand-500 text-2xl">C</span>OFFIT
-              </div>
-            )}
-          </div>
-
-          {/* Switcher */}
-          <div className="px-3 pb-2">
-            <CenterSwitcher />
-          </div>
-
-          <div className="mx-3 border-b border-stone-800/50" />
-        </div>
-
-        {/* ── Mobile: Switcher only (no logo, top bar has it) ── */}
-        <div className="lg:hidden px-3 py-2 border-b border-stone-900/40 shrink-0">
+        {/* Switcher — top of sidebar, all screen sizes */}
+        <div className="px-3 py-2 border-b border-stone-900/40 shrink-0">
           <CenterSwitcher />
         </div>
 
