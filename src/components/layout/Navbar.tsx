@@ -44,11 +44,44 @@ export function Navbar() {
     return true
   })
 
+  // Reusable center switcher dropdown content
+  const CenterSwitcher = () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+            <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+          </div>
+          <span className="text-[7px] text-stone-600">▼</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-52 mt-1">
+        <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setCenterId('r27')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>R27 Fitness</span>
+          {centerId === 'r27' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setCenterId('coffit')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>Coffit</span>
+          {centerId === 'coffit' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+
   return (
     <>
-      {/* ... top bar ... */}
+      {/* ── Top bar ──────────────────────────────────────── */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-stone-950 flex items-center px-2 gap-3 shadow-lg shadow-black/10">
-        {/* ... mobile toggle ... */}
+        {/* Mobile hamburger */}
         <button
           onClick={toggleSidebar}
           className="lg:hidden rounded-lg p-2 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
@@ -57,20 +90,20 @@ export function Navbar() {
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        <div className="flex items-center h-full gap-2 sm:gap-3 lg:hidden">
-          <div className="flex items-center h-full">
-            {centerId === 'r27' ? (
-              <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
-            ) : (
-              <div className="flex items-center gap-1.5 text-white font-bold tracking-wider text-sm pl-2 select-none">
-                <span className="text-brand-500 text-lg">C</span>OFFIT
-              </div>
-            )}
-          </div>
+        {/* Mobile logo (hidden on desktop — logo lives in sidebar) */}
+        <div className="flex items-center h-full lg:hidden">
+          {centerId === 'r27' ? (
+            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain transform translate-y-2" />
+          ) : (
+            <div className="flex items-center gap-1 text-white font-bold tracking-wider text-sm pl-1 select-none">
+              <span className="text-brand-500 text-lg">C</span>OFFIT
+            </div>
+          )}
         </div>
 
         <div className="flex-1" />
 
+        {/* Right side: notifications + profile */}
         <div className="flex items-center gap-2">
           <NotificationCenter />
           <DropdownMenu>
@@ -124,92 +157,39 @@ export function Navbar() {
       {/* ── Sidebar ─────────────────────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 transition-transform duration-300 ease-out border-r border-stone-900/50 flex flex-col',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 border-r border-stone-900/50 flex flex-col transition-transform duration-300 ease-out',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        {/* Logo + Switcher header (Desktop Only) */}
+        {/* ── Desktop: Logo + Switcher ────────────────── */}
         <div className="hidden lg:flex flex-col shrink-0">
           {/* Logo */}
-          <div className="flex justify-center items-end h-14 px-4 pt-3">
+          <div className="flex justify-center items-center px-4 pt-4 pb-2">
             {centerId === 'r27' ? (
-              <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[62px] w-auto object-contain" />
+              <img
+                src="/assets/logos/on-dark/logo-small.png"
+                alt="R27"
+                className="h-12 w-auto object-contain"
+              />
             ) : (
-              <div className="flex items-center gap-1 text-white font-extrabold tracking-widest text-lg select-none pb-1">
+              <div className="flex items-center gap-0.5 text-white font-extrabold tracking-widest text-xl select-none py-1">
                 <span className="text-brand-500 text-2xl">C</span>OFFIT
               </div>
             )}
           </div>
 
           {/* Switcher */}
-          <div className="px-3 py-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
-                  <div className="flex items-center gap-1.5">
-                    <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
-                    <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
-                  </div>
-                  <span className="text-[7px] text-stone-600">▼</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-52 mt-1">
-                <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setCenterId('r27')}
-                  className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
-                >
-                  <span>R27 Fitness</span>
-                  {centerId === 'r27' && <span className="text-[8px]">●</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setCenterId('coffit')}
-                  className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
-                >
-                  <span>Coffit</span>
-                  {centerId === 'coffit' && <span className="text-[8px]">●</span>}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="px-3 pb-3">
+            <CenterSwitcher />
           </div>
 
-          {/* Divider */}
-          <div className="mx-3 border-b border-stone-900/60" />
+          <div className="mx-3 border-b border-stone-800/50" />
         </div>
 
-        {/* Switcher for Mobile (no logo, sidebar slides in over top bar) */}
+        {/* ── Mobile: Switcher only (no logo, top bar has it) ── */}
         <div className="lg:hidden px-3 py-2 border-b border-stone-900/40 shrink-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
-                <div className="flex items-center gap-1.5">
-                  <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
-                  <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
-                </div>
-                <span className="text-[7px] text-stone-600">▼</span>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-52 mt-1">
-              <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={() => setCenterId('r27')}
-                className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
-              >
-                <span>R27 Fitness</span>
-                {centerId === 'r27' && <span className="text-[8px]">●</span>}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => setCenterId('coffit')}
-                className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
-              >
-                <span>Coffit</span>
-                {centerId === 'coffit' && <span className="text-[8px]">●</span>}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CenterSwitcher />
         </div>
 
         {/* Navigation list */}
@@ -236,7 +216,7 @@ export function Navbar() {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 bg-stone-950">
+        <div className="p-4 border-t border-white/10 bg-stone-950 shrink-0">
           <p className="text-[11px] text-stone-600 text-center">
             © {new Date().getFullYear()} {centerId === 'r27' ? 'R27+ FITNESS' : 'COFFIT'}
           </p>
