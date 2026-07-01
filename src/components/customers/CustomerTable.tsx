@@ -19,6 +19,29 @@ export function CustomerTable({
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
   const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
 
+  const getCustomerActiveContract = useCallback((customerId: string) => {
+    const customerContracts = contracts.filter(con => 
+      con.customerId === customerId || 
+      con.sharedWithCustomerId === customerId || 
+      (con.customerIds && con.customerIds.includes(customerId))
+    )
+    const activeOrExpiring = customerContracts.find(con => con.status === 'active' || con.status === 'expiring')
+    if (activeOrExpiring) return activeOrExpiring
+    return customerContracts.find(con => con.status === 'expired')
+  }, [contracts])
+
+  const getCustomerLatestContract = useCallback((customerId: string) => {
+    const customerContracts = contracts.filter(con => 
+      con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))
+    )
+    if (customerContracts.length === 0) return null
+    return [...customerContracts].sort((a, b) => {
+      const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
+      const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0
+      return tB - tA
+    })[0]
+  }, [contracts])
+
   const processedCustomers = useMemo(() => {
     // 1. Search text filter
     let result = customers.filter(c => 
@@ -41,26 +64,6 @@ export function CustomerTable({
           (con.status === 'active' || con.status === 'expiring')
         )
       })
-    }
-
-    // Helper functions to resolve contract details for sorting
-    const getCustomerActiveContract = (customerId: string) => {
-      return contracts.find(con => 
-        (con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))) && 
-        (con.status === 'active' || con.status === 'expiring')
-      )
-    }
-
-    const getCustomerLatestContract = (customerId: string) => {
-      const customerContracts = contracts.filter(con => 
-        con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))
-      )
-      if (customerContracts.length === 0) return null
-      return [...customerContracts].sort((a, b) => {
-        const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
-        const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0
-        return tB - tA
-      })[0]
     }
 
     // 3. Sorting logic
@@ -112,7 +115,7 @@ export function CustomerTable({
     }
 
     return result
-  }, [customers, contracts, searchTerm, filterType, sortBy])
+  }, [customers, contracts, searchTerm, filterType, sortBy, getCustomerActiveContract, getCustomerLatestContract])
 
   if (customers.length === 0) {
     return (
@@ -186,10 +189,7 @@ export function CustomerTable({
         ) : (
           <div className="divide-y divide-stone-50">
             {processedCustomers.map((c) => {
-              const activeContract = contracts.find(con => 
-                (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
-                (con.status === 'active' || con.status === 'expiring')
-              )
+              const activeContract = getCustomerActiveContract(c.id)
               const partnerId = activeContract 
                 ? (activeContract.customerIds && activeContract.customerIds.length > 1
                     ? activeContract.customerIds.find(id => id !== c.id)
@@ -216,14 +216,20 @@ export function CustomerTable({
                         <h3 className="font-bold text-stone-900 group-hover:text-stone-950 transition-colors">{c.name}</h3>
                         {activeContract ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <Badge variant="outline" className={cn(
-                              activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
-                                ? "bg-purple-50 text-purple-600 border-purple-100/50" 
-                                : "bg-emerald-50 text-emerald-600 border-emerald-100/50",
-                              "text-[10px] py-0 px-2 h-5 flex items-center shrink-0"
-                            )}>
-                              {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? '👥 雙人合約' : '👤 進行中'}
-                            </Badge>
+                            {activeContract.status === 'expired' ? (
+                              <Badge variant="outline" className="bg-red-50 text-red-600 border-red-100/50 text-[10px] py-0 px-2 h-5 flex items-center shrink-0">
+                                ⚠️ 已到期
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className={cn(
+                                activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
+                                  ? "bg-purple-50 text-purple-600 border-purple-100/50" 
+                                  : "bg-emerald-50 text-emerald-600 border-emerald-100/50",
+                                "text-[10px] py-0 px-2 h-5 flex items-center shrink-0"
+                              )}>
+                                {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? '👥 雙人合約' : '👤 進行中'}
+                              </Badge>
+                            )}
                             {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
                               <span className="text-[10px] text-purple-500 font-bold bg-purple-50/50 px-2 py-0.5 rounded-md border border-purple-100/30 shrink-0">
                                 與 {partner.name} 共享
@@ -251,7 +257,9 @@ export function CustomerTable({
                           <FileText className="w-3.5 h-3.5 text-stone-400" />
                           <p className={cn(
                             "text-xs font-bold",
-                            activeContract ? "text-stone-700" : "text-stone-400 italic"
+                            activeContract 
+                              ? (activeContract.status === 'expired' ? "text-red-500" : "text-stone-700") 
+                              : "text-stone-400 italic"
                           )}>
                             {activeContract ? `${activeContract.remainingSessions} / ${activeContract.totalSessions} 堂` : '無合約'}
                           </p>
@@ -269,7 +277,9 @@ export function CustomerTable({
                         <Clock className="w-3.5 h-3.5 text-stone-400" />
                         <p className={cn(
                           "text-xs font-bold",
-                          activeContract ? "text-stone-700" : "text-stone-400 italic"
+                          activeContract 
+                            ? (activeContract.status === 'expired' ? "text-red-500 font-semibold" : "text-stone-700") 
+                            : "text-stone-400 italic"
                         )}>
                           {activeContract ? format(activeContract.endDate.toDate(), 'yyyy/MM/dd') : '無有效合約'}
                         </p>

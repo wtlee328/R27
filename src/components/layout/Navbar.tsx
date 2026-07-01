@@ -44,39 +44,6 @@ export function Navbar() {
     return true
   })
 
-  // Reusable center switcher dropdown content
-  const CenterSwitcher = () => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
-          <div className="flex items-center gap-1.5">
-            <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
-            <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
-          </div>
-          <span className="text-[7px] text-stone-600">▼</span>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-52 mt-1">
-        <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={() => setCenterId('r27')}
-          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
-        >
-          <span>R27 Fitness</span>
-          {centerId === 'r27' && <span className="text-[8px]">●</span>}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => setCenterId('coffit')}
-          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
-        >
-          <span>Coffit</span>
-          {centerId === 'coffit' && <span className="text-[8px]">●</span>}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-
   return (
     <>
       {/* ── Top bar ──────────────────────────────────────── */}
@@ -164,7 +131,7 @@ export function Navbar() {
       >
         {/* Switcher — top of sidebar, all screen sizes */}
         <div className="px-3 py-2 border-b border-stone-900/40 shrink-0">
-          <CenterSwitcher />
+          <CenterSwitcher centerId={centerId} setCenterId={setCenterId} />
         </div>
 
         {/* Navigation list */}
@@ -198,5 +165,39 @@ export function Navbar() {
         </div>
       </aside>
     </>
+  )
+}
+
+function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenterId: (id: 'r27' | 'coffit') => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+          <div className="flex items-center gap-1.5">
+            <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+            <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+          </div>
+          <span className="text-[7px] text-stone-600">▼</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-52 mt-1">
+        <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => setCenterId('r27')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>R27 Fitness</span>
+          {centerId === 'r27' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => setCenterId('coffit')}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+        >
+          <span>Coffit</span>
+          {centerId === 'coffit' && <span className="text-[8px]">●</span>}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
