@@ -60,7 +60,7 @@ export function NotificationCenter() {
       await markAsRead(notif.id)
     }
     if (notif.customerId) {
-      navigate('/customers')
+      navigate('/')
       setOpen(false)
     }
   }
