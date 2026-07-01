@@ -127,10 +127,10 @@ export default function CustomersPage() {
       const expiringCustomerIds = new Set(
         contracts
           .filter(c => {
-            if (c.status !== 'active' && c.status !== 'expiring') return false
+            if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
             if (!c.endDate) return false
             const end = c.endDate.toDate()
-            return end >= now && end <= thirtyDaysFromNow
+            return end <= thirtyDaysFromNow
           })
           .map(c => c.customerId)
       )

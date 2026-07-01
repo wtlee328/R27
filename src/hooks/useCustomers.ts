@@ -161,11 +161,11 @@ export function useCustomers() {
     thirtyDaysFromNow.setDate(now.getDate() + 30)
 
     return contracts.filter(c => {
-      if (c.status !== 'active' && c.status !== 'expiring') return false
+      if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
       if (!c.endDate) return false
       const end = c.endDate.toDate()
-      // Within next 30 days
-      return end >= now && end <= thirtyDaysFromNow
+      // Expired or expiring within next 30 days
+      return end <= thirtyDaysFromNow
     }).length
   }, [contracts])
 
