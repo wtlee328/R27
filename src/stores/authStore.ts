@@ -8,6 +8,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void
   isAdmin: () => boolean
   isTrainer: () => boolean
+  isSharedTrainer: () => boolean
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -17,4 +18,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   isAdmin: () => get().user?.role === 'admin',
   isTrainer: () => get().user?.role === 'trainer',
+  isSharedTrainer: () => get().user?.isSharedTrainerAccount === true,
 }))

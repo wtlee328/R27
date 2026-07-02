@@ -1,11 +1,15 @@
 import React from 'react'
-import { Settings, GripVertical, RotateCcw, ShieldAlert } from 'lucide-react'
+import { Settings, GripVertical, RotateCcw, ShieldAlert, Clock, Lock, Check } from 'lucide-react'
 import { Reorder } from 'framer-motion'
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
+import { db, firebaseConfig } from '@/lib/firebase'
+import { initializeApp, deleteApp } from 'firebase/app'
+import { getAuth, signInWithEmailAndPassword, updatePassword } from 'firebase/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useMenuStore, ALL_NAV_ITEMS } from '@/stores/menuStore'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export default function SettingsPage() {
   const { user } = useAuthStore()
@@ -17,6 +21,110 @@ export default function SettingsPage() {
 
   const [migrationLoading, setMigrationLoading] = React.useState(false)
   const [migrationStatus, setMigrationStatus] = React.useState<string | null>(null)
+
+  // Operating Hours states
+  const [r27Start, setR27Start] = React.useState('09:00')
+  const [r27End, setR27End] = React.useState('05:00')
+  const [coffitStart, setCoffitStart] = React.useState('09:00')
+  const [coffitEnd, setCoffitEnd] = React.useState('05:00')
+  const [hoursLoading, setHoursLoading] = React.useState(false)
+  const [hoursStatus, setHoursStatus] = React.useState<string | null>(null)
+
+  // Trainer Password states
+  const [pwCenter, setPwCenter] = React.useState<'r27' | 'coffit'>('r27')
+  const [currentPw, setCurrentPw] = React.useState('')
+  const [newPw, setNewPw] = React.useState('')
+  const [pwLoading, setPwLoading] = React.useState(false)
+  const [pwStatus, setPwStatus] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Load Operating Hours
+  React.useEffect(() => {
+    if (!isAdmin) return
+    async function loadHours() {
+      try {
+        const docSnap = await getDoc(doc(db, 'systemConfig', 'operatingHours'))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          if (data.r27) {
+            setR27Start(data.r27.startTime || '09:00')
+            setR27End(data.r27.endTime || '05:00')
+          }
+          if (data.coffit) {
+            setCoffitStart(data.coffit.startTime || '09:00')
+            setCoffitEnd(data.coffit.endTime || '05:00')
+          }
+        }
+      } catch (err) {
+        console.error('Error loading operating hours:', err)
+      }
+    }
+    loadHours()
+  }, [isAdmin])
+
+  const handleSaveHours = async () => {
+    setHoursLoading(true)
+    setHoursStatus(null)
+    try {
+      await setDoc(doc(db, 'systemConfig', 'operatingHours'), {
+        r27: { startTime: r27Start, endTime: r27End },
+        coffit: { startTime: coffitStart, endTime: coffitEnd },
+      })
+      setHoursStatus('營業時間設定已成功儲存！')
+      setTimeout(() => setHoursStatus(null), 3000)
+    } catch (err: any) {
+      console.error(err)
+      setHoursStatus(`儲存失敗：${err.message || String(err)}`)
+    } finally {
+      setHoursLoading(false)
+    }
+  }
+
+  const handleChangeTrainerPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentPw || !newPw) return
+
+    setPwLoading(true)
+    setPwStatus(null)
+
+    const trainerEmail = pwCenter === 'r27' ? 'trainer-r27@r27app.com' : 'trainer-coffit@r27app.com'
+
+    // We initialize a secondary App client-side, log in to update the password, then delete it.
+    let secondaryApp
+    try {
+      secondaryApp = initializeApp(firebaseConfig, 'SecondaryAuthUpdate')
+      const secondaryAuth = getAuth(secondaryApp)
+      
+      // Sign in as trainer
+      await signInWithEmailAndPassword(secondaryAuth, trainerEmail, currentPw)
+      
+      // Update password
+      if (secondaryAuth.currentUser) {
+        await updatePassword(secondaryAuth.currentUser, newPw)
+      } else {
+        throw new Error('未成功載入教練使用者資訊')
+      }
+
+      setPwStatus({ type: 'success', message: `${pwCenter === 'r27' ? 'R27' : 'Coffit'} 教練密碼更新成功！` })
+      setCurrentPw('')
+      setNewPw('')
+    } catch (err: any) {
+      console.error('Error changing trainer password:', err)
+      let msg = '密碼更新失敗，請檢查目前密碼是否正確。'
+      if (err.code === 'auth/weak-password') {
+        msg = '新密碼強度不足，長度建議至少 6 個字元。'
+      }
+      setPwStatus({ type: 'error', message: msg })
+    } finally {
+      if (secondaryApp) {
+        try {
+          await deleteApp(secondaryApp)
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      setPwLoading(false)
+    }
+  }
 
   const handleMigrate = async () => {
     setMigrationLoading(true)
@@ -225,6 +333,192 @@ export default function SettingsPage() {
               {migrationLoading ? '正在遷移中...' : '執行合約資料結構升級 (Migrate)'}
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Operating Hours Card */}
+      {isAdmin && (
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden mt-6">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-700" />
+          
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
+            <div>
+              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-stone-600" />
+                場館營業時間設定
+              </h2>
+              <p className="text-xs text-stone-400 mt-1">
+                設定 R27 與 Coffit 的場租營業時段（預設為 09:00 - 05:00）
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* R27 Operating Hours */}
+              <div className="space-y-3.5 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
+                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5">R27 Fitness</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-stone-600">開始時間</Label>
+                    <Input
+                      type="text"
+                      placeholder="09:00"
+                      value={r27Start}
+                      onChange={(e) => setR27Start(e.target.value)}
+                      className="bg-white border-stone-200 h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-stone-600">結束時間</Label>
+                    <Input
+                      type="text"
+                      placeholder="05:00"
+                      value={r27End}
+                      onChange={(e) => setR27End(e.target.value)}
+                      className="bg-white border-stone-200 h-9 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Coffit Operating Hours */}
+              <div className="space-y-3.5 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
+                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5">Coffit</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-stone-600">開始時間</Label>
+                    <Input
+                      type="text"
+                      placeholder="09:00"
+                      value={coffitStart}
+                      onChange={(e) => setCoffitStart(e.target.value)}
+                      className="bg-white border-stone-200 h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-stone-600">結束時間</Label>
+                    <Input
+                      type="text"
+                      placeholder="05:00"
+                      value={coffitEnd}
+                      onChange={(e) => setCoffitEnd(e.target.value)}
+                      className="bg-white border-stone-200 h-9 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {hoursStatus && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-center gap-2">
+                <Check className="h-4 w-4 shrink-0" />
+                <span>{hoursStatus}</span>
+              </div>
+            )}
+
+            <Button
+              onClick={handleSaveHours}
+              disabled={hoursLoading}
+              className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer"
+            >
+              {hoursLoading ? '儲存中...' : '儲存營業時間'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Trainer Password Management Card */}
+      {isAdmin && (
+        <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden mt-6">
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-700" />
+          
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
+            <div>
+              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
+                <Lock className="h-5 w-5 text-stone-600" />
+                教練帳號密碼管理
+              </h2>
+              <p className="text-xs text-stone-400 mt-1">
+                修改 R27 或 Coffit 教練專屬之共享登入密碼
+              </p>
+            </div>
+          </div>
+          
+          <form onSubmit={handleChangeTrainerPassword} className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5 col-span-3">
+                <Label className="text-xs font-bold text-stone-700">選擇場館帳號</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-stone-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pwCenter"
+                      checked={pwCenter === 'r27'}
+                      onChange={() => setPwCenter('r27')}
+                      className="text-brand-500 focus:ring-brand-500"
+                    />
+                    <span>R27 (trainer-r27@r27app.com)</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-stone-700 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pwCenter"
+                      checked={pwCenter === 'coffit'}
+                      onChange={() => setPwCenter('coffit')}
+                      className="text-brand-500 focus:ring-brand-500"
+                    />
+                    <span>Coffit (trainer-coffit@r27app.com)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 col-span-3 md:col-span-1.5">
+                <Label htmlFor="currentPw" className="text-xs font-bold text-stone-700">目前教練密碼 *</Label>
+                <Input
+                  id="currentPw"
+                  type="password"
+                  required
+                  placeholder="請輸入目前的密碼"
+                  value={currentPw}
+                  onChange={(e) => setCurrentPw(e.target.value)}
+                  className="bg-white border-stone-200"
+                />
+              </div>
+
+              <div className="space-y-1.5 col-span-3 md:col-span-1.5">
+                <Label htmlFor="newPw" className="text-xs font-bold text-stone-700">新教練密碼 *</Label>
+                <Input
+                  id="newPw"
+                  type="password"
+                  required
+                  placeholder="輸入 6 位數以上之新密碼"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                  className="bg-white border-stone-200"
+                />
+              </div>
+            </div>
+
+            {pwStatus && (
+              <div className={`p-3 border rounded-xl text-xs flex items-center gap-2 ${
+                pwStatus.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border-red-200 text-red-800'
+              }`}>
+                {pwStatus.type === 'success' ? <Check className="h-4 w-4 shrink-0" /> : <ShieldAlert className="h-4 w-4 shrink-0" />}
+                <span>{pwStatus.message}</span>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={pwLoading}
+              className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 rounded-xl transition-all cursor-pointer animate-fade-in"
+            >
+              {pwLoading ? '更新密碼中...' : '更新教練密碼'}
+            </Button>
+          </form>
         </div>
       )}
     </div>

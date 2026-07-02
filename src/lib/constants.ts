@@ -137,5 +137,40 @@ export const COLLECTIONS = {
   TRAINERS: 'trainers',
   NOTIFICATIONS: 'notifications',
   RENTER_CUSTOMERS: 'renterCustomers',
+  VENUE_BOOKINGS: 'venueBookings',
+  ACTIVITY_LOGS: 'activityLogs',
 } as const
+
+// ─── Trainer Account Emails ──────────────────────────────────
+export const TRAINER_EMAILS: Record<string, string> = {
+  'trainer-r27@r27app.com': 'r27',
+  'trainer-coffit@r27app.com': 'coffit',
+}
+
+// ─── Booking Status Labels ──────────────────────────────────
+export const BOOKING_STATUS_LABELS: Record<string, string> = {
+  pending: '待審核',
+  approved: '已核准',
+  rejected: '已駁回',
+}
+
+// ─── Activity Log Labels ────────────────────────────────────
+export const ACTIVITY_ACTION_LABELS: Record<string, string> = {
+  create: '新增',
+  update: '編輯',
+  delete: '刪除',
+}
+
+export const ACTIVITY_MODULE_LABELS: Record<string, string> = {
+  lessonRecords: '教練銷課',
+  trialRecords: '體驗客',
+  venueBookings: '場租申請',
+}
+
+// ─── Default Operating Hours ────────────────────────────────
+export const DEFAULT_OPERATING_HOURS = {
+  startTime: '09:00',
+  endTime: '05:00',
+} as const
+
 

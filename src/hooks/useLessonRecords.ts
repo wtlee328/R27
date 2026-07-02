@@ -19,6 +19,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
 import type { LessonRecord } from '../types'
 import type { LessonRecordFormValues } from '../lib/validators'
+import { logActivity } from '../lib/activityLogger'
 
 export function useLessonRecords() {
   const [records, setRecords] = useState<LessonRecord[]>([])
@@ -104,7 +105,7 @@ export function useLessonRecords() {
     }
 
     try {
-      await runTransaction(db, async (transaction) => {
+      const result = await runTransaction(db, async (transaction) => {
         const contractRef = doc(db, 'contracts', data.contractId)
         const attendeeRefs = attendeeIds.map(id => doc(db, 'customers', id))
 
@@ -117,6 +118,11 @@ export function useLessonRecords() {
         // Fallback trainerId to contract's trainerId if not specified in form data
         const contractTrainerId = contractSnap.exists() ? contractSnap.data().trainerId : null
         const finalTrainerId = data.trainerId || contractTrainerId || user.uid
+
+        // Read trainer info
+        const trainerRef = doc(db, 'trainers', finalTrainerId)
+        const trainerSnap = await transaction.get(trainerRef)
+        const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
 
         // WRITES LATER
         const recordRef = doc(collection(db, 'lessonRecords'))
@@ -140,7 +146,27 @@ export function useLessonRecords() {
             })
           }
         })
+
+        return {
+          finalTrainerId,
+          trainerName,
+          attendeeNames,
+          recordId: recordRef.id
+        }
       })
+
+      if (result) {
+        await logActivity({
+          centerId,
+          trainerId: result.finalTrainerId,
+          trainerName: result.trainerName,
+          action: 'create',
+          module: 'lessonRecords',
+          recordId: result.recordId,
+          recordSummary: `銷課: ${result.attendeeNames.join('、')} - ${data.sessionAmount}堂`,
+          newValue: { ...newRecordData, trainerName: result.trainerName }
+        })
+      }
 
       await fetchRecords()
     } catch (err: any) {
@@ -153,10 +179,10 @@ export function useLessonRecords() {
     try {
       const recordRef = doc(db, 'lessonRecords', id)
       
-      await runTransaction(db, async (transaction) => {
+      const result = await runTransaction(db, async (transaction) => {
         // 1. Read Lesson Record
         const recordSnap = await transaction.get(recordRef)
-        if (!recordSnap.exists()) return
+        if (!recordSnap.exists()) return null
         
         const recordData = recordSnap.data() as LessonRecord
         
@@ -170,6 +196,11 @@ export function useLessonRecords() {
 
         const contractSnap = contractRef ? await transaction.get(contractRef) : null
         const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
+
+        // Read trainer info
+        const trainerRef = doc(db, 'trainers', recordData.trainerId)
+        const trainerSnap = await transaction.get(trainerRef)
+        const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
 
         // 3. Perform all WRITES
         if (contractRef && contractSnap?.exists()) {
@@ -189,7 +220,25 @@ export function useLessonRecords() {
         })
 
         transaction.delete(recordRef)
+
+        return {
+          recordData,
+          trainerName
+        }
       })
+
+      if (result) {
+        await logActivity({
+          centerId,
+          trainerId: result.recordData.trainerId,
+          trainerName: result.trainerName,
+          action: 'delete',
+          module: 'lessonRecords',
+          recordId: id,
+          recordSummary: `刪除銷課: ${result.recordData.attendingCustomerNames?.join('、') || result.recordData.customerName} - ${result.recordData.sessionAmount}堂`,
+          previousValue: result.recordData
+        })
+      }
 
       await fetchRecords()
     } catch (err: any) {
