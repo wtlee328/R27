@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
 import { Badge } from '../ui/badge'
