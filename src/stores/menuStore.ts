@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import {
   Users, BookOpen, TrendingUp, BarChart2,
-  Database, UserCheck, Building2, Settings
+  Database, UserCheck, Building2, Settings, History
 } from 'lucide-react'
 
 export interface NavItem {
@@ -18,6 +18,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'finance',      to: '/finance',     label: '會計管理',   icon: TrendingUp, adminOnly: true },
   { id: 'trials',       to: '/trials',      label: '體驗客',     icon: UserCheck },
   { id: 'venue',        to: '/venue',       label: '場租管理',   icon: Building2,  adminOnly: true },
+  { id: 'activityLog',  to: '/activity-log',label: '操作記錄',   icon: History,    adminOnly: true },
   { id: 'backup',       to: '/backup',      label: '數據管理',   icon: Database,   adminOnly: true },
   { id: 'settings',     to: '/settings',    label: '系統設定',   icon: Settings },
 ]

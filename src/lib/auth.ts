@@ -40,15 +40,39 @@ export function useAuthListener() {
           // First login — create user doc
           const adminEmails = ['wtlee328@gmail.com', 'admin@r27.com', 'lins92142t@gmail.com']
           const isAdminEmail = adminEmails.includes(firebaseUser.email ?? '')
-          const role = isAdminEmail ? 'admin' : 'trainer'
           
-          const newUser = {
-            email: firebaseUser.email ?? '',
-            displayName: firebaseUser.displayName ?? firebaseUser.email ?? '',
-            role,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+          // Check if this is a shared trainer account
+          const trainerEmailMap: Record<string, string> = {
+            'trainer-r27@r27app.com': 'r27',
+            'trainer-coffit@r27app.com': 'coffit',
           }
+          const trainerCenterId = trainerEmailMap[firebaseUser.email ?? '']
+          
+          let newUser: Record<string, any>
+          
+          if (trainerCenterId) {
+            // Shared trainer account
+            newUser = {
+              email: firebaseUser.email ?? '',
+              displayName: trainerCenterId === 'r27' ? 'R27 教練' : 'Coffit 教練',
+              role: 'trainer',
+              centerId: trainerCenterId,
+              isSharedTrainerAccount: true,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+          } else {
+            // Admin or individual account
+            const role = isAdminEmail ? 'admin' : 'trainer'
+            newUser = {
+              email: firebaseUser.email ?? '',
+              displayName: firebaseUser.displayName ?? firebaseUser.email ?? '',
+              role,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+          }
+          
           await setDoc(userRef, newUser)
           appUser = { uid: firebaseUser.uid, ...newUser } as unknown as AppUser
         }

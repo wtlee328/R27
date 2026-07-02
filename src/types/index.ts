@@ -8,6 +8,8 @@ export interface AppUser {
   email: string
   displayName: string
   role: UserRole
+  centerId?: string
+  isSharedTrainerAccount?: boolean
   createdAt: Timestamp
   updatedAt: Timestamp
 }
@@ -208,4 +210,50 @@ export interface AppNotification {
   customerName?: string
   dueDate?: Timestamp
   createdAt: Timestamp
+}
+
+// ─── Venue Booking ─────────────────────────────────────────────
+export type BookingStatus = 'pending' | 'approved' | 'rejected'
+
+export interface VenueBooking {
+  id: string
+  centerId?: string
+  trainerId: string
+  trainerName: string
+  date: Timestamp
+  startTime: string
+  endTime: string
+  purpose: string
+  renterCustomerId?: string
+  renterName?: string
+  status: BookingStatus
+  adminNotes?: string
+  venueRentalId?: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+// ─── Activity Log ──────────────────────────────────────────────
+export type ActivityAction = 'create' | 'update' | 'delete'
+export type ActivityModule = 'lessonRecords' | 'trialRecords' | 'venueBookings'
+
+export interface ActivityLog {
+  id: string
+  centerId?: string
+  timestamp: Timestamp
+  trainerAuthUid: string
+  trainerName: string
+  trainerId: string
+  action: ActivityAction
+  module: ActivityModule
+  recordId: string
+  recordSummary: string
+  previousValue?: Record<string, any>
+  newValue?: Record<string, any>
+}
+
+// ─── Operating Hours ───────────────────────────────────────────
+export interface OperatingHours {
+  startTime: string
+  endTime: string
 }
