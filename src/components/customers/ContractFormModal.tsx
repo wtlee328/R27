@@ -19,6 +19,7 @@ import { Label } from '../ui/label'
 import { contractFormSchema, type ContractFormValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
 import type { Customer, Contract } from '../../types'
+import { useCenterStore } from '@/stores/centerStore'
 
 interface ContractFormModalProps {
   open: boolean
@@ -40,6 +41,9 @@ export function ContractFormModal({
   customer,
   customers,
 }: ContractFormModalProps) {
+  const { centerId } = useCenterStore()
+  const brandName = centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
@@ -1121,7 +1125,7 @@ export function ContractFormModal({
                                 <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
                                   {/* Header */}
                                   <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
-                                    <h1 className="text-base font-black text-stone-900 tracking-tight">R27 Fitness 健身教練課程契約書</h1>
+                                    <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
                                     <div className="flex justify-between text-[9px] font-bold text-stone-500">
                                       <span>紅二七健身有限公司</span>
                                       <span>合約編號：(系統自動產生)</span>
@@ -1235,7 +1239,7 @@ export function ContractFormModal({
 
                                   {/* Articles 1-12 */}
                                   <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
-                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">R27 Fitness 健身教練服務定型化契約條款</h4>
+                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">{brandName} 健身教練服務定型化契約條款</h4>
                                     
                                     <div>
                                       <p className="font-bold text-stone-900">第一條（服務內容與異動通知）</p>
@@ -1379,7 +1383,7 @@ export function ContractFormModal({
                             onChange={e => form.setValue('isAgreed', e.target.checked)}
                             className="w-5 h-5 rounded accent-brand-500 cursor-pointer"
                           />
-                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700 cursor-pointer">同意並簽署上述「R27 Fitness 健身教練課程契約書」</label>
+                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700 cursor-pointer">同意並簽署上述「{brandName} 健身教練課程契約書」</label>
                         </div>
 
                         <div className={cn(
