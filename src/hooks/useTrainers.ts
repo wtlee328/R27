@@ -46,12 +46,7 @@ export function useTrainers() {
         getDocs(query(lessonRecordsRef, where('centerId', '==', centerId))),
       ])
 
-      // If trainers collection is empty and we are in r27, trigger an auto-migration/seeding
-      if (trainersSnap.empty && centerId === 'r27') {
-        setLoading(false)
-        await runMigration()
-        return
-      }
+
 
       const trainersList = trainersSnap.docs.map((doc) => ({
         id: doc.id,
