@@ -20,6 +20,7 @@ import { Label } from '../ui/label'
 import { combinedCustomerContractSchema, type CombinedCustomerContractValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
 import type { Customer, Contract } from '../../types'
+import { useCenterStore } from '@/stores/centerStore'
 
 interface CustomerFormModalProps {
   open: boolean
@@ -47,6 +48,9 @@ export function CustomerFormModal({
   customers = [],
   contracts = [],
 }: CustomerFormModalProps) {
+  const { centerId } = useCenterStore()
+  const brandName = centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
@@ -1469,7 +1473,7 @@ export function CustomerFormModal({
                                 <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
                                   <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
                                     <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
-                                      <h1 className="text-base font-black text-stone-900 tracking-tight">R27 Fitness 連結現有合約同意書</h1>
+                                      <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 連結現有合約同意書</h1>
                                       <div className="flex justify-between text-[9px] font-bold text-stone-500">
                                         <span>紅二七健身有限公司</span>
                                         <span>連結合約編號：{selectedContract?.contractNumber || selectedContract?.id?.substring(0, 8)}</span>
@@ -1502,7 +1506,7 @@ export function CustomerFormModal({
                                     <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
                                       <p className="font-bold text-stone-900">學員共同簽約同意條款</p>
                                       <p>1. 雙方同意本合約之堂數為共享額度，任一方上課皆會扣除剩餘堂數。</p>
-                                      <p>2. 雙方已充分閱讀並同意 R27 Fitness 私人教練服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
+                                      <p>2. 雙方已充分閱讀並同意 {brandName} 私人教練服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
                                       <p>3. 簽署本同意書後，本合約變更立即生效，雙方不得有異議。</p>
                                     </div>
                                   </div>
@@ -1515,7 +1519,7 @@ export function CustomerFormModal({
                                 <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
                                   {/* Header */}
                                   <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
-                                    <h1 className="text-base font-black text-stone-900 tracking-tight">R27 Fitness 健身教練課程契約書</h1>
+                                    <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
                                     <div className="flex justify-between text-[9px] font-bold text-stone-500">
                                       <span>紅二七健身有限公司</span>
                                       <span>合約編號：(系統自動產生)</span>
@@ -1629,7 +1633,7 @@ export function CustomerFormModal({
 
                                   {/* Articles 1-12 */}
                                   <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
-                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">R27 Fitness 健身教練服務定型化契約條款</h4>
+                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">{brandName} 健身教練服務定型化契約條款</h4>
                                     
                                     <div>
                                       <p className="font-bold text-stone-900">第一條（服務內容與異動通知）</p>
@@ -1774,7 +1778,7 @@ export function CustomerFormModal({
                             className="w-5 h-5 rounded border-stone-300 text-brand-600 focus:ring-brand-500 accent-brand-500 cursor-pointer"
                           />
                           <label htmlFor="agree-contract" className="text-sm font-medium text-stone-700 cursor-pointer">
-                            我已閱讀並同意上述「R27 Fitness 健身教練課程契約書」
+                            我已閱讀並同意上述「{brandName} 健身教練課程契約書」
                           </label>
                         </div>
 

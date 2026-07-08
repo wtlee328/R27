@@ -12,6 +12,7 @@ import { Printer, X, Edit2, Trash2, Save, Plus, Trash, AlertTriangle, RefreshCw 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useAuthStore } from '@/stores/authStore'
+import { useCenterStore } from '@/stores/centerStore'
 
 interface CustomerContractModalProps {
   open: boolean
@@ -42,6 +43,12 @@ export function CustomerContractModal({
   
   // Admin & Editing states
   const { isAdmin } = useAuthStore()
+  const { centerId } = useCenterStore()
+  const contractCenterId = contract?.centerId || centerId
+  const brandName = contractCenterId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+  const brandNameStation = contractCenterId === 'coffit' ? 'Coffit Station' : 'R27 Fitness Station'
+  const brandNameAbbr = contractCenterId === 'coffit' ? 'Coffit' : 'R27健身站'
+
   const [isEditing, setIsEditing] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
   
@@ -394,7 +401,7 @@ export function CustomerContractModal({
 
               {/* Main Document Header */}
               <div className="text-center space-y-2 border-b-2 border-stone-800 pb-4">
-                <h1 className="text-2xl font-black text-stone-900 tracking-tight">R27 Fitness 健身教練課程契約書</h1>
+                <h1 className="text-2xl font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
                 <div className="flex justify-between text-[11px] font-bold text-stone-600 print:text-[10px]">
                   <span>紅二七健身有限公司</span>
                   <div>
@@ -637,10 +644,10 @@ export function CustomerContractModal({
                 {/* 乙方 */}
                 <div className="space-y-2 pt-2 border-t border-dashed border-stone-200 text-stone-700">
                   <div className="font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded text-[11px]">
-                    <span>R27健身站（簡稱乙方）</span>
+                    <span>{brandNameAbbr}（簡稱乙方）</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <div>公司名稱：<span className="font-bold text-stone-950">紅二七健身有限公司 (R27 Fitness Station)</span></div>
+                    <div>公司名稱：<span className="font-bold text-stone-950">紅二七健身有限公司 ({brandNameStation})</span></div>
                     <div>負責人：<span className="font-bold text-stone-950">郭沛霖</span></div>
                     <div>電話：<span className="font-bold text-stone-950">0905396658</span></div>
                     <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-950">新北市淡水區中正東路二段68號</span></div>
@@ -1022,7 +1029,7 @@ export function CustomerContractModal({
                     <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
                     <div className="w-24 h-24 border-2 border-brand-200 rounded-full flex items-center justify-center relative">
                       <div className="text-brand-500 font-bold text-center leading-tight border-2 border-brand-500 rounded-full w-20 h-20 flex flex-col items-center justify-center rotate-[-15deg]">
-                        <span className="text-[8px]">R27 Fitness</span>
+                        <span className="text-[8px]">{brandName}</span>
                         <span className="text-xs font-black">合約專用章</span>
                         <span className="text-[7px]">{contract?.createdAt ? format(contract.createdAt.toDate(), 'yyyy.MM.dd') : format(new Date(), 'yyyy.MM.dd')}</span>
                       </div>
@@ -1082,7 +1089,7 @@ export function CustomerContractModal({
               <div className="border-t-2 border-stone-200 pt-8 print:break-before-page">
                 <div className="bg-stone-50 rounded-2xl p-6 border border-stone-200 text-[10px] leading-relaxed text-stone-600 space-y-4">
                   <div className="text-center font-bold text-stone-700 pb-2 mb-2 border-b border-stone-250">
-                    R27 Fitness 健身教練服務定型化契約條款
+                    {brandName} 健身教練服務定型化契約條款
                   </div>
 
                   <div>
@@ -1220,7 +1227,7 @@ export function CustomerContractModal({
 
               {/* Document Footer */}
               <div className="mt-8 pt-4 border-t border-stone-100 text-[10px] text-stone-400 flex justify-between print:hidden shrink-0">
-                <span>R27 Fitness Station 客戶存查聯</span>
+                <span>{brandNameStation} 客戶存查聯</span>
                 <span>頁碼 1 / 1</span>
               </div>
             </div>
