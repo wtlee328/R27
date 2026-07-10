@@ -35,23 +35,41 @@ export default function TrainerVenuePage() {
   const [isBooking, setIsBooking] = useState(false)
 
   // Operating Hours Config
-  const [operatingHours, setOperatingHours] = useState({ startTime: '09:00', endTime: '05:00' })
+  const [config, setConfig] = useState<any>(null)
   
   useEffect(() => {
     async function loadConfig() {
       try {
-        const center = user?.centerId || 'r27'
         const docRef = doc(db, 'systemConfig', 'operatingHours')
         const snap = await getDoc(docRef)
-        if (snap.exists() && snap.data()[center]) {
-          setOperatingHours(snap.data()[center])
+        if (snap.exists()) {
+          setConfig(snap.data())
         }
       } catch (e) {
         console.error('Failed to load operating hours config', e)
       }
     }
     loadConfig()
-  }, [user])
+  }, [])
+
+  const operatingHours = useMemo(() => {
+    const center = user?.centerId || 'r27'
+    const defaultHours = { startTime: '09:00', endTime: '05:00' }
+    if (!config || !config[center]) return defaultHours
+
+    // Selected date day of week (0 is Sunday, 1 is Monday, ..., 6 is Saturday)
+    const dayOfWeek = new Date(selectedDate).getDay()
+    const dayStr = String(dayOfWeek)
+
+    if (config[center][dayStr]) {
+      return config[center][dayStr]
+    }
+    // Backward compatibility for old flat format
+    if (config[center].startTime) {
+      return config[center]
+    }
+    return defaultHours
+  }, [config, selectedDate, user])
 
   const timeSlots = useMemo(() => {
     return generateTimeSlots(operatingHours.startTime, operatingHours.endTime)
