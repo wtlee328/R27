@@ -408,7 +408,7 @@ export default function SettingsPage() {
                   <span>R27 Fitness</span>
                   <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
                 </h3>
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-3 pb-1">
                   {[
                     { key: '1', label: '週一' },
                     { key: '2', label: '週二' },
@@ -461,7 +461,7 @@ export default function SettingsPage() {
                   <span>Coffit</span>
                   <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
                 </h3>
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                <div className="space-y-3 pb-1">
                   {[
                     { key: '1', label: '週一' },
                     { key: '2', label: '週二' },
