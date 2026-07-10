@@ -22,11 +22,25 @@ export default function SettingsPage() {
   const [migrationLoading, setMigrationLoading] = React.useState(false)
   const [migrationStatus, setMigrationStatus] = React.useState<string | null>(null)
 
-  // Operating Hours states
-  const [r27Start, setR27Start] = React.useState('09:00')
-  const [r27End, setR27End] = React.useState('05:00')
-  const [coffitStart, setCoffitStart] = React.useState('09:00')
-  const [coffitEnd, setCoffitEnd] = React.useState('05:00')
+  // Operating Hours states (0 is Sunday, 1 is Monday, ..., 6 is Saturday)
+  const [r27Hours, setR27Hours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
+    '0': { startTime: '09:00', endTime: '05:00' },
+    '1': { startTime: '09:00', endTime: '05:00' },
+    '2': { startTime: '09:00', endTime: '05:00' },
+    '3': { startTime: '09:00', endTime: '05:00' },
+    '4': { startTime: '09:00', endTime: '05:00' },
+    '5': { startTime: '09:00', endTime: '05:00' },
+    '6': { startTime: '09:00', endTime: '05:00' },
+  })
+  const [coffitHours, setCoffitHours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
+    '0': { startTime: '09:00', endTime: '05:00' },
+    '1': { startTime: '09:00', endTime: '05:00' },
+    '2': { startTime: '09:00', endTime: '05:00' },
+    '3': { startTime: '09:00', endTime: '05:00' },
+    '4': { startTime: '09:00', endTime: '05:00' },
+    '5': { startTime: '09:00', endTime: '05:00' },
+    '6': { startTime: '09:00', endTime: '05:00' },
+  })
   const [hoursLoading, setHoursLoading] = React.useState(false)
   const [hoursStatus, setHoursStatus] = React.useState<string | null>(null)
 
@@ -45,13 +59,46 @@ export default function SettingsPage() {
         const docSnap = await getDoc(doc(db, 'systemConfig', 'operatingHours'))
         if (docSnap.exists()) {
           const data = docSnap.data()
+          
+          const defaultWeek = {
+            '0': { startTime: '09:00', endTime: '05:00' },
+            '1': { startTime: '09:00', endTime: '05:00' },
+            '2': { startTime: '09:00', endTime: '05:00' },
+            '3': { startTime: '09:00', endTime: '05:00' },
+            '4': { startTime: '09:00', endTime: '05:00' },
+            '5': { startTime: '09:00', endTime: '05:00' },
+            '6': { startTime: '09:00', endTime: '05:00' },
+          }
+
           if (data.r27) {
-            setR27Start(data.r27.startTime || '09:00')
-            setR27End(data.r27.endTime || '05:00')
+            // Backward compatibility
+            if (data.r27.startTime) {
+              const mapped = { ...defaultWeek }
+              for (let i = 0; i <= 6; i++) {
+                mapped[String(i)] = {
+                  startTime: data.r27.startTime,
+                  endTime: data.r27.endTime || '05:00'
+                }
+              }
+              setR27Hours(mapped)
+            } else {
+              setR27Hours({ ...defaultWeek, ...data.r27 })
+            }
           }
           if (data.coffit) {
-            setCoffitStart(data.coffit.startTime || '09:00')
-            setCoffitEnd(data.coffit.endTime || '05:00')
+            // Backward compatibility
+            if (data.coffit.startTime) {
+              const mapped = { ...defaultWeek }
+              for (let i = 0; i <= 6; i++) {
+                mapped[String(i)] = {
+                  startTime: data.coffit.startTime,
+                  endTime: data.coffit.endTime || '05:00'
+                }
+              }
+              setCoffitHours(mapped)
+            } else {
+              setCoffitHours({ ...defaultWeek, ...data.coffit })
+            }
           }
         }
       } catch (err) {
@@ -66,8 +113,8 @@ export default function SettingsPage() {
     setHoursStatus(null)
     try {
       await setDoc(doc(db, 'systemConfig', 'operatingHours'), {
-        r27: { startTime: r27Start, endTime: r27End },
-        coffit: { startTime: coffitStart, endTime: coffitEnd },
+        r27: r27Hours,
+        coffit: coffitHours,
       })
       setHoursStatus('營業時間設定已成功儲存！')
       setTimeout(() => setHoursStatus(null), 3000)
@@ -356,56 +403,108 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* R27 Operating Hours */}
-              <div className="space-y-3.5 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
-                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5">R27 Fitness</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-stone-600">開始時間</Label>
-                    <Input
-                      type="text"
-                      placeholder="09:00"
-                      value={r27Start}
-                      onChange={(e) => setR27Start(e.target.value)}
-                      className="bg-white border-stone-200 h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-stone-600">結束時間</Label>
-                    <Input
-                      type="text"
-                      placeholder="05:00"
-                      value={r27End}
-                      onChange={(e) => setR27End(e.target.value)}
-                      className="bg-white border-stone-200 h-9 text-sm"
-                    />
-                  </div>
+              <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
+                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
+                  <span>R27 Fitness</span>
+                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
+                </h3>
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {[
+                    { key: '1', label: '週一' },
+                    { key: '2', label: '週二' },
+                    { key: '3', label: '週三' },
+                    { key: '4', label: '週四' },
+                    { key: '5', label: '週五' },
+                    { key: '6', label: '週六' },
+                    { key: '0', label: '週日' },
+                  ].map((day) => (
+                    <div key={day.key} className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="font-bold text-stone-600">{day.label}</span>
+                      <Input
+                        type="text"
+                        placeholder="09:00"
+                        value={r27Hours[day.key]?.startTime || '09:00'}
+                        onChange={(e) => {
+                          setR27Hours({
+                            ...r27Hours,
+                            [day.key]: {
+                              ...(r27Hours[day.key] || { endTime: '05:00' }),
+                              startTime: e.target.value,
+                            },
+                          })
+                        }}
+                        className="bg-white border-stone-200 h-8 text-[11px] px-2"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="05:00"
+                        value={r27Hours[day.key]?.endTime || '05:00'}
+                        onChange={(e) => {
+                          setR27Hours({
+                            ...r27Hours,
+                            [day.key]: {
+                              ...(r27Hours[day.key] || { startTime: '09:00' }),
+                              endTime: e.target.value,
+                            },
+                          })
+                        }}
+                        className="bg-white border-stone-200 h-8 text-[11px] px-2"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Coffit Operating Hours */}
-              <div className="space-y-3.5 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
-                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5">Coffit</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-stone-600">開始時間</Label>
-                    <Input
-                      type="text"
-                      placeholder="09:00"
-                      value={coffitStart}
-                      onChange={(e) => setCoffitStart(e.target.value)}
-                      className="bg-white border-stone-200 h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-stone-600">結束時間</Label>
-                    <Input
-                      type="text"
-                      placeholder="05:00"
-                      value={coffitEnd}
-                      onChange={(e) => setCoffitEnd(e.target.value)}
-                      className="bg-white border-stone-200 h-9 text-sm"
-                    />
-                  </div>
+              <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
+                <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
+                  <span>Coffit</span>
+                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
+                </h3>
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                  {[
+                    { key: '1', label: '週一' },
+                    { key: '2', label: '週二' },
+                    { key: '3', label: '週三' },
+                    { key: '4', label: '週四' },
+                    { key: '5', label: '週五' },
+                    { key: '6', label: '週六' },
+                    { key: '0', label: '週日' },
+                  ].map((day) => (
+                    <div key={day.key} className="grid grid-cols-3 gap-2 items-center text-xs">
+                      <span className="font-bold text-stone-600">{day.label}</span>
+                      <Input
+                        type="text"
+                        placeholder="09:00"
+                        value={coffitHours[day.key]?.startTime || '09:00'}
+                        onChange={(e) => {
+                          setCoffitHours({
+                            ...coffitHours,
+                            [day.key]: {
+                              ...(coffitHours[day.key] || { endTime: '05:00' }),
+                              startTime: e.target.value,
+                            },
+                          })
+                        }}
+                        className="bg-white border-stone-200 h-8 text-[11px] px-2"
+                      />
+                      <Input
+                        type="text"
+                        placeholder="05:00"
+                        value={coffitHours[day.key]?.endTime || '05:00'}
+                        onChange={(e) => {
+                          setCoffitHours({
+                            ...coffitHours,
+                            [day.key]: {
+                              ...(coffitHours[day.key] || { startTime: '09:00' }),
+                              endTime: e.target.value,
+                            },
+                          })
+                        }}
+                        className="bg-white border-stone-200 h-8 text-[11px] px-2"
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
