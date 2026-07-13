@@ -1,5 +1,13 @@
 import { z } from 'zod'
 
+const preprocessDate = (val: unknown) => {
+  if (typeof val === 'string' && val !== '') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? val : d;
+  }
+  return val;
+};
+
 // ─── Customer Schemas ─────────────────────────────────────────
 
 export const emergencyContactSchema = z.object({
@@ -19,9 +27,9 @@ export const customerFormSchema = z.object({
   idNumber: z.string().min(1, '請輸入身分證字號'),
   phone: z.string().min(1, '請輸入電話'),
   email: z.string().email('請輸入有效的電子郵件').or(z.literal('')),
-  dateOfBirth: z.date({
+  dateOfBirth: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇出生年月日',
-  }),
+  })),
   historicalSessions: z.coerce.number().min(0).default(0),
   emergencyContact: emergencyContactSchema,
   sharedContractCustomerId: z.string().nullable().default(null),
@@ -35,10 +43,10 @@ export type CustomerFormValues = z.infer<typeof customerFormSchema>
 export const installmentSchema = z.object({
   id: z.string(),
   amount: z.coerce.number().min(0, '金額不能為負數'),
-  dueDate: z.date({
+  dueDate: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇應付日期',
-  }),
-  paidDate: z.date().nullable(),
+  })),
+  paidDate: z.preprocess(preprocessDate, z.date().nullable()),
   status: z.enum(['pending', 'paid', 'overdue']),
 })
 
@@ -56,12 +64,12 @@ export const baseContractFormSchema = z.object({
   totalAmount: z.coerce.number().min(1, '總金額必須大於 0'),
   paidAmount: z.coerce.number().min(0, '已付金額不能為負數'),
   installments: z.array(installmentSchema),
-  startDate: z.date({
+  startDate: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇合約開始日期',
-  }),
-  endDate: z.date({
+  })),
+  endDate: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇合約結束日期',
-  }),
+  })),
   status: z.enum(['active', 'expiring', 'expired', 'completed']),
   signatureDataUrl: z.string().nullable().default(null),
   secondarySignatureDataUrl: z.string().nullable().default(null),
@@ -128,8 +136,8 @@ export const combinedCustomerContractSchema = customerFormSchema.extend({
     trainerId: z.string().optional().or(z.literal('')),
     totalSessions: z.coerce.number().optional(),
     totalAmount: z.coerce.number().optional(),
-    startDate: z.date().optional(),
-    endDate: z.date().optional(),
+    startDate: z.preprocess(preprocessDate, z.date().optional()),
+    endDate: z.preprocess(preprocessDate, z.date().optional()),
   }).optional(),
   partnerMode: z.enum(['none', 'existing', 'new']).optional().default('none'),
   partnerId: z.string().nullable().optional().default(null),
@@ -230,9 +238,9 @@ export type CombinedCustomerContractValues = z.infer<typeof combinedCustomerCont
 // ─── Cash Flow Schemas ────────────────────────────────────────
 
 export const cashFlowFormSchema = z.object({
-  date: z.date({
+  date: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇日期',
-  }),
+  })),
   debitCategory: z.string().min(1, '請輸入借方科目 (現金/銀行存款等)'),
   debitAmount: z.coerce.number().min(0, '金額不能為負數'),
   creditCategory: z.string().min(1, '請輸入貸方科目 (收入/負債等)'),
@@ -252,9 +260,9 @@ export const lessonRecordFormSchema = z.object({
   customerName: z.string().min(1, '無效的客戶名稱'),
   contractId: z.string().min(1, '請選擇合約'),
   trainerId: z.string().optional(),
-  sessionDate: z.date({
+  sessionDate: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇上課日期',
-  }),
+  })),
   sessionAmount: z.coerce.number().min(0.5, '消耗堂數必須大於 0'),
   notes: z.string().optional().default(''),
   attendingCustomerIds: z.array(z.string()).optional(),
@@ -267,9 +275,9 @@ export const venueRentalFormSchema = z.object({
   selectedRenterCustomerId: z.string().optional(),
   newRenterCustomerName: z.string().optional(),
   renterName: z.string().optional(), // Derived/fallback
-  date: z.date({
+  date: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇場租日期',
-  }),
+  })),
   amount: z.coerce.number().min(0, '金額不能為負數'),
   notes: z.string().optional().default(''),
 })
@@ -282,9 +290,9 @@ export const trialRecordFormSchema = z.object({
   clientName: z.string().min(1, '請輸入體驗客姓名'),
   phone: z.string().min(1, '請輸入聯絡電話'),
   email: z.string().email('請輸入有效的電子郵件').or(z.literal('')),
-  date: z.date({
+  date: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇體驗日期',
-  }),
+  })),
   trialTrainerId: z.string().min(1, '請選擇體驗課教練'),
   outcome: z.enum(['pending', 'converted', 'not_converted']).default('pending'),
   notes: z.string().optional().default(''),
