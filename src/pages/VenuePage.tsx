@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { Home, DollarSign, Calendar, Clock, Check, X, AlertCircle } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Home, DollarSign, Calendar, Clock, Check, X, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { VenueTable } from '../components/venue/VenueTable'
@@ -7,21 +7,85 @@ import { VenueFormModal } from '../components/venue/VenueFormModal'
 import { useVenueRentals } from '../hooks/useVenueRentals'
 import { useVenueBookings } from '../hooks/useVenueBookings'
 import type { VenueRentalFormValues } from '../lib/validators'
-import { format } from 'date-fns'
+import { 
+  format,
+  startOfDay, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  isBefore, 
+  addMonths, 
+  subMonths
+} from 'date-fns'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../components/ui/dialog'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { Textarea } from '../components/ui/textarea'
+import { useCenterStore } from '@/stores/centerStore'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+
+// Generate hourly slots between startTime and endTime
+function generateTimeSlots(startHourStr: string, endHourStr: string) {
+  const start = parseInt(startHourStr.split(':')[0]) || 9
+  const end = parseInt(endHourStr.split(':')[0]) || 5
+  
+  let totalHours = 0
+  if (end < start) {
+    totalHours = (end + 24) - start
+  } else {
+    totalHours = end - start
+  }
+
+  if (totalHours <= 0) {
+    totalHours = 20
+  }
+
+  const slots: string[] = []
+  for (let i = 0; i < totalHours; i++) {
+    const hr = (start + i) % 24
+    const hrStr = String(hr).padStart(2, '0') + ':00'
+    slots.push(hrStr)
+  }
+  return slots
+}
 
 export default function VenuePage() {
   const { rentals, loading: rentalsLoading, createRental, deleteRental } = useVenueRentals()
   const { bookings, loading: bookingsLoading, updateBookingStatus } = useVenueBookings()
 
-  const [activeTab, setActiveTab] = useState<'rentals' | 'bookings'>('rentals')
+  const { centerId } = useCenterStore()
+  const [activeTab, setActiveTab] = useState<'calendar' | 'bookings' | 'rentals'>('calendar')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     return format(new Date(), 'yyyy/MM')
   })
+
+  // Calendar states
+  const [currentMonth, setCurrentMonth] = useState(() => new Date())
+  const [selectedDate, setSelectedDate] = useState(() => format(new Date(), 'yyyy-MM-dd'))
+
+  // Operating Hours Config
+  const [config, setConfig] = useState<any>(null)
+  
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const docRef = doc(db, 'systemConfig', 'operatingHours')
+        const snap = await getDoc(docRef)
+        if (snap.exists()) {
+          setConfig(snap.data())
+        }
+      } catch (e) {
+        console.error('Failed to load operating hours config', e)
+      }
+    }
+    loadConfig()
+  }, [])
 
   // Approval/Rejection Modal states
   const [approvalModalOpen, setApprovalModalOpen] = useState(false)
@@ -135,6 +199,83 @@ export default function VenuePage() {
 
   const totalIncomeAllTime = rentals.reduce((sum, r) => sum + r.amount, 0)
 
+  const operatingHours = useMemo(() => {
+    const center = centerId || 'r27'
+    const defaultHours = { startTime: '09:00', endTime: '05:00' }
+    if (!config || !config[center]) return defaultHours
+
+    // Selected date day of week (0 is Sunday, 1 is Monday, ..., 6 is Saturday)
+    const [y, m, d] = selectedDate.split('-').map(Number)
+    const dayOfWeek = new Date(y, m - 1, d).getDay()
+    const dayStr = String(dayOfWeek)
+
+    if (config[center][dayStr]) {
+      return config[center][dayStr]
+    }
+    if (config[center].startTime) {
+      return config[center]
+    }
+    return defaultHours
+  }, [config, selectedDate, centerId])
+
+  const timeSlots = useMemo(() => {
+    return generateTimeSlots(operatingHours.startTime, operatingHours.endTime)
+  }, [operatingHours])
+
+  const selectedDateBookings = useMemo(() => {
+    return bookings.filter(b => {
+      if (!b.date) return false
+      const bDateStr = format(b.date.toDate(), 'yyyy-MM-dd')
+      return bDateStr === selectedDate
+    })
+  }, [bookings, selectedDate])
+
+  const busySlotsMap = useMemo(() => {
+    const map = new Map<string, { booking: any; status: string }>()
+    
+    selectedDateBookings.forEach(b => {
+      const startIndex = timeSlots.indexOf(b.startTime)
+      const endIndex = timeSlots.indexOf(b.endTime)
+      
+      if (startIndex !== -1 && endIndex !== -1) {
+        for (let i = startIndex; i < endIndex; i++) {
+          map.set(timeSlots[i], { booking: b, status: b.status })
+        }
+      } else if (startIndex !== -1 && b.endTime === operatingHours.endTime) {
+        const count = timeSlots.length
+        for (let i = startIndex; i < count; i++) {
+          map.set(timeSlots[i], { booking: b, status: b.status })
+        }
+      }
+    })
+    return map
+  }, [selectedDateBookings, timeSlots, operatingHours])
+
+  const monthStart = startOfMonth(currentMonth)
+  const monthEnd = endOfMonth(currentMonth)
+  const gridStart = startOfWeek(monthStart)
+  const gridEnd = endOfWeek(monthEnd)
+  const calendarDays = eachDayOfInterval({ start: gridStart, end: gridEnd })
+
+  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
+  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
+  const handleToday = () => {
+    const today = new Date()
+    setCurrentMonth(today)
+    setSelectedDate(format(today, 'yyyy-MM-dd'))
+  }
+
+  const getBookingIndicator = (day: Date) => {
+    const dayStr = format(day, 'yyyy-MM-dd')
+    const dayBookings = bookings.filter(b => {
+      if (!b.date) return false
+      return format(b.date.toDate(), 'yyyy-MM-dd') === dayStr
+    })
+    const hasApproved = dayBookings.some(b => b.status === 'approved')
+    const hasPending = dayBookings.some(b => b.status === 'pending')
+    return { hasApproved, hasPending }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -171,6 +312,16 @@ export default function VenuePage() {
       {/* Tabs Layout */}
       <div className="flex border-b border-stone-200 gap-6">
         <button
+          onClick={() => setActiveTab('calendar')}
+          className={`pb-3 font-bold text-sm select-none border-b-2 cursor-pointer transition-colors ${
+            activeTab === 'calendar'
+              ? 'border-brand-500 text-brand-600'
+              : 'border-transparent text-stone-500 hover:text-stone-800'
+          }`}
+        >
+          場租日曆
+        </button>
+        <button
           onClick={() => setActiveTab('rentals')}
           className={`pb-3 font-bold text-sm select-none border-b-2 cursor-pointer transition-colors ${
             activeTab === 'rentals'
@@ -197,7 +348,179 @@ export default function VenuePage() {
         </button>
       </div>
 
-      {activeTab === 'rentals' ? (
+      {activeTab === 'calendar' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* ---- Left: Monthly Calendar ---- */}
+          <div className="lg:col-span-7 bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <h2 className="text-sm font-bold text-stone-800">
+                {format(currentMonth, 'yyyy年 MM月')}
+              </h2>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToday}
+                  className="h-7 text-[11px] px-2.5 rounded-lg border-stone-200 text-stone-600 cursor-pointer font-bold"
+                >
+                  今天
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handlePrevMonth}
+                  className="h-7 w-7 rounded-lg border-stone-200 text-stone-600 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleNextMonth}
+                  className="h-7 w-7 rounded-lg border-stone-200 text-stone-600 cursor-pointer"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mt-4">
+              {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
+                <div key={d} className="text-center text-[10px] font-bold text-stone-400 py-1 uppercase">
+                  {d}
+                </div>
+              ))}
+              {calendarDays.map((day) => {
+                const dayStr = format(day, 'yyyy-MM-dd')
+                const isSelected = selectedDate === dayStr
+                const isCurrentMonth = isSameMonth(day, currentMonth)
+                const { hasApproved, hasPending } = getBookingIndicator(day)
+                
+                return (
+                  <button
+                    key={dayStr}
+                    onClick={() => setSelectedDate(dayStr)}
+                    className={`relative flex flex-col items-center justify-between p-2 h-16 rounded-xl transition-all ${
+                      isSelected
+                        ? 'bg-brand-500 text-white font-bold shadow-sm shadow-brand-500/20'
+                        : isCurrentMonth
+                          ? 'hover:bg-stone-50 text-stone-700'
+                          : 'hover:bg-stone-50/50 text-stone-350'
+                    }`}
+                  >
+                    <span className="text-xs font-black">{format(day, 'd')}</span>
+                    
+                    {/* Indicators */}
+                    <div className="flex gap-1 justify-center mt-1">
+                      {hasApproved && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-emerald-500'}`} />
+                      )}
+                      {hasPending && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-amber-500 animate-pulse'}`} />
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* ---- Right: Hourly Slots Table ---- */}
+          <div className="lg:col-span-5 bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+            <div className="border-b border-stone-100 p-4 bg-stone-50 flex items-center justify-between shrink-0">
+              <span className="text-xs font-bold text-stone-700">預約狀況表</span>
+              <span className="text-[10px] text-stone-400 font-semibold">{selectedDate}</span>
+            </div>
+
+            <div className="divide-y divide-stone-100 overflow-y-auto max-h-[560px]">
+              {bookingsLoading ? (
+                <div className="p-8 text-center text-xs text-stone-400 animate-pulse">載入時段中...</div>
+              ) : (
+                timeSlots.map((slot) => {
+                  const busyInfo = busySlotsMap.get(slot)
+                  const idx = timeSlots.indexOf(slot)
+                  const nextSlot = idx !== -1 && idx + 1 < timeSlots.length ? timeSlots[idx + 1] : operatingHours.endTime
+                  const slotRange = `${slot} - ${nextSlot}`
+
+                  if (busyInfo && busyInfo.status !== 'rejected') {
+                    const statusBg = 
+                      busyInfo.status === 'approved'
+                        ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-700 border-amber-500/20'
+                    
+                    const label = 
+                      busyInfo.status === 'approved' ? '已核准' : '審核中'
+
+                    return (
+                      <div key={slot} className="flex items-center p-3.5 gap-4 bg-stone-50/50">
+                        <div className="w-28 text-[11px] font-black text-stone-500 flex items-center gap-1.5 shrink-0 select-none">
+                          <Clock className="h-3 w-3 text-stone-400" />
+                          {slotRange}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-stone-700 truncate">
+                              {busyInfo.booking.trainerName}
+                            </span>
+                            {busyInfo.booking.renterName && (
+                              <span className="text-[10px] text-stone-500 font-medium shrink-0">
+                                ({busyInfo.booking.renterName})
+                              </span>
+                            )}
+                          </div>
+                          {busyInfo.booking.purpose && (
+                            <p className="text-[10px] text-stone-400 truncate mt-0.5">{busyInfo.booking.purpose}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${statusBg}`}>
+                            {label}
+                          </span>
+                          
+                          {/* Approve/Reject directly in slot if pending */}
+                          {busyInfo.status === 'pending' && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openApprovalModal(busyInfo.booking)}
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white p-1 rounded-md transition-colors cursor-pointer"
+                                title="直接核准"
+                              >
+                                <Check className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => openRejectionModal(busyInfo.booking.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-md transition-colors cursor-pointer"
+                                title="直接駁回"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={slot} className="flex items-center justify-between p-3.5 gap-4">
+                      <div className="w-28 text-[11px] font-black text-stone-400 flex items-center gap-1.5 shrink-0 select-none">
+                        <Clock className="h-3 w-3 text-stone-300" />
+                        {slotRange}
+                      </div>
+                      <div className="flex-1 text-xs text-stone-400">空閒時段</div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-stone-150 bg-stone-50 text-stone-400">
+                        空閒
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'rentals' && (
         /* Rentals History Card */
         <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-100 pb-5">
@@ -224,7 +547,9 @@ export default function VenuePage() {
             <VenueTable rentals={filteredRentals} onDelete={deleteRental} />
           )}
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'bookings' && (
         /* Pending Bookings List */
         <div className="space-y-4">
           {bookingsLoading ? (
