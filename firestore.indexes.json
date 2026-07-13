@@ -53,12 +53,28 @@
       ]
     },
     {
+      "collectionGroup": "lessonRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centerId", "order": "ASCENDING" },
+        { "fieldPath": "sessionDate", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cashFlowRecords",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "centerId", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cashFlowRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centerId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
       ]
     },
     {
