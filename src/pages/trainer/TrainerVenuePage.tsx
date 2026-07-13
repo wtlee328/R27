@@ -27,12 +27,25 @@ import { db } from '@/lib/firebase'
 import type { VenueBooking, BookingStatus } from '@/types'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
-// Generate 20-hour slots starting from startHour
+// Generate hourly slots between startTime and endTime
 function generateTimeSlots(startHourStr: string, endHourStr: string) {
   const start = parseInt(startHourStr.split(':')[0]) || 9
-  const slots: string[] = []
+  const end = parseInt(endHourStr.split(':')[0]) || 5
   
-  for (let i = 0; i < 20; i++) {
+  let totalHours = 0
+  if (end < start) {
+    totalHours = (end + 24) - start
+  } else {
+    totalHours = end - start
+  }
+
+  // Fallback to 20 if logic fails or returns 0
+  if (totalHours <= 0) {
+    totalHours = 20
+  }
+
+  const slots: string[] = []
+  for (let i = 0; i < totalHours; i++) {
     const hr = (start + i) % 24
     const hrStr = String(hr).padStart(2, '0') + ':00'
     slots.push(hrStr)
@@ -92,6 +105,19 @@ export default function TrainerVenuePage() {
     return generateTimeSlots(operatingHours.startTime, operatingHours.endTime)
   }, [operatingHours])
 
+  const endTimes = useMemo(() => {
+    if (timeSlots.length === 0) return []
+    const list = timeSlots.map(slot => {
+      const [hrStr, minStr] = slot.split(':')
+      const hr = (parseInt(hrStr) + 1) % 24
+      return String(hr).padStart(2, '0') + ':' + minStr
+    })
+    if (list.length > 0) {
+      list[list.length - 1] = operatingHours.endTime
+    }
+    return list
+  }, [timeSlots, operatingHours])
+
   // Form states
   const [selectedTrainerId, setSelectedTrainerId] = useState('')
   const [startSlot, setStartSlot] = useState('')
@@ -133,7 +159,7 @@ export default function TrainerVenuePage() {
         for (let i = startIndex; i < endIndex; i++) {
           map.set(timeSlots[i], { booking: b, status: b.status })
         }
-      } else if (startIndex !== -1 && b.endTime === '05:00') {
+      } else if (startIndex !== -1 && b.endTime === operatingHours.endTime) {
         const count = timeSlots.length
         for (let i = startIndex; i < count; i++) {
           map.set(timeSlots[i], { booking: b, status: b.status })
@@ -141,7 +167,7 @@ export default function TrainerVenuePage() {
       }
     })
     return map
-  }, [selectedDateBookings, timeSlots])
+  }, [selectedDateBookings, timeSlots, operatingHours])
 
   // Foolproof helper: Check if a slot is in the past
   const isSlotInPast = (dateStr: string, slotStr: string) => {
@@ -187,14 +213,14 @@ export default function TrainerVenuePage() {
 
     const startIndex = timeSlots.indexOf(startSlot)
     const endIndex = timeSlots.indexOf(endSlot)
-    if (startIndex >= endIndex && endSlot !== '05:00') {
+    if (startIndex >= endIndex && endIndex !== -1) {
       setSubmitError('結束時間必須晚於開始時間')
       return
     }
 
     // Check conflict
     let hasConflict = false
-    const checkEndIndex = endSlot === '05:00' ? timeSlots.length : endIndex
+    const checkEndIndex = endIndex === -1 ? timeSlots.length : endIndex
     for (let i = startIndex; i < checkEndIndex; i++) {
       const busy = busySlotsMap.get(timeSlots[i])
       if (busy && busy.status !== 'rejected') {
@@ -463,7 +489,7 @@ export default function TrainerVenuePage() {
                         if (idx !== -1 && idx + 1 < timeSlots.length) {
                           setEndSlot(timeSlots[idx + 1])
                         } else {
-                          setEndSlot('05:00')
+                          setEndSlot(operatingHours.endTime)
                         }
                         setIsBooking(true)
                       }}
@@ -548,12 +574,16 @@ export default function TrainerVenuePage() {
                   className="w-full bg-white border border-stone-200 text-stone-900 px-3 py-2 rounded-xl text-sm cursor-pointer"
                 >
                   <option value="">選擇時間</option>
-                  {timeSlots.map(slot => {
+                  {endTimes.map(slot => {
+                    const slotHour = parseInt(slot.split(':')[0])
+                    const startHour = parseInt(operatingHours.startTime.split(':')[0]) || 9
+                    const isNextDay = slotHour < startHour
                     return (
-                      <option key={slot} value={slot}>{slot}</option>
+                      <option key={slot} value={slot}>
+                        {slot} {isNextDay ? '(隔天)' : ''}
+                      </option>
                     )
                   })}
-                  <option value="05:00">05:00 (隔天)</option>
                 </select>
               </div>
             </div>
