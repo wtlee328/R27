@@ -6,7 +6,7 @@ export function VenueTable({
   onDelete,
 }: {
   rentals: VenueRental[]
-  onDelete: (id: string, cashFlowRecordId: string) => void
+  onDelete?: (id: string, cashFlowRecordId: string) => void
 }) {
   if (rentals.length === 0) {
     return (
@@ -29,7 +29,7 @@ export function VenueTable({
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">承租人名稱</th>
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">金額</th>
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">備註</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
+            {onDelete && <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
@@ -43,18 +43,20 @@ export function VenueTable({
                 NT$ {r.amount.toLocaleString()}
               </td>
               <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
-              <td className="px-5 py-3.5 text-right">
-                <button
-                  className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors"
-                  onClick={() => {
-                    if (window.confirm('確定要刪除這筆場租紀錄嗎？系統將同步刪除關聯的現金流量紀錄。')) {
-                      onDelete(r.id, r.cashFlowRecordId)
-                    }
-                  }}
-                >
-                  刪除
-                </button>
-              </td>
+              {onDelete && (
+                <td className="px-5 py-3.5 text-right">
+                  <button
+                    className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors"
+                    onClick={() => {
+                      if (window.confirm('確定要刪除這筆場租紀錄嗎？系統將同步刪除關聯的現金流量紀錄。')) {
+                        onDelete(r.id, r.cashFlowRecordId)
+                      }
+                    }}
+                  >
+                    刪除
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
