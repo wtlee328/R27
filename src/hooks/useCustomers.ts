@@ -20,6 +20,7 @@ import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { Customer, Contract } from '../types'
 import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import { generateContractNo, nextDailySequence } from '../lib/contractNo'
+import { logActivity } from '../lib/activityLogger'
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -183,6 +184,29 @@ export function useCustomers() {
     }).length
   }, [customers])
 
+  const logCustomerActivity = async (action: 'create' | 'update' | 'delete', recordId: string, clientName: string, newValue?: any, previousValue?: any) => {
+    if (!user) return
+    try {
+      const activeTrainerId = selectedTrainerId || user.uid
+      const trainerSnap = await getDoc(doc(db, 'trainers', activeTrainerId))
+      const trainerName = trainerSnap.exists() ? trainerSnap.data().name : (user.displayName || '教練')
+
+      await logActivity({
+        centerId: centerId as any,
+        trainerId: activeTrainerId,
+        trainerName,
+        action,
+        module: 'customers',
+        recordId,
+        recordSummary: `${action === 'create' ? '新增' : action === 'update' ? '編輯' : '刪除'}學員: ${clientName}`,
+        newValue,
+        previousValue
+      })
+    } catch (err) {
+      console.error('Failed to log customer activity:', err)
+    }
+  }
+
   // ─── Customer Profile Actions ───────────────────────────────
   
   const createCustomerProfile = async (data: CustomerFormValues) => {
@@ -198,12 +222,16 @@ export function useCustomers() {
     }
 
     const docRef = await addDoc(collection(db, 'customers'), newCustomer)
+    await logCustomerActivity('create', docRef.id, data.name, newCustomer)
     await fetchAllData()
     return docRef.id
   }
 
   const updateCustomerProfile = async (id: string, data: CustomerFormValues) => {
     const customerRef = doc(db, 'customers', id)
+    const oldSnap = await getDoc(customerRef)
+    const oldData = oldSnap.exists() ? oldSnap.data() : null
+
     // Strip any fields that don't belong on the customer document
     // (contract, partnerMode, partnerId, partnerCustomerData may leak in from the combined form)
     const { contract, partnerMode, partnerId, partnerCustomerData, ...profileData } = data as any
@@ -214,6 +242,7 @@ export function useCustomers() {
       updatedAt: serverTimestamp(),
     }
     await updateDoc(customerRef, updateData)
+    await logCustomerActivity('update', id, data.name, updateData, oldData)
     await fetchAllData()
   }
 
@@ -379,6 +408,7 @@ export function useCustomers() {
         }
         const partnerDoc = await addDoc(collection(db, 'customers'), partnerCustomer)
         finalPartnerId = partnerDoc.id
+        await logCustomerActivity('create', partnerDoc.id, data.partnerCustomerData.name, partnerCustomer)
       } else if (data.partnerMode === 'existing' && data.partnerId) {
         finalPartnerId = data.partnerId
       }
@@ -419,6 +449,7 @@ export function useCustomers() {
 
       const customerDoc = await addDoc(collection(db, 'customers'), newCustomer)
       const customerId = customerDoc.id
+      await logCustomerActivity('create', customerId, data.name, newCustomer)
 
       // 2. Create or Update Contract
       if (data.bindExistingContractMode && data.existingContractId && existingContractData) {
@@ -483,7 +514,12 @@ export function useCustomers() {
 
   const deleteCustomer = async (id: string) => {
     try {
+      const oldSnap = await getDoc(doc(db, 'customers', id))
+      const oldData = oldSnap.exists() ? oldSnap.data() as Customer : null
+      const clientName = oldData?.name || '未知學員'
+
       await deleteDoc(doc(db, 'customers', id))
+      await logCustomerActivity('delete', id, clientName, undefined, oldData)
       await fetchAllData()
     } catch (err: any) {
       console.error('Error deleting customer:', err)

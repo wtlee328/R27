@@ -235,7 +235,7 @@ export interface VenueBooking {
 
 // ─── Activity Log ──────────────────────────────────────────────
 export type ActivityAction = 'create' | 'update' | 'delete'
-export type ActivityModule = 'lessonRecords' | 'trialRecords' | 'venueBookings'
+export type ActivityModule = 'lessonRecords' | 'trialRecords' | 'venueBookings' | 'customers'
 
 export interface ActivityLog {
   id: string

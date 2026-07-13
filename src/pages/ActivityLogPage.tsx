@@ -98,6 +98,7 @@ export default function ActivityLogPage() {
             <option value="lessonRecords">教練銷課 (Lessons)</option>
             <option value="trialRecords">體驗客 (Trials)</option>
             <option value="venueBookings">場租申請 (Bookings)</option>
+            <option value="customers">學員管理 (Customers)</option>
           </select>
 
           {/* Action Filter */}

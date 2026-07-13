@@ -165,6 +165,7 @@ export const ACTIVITY_MODULE_LABELS: Record<string, string> = {
   lessonRecords: '教練銷課',
   trialRecords: '體驗客',
   venueBookings: '場租申請',
+  customers: '學員管理',
 }
 
 // ─── Default Operating Hours ────────────────────────────────
