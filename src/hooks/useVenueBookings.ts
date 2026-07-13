@@ -97,7 +97,7 @@ export function useVenueBookings() {
     }
   }
 
-  const createBooking = async (data: Omit<VenueBooking, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+  const createBooking = async (data: Omit<VenueBooking, 'id' | 'status' | 'createdAt' | 'updatedAt'> & { status?: BookingStatus }) => {
     if (!user) throw new Error('Not authenticated')
 
     const activeCenterId = user.isSharedTrainerAccount ? (user.centerId || 'r27') : centerId
@@ -105,7 +105,7 @@ export function useVenueBookings() {
     const newBooking = {
       ...data,
       centerId: activeCenterId,
-      status: 'pending' as BookingStatus,
+      status: data.status || ('pending' as BookingStatus),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
