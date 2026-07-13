@@ -44,6 +44,15 @@
       ]
     },
     {
+      "collectionGroup": "trialRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centerId", "order": "ASCENDING" },
+        { "fieldPath": "trainerId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "venueRentals",
       "queryScope": "COLLECTION",
       "fields": [
