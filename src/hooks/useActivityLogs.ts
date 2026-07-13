@@ -21,18 +21,19 @@ export function useActivityLogs() {
       const logsRef = collection(db, 'activityLogs')
       const q = query(
         logsRef,
-        where('centerId', '==', centerId),
         orderBy('timestamp', 'desc'),
-        limit(100) // Show last 100 entries
+        limit(200) // Fetch more to allow in-memory filtering
       )
 
       const querySnapshot = await getDocs(q)
-      const data = querySnapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as ActivityLog[]
+      const data = querySnapshot.docs
+        .map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+        .filter((log: any) => !log.centerId || log.centerId === centerId) as ActivityLog[]
 
-      setLogs(data)
+      setLogs(data.slice(0, 100))
     } catch (err: any) {
       console.error('Error fetching activity logs:', err)
       setError(err.message || '無法載入操作記錄')
