@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   addDoc,
   doc,
   deleteDoc,
@@ -15,6 +16,8 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
+import { useTrainerProfileStore } from '../stores/trainerProfileStore'
+import { logActivity } from '../lib/activityLogger'
 import type { VenueBooking, BookingStatus } from '../types'
 
 export function useVenueBookings() {
@@ -23,6 +26,7 @@ export function useVenueBookings() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
   const { centerId } = useCenterStore()
+  const { selectedTrainerId, selectedTrainerName } = useTrainerProfileStore()
 
   const fetchBookings = useCallback(async () => {
     if (!user) return
@@ -69,6 +73,30 @@ export function useVenueBookings() {
     fetchBookings()
   }, [fetchBookings])
 
+  const logBookingActivity = async (action: 'create' | 'update' | 'delete', recordId: string, summary: string, newValue?: any, previousValue?: any) => {
+    if (!user) return
+    try {
+      const activeCenterId = user.isSharedTrainerAccount ? (user.centerId || 'r27') : centerId
+      
+      let operatorName = selectedTrainerName || user.displayName || '教練'
+      let operatorId = selectedTrainerId || user.uid
+
+      await logActivity({
+        centerId: activeCenterId as any,
+        trainerId: operatorId,
+        trainerName: operatorName,
+        action,
+        module: 'venueBookings',
+        recordId,
+        recordSummary: summary,
+        newValue,
+        previousValue
+      })
+    } catch (err) {
+      console.error('Failed to log booking activity:', err)
+    }
+  }
+
   const createBooking = async (data: Omit<VenueBooking, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
     if (!user) throw new Error('Not authenticated')
 
@@ -84,6 +112,7 @@ export function useVenueBookings() {
 
     try {
       const docRef = await addDoc(collection(db, 'venueBookings'), newBooking)
+      await logBookingActivity('create', docRef.id, `申請預約場地: ${data.trainerName} - ${data.startTime}~${data.endTime}`, newBooking)
       await fetchBookings()
       return docRef.id
     } catch (err: any) {
@@ -95,6 +124,9 @@ export function useVenueBookings() {
   const updateBookingStatus = async (id: string, status: BookingStatus, adminNotes?: string, venueRentalId?: string) => {
     try {
       const docRef = doc(db, 'venueBookings', id)
+      const oldSnap = await getDoc(docRef)
+      const oldData = oldSnap.exists() ? oldSnap.data() as VenueBooking : null
+
       const updateData: any = {
         status,
         updatedAt: serverTimestamp(),
@@ -106,6 +138,19 @@ export function useVenueBookings() {
         updateData.venueRentalId = venueRentalId
       }
       await updateDoc(docRef, updateData)
+
+      const trainerName = oldData?.trainerName || ''
+      const timeStr = oldData ? `${oldData.startTime}~${oldData.endTime}` : ''
+      const actionLabel = status === 'approved' ? '核准' : '駁回'
+      
+      await logBookingActivity(
+        'update',
+        id,
+        `${actionLabel}場地預約: ${trainerName} - ${timeStr}`,
+        updateData,
+        oldData
+      )
+
       await fetchBookings()
     } catch (err: any) {
       console.error('Error updating venue booking status:', err)
@@ -115,7 +160,19 @@ export function useVenueBookings() {
 
   const deleteBooking = async (id: string) => {
     try {
+      const oldSnap = await getDoc(doc(db, 'venueBookings', id))
+      const oldData = oldSnap.exists() ? oldSnap.data() as VenueBooking : null
+      const trainerName = oldData?.trainerName || ''
+      const timeStr = oldData ? `${oldData.startTime}~${oldData.endTime}` : ''
+
       await deleteDoc(doc(db, 'venueBookings', id))
+      await logBookingActivity(
+        'delete',
+        id,
+        `取消場地預約: ${trainerName} - ${timeStr}`,
+        undefined,
+        oldData
+      )
       await fetchBookings()
     } catch (err: any) {
       console.error('Error deleting venue booking:', err)
