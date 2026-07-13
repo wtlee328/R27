@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
-import { TRIAL_OUTCOME_LABELS } from '@/lib/constants'
 
 export default function TrainerTrialsPage() {
   const { trials, loading: trialsLoading, createTrial, updateTrial } = useTrials()
@@ -283,7 +282,7 @@ export default function TrainerTrialsPage() {
           {/* Desktop Table */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_160px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
+            <div className="grid grid-cols-[2fr_1fr_1fr_1.2fr_220px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
               <span>體驗客</span>
               <span>教練</span>
               <span>日期</span>
@@ -297,61 +296,82 @@ export default function TrainerTrialsPage() {
               <div className="divide-y divide-stone-100">
                 {trials.slice(0, 20).map((record) => {
                   const trainerName = trainers.find(t => t.id === record.trialTrainerId)?.name || '未指定教練'
-                  const statusColor =
-                    record.outcome === 'converted'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : record.outcome === 'not_converted'
-                        ? 'bg-stone-100 text-stone-500 border-stone-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200'
+
+                  const statusConfig = record.outcome === 'converted'
+                    ? { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: '已成交' }
+                    : record.outcome === 'not_converted'
+                      ? { dot: 'bg-stone-400', badge: 'bg-stone-100 text-stone-500 border-stone-200', label: '未成交' }
+                      : { dot: 'bg-amber-400', badge: 'bg-amber-50 text-amber-700 border-amber-200', label: '待跟進' }
 
                   return (
-                    <div key={record.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_160px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
+                    <div key={record.id} className="grid grid-cols-[2fr_1fr_1fr_1.2fr_220px] gap-4 px-6 py-4 hover:bg-stone-50/60 transition-colors items-center">
+                      {/* Client name + notes */}
                       <div>
                         <span className="font-bold text-stone-800 text-sm block">{record.clientName}</span>
-                        {record.notes && <p className="text-xs text-stone-400 italic truncate mt-0.5">{record.notes}</p>}
+                        {record.notes && <p className="text-xs text-stone-400 italic truncate mt-0.5 max-w-[180px]">{record.notes}</p>}
                       </div>
-                      <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
-                      <span className="text-sm text-stone-500">{formatTrialDate(record.date)}</span>
+
+                      {/* Trainer badge */}
+                      <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2.5 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
+
+                      {/* Date */}
+                      <span className="text-sm text-stone-500 font-medium">{formatTrialDate(record.date)}</span>
+
+                      {/* Contact */}
                       <div className="space-y-0.5">
                         {record.phone && (
-                          <a href={`tel:${record.phone}`} className="flex items-center gap-1 text-xs text-brand-600 font-semibold hover:underline">
-                            <Phone className="h-3 w-3" />{record.phone}
+                          <a href={`tel:${record.phone}`} className="flex items-center gap-1.5 text-xs text-brand-600 font-semibold hover:underline">
+                            <Phone className="h-3 w-3 shrink-0" />{record.phone}
                           </a>
                         )}
                         {record.email && <p className="text-xs text-stone-400 truncate">{record.email}</p>}
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
-                          {TRIAL_OUTCOME_LABELS[record.outcome]}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setEditingId(record.id)
-                            setClientName(record.clientName)
-                            setPhone(record.phone)
-                            setEmail(record.email || '')
-                            const d = record.date ? format(record.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
-                            setDate(d)
-                            setTrialTrainerId(record.trialTrainerId)
-                            setOutcome(record.outcome)
-                            setNotes(record.notes || '')
-                            setIsAdding(true)
-                          }}
-                          className="flex items-center gap-1 text-[10px] font-bold text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                        >
-                          <Edit2 className="h-3 w-3" />編輯
-                        </button>
+
+                      {/* Status + Actions — redesigned */}
+                      <div className="flex flex-col gap-2">
+                        {/* Row 1: Status badge + Edit button */}
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusConfig.badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+                            {statusConfig.label}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingId(record.id)
+                              setClientName(record.clientName)
+                              setPhone(record.phone)
+                              setEmail(record.email || '')
+                              const d = record.date ? format(record.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                              setDate(d)
+                              setTrialTrainerId(record.trialTrainerId)
+                              setOutcome(record.outcome)
+                              setNotes(record.notes || '')
+                              setIsAdding(true)
+                            }}
+                            title="編輯資料"
+                            className="flex items-center gap-1 text-xs font-semibold text-stone-400 hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 px-2 py-1 rounded-lg transition-all cursor-pointer"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                            <span>編輯</span>
+                          </button>
+                        </div>
+
+                        {/* Row 2: Quick-outcome buttons (only when pending) */}
                         {record.outcome === 'pending' && (
-                          <>
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleUpdateOutcome(record.id, 'converted')}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded-lg transition-colors cursor-pointer"
-                            >已成交</button>
+                              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 py-1.5 rounded-lg transition-all cursor-pointer"
+                            >
+                              ✓ 已成交
+                            </button>
                             <button
                               onClick={() => handleUpdateOutcome(record.id, 'not_converted')}
-                              className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-[10px] px-2 py-1 rounded-lg border border-stone-200 transition-colors cursor-pointer"
-                            >未成交</button>
-                          </>
+                              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-stone-500 bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 px-2 py-1.5 rounded-lg transition-all cursor-pointer"
+                            >
+                              ✕ 未成交
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
