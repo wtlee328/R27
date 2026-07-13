@@ -265,8 +265,8 @@ export default function TrainerVenuePage() {
       {/* ---- Header Section ---- */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-stone-900">場租申請</h1>
-          <p className="text-stone-500 text-xs mt-1">月曆預約空閒場地</p>
+          <h1 className="text-2xl font-black text-stone-900">場租申請</h1>
+          <p className="text-stone-500 text-sm mt-1">月曆預約空閒場地</p>
         </div>
         <Button
           onClick={() => {
@@ -276,7 +276,7 @@ export default function TrainerVenuePage() {
             setEndSlot(timeSlots[1] || '10:00')
             setIsBooking(true)
           }}
-          className="flex items-center gap-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-4 h-10 cursor-pointer font-bold"
+          className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold"
         >
           <Plus className="h-4 w-4" />
           填寫預約單
@@ -340,7 +340,7 @@ export default function TrainerVenuePage() {
                     }
                   }}
                   disabled={isPast}
-                  className={`relative flex flex-col items-center justify-between p-2 h-14 rounded-xl transition-all ${
+                  className={`relative flex flex-col items-center justify-between p-2 h-16 rounded-xl transition-all ${
                     isSelected
                       ? 'bg-brand-500 text-white font-bold shadow-sm shadow-brand-500/20'
                       : isPast
@@ -374,7 +374,7 @@ export default function TrainerVenuePage() {
             <span className="text-[10px] text-stone-400 font-semibold">{selectedDate}</span>
           </div>
 
-          <div className="divide-y divide-stone-100 overflow-y-auto max-h-[450px]">
+          <div className="divide-y divide-stone-100 overflow-y-auto max-h-[560px]">
             {bookingsLoading ? (
               <div className="p-8 text-center text-xs text-stone-400 animate-pulse">載入時段中...</div>
             ) : (

@@ -1,13 +1,13 @@
 import { useState, useMemo } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, User, UserCheck, TrendingUp, AlertCircle, Plus, Search, Check, Info, Phone, Mail, Edit2 } from 'lucide-react'
+import { Calendar, UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent } from '@/components/ui/card'
+
 import { TRIAL_OUTCOME_LABELS } from '@/lib/constants'
 
 export default function TrainerTrialsPage() {
@@ -113,13 +113,13 @@ export default function TrainerTrialsPage() {
       {/* ---- Header Section ---- */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-stone-900">體驗客</h1>
-          <p className="text-stone-500 text-xs mt-1">追蹤體驗課程與轉換狀態</p>
+          <h1 className="text-2xl font-black text-stone-900">體驗客管理</h1>
+          <p className="text-stone-500 text-sm mt-1">追蹤體驗課程與轉換狀態</p>
         </div>
         {!isAdding && (
           <Button
             onClick={() => setIsAdding(true)}
-            className="flex items-center gap-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-4 h-10 cursor-pointer font-bold"
+            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold"
           >
             <Plus className="h-4 w-4" />
             新增體驗客
@@ -128,17 +128,17 @@ export default function TrainerTrialsPage() {
       </div>
 
       {isAdding ? (
-        /* ---- Add Mode ---- */
-        <form onSubmit={handleSubmit} className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm space-y-5">
-          <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-2">
+        /* ---- Add / Edit Mode ---- */
+        <form onSubmit={handleSubmit} className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-1">
             <button
               type="button"
               onClick={handleCancel}
-              className="text-stone-500 hover:text-stone-700 text-xs font-semibold flex items-center gap-0.5 cursor-pointer"
+              className="text-stone-500 hover:text-stone-800 text-sm font-semibold flex items-center gap-1 cursor-pointer transition-colors"
             >
-              ← 返回
+              ← 返回列表
             </button>
-            <span className="text-xs text-stone-400 font-medium">
+            <span className="text-sm text-stone-400 font-medium">
               {editingId ? '編輯體驗客資料' : '填寫體驗客資訊'}
             </span>
           </div>
@@ -181,7 +181,8 @@ export default function TrainerTrialsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 2: Date, Outcome, Trainer */}
+          <div className="grid grid-cols-3 gap-5">
             <div className="space-y-1.5">
               <Label htmlFor="date" className="text-stone-700 font-bold text-xs">體驗日期 *</Label>
               <Input
@@ -206,29 +207,25 @@ export default function TrainerTrialsPage() {
                 <option value="not_converted">未成交 (Not Converted)</option>
               </select>
             </div>
-          </div>
-
-          {/* Select Trainer */}
-          <div className="space-y-1.5">
-            <Label htmlFor="trialTrainerId" className="text-stone-700 font-bold text-xs">體驗課教練 *</Label>
-            {trainersLoading ? (
-              <div className="text-xs text-stone-400">載入教練名單中...</div>
-            ) : (
-              <select
-                id="trialTrainerId"
-                value={trialTrainerId}
-                onChange={(e) => setTrialTrainerId(e.target.value)}
-                required
-                className="w-full bg-white border border-stone-200 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 cursor-pointer font-medium"
-              >
-                <option value="">-- 請選擇體驗課教練 --</option>
-                {trainers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            )}
+            <div className="space-y-1.5">
+              <Label htmlFor="trialTrainerId" className="text-stone-700 font-bold text-xs">體驗課教練 *</Label>
+              {trainersLoading ? (
+                <div className="text-xs text-stone-400">載入教練名單中...</div>
+              ) : (
+                <select
+                  id="trialTrainerId"
+                  value={trialTrainerId}
+                  onChange={(e) => setTrialTrainerId(e.target.value)}
+                  required
+                  className="w-full bg-white border border-stone-200 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 cursor-pointer font-medium"
+                >
+                  <option value="">-- 請選擇體驗課教練 --</option>
+                  {trainers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
@@ -272,67 +269,61 @@ export default function TrainerTrialsPage() {
         </form>
       ) : (
         /* ---- History/List Mode ---- */
-        <div className="space-y-4">
-          <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
-              <UserCheck className="h-4 w-4 text-brand-500" />
-              名單追蹤
-            </h2>
-            <p className="text-[11px] text-stone-500 mt-0.5">顯示本場館近期預約體驗之名單與成交進度</p>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
+                <UserCheck className="h-5 w-5 text-brand-500" />
+                體驗客名單追蹤
+              </h2>
+              <p className="text-stone-500 text-sm mt-0.5">顯示本場館近期體驗名單與成交進度</p>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {trialsLoading ? (
-              <div className="space-y-3">
-                <div className="skeleton h-20 w-full" />
-                <div className="skeleton h-20 w-full" />
-              </div>
-            ) : trials.length > 0 ? (
-              trials.slice(0, 15).map((record) => {
-                const trainerName = trainers.find(t => t.id === record.trialTrainerId)?.name || '未指定教練'
-                
-                const statusColor = 
-                  record.outcome === 'converted'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                    : record.outcome === 'not_converted'
-                      ? 'bg-stone-100 text-stone-600 border-stone-200'
-                      : 'bg-amber-50 text-amber-700 border-amber-100'
+          {/* Desktop Table */}
+          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+            {/* Table Header */}
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_160px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
+              <span>體驗客</span>
+              <span>教練</span>
+              <span>日期</span>
+              <span>聯絡資訊</span>
+              <span>狀態 / 操作</span>
+            </div>
 
-                return (
-                  <Card key={record.id} className="border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-                    <CardContent className="p-4 flex justify-between items-start gap-4">
-                      <div className="space-y-2 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-stone-800 text-sm">{record.clientName}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
-                            {TRIAL_OUTCOME_LABELS[record.outcome]}
-                          </span>
-                        </div>
-                        <div className="space-y-1 text-[11px] text-stone-500">
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3.5 w-3.5 text-stone-400" />
-                              {formatTrialDate(record.date)}
-                            </span>
-                            <span>·</span>
-                            <span>體驗教練: {trainerName}</span>
-                          </div>
-                          {record.phone && (
-                            <a href={`tel:${record.phone}`} className="flex items-center gap-1 text-brand-600 font-semibold hover:underline">
-                              <Phone className="h-3.5 w-3.5" />
-                              {record.phone}
-                            </a>
-                          )}
-                        </div>
-                        {record.notes && (
-                          <p className="text-[11px] text-stone-500 bg-stone-50 border border-stone-100 p-2 rounded-lg italic">
-                            備註: {record.notes}
-                          </p>
-                        )}
+            {trialsLoading ? (
+              <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
+            ) : trials.length > 0 ? (
+              <div className="divide-y divide-stone-100">
+                {trials.slice(0, 20).map((record) => {
+                  const trainerName = trainers.find(t => t.id === record.trialTrainerId)?.name || '未指定教練'
+                  const statusColor =
+                    record.outcome === 'converted'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : record.outcome === 'not_converted'
+                        ? 'bg-stone-100 text-stone-500 border-stone-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+
+                  return (
+                    <div key={record.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_160px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
+                      <div>
+                        <span className="font-bold text-stone-800 text-sm block">{record.clientName}</span>
+                        {record.notes && <p className="text-xs text-stone-400 italic truncate mt-0.5">{record.notes}</p>}
                       </div>
-                      
-                      {/* Outcome Actions & Edit */}
-                      <div className="flex flex-col gap-1.5 shrink-0 items-end">
+                      <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
+                      <span className="text-sm text-stone-500">{formatTrialDate(record.date)}</span>
+                      <div className="space-y-0.5">
+                        {record.phone && (
+                          <a href={`tel:${record.phone}`} className="flex items-center gap-1 text-xs text-brand-600 font-semibold hover:underline">
+                            <Phone className="h-3 w-3" />{record.phone}
+                          </a>
+                        )}
+                        {record.email && <p className="text-xs text-stone-400 truncate">{record.email}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColor}`}>
+                          {TRIAL_OUTCOME_LABELS[record.outcome]}
+                        </span>
                         <button
                           onClick={() => {
                             setEditingId(record.id)
@@ -346,37 +337,29 @@ export default function TrainerTrialsPage() {
                             setNotes(record.notes || '')
                             setIsAdding(true)
                           }}
-                          className="flex items-center gap-1 text-[10px] font-bold text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 px-2 py-1 rounded-lg transition-colors cursor-pointer w-full justify-center"
+                          className="flex items-center gap-1 text-[10px] font-bold text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 px-2 py-1 rounded-lg transition-colors cursor-pointer"
                         >
-                          <Edit2 className="h-3 w-3" />
-                          編輯
+                          <Edit2 className="h-3 w-3" />編輯
                         </button>
-
                         {record.outcome === 'pending' && (
                           <>
                             <button
                               onClick={() => handleUpdateOutcome(record.id, 'converted')}
-                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm transition-colors cursor-pointer w-full text-center"
-                            >
-                              已成交
-                            </button>
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                            >已成交</button>
                             <button
                               onClick={() => handleUpdateOutcome(record.id, 'not_converted')}
-                              className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-[10px] px-2 py-1 rounded-lg transition-colors border border-stone-200 cursor-pointer w-full text-center"
-                            >
-                              未成交
-                            </button>
+                              className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-[10px] px-2 py-1 rounded-lg border border-stone-200 transition-colors cursor-pointer"
+                            >未成交</button>
                           </>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
-            ) : (
-              <div className="text-center py-12 bg-white rounded-2xl border border-stone-200 text-stone-400 text-xs">
-                無體驗名單
+                    </div>
+                  )
+                })}
               </div>
+            ) : (
+              <div className="text-center py-16 text-stone-400 text-sm">尚無體驗名單</div>
             )}
           </div>
         </div>
@@ -384,3 +367,4 @@ export default function TrainerTrialsPage() {
     </div>
   )
 }
+

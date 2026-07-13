@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent } from '@/components/ui/card'
+
 import type { Customer, Contract } from '@/types'
 
 export default function TrainerLessonsPage() {
@@ -158,73 +158,73 @@ export default function TrainerLessonsPage() {
       {/* ---- Header Section ---- */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-stone-900">教練銷課</h1>
-          <p className="text-stone-500 text-xs mt-1">快速為學員紀錄上課堂數</p>
+          <h1 className="text-2xl font-black text-stone-900">教練銷課</h1>
+          <p className="text-stone-500 text-sm mt-1">快速為學員紀錄上課堂數</p>
         </div>
         {!isRecording && (
           <Button
             onClick={() => setIsRecording(true)}
-            className="flex items-center gap-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-4 h-10 cursor-pointer font-bold"
+            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold"
           >
             <Plus className="h-4 w-4" />
-            新增銷課
+            新增銷課紀錄
           </Button>
         )}
       </div>
 
       {isRecording ? (
         /* ---- Recording Mode ---- */
-        <div className="space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-2">
+        <div className="space-y-5">
+          <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-1">
             <button
               onClick={handleBack}
-              className="text-stone-500 hover:text-stone-700 text-xs font-semibold flex items-center gap-0.5 cursor-pointer"
+              className="text-stone-500 hover:text-stone-800 text-sm font-semibold flex items-center gap-1 cursor-pointer transition-colors"
             >
-              ← 返回
+              ← 返回列表
             </button>
-            <span className="text-xs text-stone-400 font-medium">步驟 {step} / 2</span>
+            <span className="text-sm text-stone-400 font-medium bg-stone-100 px-3 py-1 rounded-full">步驟 {step} / 2</span>
           </div>
 
           {step === 1 ? (
             /* ---- Step 1: Select Customer ---- */
-            <div className="space-y-4">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
               <div className="space-y-2">
-                <Label className="text-stone-700 font-bold">搜尋學員 *</Label>
+                <Label className="text-stone-700 font-bold text-sm">搜尋學員 *</Label>
                 <div className="relative">
                   <Input
                     type="text"
                     placeholder="請輸入學員姓名或電話..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="h-11 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20"
+                    className="h-11 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-sm"
                     autoFocus
                   />
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                 </div>
               </div>
 
-              {/* Search Results */}
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {/* Search Results — desktop grid */}
+              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
                 {filteredCustomers.length > 0 ? (
                   filteredCustomers.map((cust) => (
                     <button
                       key={cust.id}
                       onClick={() => handleSelectCustomer(cust)}
-                      className="w-full flex items-center justify-between p-3.5 bg-white border border-stone-200 rounded-xl hover:bg-stone-50 transition-colors text-left cursor-pointer"
+                      className="flex items-center justify-between p-4 bg-stone-50 border border-stone-200 rounded-xl hover:bg-brand-50/30 hover:border-brand-300 transition-colors text-left cursor-pointer"
                     >
                       <div>
-                        <div className="font-semibold text-stone-800 text-sm">{cust.name}</div>
+                        <div className="font-bold text-stone-800 text-sm">{cust.name}</div>
                         <div className="text-xs text-stone-500 mt-0.5">{cust.phone || '無電話資料'}</div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-stone-400" />
                     </button>
                   ))
                 ) : customerSearch.trim() ? (
-                  <div className="text-center py-8 text-stone-400 text-xs">
+                  <div className="col-span-2 text-center py-12 text-stone-400 text-sm">
                     找不到符合「{customerSearch}」的學員
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-stone-400 text-xs">
+                  <div className="col-span-2 text-center py-12 text-stone-400 text-sm">
                     請輸入關鍵字搜尋學員
                   </div>
                 )}
@@ -232,7 +232,7 @@ export default function TrainerLessonsPage() {
             </div>
           ) : (
             /* ---- Step 2: Form Details ---- */
-            <div className="bg-white border border-stone-200 rounded-2xl p-5 shadow-sm space-y-5">
+            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
               <div>
                 <span className="text-[10px] text-stone-400 font-semibold block uppercase tracking-wider">目前學員</span>
                 <span className="text-base font-bold text-stone-800 mt-0.5 block">{selectedCustomer?.name}</span>
@@ -353,8 +353,8 @@ export default function TrainerLessonsPage() {
                 )}
               </div>
 
-              {/* Date & Amount */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Date, Amount & Notes — desktop two-column */}
+              <div className="grid grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="sessionDate" className="text-stone-700 font-bold text-xs">上課日期 *</Label>
                   <Input
@@ -389,7 +389,7 @@ export default function TrainerLessonsPage() {
                   placeholder="可在此輸入課程筆記、學員身體狀況等..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="bg-white border-stone-200 rounded-xl min-h-[80px]"
+                  className="bg-white border-stone-200 rounded-xl min-h-[100px]"
                 />
               </div>
 
@@ -425,62 +425,55 @@ export default function TrainerLessonsPage() {
         </div>
       ) : (
         /* ---- History/List Mode ---- */
-        <div className="space-y-4">
-          <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-stone-800 flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-brand-500" />
-              最近銷課紀錄
-            </h2>
-            <p className="text-[11px] text-stone-500 mt-0.5">顯示本場館近期已扣堂之銷課紀錄</p>
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-brand-500" />
+                最近銷課紀錄
+              </h2>
+              <p className="text-stone-500 text-sm mt-0.5">顯示本場館近期已扣堂之銷課紀錄</p>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {recordsLoading ? (
-              <div className="space-y-3">
-                <div className="skeleton h-20 w-full" />
-                <div className="skeleton h-20 w-full" />
-                <div className="skeleton h-20 w-full" />
-              </div>
-            ) : records.length > 0 ? (
-              records.slice(0, 15).map((record) => {
-                const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '未指定教練'
-                const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
-                  ? record.attendingCustomerNames.join('、')
-                  : record.customerName
+          {/* Desktop Table */}
+          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
+            {/* Table Header */}
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
+              <span>學員</span>
+              <span>教練</span>
+              <span>日期</span>
+              <span>備註</span>
+              <span className="text-right">扣堂數</span>
+            </div>
 
-                return (
-                  <Card key={record.id} className="border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-                    <CardContent className="p-4 flex justify-between items-start gap-4">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-stone-800 text-sm">{attendingNames}</span>
-                          <span className="text-[10px] bg-stone-100 text-stone-600 font-semibold px-2 py-0.5 rounded-full">
-                            {trainerName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[10px] text-stone-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-stone-400" />
-                            {formatRecordDate(record.sessionDate)}
-                          </span>
-                        </div>
-                        {record.notes && (
-                          <p className="text-[11px] text-stone-500 bg-stone-50 border border-stone-100 p-2 rounded-lg italic">
-                            備註: {record.notes}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs text-stone-400 font-medium block">扣</span>
-                        <span className="text-lg font-black text-brand-600 block">-{record.sessionAmount} <span className="text-xs font-semibold text-stone-500">堂</span></span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
+            {recordsLoading ? (
+              <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
+            ) : records.length > 0 ? (
+              <div className="divide-y divide-stone-100">
+                {records.slice(0, 20).map((record) => {
+                  const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '未指定教練'
+                  const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
+                    ? record.attendingCustomerNames.join('、')
+                    : record.customerName
+
+                  return (
+                    <div key={record.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_80px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
+                      <span className="font-semibold text-stone-800 text-sm truncate">{attendingNames}</span>
+                      <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
+                      <span className="text-sm text-stone-500 flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-stone-400" />
+                        {formatRecordDate(record.sessionDate)}
+                      </span>
+                      <span className="text-xs text-stone-400 italic truncate">{record.notes || '—'}</span>
+                      <span className="text-right font-black text-brand-600 text-base">-{record.sessionAmount}<span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span></span>
+                    </div>
+                  )
+                })}
+              </div>
             ) : (
-              <div className="text-center py-12 bg-white rounded-2xl border border-stone-200 text-stone-400 text-xs">
-                無銷課紀錄
+              <div className="text-center py-16 text-stone-400 text-sm">
+                尚無銷課紀錄
               </div>
             )}
           </div>
