@@ -9,12 +9,14 @@ import { CustomerDetailsModal } from '../components/customers/CustomerDetailsMod
 import { ContractFormModal } from '../components/customers/ContractFormModal'
 import { InstallmentManagerModal } from '../components/customers/InstallmentManagerModal'
 import { useCustomers } from '../hooks/useCustomers'
+import { useTrainers } from '../hooks/useTrainers'
 import type { CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import type { Customer, Contract } from '../types'
 
 type FilterType = 'all' | 'active' | 'expiring' | 'birthday' | 'pending_collection'
 
 export default function CustomersPage() {
+  const { trainers } = useTrainers()
   const { 
     customers, 
     contracts,
@@ -324,6 +326,7 @@ export default function CustomersPage() {
               customers={filteredCustomers} 
               contracts={contracts}
               onView={handleViewDetails}
+              trainers={trainers}
             />
           )}
         </div>

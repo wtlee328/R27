@@ -10,12 +10,15 @@ export function CustomerTable({
   customers,
   contracts,
   onView,
+  trainers,
 }: { 
   customers: Customer[] 
   contracts: Contract[]
   onView: (customer: Customer) => void
+  trainers?: any[]
 }) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedTrainerId, setSelectedTrainerId] = useState('all')
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
   const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
 
@@ -49,7 +52,12 @@ export function CustomerTable({
       c.phone.includes(searchTerm)
     )
 
-    // 2. Active contract status filter
+    // 2. Trainer filter
+    if (trainers && selectedTrainerId !== 'all') {
+      result = result.filter(c => c.trainerId === selectedTrainerId)
+    }
+
+    // 3. Active contract status filter
     if (filterType === 'has-active') {
       result = result.filter(c => {
         return contracts.some(con => 
@@ -115,7 +123,7 @@ export function CustomerTable({
     }
 
     return result
-  }, [customers, contracts, searchTerm, filterType, sortBy, getCustomerActiveContract, getCustomerLatestContract])
+  }, [customers, contracts, searchTerm, filterType, sortBy, getCustomerActiveContract, getCustomerLatestContract, trainers, selectedTrainerId])
 
   if (customers.length === 0) {
     return (
@@ -144,6 +152,25 @@ export function CustomerTable({
         </div>
 
         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-end">
+          {/* Trainer Filter */}
+          {trainers && trainers.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-400 font-bold shrink-0">指派教練</span>
+              <select
+                value={selectedTrainerId}
+                onChange={(e) => setSelectedTrainerId(e.target.value)}
+                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm"
+              >
+                <option value="all">全部教練</option>
+                {trainers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Filter Dropdown */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-stone-400 font-bold shrink-0">篩選合約</span>
