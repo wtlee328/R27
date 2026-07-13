@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
+import { UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
 import { Button } from '@/components/ui/button'
@@ -87,13 +87,6 @@ export default function TrainerTrialsPage() {
     }
   }
 
-  const handleUpdateOutcome = async (id: string, newOutcome: 'pending' | 'converted' | 'not_converted') => {
-    try {
-      await updateTrial(id, { outcome: newOutcome })
-    } catch (err) {
-      console.error('Error updating outcome:', err)
-    }
-  }
 
   const formatTrialDate = (timestamp: any) => {
     if (!timestamp) return ''
@@ -327,52 +320,31 @@ export default function TrainerTrialsPage() {
                         {record.email && <p className="text-xs text-stone-400 truncate">{record.email}</p>}
                       </div>
 
-                      {/* Status + Actions — redesigned */}
-                      <div className="flex flex-col gap-2">
-                        {/* Row 1: Status badge + Edit button */}
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusConfig.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
-                            {statusConfig.label}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setEditingId(record.id)
-                              setClientName(record.clientName)
-                              setPhone(record.phone)
-                              setEmail(record.email || '')
-                              const d = record.date ? format(record.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
-                              setDate(d)
-                              setTrialTrainerId(record.trialTrainerId)
-                              setOutcome(record.outcome)
-                              setNotes(record.notes || '')
-                              setIsAdding(true)
-                            }}
-                            title="編輯資料"
-                            className="flex items-center gap-1 text-xs font-semibold text-stone-400 hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 px-2 py-1 rounded-lg transition-all cursor-pointer"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                            <span>編輯</span>
-                          </button>
-                        </div>
-
-                        {/* Row 2: Quick-outcome buttons (only when pending) */}
-                        {record.outcome === 'pending' && (
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleUpdateOutcome(record.id, 'converted')}
-                              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 px-2 py-1.5 rounded-lg transition-all cursor-pointer"
-                            >
-                              ✓ 已成交
-                            </button>
-                            <button
-                              onClick={() => handleUpdateOutcome(record.id, 'not_converted')}
-                              className="flex-1 flex items-center justify-center gap-1 text-xs font-bold text-stone-500 bg-stone-50 hover:bg-stone-100 border border-stone-200 hover:border-stone-300 px-2 py-1.5 rounded-lg transition-all cursor-pointer"
-                            >
-                              ✕ 未成交
-                            </button>
-                          </div>
-                        )}
+                      {/* Status + Actions */}
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${statusConfig.badge}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`} />
+                          {statusConfig.label}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingId(record.id)
+                            setClientName(record.clientName)
+                            setPhone(record.phone)
+                            setEmail(record.email || '')
+                            const d = record.date ? format(record.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                            setDate(d)
+                            setTrialTrainerId(record.trialTrainerId)
+                            setOutcome(record.outcome)
+                            setNotes(record.notes || '')
+                            setIsAdding(true)
+                          }}
+                          title="編輯資料"
+                          className="flex items-center gap-1 text-xs font-semibold text-stone-400 hover:text-stone-700 hover:bg-stone-100 border border-transparent hover:border-stone-200 px-2 py-1 rounded-lg transition-all cursor-pointer"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                          <span>編輯</span>
+                        </button>
                       </div>
                     </div>
                   )
