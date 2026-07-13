@@ -6,7 +6,6 @@ import { VenueTable } from '../components/venue/VenueTable'
 import { VenueFormModal } from '../components/venue/VenueFormModal'
 import { useVenueRentals } from '../hooks/useVenueRentals'
 import { useVenueBookings } from '../hooks/useVenueBookings'
-import type { VenueRentalFormValues } from '../lib/validators'
 import { 
   format,
   startOfDay, 
@@ -56,7 +55,7 @@ function generateTimeSlots(startHourStr: string, endHourStr: string) {
 
 export default function VenuePage() {
   const { rentals, loading: rentalsLoading, createRental, deleteRental } = useVenueRentals()
-  const { bookings, loading: bookingsLoading, updateBookingStatus } = useVenueBookings()
+  const { bookings, loading: bookingsLoading, createBooking, updateBookingStatus } = useVenueBookings()
 
   const { centerId } = useCenterStore()
   const [activeTab, setActiveTab] = useState<'calendar' | 'bookings' | 'rentals'>('calendar')
@@ -102,8 +101,38 @@ export default function VenuePage() {
   const [rejectionNotes, setRejectionNotes] = useState('')
   const [rejectionLoading, setRejectionLoading] = useState(false)
 
-  const handleCreateRental = async (data: VenueRentalFormValues) => {
-    await createRental(data)
+  const handleCreateRental = async (data: {
+    trainerId: string
+    trainerName: string
+    date: Date
+    startTime: string
+    endTime: string
+    renterName: string
+    purpose: string
+    amount: number
+  }) => {
+    // 1. Create rental record
+    const rentalId = await createRental({
+      date: data.date,
+      amount: data.amount,
+      notes: data.purpose,
+      renterName: data.renterName || data.trainerName,
+      renterTrainerId: data.trainerId,
+      selectedRenterCustomerId: '',
+    })
+
+    // 2. Create booking record (pre-approved)
+    await createBooking({
+      trainerId: data.trainerId,
+      trainerName: data.trainerName,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      purpose: data.purpose,
+      renterName: data.renterName,
+      status: 'approved',
+      venueRentalId: rentalId,
+    })
   }
 
   // Open Approval Modal
@@ -623,6 +652,8 @@ export default function VenuePage() {
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSubmit={handleCreateRental}
+        bookings={bookings}
+        initialDate={selectedDate}
       />
 
       {/* Approve Booking Dialog */}
