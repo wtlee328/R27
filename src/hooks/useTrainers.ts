@@ -38,6 +38,20 @@ export function useTrainers() {
     setError(null)
     try {
       const trainersRef = collection(db, 'trainers')
+
+      if (user?.role === 'trainer') {
+        const trainersSnap = await getDocs(query(trainersRef, where('centerId', '==', activeCenterId)))
+        const trainersList = trainersSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          systemLessons: 0,
+          totalUsedLessons: 0,
+        })) as TrainerWithMetrics[]
+        setTrainers(trainersList)
+        setLoading(false)
+        return
+      }
+
       const customersRef = collection(db, 'customers')
       const contractsRef = collection(db, 'contracts')
       const lessonRecordsRef = collection(db, 'lessonRecords')
