@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, User, UserCheck, TrendingUp, AlertCircle, Plus, Search, Check, Info, Phone, Mail } from 'lucide-react'
+import { Calendar, User, UserCheck, TrendingUp, AlertCircle, Plus, Search, Check, Info, Phone, Mail, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ export default function TrainerTrialsPage() {
   const { trainers, loading: trainersLoading } = useTrainers()
 
   const [isAdding, setIsAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   // Form states
   const [clientName, setClientName] = useState('')
@@ -30,6 +31,7 @@ export default function TrainerTrialsPage() {
 
   const handleCancel = () => {
     setIsAdding(false)
+    setEditingId(null)
     setClientName('')
     setPhone('')
     setEmail('')
@@ -50,23 +52,37 @@ export default function TrainerTrialsPage() {
     setSubmitting(true)
     setSubmitError(null)
 
+    const parsedDate = (() => {
+      const [y, m, d] = date.split('-').map(Number)
+      return new Date(y, m - 1, d)
+    })()
+
     try {
-      await createTrial({
-        clientName,
-        phone,
-        email,
-        date: (() => {
-          const [y, m, d] = date.split('-').map(Number)
-          return new Date(y, m - 1, d)
-        })(),
-        trialTrainerId,
-        outcome,
-        notes,
-      })
+      if (editingId) {
+        await updateTrial(editingId, {
+          clientName,
+          phone,
+          email,
+          date: parsedDate,
+          trialTrainerId,
+          outcome,
+          notes,
+        })
+      } else {
+        await createTrial({
+          clientName,
+          phone,
+          email,
+          date: parsedDate,
+          trialTrainerId,
+          outcome,
+          notes,
+        })
+      }
       handleCancel()
     } catch (err: any) {
       console.error(err)
-      setSubmitError(err.message || '新增體驗客失敗')
+      setSubmitError(err.message || '儲存體驗客失敗')
     } finally {
       setSubmitting(false)
     }
@@ -122,7 +138,9 @@ export default function TrainerTrialsPage() {
             >
               ← 返回
             </button>
-            <span className="text-xs text-stone-400 font-medium">填寫體驗客資訊</span>
+            <span className="text-xs text-stone-400 font-medium">
+              {editingId ? '編輯體驗客資料' : '填寫體驗客資訊'}
+            </span>
           </div>
 
           <div className="space-y-1.5">
@@ -248,7 +266,7 @@ export default function TrainerTrialsPage() {
               className="flex-1 h-11 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold cursor-pointer"
               disabled={submitting || !trialTrainerId}
             >
-              {submitting ? '儲存中...' : '確認新增'}
+              {submitting ? '儲存中...' : (editingId ? '確認儲存' : '確認新增')}
             </Button>
           </div>
         </form>
@@ -313,23 +331,44 @@ export default function TrainerTrialsPage() {
                         )}
                       </div>
                       
-                      {/* Outcome Actions */}
-                      {record.outcome === 'pending' && (
-                        <div className="flex flex-col gap-2 shrink-0">
-                          <button
-                            onClick={() => handleUpdateOutcome(record.id, 'converted')}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] px-2.5 py-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
-                          >
-                            已成交
-                          </button>
-                          <button
-                            onClick={() => handleUpdateOutcome(record.id, 'not_converted')}
-                            className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-[10px] px-2.5 py-1.5 rounded-lg transition-colors border border-stone-200 cursor-pointer"
-                          >
-                            未成交
-                          </button>
-                        </div>
-                      )}
+                      {/* Outcome Actions & Edit */}
+                      <div className="flex flex-col gap-1.5 shrink-0 items-end">
+                        <button
+                          onClick={() => {
+                            setEditingId(record.id)
+                            setClientName(record.clientName)
+                            setPhone(record.phone)
+                            setEmail(record.email || '')
+                            const d = record.date ? format(record.date.toDate(), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                            setDate(d)
+                            setTrialTrainerId(record.trialTrainerId)
+                            setOutcome(record.outcome)
+                            setNotes(record.notes || '')
+                            setIsAdding(true)
+                          }}
+                          className="flex items-center gap-1 text-[10px] font-bold text-stone-500 hover:text-stone-700 bg-stone-50 hover:bg-stone-100 border border-stone-200 px-2 py-1 rounded-lg transition-colors cursor-pointer w-full justify-center"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          編輯
+                        </button>
+
+                        {record.outcome === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleUpdateOutcome(record.id, 'converted')}
+                              className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-[10px] px-2 py-1 rounded-lg shadow-sm transition-colors cursor-pointer w-full text-center"
+                            >
+                              已成交
+                            </button>
+                            <button
+                              onClick={() => handleUpdateOutcome(record.id, 'not_converted')}
+                              className="bg-stone-100 hover:bg-stone-200 text-stone-600 font-bold text-[10px] px-2 py-1 rounded-lg transition-colors border border-stone-200 cursor-pointer w-full text-center"
+                            >
+                              未成交
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 )
