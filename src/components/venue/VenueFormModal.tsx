@@ -14,15 +14,17 @@ import { Label } from '../ui/label'
 import { Textarea } from '../ui/textarea'
 import { useTrainers } from '../../hooks/useTrainers'
 import { venueRentalFormSchema, type VenueRentalFormValues } from '../../lib/validators'
+import type { VenueRental } from '../../types'
 
 interface VenueFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (data: VenueRentalFormValues) => Promise<void>
   initialDate?: string // e.g. "2026-07-13"
+  initialData?: VenueRental | null
 }
 
-export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate }: VenueFormModalProps) {
+export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, initialData }: VenueFormModalProps) {
   const [loading, setLoading] = useState(false)
   const { trainers, loading: trainersLoading } = useTrainers()
   
@@ -39,20 +41,41 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate }: Ve
     },
   })
 
-  // Sync initialDate when opening
+  // Sync initialData or initialDate when opening
   useEffect(() => {
     if (open) {
-      form.reset({
-        renterTrainerId: '',
-        selectedRenterCustomerId: '',
-        newRenterCustomerName: '',
-        renterName: '',
-        date: (initialDate ? new Date(initialDate + 'T12:00:00') : new Date()) as any,
-        amount: 500,
-        notes: '',
-      })
+      if (initialData) {
+        // Extract external renter name if stored in format: "TrainerName - RenterName"
+        let extName = ''
+        if (initialData.renterName) {
+          const parts = initialData.renterName.split(' - ')
+          if (parts.length > 1) {
+            extName = parts.slice(1).join(' - ')
+          }
+        }
+
+        form.reset({
+          renterTrainerId: initialData.renterTrainerId || '',
+          selectedRenterCustomerId: initialData.renterCustomerId || '',
+          newRenterCustomerName: extName,
+          renterName: initialData.renterName || '',
+          date: (initialData.date ? initialData.date.toDate() : new Date()) as any,
+          amount: initialData.amount ?? 500,
+          notes: initialData.notes || '',
+        })
+      } else {
+        form.reset({
+          renterTrainerId: '',
+          selectedRenterCustomerId: '',
+          newRenterCustomerName: '',
+          renterName: '',
+          date: (initialDate ? new Date(initialDate + 'T12:00:00') : new Date()) as any,
+          amount: 500,
+          notes: '',
+        })
+      }
     }
-  }, [open, initialDate, form])
+  }, [open, initialData, initialDate, form])
 
   const handleSubmit = async (data: VenueRentalFormValues) => {
     setLoading(true)
@@ -85,13 +108,17 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate }: Ve
     return dateObj.toISOString().split('T')[0]
   }
 
+  const isEditMode = !!initialData
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-6 bg-white rounded-2xl border-none shadow-2xl">
         <DialogHeader className="border-b border-stone-100 pb-3 mb-2">
-          <DialogTitle className="text-base font-bold text-stone-800">填寫場租預約</DialogTitle>
+          <DialogTitle className="text-base font-bold text-stone-800">
+            {isEditMode ? '編輯場租紀錄' : '填寫場租預約'}
+          </DialogTitle>
           <DialogDescription className="text-xs text-stone-400 font-medium">
-            建立後，系統將自動於現金流量表產生對應的場租收入。
+            {isEditMode ? '修改此場租紀錄的資料與收費明細。' : '建立後，系統將自動於現金流量表產生對應的場租收入。'}
           </DialogDescription>
         </DialogHeader>
 
@@ -193,7 +220,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate }: Ve
               className="flex-1 h-10 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold cursor-pointer"
               disabled={loading}
             >
-              {loading ? '儲存中...' : '確認新增'}
+              {loading ? '儲存中...' : (isEditMode ? '儲存變更' : '確認新增')}
             </Button>
           </div>
         </form>

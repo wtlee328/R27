@@ -5,14 +5,21 @@ import { StatCard } from '../components/shared/StatCard'
 import { VenueTable } from '../components/venue/VenueTable'
 import { VenueFormModal } from '../components/venue/VenueFormModal'
 import { useVenueRentals } from '../hooks/useVenueRentals'
+import { useTrainers } from '../hooks/useTrainers'
 import { format } from 'date-fns'
+import type { VenueRental } from '../types'
 
 export default function VenuePage() {
-  const { rentals, loading, createRental, deleteRental } = useVenueRentals()
+  const { rentals, loading, createRental, updateRental, deleteRental } = useVenueRentals()
+  const { trainers } = useTrainers()
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedRental, setSelectedRental] = useState<VenueRental | null>(null)
+  
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     return format(new Date(), 'yyyy/MM')
   })
+  const [selectedTrainerId, setSelectedTrainerId] = useState<string>('')
 
   // Generate month options dynamically from rentals
   const monthOptions = useMemo(() => {
@@ -29,14 +36,23 @@ export default function VenuePage() {
     return Array.from(monthsSet).sort().reverse()
   }, [rentals])
 
-  // Filter rentals by selected month
+  // Filter rentals by selected month and trainer
   const filteredRentals = useMemo(() => {
-    if (selectedMonth === 'all') return rentals
-    return rentals.filter((r) => {
-      const d = r.date?.toDate()
-      return d && format(d, 'yyyy/MM') === selectedMonth
-    })
-  }, [rentals, selectedMonth])
+    let list = rentals
+    
+    if (selectedMonth !== 'all') {
+      list = list.filter((r) => {
+        const d = r.date?.toDate()
+        return d && format(d, 'yyyy/MM') === selectedMonth
+      })
+    }
+
+    if (selectedTrainerId) {
+      list = list.filter((r) => r.renterTrainerId === selectedTrainerId)
+    }
+
+    return list
+  }, [rentals, selectedMonth, selectedTrainerId])
 
   // Calculate statistics
   const totalIncomeSelectedMonth = useMemo(() => {
@@ -44,11 +60,24 @@ export default function VenuePage() {
   }, [filteredRentals])
 
   const totalIncomeAllTime = useMemo(() => {
-    return rentals.reduce((sum, r) => sum + r.amount, 0)
-  }, [rentals])
+    // If a trainer is selected, sum only that trainer's rentals. Otherwise sum all.
+    const subset = selectedTrainerId 
+      ? rentals.filter(r => r.renterTrainerId === selectedTrainerId)
+      : rentals
+    return subset.reduce((sum, r) => sum + r.amount, 0)
+  }, [rentals, selectedTrainerId])
 
-  const handleCreateRental = async (data: any) => {
-    await createRental(data)
+  const handleFormSubmit = async (data: any) => {
+    if (selectedRental) {
+      await updateRental(selectedRental.id, data)
+    } else {
+      await createRental(data)
+    }
+  }
+
+  const handleRowClick = (rental: VenueRental) => {
+    setSelectedRental(rental)
+    setIsModalOpen(true)
   }
 
   return (
@@ -63,8 +92,11 @@ export default function VenuePage() {
           <p className="text-stone-500 font-medium mt-2">記錄與統計場租收入明細，系統會自動同步至金流對帳表</p>
         </div>
         <Button 
-          onClick={() => setIsModalOpen(true)} 
-          className="rounded-full px-8 bg-stone-950 hover:bg-stone-800 shadow-lg shadow-stone-200"
+          onClick={() => {
+            setSelectedRental(null)
+            setIsModalOpen(true)
+          }} 
+          className="rounded-full px-8 bg-stone-950 hover:bg-stone-800 shadow-lg shadow-stone-200 cursor-pointer font-bold h-10 inline-flex items-center"
         >
           <PlusCircle className="w-4 h-4 mr-2" /> 新增場租紀錄
         </Button>
@@ -80,7 +112,7 @@ export default function VenuePage() {
           iconBg="bg-emerald-50"
         />
         <StatCard 
-          title="歷年總收入累計" 
+          title={selectedTrainerId ? '該教練歷年總收入累計' : '歷年總收入累計'} 
           value={`NT$ ${totalIncomeAllTime.toLocaleString()}`} 
           icon={Database}
           iconColor="text-blue-600"
@@ -90,21 +122,39 @@ export default function VenuePage() {
 
       {/* Main List Section */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-stone-100 pb-4">
           <h2 className="text-lg font-bold text-stone-900">場租收費明細</h2>
           
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
-            >
-              <option value="all">全部月份</option>
-              {monthOptions.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Trainer Filter Select */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-400 font-bold shrink-0">篩選教練</span>
+              <select
+                value={selectedTrainerId}
+                onChange={(e) => setSelectedTrainerId(e.target.value)}
+                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
+              >
+                <option value="">全部教練</option>
+                {trainers.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Month Filter Select */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
+              >
+                <option value="all">全部月份</option>
+                {monthOptions.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -116,15 +166,17 @@ export default function VenuePage() {
           <VenueTable 
             rentals={filteredRentals} 
             onDelete={deleteRental}
+            onRowClick={handleRowClick}
           />
         )}
       </div>
 
-      {/* Add Rental Modal */}
+      {/* Add / Edit Rental Modal */}
       <VenueFormModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={handleCreateRental}
+        onSubmit={handleFormSubmit}
+        initialData={selectedRental}
       />
     </div>
   )

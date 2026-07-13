@@ -6,10 +6,13 @@ import { VenueTable } from '@/components/venue/VenueTable'
 import { VenueFormModal } from '@/components/venue/VenueFormModal'
 import { useVenueRentals } from '@/hooks/useVenueRentals'
 import { format } from 'date-fns'
+import type { VenueRental } from '@/types'
 
 export default function TrainerVenuePage() {
-  const { rentals, loading, createRental } = useVenueRentals()
+  const { rentals, loading, createRental, updateRental } = useVenueRentals()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedRental, setSelectedRental] = useState<VenueRental | null>(null)
+  
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     return format(new Date(), 'yyyy/MM')
   })
@@ -47,8 +50,17 @@ export default function TrainerVenuePage() {
     return rentals.reduce((sum, r) => sum + r.amount, 0)
   }, [rentals])
 
-  const handleCreateRental = async (data: any) => {
-    await createRental(data)
+  const handleFormSubmit = async (data: any) => {
+    if (selectedRental) {
+      await updateRental(selectedRental.id, data)
+    } else {
+      await createRental(data)
+    }
+  }
+
+  const handleRowClick = (rental: VenueRental) => {
+    setSelectedRental(rental)
+    setIsModalOpen(true)
   }
 
   return (
@@ -63,8 +75,11 @@ export default function TrainerVenuePage() {
           <p className="text-stone-500 font-medium mt-2">記錄與查看您的場租預約與收費明細</p>
         </div>
         <Button 
-          onClick={() => setIsModalOpen(true)} 
-          className="rounded-full px-8 bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-100 font-bold cursor-pointer"
+          onClick={() => {
+            setSelectedRental(null)
+            setIsModalOpen(true)
+          }} 
+          className="rounded-full px-8 bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-100 font-bold cursor-pointer h-10 inline-flex items-center"
         >
           <Plus className="w-4 h-4 mr-2" /> 填寫預約場租
         </Button>
@@ -115,16 +130,18 @@ export default function TrainerVenuePage() {
         ) : (
           <VenueTable 
             rentals={filteredRentals}
+            onRowClick={handleRowClick}
             // Do not pass onDelete so trainers cannot delete rentals
           />
         )}
       </div>
 
-      {/* Add Rental Modal */}
+      {/* Add / Edit Rental Modal */}
       <VenueFormModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={handleCreateRental}
+        onSubmit={handleFormSubmit}
+        initialData={selectedRental}
       />
     </div>
   )
