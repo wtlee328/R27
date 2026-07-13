@@ -1,4 +1,4 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { db, auth } from './firebase'
 import type { ActivityAction, ActivityModule } from '@/types'
 
@@ -15,8 +15,25 @@ export async function logActivity(params: {
 }) {
   try {
     const authUid = auth.currentUser?.uid || ''
+    let operatorName = params.trainerName
+    let operatorTrainerId = params.trainerId
+
+    if (authUid) {
+      const userSnap = await getDoc(doc(db, 'users', authUid))
+      if (userSnap.exists()) {
+        const userData = userSnap.data()
+        if (userData.role === 'admin') {
+          const adminIdentifier = userData.displayName || userData.email || auth.currentUser?.email || '管理員'
+          operatorName = `${adminIdentifier} (管理員)`
+          operatorTrainerId = authUid
+        }
+      }
+    }
+
     await addDoc(collection(db, 'activityLogs'), {
       ...params,
+      trainerName: operatorName,
+      trainerId: operatorTrainerId,
       trainerAuthUid: authUid,
       timestamp: serverTimestamp(),
     })
