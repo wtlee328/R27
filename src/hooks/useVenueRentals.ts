@@ -144,6 +144,64 @@ export function useVenueRentals() {
     }
   }
 
+  const updateRental = async (id: string, data: VenueRentalFormValues) => {
+    try {
+      const rentalRef = doc(db, 'venueRentals', id)
+      const oldSnap = await getDoc(rentalRef)
+      if (!oldSnap.exists()) throw new Error('Rental record not found')
+      const oldData = oldSnap.data() as VenueRental
+
+      const batch = writeBatch(db)
+
+      const trainerSnap = await getDoc(doc(db, 'trainers', data.renterTrainerId))
+      const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
+
+      let finalRenterName = trainerName
+      if (data.newRenterCustomerName && data.newRenterCustomerName.trim() !== '') {
+        finalRenterName = `${trainerName} - ${data.newRenterCustomerName.trim()}`
+      }
+
+      const rentalUpdate: any = {
+        date: Timestamp.fromDate(data.date),
+        amount: data.amount,
+        notes: data.notes || '',
+        renterName: finalRenterName,
+        renterTrainerId: data.renterTrainerId,
+        renterCustomerId: data.selectedRenterCustomerId || '',
+        updatedAt: serverTimestamp(),
+      }
+
+      batch.update(rentalRef, rentalUpdate)
+
+      if (oldData?.cashFlowRecordId) {
+        const cashFlowUpdate = {
+          date: Timestamp.fromDate(data.date),
+          debitAmount: data.amount,
+          creditAmount: data.amount,
+          description: `場租收入 - ${finalRenterName}`,
+          notes: data.notes || '',
+          updatedAt: serverTimestamp(),
+        }
+        batch.update(doc(db, 'cashFlowRecords', oldData.cashFlowRecordId), cashFlowUpdate)
+      }
+
+      await batch.commit()
+
+      await logRentalActivity(
+        'update',
+        id,
+        `編輯場租紀錄: ${finalRenterName} - NT$ ${data.amount}`,
+        rentalUpdate,
+        oldData
+      )
+
+      await fetchRentals()
+    } catch (err: any) {
+      console.error('Error updating venue rental:', err)
+      throw err
+    }
+  }
+
   const deleteRental = async (id: string, cashFlowRecordId: string) => {
     const batch = writeBatch(db)
     batch.delete(doc(db, 'venueRentals', id))
@@ -171,6 +229,7 @@ export function useVenueRentals() {
     loading,
     error,
     createRental,
+    updateRental,
     deleteRental,
     refresh: fetchRentals,
   }
