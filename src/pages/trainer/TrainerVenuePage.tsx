@@ -74,7 +74,8 @@ export default function TrainerVenuePage() {
     if (!config || !config[center]) return defaultHours
 
     // Selected date day of week (0 is Sunday, 1 is Monday, ..., 6 is Saturday)
-    const dayOfWeek = parseISO(selectedDate).getDay()
+    const [y, m, d] = selectedDate.split('-').map(Number)
+    const dayOfWeek = new Date(y, m - 1, d).getDay()
     const dayStr = String(dayOfWeek)
 
     if (config[center][dayStr]) {
@@ -154,7 +155,8 @@ export default function TrainerVenuePage() {
     const [slotHour, slotMin] = slotStr.split(':').map(Number)
     
     // Operational hours midnight overflow helper (e.g. 00:00 - 05:00 is next day calendar-wise)
-    const slotDate = new Date(dateStr)
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const slotDate = new Date(y, m - 1, d)
     if (slotHour < 9) {
       slotDate.setDate(slotDate.getDate() + 1)
     }
@@ -214,7 +216,10 @@ export default function TrainerVenuePage() {
       await createBooking({
         trainerId: selectedTrainerId,
         trainerName,
-        date: new Date(selectedDate),
+        date: (() => {
+          const [y, m, d] = selectedDate.split('-').map(Number)
+          return new Date(y, m - 1, d)
+        })(),
         startTime: startSlot,
         endTime: endSlot,
         purpose,

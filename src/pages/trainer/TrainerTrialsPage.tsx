@@ -55,7 +55,10 @@ export default function TrainerTrialsPage() {
         clientName,
         phone,
         email,
-        date: new Date(date),
+        date: (() => {
+          const [y, m, d] = date.split('-').map(Number)
+          return new Date(y, m - 1, d)
+        })(),
         trialTrainerId,
         outcome,
         notes,

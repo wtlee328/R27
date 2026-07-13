@@ -117,7 +117,10 @@ export default function TrainerLessonsPage() {
         customerName: selectedCustomer?.name || '',
         contractId: selectedContractId,
         trainerId: selectedTrainerId,
-        sessionDate: new Date(sessionDate),
+        sessionDate: (() => {
+          const [y, m, d] = sessionDate.split('-').map(Number)
+          return new Date(y, m - 1, d)
+        })(),
         sessionAmount,
         notes,
         attendingCustomerIds,
