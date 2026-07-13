@@ -44,6 +44,15 @@
       ]
     },
     {
+      "collectionGroup": "lessonRecords",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centerId", "order": "ASCENDING" },
+        { "fieldPath": "contractTrainerId", "order": "ASCENDING" },
+        { "fieldPath": "sessionDate", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cashFlowRecords",
       "queryScope": "COLLECTION",
       "fields": [
