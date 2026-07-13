@@ -14,16 +14,13 @@ service cloud.firestore {
 
     function isTrainer() {
       return isAuthenticated() &&
-             request.auth.token.role == 'trainer';
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer';
     }
 
-    function isOwner(trainerId) {
-      return isAuthenticated() &&
-             request.auth.uid == trainerId;
-    }
-
-    function isOwnerOrAdmin(trainerId) {
-      return isAdmin() || isOwner(trainerId);
+    function hasAccess(centerId) {
+      return isAdmin() || 
+             (isTrainer() && 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId == centerId);
     }
 
     // Users collection
@@ -40,59 +37,47 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Customers — trainer sees own, admin sees all
-    // read is open to all authenticated users so substitute trainers can fetch
-    // customers that belong to other trainers' dual/secondary contracts
+    // Customers — trainer sees own center, admin sees all
     match /customers/{customerId} {
       allow read: if isAuthenticated();
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update: if isOwnerOrAdmin(resource.data.trainerId);
-      allow delete: if isOwnerOrAdmin(resource.data.trainerId);
-      allow list: if isAdmin() ||
-                     (isTrainer() &&
-                      request.auth.uid == resource.data.trainerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
-    // Contracts — same pattern
+    // Contracts
     match /contracts/{contractId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if hasAccess(resource.data.centerId);
       allow list: if isAuthenticated();
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
     // Lesson Records
     match /lessonRecords/{recordId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if hasAccess(resource.data.centerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
     // Cash Flow Records
     match /cashFlowRecords/{recordId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if hasAccess(resource.data.centerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
     // Trial Records
     match /trialRecords/{recordId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if hasAccess(resource.data.centerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
     // Venue Rentals
     match /venueRentals/{rentalId} {
-      allow read: if isOwnerOrAdmin(resource.data.trainerId);
-      allow create: if isAdmin() ||
-                       (isAuthenticated() && request.resource.data.trainerId == request.auth.uid);
-      allow update, delete: if isOwnerOrAdmin(resource.data.trainerId);
+      allow read: if hasAccess(resource.data.centerId);
+      allow create: if hasAccess(request.resource.data.centerId);
+      allow update, delete: if hasAccess(resource.data.centerId);
     }
 
     // Renter Customers
@@ -125,8 +110,10 @@ service cloud.firestore {
     match /venueBookings/{bookingId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isAdmin() ||
+                       (isTrainer() && (request.resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId || resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId));
+      allow delete: if isAdmin() ||
+                       (isTrainer() && resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId);
     }
   }
 }
