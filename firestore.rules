@@ -105,15 +105,5 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update, delete: if false;
     }
-
-    // ─── Venue Bookings ───────────────────────────────────────
-    match /venueBookings/{bookingId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() ||
-                       (isTrainer() && (request.resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId || resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId));
-      allow delete: if isAdmin() ||
-                       (isTrainer() && resource.data.centerId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId);
-    }
   }
 }
