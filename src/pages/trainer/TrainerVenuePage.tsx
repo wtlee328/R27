@@ -508,7 +508,7 @@ export default function TrainerVenuePage() {
       {/* ---- Booking Request Dialog ---- */}
       <Dialog open={isBooking} onOpenChange={setIsBooking}>
         <DialogContent className="max-w-md p-5 bg-white rounded-2xl border-none shadow-2xl">
-          <DialogTitle className="text-base font-bold text-stone-800 border-b border-stone-100 pb-3 mb-2 flex items-center justify-between">
+          <DialogTitle className="text-base font-bold text-stone-800 border-b border-stone-100 pb-3 mb-2 flex items-center justify-between pr-6">
             <span>填寫場租預約</span>
             <span className="text-xs text-stone-400 font-bold">{selectedDate}</span>
           </DialogTitle>
