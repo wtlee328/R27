@@ -517,6 +517,19 @@ export default function TrainerVenuePage() {
           </DialogTitle>
           
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Date Picker */}
+            <div className="space-y-1.5">
+              <Label htmlFor="dateInput" className="text-stone-700 font-bold text-xs">預約日期 *</Label>
+              <Input
+                type="date"
+                id="dateInput"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                required
+                className="h-10 bg-white border-stone-200 rounded-xl text-sm"
+              />
+            </div>
+
             {/* Select Trainer */}
             <div className="space-y-1.5">
               <Label htmlFor="trainer" className="text-stone-700 font-bold text-xs">申請教練 *</Label>
