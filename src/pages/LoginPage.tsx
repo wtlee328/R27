@@ -59,7 +59,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (user && !authLoading) {
       if (user.isSharedTrainerAccount) {
-        navigate('/trainer/lessons', { replace: true })
+        navigate('/trainer/select', { replace: true })
       } else {
         navigate(from, { replace: true })
       }

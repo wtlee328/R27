@@ -16,6 +16,7 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
+import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { TrialRecord } from '../types'
 import type { TrialRecordFormValues } from '../lib/validators'
 import { logActivity } from '../lib/activityLogger'
@@ -27,6 +28,7 @@ export function useTrials() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
   const { centerId } = useCenterStore()
+  const { selectedTrainerId } = useTrainerProfileStore()
 
   const fetchTrials = useCallback(async () => {
     if (!user) return
@@ -43,10 +45,12 @@ export function useTrials() {
           orderBy('date', 'desc')
         )
       } else {
+        // Use selectedTrainerId (the chosen trainer profile) rather than user.uid (shared account)
+        const trainerFilterId = selectedTrainerId || user.uid
         q = query(
           trialsRef,
           where('centerId', '==', centerId),
-          where('trainerId', '==', user.uid),
+          where('trainerId', '==', trainerFilterId),
           orderBy('date', 'desc')
         )
       }
@@ -64,7 +68,7 @@ export function useTrials() {
     } finally {
       setLoading(false)
     }
-  }, [user, centerId])
+  }, [user, centerId, selectedTrainerId])
 
   useEffect(() => {
     fetchTrials()
@@ -76,7 +80,7 @@ export function useTrials() {
     const newRecord = {
       ...data,
       date: Timestamp.fromDate(data.date),
-      trainerId: user.uid,
+      trainerId: selectedTrainerId || user.uid,
       centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),

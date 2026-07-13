@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { BookOpen, UserCheck, Building2, LogOut } from 'lucide-react'
+import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { BookOpen, UserCheck, Building2, LogOut, RefreshCw, ChevronDown } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useCenterStore } from '@/stores/centerStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import { cn } from '@/lib/utils'
 
 const TRAINER_TABS = [
@@ -15,14 +16,20 @@ const TRAINER_TABS = [
 export function TrainerLayout() {
   const { user } = useAuthStore()
   const { setCenterId } = useCenterStore()
+  const { selectedTrainerId, selectedTrainerName, clearSelectedTrainer } = useTrainerProfileStore()
   const navigate = useNavigate()
   const location = useLocation()
 
   useEffect(() => {
     if (user?.centerId) {
-      setCenterId(user.centerId)
+      setCenterId(user.centerId as any)
     }
   }, [user, setCenterId])
+
+  // Guard: if no trainer selected, redirect to selection page
+  if (!selectedTrainerId) {
+    return <Navigate to="/trainer/select" replace />
+  }
 
   const centerLabel = user?.centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
   const centerSubLabel = '教練管理系統'
@@ -30,8 +37,14 @@ export function TrainerLayout() {
   const activeTab = TRAINER_TABS.find(t => location.pathname.startsWith(t.to))
 
   async function handleSignOut() {
+    clearSelectedTrainer()
     await signOut()
     navigate('/login')
+  }
+
+  function handleSwitchTrainer() {
+    clearSelectedTrainer()
+    navigate('/trainer/select')
   }
 
   return (
@@ -69,8 +82,23 @@ export function TrainerLayout() {
           ))}
         </nav>
 
+        {/* ---- Active Trainer Card + Switcher ---- */}
+        <div className="px-3 py-3 border-t border-stone-800">
+          <div className="bg-stone-800/60 rounded-xl p-3 mb-2">
+            <p className="text-stone-500 text-[10px] font-semibold uppercase tracking-wider mb-1">目前教練</p>
+            <p className="text-white font-bold text-sm truncate">{selectedTrainerName}</p>
+            <button
+              onClick={handleSwitchTrainer}
+              className="mt-2 w-full flex items-center justify-center gap-1.5 text-[11px] font-bold text-stone-400 hover:text-white bg-stone-700/50 hover:bg-stone-700 border border-stone-700 hover:border-stone-600 px-3 py-1.5 rounded-lg transition-all cursor-pointer"
+            >
+              <RefreshCw className="h-3 w-3" />
+              切換教練
+            </button>
+          </div>
+        </div>
+
         {/* User info + Logout */}
-        <div className="px-3 py-4 border-t border-stone-800 space-y-2">
+        <div className="px-3 pb-4 space-y-2">
           {user?.email && (
             <p className="text-stone-600 text-[11px] font-medium px-3 truncate">{user.email}</p>
           )}
@@ -87,11 +115,20 @@ export function TrainerLayout() {
       {/* ---- Main Content ---- */}
       <div className="flex-1 ml-56 flex flex-col min-h-screen">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 h-14 bg-white border-b border-stone-200 flex items-center px-8 shrink-0 shadow-sm">
+        <header className="sticky top-0 z-30 h-14 bg-white border-b border-stone-200 flex items-center justify-between px-8 shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
             {activeTab && <activeTab.icon className="h-4 w-4 text-brand-500" />}
             <h1 className="text-stone-800 font-bold text-sm">{activeTab?.label ?? '教練介面'}</h1>
           </div>
+          {/* Trainer badge in header */}
+          <button
+            onClick={handleSwitchTrainer}
+            className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            {selectedTrainerName}
+            <ChevronDown className="h-3 w-3 text-stone-400" />
+          </button>
         </header>
 
         {/* Page Content */}
@@ -104,3 +141,5 @@ export function TrainerLayout() {
     </div>
   )
 }
+
+

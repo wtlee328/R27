@@ -16,6 +16,7 @@ import ActivityLogPage from '@/pages/ActivityLogPage'
 import TrainerLessonsPage from '@/pages/trainer/TrainerLessonsPage'
 import TrainerTrialsPage from '@/pages/trainer/TrainerTrialsPage'
 import TrainerVenuePage from '@/pages/trainer/TrainerVenuePage'
+import TrainerSelectPage from '@/pages/trainer/TrainerSelectPage'
 
 const router = createBrowserRouter([
   {
@@ -42,6 +43,14 @@ const router = createBrowserRouter([
       { path: 'settings',     element: <SettingsPage /> },
       { path: 'profile',      element: <ProfilePage /> },
     ],
+  },
+  {
+    path: '/trainer/select',
+    element: (
+      <ProtectedTrainerRoute>
+        <TrainerSelectPage />
+      </ProtectedTrainerRoute>
+    ),
   },
   {
     path: '/trainer',

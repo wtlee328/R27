@@ -17,6 +17,7 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
+import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { LessonRecord } from '../types'
 import type { LessonRecordFormValues } from '../lib/validators'
 import { logActivity } from '../lib/activityLogger'
@@ -27,6 +28,7 @@ export function useLessonRecords() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
   const { centerId } = useCenterStore()
+  const { selectedTrainerId } = useTrainerProfileStore()
 
   const fetchRecords = useCallback(async () => {
     if (!user) return
@@ -49,17 +51,19 @@ export function useLessonRecords() {
           ...doc.data(),
         })) as LessonRecord[]
       } else {
+        // Use selectedTrainerId (chosen trainer profile) instead of user.uid (shared account)
+        const trainerFilterId = selectedTrainerId || user.uid
         // Run two queries and merge them to avoid composite index requirements
         const q1 = query(
           recordsRef,
           where('centerId', '==', centerId),
-          where('trainerId', '==', user.uid),
+          where('trainerId', '==', trainerFilterId),
           orderBy('sessionDate', 'desc')
         )
         const q2 = query(
           recordsRef,
           where('centerId', '==', centerId),
-          where('contractTrainerId', '==', user.uid),
+          where('contractTrainerId', '==', trainerFilterId),
           orderBy('sessionDate', 'desc')
         )
         
@@ -82,7 +86,7 @@ export function useLessonRecords() {
     } finally {
       setLoading(false)
     }
-  }, [user, centerId])
+  }, [user, centerId, selectedTrainerId])
 
   useEffect(() => {
     fetchRecords()
