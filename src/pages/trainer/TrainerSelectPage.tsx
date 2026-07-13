@@ -26,7 +26,7 @@ export default function TrainerSelectPage() {
 
   function handleSelect(id: string, name: string) {
     setSelectedTrainer(id, name)
-    navigate('/trainer/lessons', { replace: true })
+    navigate('/trainer/customers', { replace: true })
   }
 
   async function handleSignOut() {

@@ -17,6 +17,7 @@ import TrainerLessonsPage from '@/pages/trainer/TrainerLessonsPage'
 import TrainerTrialsPage from '@/pages/trainer/TrainerTrialsPage'
 import TrainerVenuePage from '@/pages/trainer/TrainerVenuePage'
 import TrainerSelectPage from '@/pages/trainer/TrainerSelectPage'
+import TrainerCustomersPage from '@/pages/trainer/TrainerCustomersPage'
 
 const router = createBrowserRouter([
   {
@@ -60,7 +61,8 @@ const router = createBrowserRouter([
       </ProtectedTrainerRoute>
     ),
     children: [
-      { index: true,        element: <Navigate to="/trainer/lessons" replace /> },
+      { index: true,        element: <Navigate to="/trainer/customers" replace /> },
+      { path: 'customers',  element: <TrainerCustomersPage /> },
       { path: 'lessons',    element: <TrainerLessonsPage /> },
       { path: 'trials',     element: <TrainerTrialsPage /> },
       { path: 'venue',      element: <TrainerVenuePage /> },

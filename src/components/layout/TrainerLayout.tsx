@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
-import { BookOpen, UserCheck, Building2, LogOut, RefreshCw, ChevronDown } from 'lucide-react'
+import { BookOpen, UserCheck, Building2, LogOut, RefreshCw, ChevronDown, Users } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useCenterStore } from '@/stores/centerStore'
@@ -8,6 +8,7 @@ import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import { cn } from '@/lib/utils'
 
 const TRAINER_TABS = [
+  { to: '/trainer/customers', label: '學員管理', icon: Users },
   { to: '/trainer/lessons', label: '銷課紀錄', icon: BookOpen },
   { to: '/trainer/trials', label: '體驗客管理', icon: UserCheck },
   { to: '/trainer/venue', label: '場租申請', icon: Building2 },
