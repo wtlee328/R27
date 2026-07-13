@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { BookOpen, UserCheck, Building2, LogOut } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
+import { useCenterStore } from '@/stores/centerStore'
 import { cn } from '@/lib/utils'
 
 const TRAINER_TABS = [
@@ -12,7 +14,14 @@ const TRAINER_TABS = [
 
 export function TrainerLayout() {
   const { user } = useAuthStore()
+  const { setCenterId } = useCenterStore()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    if (user?.centerId) {
+      setCenterId(user.centerId)
+    }
+  }, [user, setCenterId])
 
   const centerLabel = user?.centerId === 'coffit' ? 'Coffit' : 'R27'
 
