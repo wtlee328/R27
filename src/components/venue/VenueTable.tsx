@@ -75,7 +75,8 @@ export function VenueTable({
                 {!sortBy.startsWith('date') && <ArrowUpDown className="h-3 w-3 text-stone-300" />}
               </div>
             </th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">承租人名稱</th>
+            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">承租教練</th>
+            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">外部租借人</th>
             {/* Clickable Amount Column Header */}
             <th 
               className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-stone-100/50 transition-colors select-none"
@@ -93,20 +94,26 @@ export function VenueTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-          {sortedRentals.map((r) => (
-            <tr 
-              key={r.id} 
-              onClick={() => onRowClick?.(r)}
-              className="hover:bg-brand-50/30 transition-colors duration-150 cursor-pointer"
-            >
-              <td className="px-5 py-3.5 text-stone-500 tabular-nums">
-                {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}
-              </td>
-              <td className="px-5 py-3.5 font-medium text-stone-900">{r.renterName}</td>
-              <td className="px-5 py-3.5 text-right text-emerald-600 font-semibold tabular-nums">
-                NT$ {r.amount.toLocaleString()}
-              </td>
-              <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
+          {sortedRentals.map((r) => {
+            const parts = r.renterName ? r.renterName.split(' - ') : []
+            const trainerName = parts[0] || '未知教練'
+            const externalRenter = parts.slice(1).join(' - ') || '-'
+
+            return (
+              <tr 
+                key={r.id} 
+                onClick={() => onRowClick?.(r)}
+                className="hover:bg-brand-50/30 transition-colors duration-150 cursor-pointer"
+              >
+                <td className="px-5 py-3.5 text-stone-500 tabular-nums">
+                  {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}
+                </td>
+                <td className="px-5 py-3.5 font-medium text-stone-900">{trainerName}</td>
+                <td className="px-5 py-3.5 text-stone-500">{externalRenter}</td>
+                <td className="px-5 py-3.5 text-right text-emerald-600 font-semibold tabular-nums">
+                  NT$ {r.amount.toLocaleString()}
+                </td>
+                <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
               {onDelete && (
                 <td className="px-5 py-3.5 text-right">
                   <button
@@ -123,7 +130,8 @@ export function VenueTable({
                 </td>
               )}
             </tr>
-          ))}
+          )
+        })}
         </tbody>
       </table>
     </div>

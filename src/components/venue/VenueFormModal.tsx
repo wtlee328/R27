@@ -36,7 +36,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
       newRenterCustomerName: '',
       renterName: '',
       date: new Date() as any,
-      amount: 500,
+      amount: 300,
       notes: '',
     },
   })
@@ -60,7 +60,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
           newRenterCustomerName: extName,
           renterName: initialData.renterName || '',
           date: (initialData.date ? initialData.date.toDate() : new Date()) as any,
-          amount: initialData.amount ?? 500,
+          amount: initialData.amount ?? 300,
           notes: initialData.notes || '',
         })
       } else {
@@ -70,7 +70,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
           newRenterCustomerName: '',
           renterName: '',
           date: (initialDate ? new Date(initialDate + 'T12:00:00') : new Date()) as any,
-          amount: 500,
+          amount: 300,
           notes: '',
         })
       }
@@ -174,7 +174,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
               type="number"
               id="amount"
               className="h-10 bg-white border-stone-200 rounded-xl text-sm"
-              placeholder="500"
+              placeholder="300"
               {...form.register('amount', { valueAsNumber: true })}
             />
             {form.formState.errors.amount && (
