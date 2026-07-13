@@ -407,13 +407,16 @@ export default function TrainerVenuePage() {
               timeSlots.map((slot) => {
                 const busyInfo = busySlotsMap.get(slot)
                 const isPast = isSlotInPast(selectedDate, slot)
+                const idx = timeSlots.indexOf(slot)
+                const nextSlot = idx !== -1 && idx + 1 < timeSlots.length ? timeSlots[idx + 1] : operatingHours.endTime
+                const slotRange = `${slot} - ${nextSlot}`
                 
                 if (isPast) {
                   return (
                     <div key={slot} className="flex items-center p-3.5 gap-4 bg-stone-50/30 text-stone-300">
-                      <div className="w-12 text-xs font-black flex items-center gap-1">
+                      <div className="w-28 text-[11px] font-black flex items-center gap-1.5 shrink-0 select-none">
                         <Clock className="h-3 w-3 text-stone-200" />
-                        {slot}
+                        {slotRange}
                       </div>
                       <div className="flex-1 text-xs font-medium text-stone-350">時段已過期</div>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-stone-150 bg-stone-100 text-stone-400">
@@ -435,9 +438,9 @@ export default function TrainerVenuePage() {
 
                   return (
                     <div key={slot} className="flex items-center p-3.5 gap-4 bg-stone-50/50">
-                      <div className="w-12 text-xs font-black text-stone-500 flex items-center gap-1">
+                      <div className="w-28 text-[11px] font-black text-stone-500 flex items-center gap-1.5 shrink-0 select-none">
                         <Clock className="h-3 w-3 text-stone-400" />
-                        {slot}
+                        {slotRange}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -477,9 +480,9 @@ export default function TrainerVenuePage() {
 
                 return (
                   <div key={slot} className="flex items-center justify-between p-3.5 gap-4">
-                    <div className="w-12 text-xs font-black text-stone-400 flex items-center gap-1">
+                    <div className="w-28 text-[11px] font-black text-stone-400 flex items-center gap-1.5 shrink-0 select-none">
                       <Clock className="h-3 w-3 text-stone-300" />
-                      {slot}
+                      {slotRange}
                     </div>
                     <div className="flex-1 text-xs text-stone-400">空閒時段</div>
                     <button
