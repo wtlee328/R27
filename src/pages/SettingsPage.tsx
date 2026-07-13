@@ -406,7 +406,7 @@ export default function SettingsPage() {
               <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
                 <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
                   <span>R27 Fitness</span>
-                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (當天)</span>
                 </h3>
                 <div className="space-y-3 pb-1">
                   {[
@@ -459,7 +459,7 @@ export default function SettingsPage() {
               <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
                 <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
                   <span>Coffit</span>
-                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (隔日)</span>
+                  <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (當天)</span>
                 </h3>
                 <div className="space-y-3 pb-1">
                   {[
