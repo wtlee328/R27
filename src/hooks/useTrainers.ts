@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { useCenterStore } from '../stores/centerStore'
+import { useAuthStore } from '../stores/authStore'
 import type { Trainer, Customer, Contract, LessonRecord } from '../types'
 
 export interface TrainerWithMetrics {
@@ -29,6 +30,8 @@ export function useTrainers() {
   const [error, setError] = useState<string | null>(null)
   const [migrationRunning, setMigrationRunning] = useState(false)
   const { centerId } = useCenterStore()
+  const { user } = useAuthStore()
+  const activeCenterId = user?.isSharedTrainerAccount ? (user.centerId || 'r27') : centerId
 
   const fetchTrainersData = useCallback(async () => {
     setLoading(true)
@@ -40,10 +43,10 @@ export function useTrainers() {
       const lessonRecordsRef = collection(db, 'lessonRecords')
 
       const [trainersSnap, customersSnap, contractsSnap, lessonRecordsSnap] = await Promise.all([
-        getDocs(query(trainersRef, where('centerId', '==', centerId))),
-        getDocs(query(customersRef, where('centerId', '==', centerId))),
-        getDocs(query(contractsRef, where('centerId', '==', centerId))),
-        getDocs(query(lessonRecordsRef, where('centerId', '==', centerId))),
+        getDocs(query(trainersRef, where('centerId', '==', activeCenterId))),
+        getDocs(query(customersRef, where('centerId', '==', activeCenterId))),
+        getDocs(query(contractsRef, where('centerId', '==', activeCenterId))),
+        getDocs(query(lessonRecordsRef, where('centerId', '==', activeCenterId))),
       ])
 
 
