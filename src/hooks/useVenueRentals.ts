@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   doc,
   writeBatch,
   serverTimestamp,
@@ -13,6 +14,8 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
+import { useTrainerProfileStore } from '../stores/trainerProfileStore'
+import { logActivity } from '../lib/activityLogger'
 import type { VenueRental } from '../types'
 import type { VenueRentalFormValues } from '../lib/validators'
 
@@ -22,6 +25,7 @@ export function useVenueRentals() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
   const { centerId } = useCenterStore()
+  const { selectedTrainerId, selectedTrainerName } = useTrainerProfileStore()
 
   const fetchRentals = useCallback(async () => {
     if (!user) return
@@ -64,6 +68,28 @@ export function useVenueRentals() {
   useEffect(() => {
     fetchRentals()
   }, [fetchRentals])
+
+  const logRentalActivity = async (action: 'create' | 'update' | 'delete', recordId: string, summary: string, newValue?: any, previousValue?: any) => {
+    if (!user) return
+    try {
+      let operatorName = selectedTrainerName || user.displayName || '教練'
+      let operatorId = selectedTrainerId || user.uid
+
+      await logActivity({
+        centerId: centerId as any,
+        trainerId: operatorId,
+        trainerName: operatorName,
+        action,
+        module: 'venueBookings', // Use same venueBookings module
+        recordId,
+        recordSummary: summary,
+        newValue,
+        previousValue
+      })
+    } catch (err) {
+      console.error('Failed to log rental activity:', err)
+    }
+  }
 
   const createRental = async (data: VenueRentalFormValues) => {
     if (!user) throw new Error('Not authenticated')
@@ -109,6 +135,7 @@ export function useVenueRentals() {
 
     try {
       await batch.commit()
+      await logRentalActivity('create', rentalRef.id, `建立場租紀錄: ${data.renterName || ''} - NT$ ${data.amount}`, rentalData)
       await fetchRentals()
       return rentalRef.id
     } catch (err: any) {
@@ -125,7 +152,13 @@ export function useVenueRentals() {
     }
 
     try {
+      const oldSnap = await getDoc(doc(db, 'venueRentals', id))
+      const oldData = oldSnap.exists() ? oldSnap.data() as VenueRental : null
+      const renterName = oldData?.renterName || ''
+      const amount = oldData?.amount || 0
+
       await batch.commit()
+      await logRentalActivity('delete', id, `刪除場租紀錄: ${renterName} - NT$ ${amount}`, undefined, oldData)
       await fetchRentals()
     } catch (err: any) {
       console.error('Error deleting venue rental:', err)
