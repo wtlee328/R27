@@ -16,6 +16,7 @@ import {
 import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
+import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { Customer, Contract } from '../types'
 import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import { generateContractNo, nextDailySequence } from '../lib/contractNo'
@@ -27,6 +28,8 @@ export function useCustomers() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuthStore()
   const { centerId } = useCenterStore()
+  const { selectedTrainerId } = useTrainerProfileStore()
+
 
   const fetchAllData = useCallback(async () => {
     if (!user) return
@@ -47,11 +50,12 @@ export function useCustomers() {
         const snap = await getDocs(qCust)
         custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
       } else {
+        const trainerFilterId = selectedTrainerId || user.uid
         // Own customers (as primary trainer)
         const qOwn = query(
           customersRef,
           where('centerId', '==', centerId),
-          where('trainerId', '==', user.uid),
+          where('trainerId', '==', trainerFilterId),
           orderBy('createdAt', 'desc')
         )
         const ownSnap = await getDocs(qOwn)
@@ -63,7 +67,7 @@ export function useCustomers() {
         const qSecondary = query(
           collection(db, 'contracts'),
           where('centerId', '==', centerId),
-          where('secondaryTrainerId', '==', user.uid)
+          where('secondaryTrainerId', '==', trainerFilterId)
         )
         const secondarySnap = await getDocs(qSecondary)
         const extraCustomerIds = new Set<string>()
@@ -100,10 +104,11 @@ export function useCustomers() {
       if (user.role === 'admin') {
         qCont = query(contractsRef, where('centerId', '==', centerId))
       } else {
+        const trainerFilterId = selectedTrainerId || user.uid
         qCont = query(
           contractsRef,
           where('centerId', '==', centerId),
-          where('trainerId', '==', user.uid)
+          where('trainerId', '==', trainerFilterId)
         )
       }
 
@@ -144,7 +149,7 @@ export function useCustomers() {
     } finally {
       setLoading(false)
     }
-  }, [user, centerId])
+  }, [user, centerId, selectedTrainerId])
 
   useEffect(() => {
     fetchAllData()
@@ -186,7 +191,7 @@ export function useCustomers() {
     const newCustomer = {
       ...data,
       dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
-      trainerId: user.uid,
+      trainerId: selectedTrainerId || user.uid,
       centerId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -232,7 +237,7 @@ export function useCustomers() {
       const partnerCustomer = {
         ...data.partnerCustomerData,
         dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
-        trainerId: user.uid,
+        trainerId: selectedTrainerId || user.uid,
         centerId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -304,7 +309,7 @@ export function useCustomers() {
 
     // Sync Customer B's trainer if dual
     if (isDual && partnerId) {
-      const syncTrainerId = data.secondaryTrainerId || data.trainerId || user.uid
+      const syncTrainerId = data.secondaryTrainerId || data.trainerId || selectedTrainerId || user.uid
       try {
         await updateDoc(doc(db, 'customers', partnerId), {
           trainerId: syncTrainerId,
@@ -367,7 +372,7 @@ export function useCustomers() {
         const partnerCustomer = {
           ...data.partnerCustomerData,
           dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
-          trainerId: data.contract?.secondaryTrainerId || data.contract?.trainerId || user.uid,
+          trainerId: data.contract?.secondaryTrainerId || data.contract?.trainerId || selectedTrainerId || user.uid,
           centerId,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -387,7 +392,7 @@ export function useCustomers() {
       delete (customerData as any).bindExistingContractMode
       delete (customerData as any).existingContractId
 
-      let finalTrainerId = user.uid
+      let finalTrainerId = selectedTrainerId || user.uid
       let existingContractData: any = null
 
       if (data.bindExistingContractMode && data.existingContractId) {
@@ -424,7 +429,7 @@ export function useCustomers() {
         const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
         
         // Use the selected secondaryTrainerId for the new (second) customer
-        const secondaryTrainerId = data.contract?.secondaryTrainerId || existingContractData.trainerId || user.uid
+        const secondaryTrainerId = data.contract?.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid
 
         const contractUpdate: any = {
           contractType: 'dual',

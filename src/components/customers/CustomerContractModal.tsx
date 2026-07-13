@@ -42,7 +42,7 @@ export function CustomerContractModal({
   const [partner, setPartner] = React.useState<Customer | null>(null)
   
   // Admin & Editing states
-  const { isAdmin } = useAuthStore()
+  const { isAdmin, isTrainer } = useAuthStore()
   const { centerId } = useCenterStore()
   const contractCenterId = contract?.centerId || centerId
   const brandName = contractCenterId === 'coffit' ? 'Coffit' : 'R27 Fitness'
@@ -1246,7 +1246,7 @@ export function CustomerContractModal({
               </h2>
             </div>
             <div className="flex items-center gap-2">
-              {isAdmin() && !isDeleting && (
+              {(isAdmin() || isTrainer()) && !isDeleting && (
                 <>
                   {isEditing && (
                     <Button
