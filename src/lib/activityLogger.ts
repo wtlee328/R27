@@ -34,14 +34,24 @@ export async function logActivity(params: {
       }
     }
 
-    await addDoc(collection(db, 'activityLogs'), {
+    const docData = {
       ...params,
       centerId: resolvedCenterId,
       trainerName: operatorName,
       trainerId: operatorTrainerId,
       trainerAuthUid: authUid,
       timestamp: serverTimestamp(),
+    }
+
+    // Clean undefined fields to prevent Firestore serialization errors
+    const cleanedData: Record<string, any> = {}
+    Object.keys(docData).forEach(key => {
+      if ((docData as any)[key] !== undefined) {
+        cleanedData[key] = (docData as any)[key]
+      }
     })
+
+    await addDoc(collection(db, 'activityLogs'), cleanedData)
   } catch (err) {
     console.error('Failed to write activity log:', err)
   }
