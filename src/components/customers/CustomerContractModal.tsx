@@ -242,8 +242,8 @@ export function CustomerContractModal({
       errors.push('結束日期不能早於開始日期')
     }
     if (editPaymentType === 'installments') {
-      if (editInstallments.length < 2 || editInstallments.length > 6) {
-        errors.push('分期期數必須在 2 到 6 期之間')
+      if (editInstallments.length < 2 || editInstallments.length > 16) {
+        errors.push('分期期數必須在 2 到 16 期之間')
       }
       const sum = editInstallments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0)
       if (Math.abs(sum - editTotalAmount) > 0.01) {
@@ -897,7 +897,7 @@ export function CustomerContractModal({
                                   onChange={e => setEditInstallmentCount(Number(e.target.value))}
                                   className="rounded border border-stone-200 bg-white text-xs px-2 py-0.5 focus:outline-none"
                                 >
-                                  {[2,3,4,5,6].map(n => <option key={n} value={n}>{n} 期</option>)}
+                                  {Array.from({ length: 15 }, (_, i) => i + 2).map(n => <option key={n} value={n}>{n} 期</option>)}
                                 </select>
                                 <Button variant="outline" size="sm" onClick={handleAutoGenerateInstallments} className="h-6 text-[10px] font-bold py-0 px-2">
                                   自動分配

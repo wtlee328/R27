@@ -78,7 +78,7 @@ export const baseContractFormSchema = z.object({
   partnerId: z.string().nullable().optional().default(null),
   partnerCustomerData: customerFormSchema.nullable().optional().default(null),
   paymentType: z.enum(['single', 'installments']).default('single'),
-  installmentCount: z.coerce.number().min(2).max(6).default(2),
+  installmentCount: z.coerce.number().min(2).max(16).default(2),
 })
 
 export const contractFormSchema = baseContractFormSchema.superRefine((data, ctx) => {
