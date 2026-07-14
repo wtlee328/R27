@@ -266,7 +266,7 @@ export function CustomerFormModal({
   }
 
   const generateDefaultInstallments = (total: number, count: number, startD: Date) => {
-    if (count < 2 || count > 6) return;
+    if (count < 2 || count > 16) return;
     const base = Math.floor(total / count);
     const remainder = total - base * count;
     const amounts = Array(count).fill(base);
