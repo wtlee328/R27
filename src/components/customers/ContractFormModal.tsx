@@ -775,7 +775,7 @@ export function ContractFormModal({
                                   : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                               )}
                             >
-                              💳 分期付款 (二到六期)
+                              💳 分期付款 (二到十六期)
                             </button>
                           </div>
                         </div>
@@ -793,7 +793,7 @@ export function ContractFormModal({
                                 }}
                                 className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-xs font-bold focus:outline-none"
                               >
-                                {[2, 3, 4, 5, 6].map(num => (
+                                {Array.from({ length: 15 }, (_, i) => i + 2).map(num => (
                                   <option key={num} value={num}>{num} 期</option>
                                 ))}
                               </select>
