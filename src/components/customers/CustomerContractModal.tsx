@@ -202,7 +202,7 @@ export function CustomerContractModal({
   const handleAutoGenerateInstallments = () => {
     const total = editTotalAmount
     const count = editInstallmentCount
-    if (count < 2 || count > 6) return
+    if (count < 2 || count > 16) return
     const base = Math.floor(total / count)
     const remainder = total - base * count
     const amounts = Array(count).fill(base)
