@@ -372,13 +372,24 @@ export default function BackupPage() {
         logItem.count = dataList.length
         logItem.status = dataList.length > 0 ? 'success' : 'empty'
 
+        const MODULE_CSV_FILENAMES: Record<string, string> = {
+          customers: '客戶檔案',
+          lessonRecords: '教練銷課',
+          contracts: '會計管理_合約',
+          cashFlowRecords: '會計管理_收支金流',
+          trialRecords: '體驗客資料',
+          venueRentals: '場租管理明細',
+          activityLogs: '系統操作記錄',
+        }
+
         if (dataList.length > 0) {
           // Write JSON
           jsonFolder?.file(`${logItem.collection}.json`, JSON.stringify(dataList, null, 2))
           
-          // Write CSV
+          // Write CSV with Chinese filename
           const csvContent = jsonToFriendlyCsv(logItem.collection, dataList, trainerMap, customerMap)
-          csvFolder?.file(`${logItem.collection}.csv`, '\ufeff' + csvContent) // Prepend UTF-8 BOM for Excel Chinese compatibility
+          const csvFilename = MODULE_CSV_FILENAMES[logItem.collection] || logItem.collection
+          csvFolder?.file(`${csvFilename}.csv`, '\ufeff' + csvContent) // Prepend UTF-8 BOM for Excel Chinese compatibility
         }
 
         completedSteps++
@@ -397,8 +408,8 @@ export default function BackupPage() {
 
       // Browser trigger download
       const dateStr = format(new Date(), 'yyyyMMdd_HHmmss')
-      const scopeLabel = selectedScope === 'all' ? 'all' : selectedScope
-      const filename = `backup_${scopeLabel}_${dateStr}.zip`
+      const scopeLabel = selectedScope === 'all' ? '全部場館' : selectedScope === 'r27' ? 'R27_Fitness' : 'Coffit_訓練中心'
+      const filename = `系統備份_${scopeLabel}_${dateStr}.zip`
 
       const downloadUrl = URL.createObjectURL(zipBlob)
       const link = document.createElement('a')
