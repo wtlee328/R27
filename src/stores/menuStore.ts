@@ -19,7 +19,7 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'trials',       to: '/trials',      label: '體驗客',     icon: UserCheck },
   { id: 'venue',        to: '/venue',       label: '場租管理',   icon: Building2,  adminOnly: true },
   { id: 'activityLog',  to: '/activity-log',label: '操作記錄',   icon: History,    adminOnly: true },
-  { id: 'backup',       to: '/backup',      label: '數據管理',   icon: Database,   adminOnly: true },
+  { id: 'backup',       to: '/backup',      label: '資料備份',   icon: Database,   adminOnly: true },
   { id: 'settings',     to: '/settings',    label: '系統設定',   icon: Settings },
 ]
 
