@@ -104,38 +104,154 @@ export default function BackupPage() {
     return Object.values(selectedModules).filter(Boolean).length
   }, [selectedModules])
 
-  // Convert raw objects list to CSV
-  const jsonToCsv = (data: any[]): string => {
+  // Convert raw objects list to reader-friendly CSV (with translated headers and mapping IDs to names)
+  const jsonToFriendlyCsv = (
+    colName: string,
+    data: any[],
+    trainerMap: Record<string, string>,
+    customerMap: Record<string, string>
+  ): string => {
     if (!data || data.length === 0) return ''
-    
-    // Extract unique headers (keep 'id' first, then sorted keys)
-    const keys = Array.from(
-      new Set(data.flatMap(item => Object.keys(item)))
-    ).filter(k => k !== 'id').sort()
-    
-    const headers = ['id', ...keys]
-    
-    // Format individual values
-    const formatValue = (val: any) => {
-      if (val === undefined || val === null) return ''
-      
-      // Firestore Timestamp
+
+    const formatTime = (val: any) => {
+      if (!val) return ''
       if (val && typeof val === 'object' && val.seconds !== undefined) {
         const d = new Date(val.seconds * 1000)
         return format(d, 'yyyy-MM-dd HH:mm:ss')
       }
-      
-      // Date object
       if (val instanceof Date) {
         return format(val, 'yyyy-MM-dd HH:mm:ss')
       }
-      
-      // Nested Arrays / Objects
-      if (typeof val === 'object') {
-        return JSON.stringify(val)
-      }
-      
       return String(val)
+    }
+
+    let headers: string[] = []
+    let mapper: (row: any) => Record<string, any>
+
+    switch (colName) {
+      case 'customers':
+        headers = [
+          '姓名', '電話', '電子郵件', '身分證字號', '出生日期',
+          '歷史上課堂數', '負責教練',
+          '緊急聯絡人姓名', '與緊急聯絡人關係', '緊急聯絡人電話',
+          '健康狀況與病史備註'
+        ]
+        mapper = (row) => ({
+          '姓名': row.name || '',
+          '電話': row.phone || '',
+          '電子郵件': row.email || '',
+          '身分證字號': row.idNumber || '',
+          '出生日期': formatTime(row.dateOfBirth),
+          '歷史上課堂數': row.historicalSessions ?? 0,
+          '負責教練': trainerMap[row.trainerId] || '',
+          '緊急聯絡人姓名': row.emergencyContact?.name || '',
+          '與緊急聯絡人關係': row.emergencyContact?.relation || '',
+          '緊急聯絡人電話': row.emergencyContact?.phone || '',
+          '健康狀況與病史備註': row.medicalHistory?.notes || ''
+        })
+        break
+
+      case 'lessonRecords':
+        headers = ['學員姓名', '銷課教練', '上課時間', '扣除堂數', '課後備註']
+        mapper = (row) => ({
+          '學員姓名': row.customerName || '',
+          '銷課教練': trainerMap[row.trainerId] || '',
+          '上課時間': formatTime(row.sessionDate),
+          '扣除堂數': row.sessionAmount ?? 0,
+          '課後備註': row.notes || ''
+        })
+        break
+
+      case 'contracts':
+        headers = [
+          '合約編號', '簽約學員', '負責教練', '合約類型', '總堂數',
+          '剩餘堂數', '單堂費用 (NT$)', '合約總金額 (NT$)', '已繳款金額 (NT$)',
+          '付款方式', '分期期數', '合約開始日期', '合約結束日期', '合約狀態'
+        ]
+        mapper = (row) => ({
+          '合約編號': row.contractNo || '',
+          '簽約學員': customerMap[row.customerId] || '',
+          '負責教練': trainerMap[row.trainerId] || '',
+          '合約類型': row.contractType === 'dual' ? '雙人' : '單人',
+          '總堂數': row.totalSessions ?? 0,
+          '剩餘堂數': row.remainingSessions ?? 0,
+          '單堂費用 (NT$)': row.pricePerSession ?? 0,
+          '合約總金額 (NT$)': row.totalAmount ?? 0,
+          '已繳款金額 (NT$)': row.paidAmount ?? 0,
+          '付款方式': row.paymentType === 'installments' ? '分期付款' : '單次付清',
+          '分期期數': row.installmentCount || 1,
+          '合約開始日期': formatTime(row.startDate),
+          '合約結束日期': formatTime(row.endDate),
+          '合約狀態': row.status === 'active' ? '執行中' :
+                     row.status === 'expiring' ? '即將過期' :
+                     row.status === 'expired' ? '已過期' : '已完成'
+        })
+        break
+
+      case 'cashFlowRecords':
+        headers = ['交易日期', '經手教練', '借方類別 (收入)', '借方金額', '貸方類別 (支出)', '貸方金額', '摘要說明', '備註說明']
+        mapper = (row) => ({
+          '交易日期': formatTime(row.date),
+          '經手教練': trainerMap[row.trainerId] || '',
+          '借方類別 (收入)': row.debitCategory || '',
+          '借方金額': row.debitAmount ?? 0,
+          '貸方類別 (支出)': row.creditCategory || '',
+          '貸方金額': row.creditAmount ?? 0,
+          '摘要說明': row.description || '',
+          '備註說明': row.notes || ''
+        })
+        break
+
+      case 'trialRecords':
+        headers = ['客戶姓名', '聯絡電話', '電子郵件', '預約體驗日期', '負責教練', '成交結果', '諮詢備註']
+        mapper = (row) => ({
+          '客戶姓名': row.clientName || '',
+          '聯絡電話': row.phone || '',
+          '電子郵件': row.email || '',
+          '預約體驗日期': formatTime(row.date),
+          '負責教練': trainerMap[row.trainerId] || '',
+          '成交結果': row.outcome === 'converted' ? '已成交' :
+                     row.outcome === 'not_converted' ? '未成交' : '跟進中',
+          '諮詢備註': row.notes || ''
+        })
+        break
+
+      case 'venueRentals':
+        headers = ['場租日期', '承租對象', '場租金額 (NT$)', '用途備註', '登記教練']
+        mapper = (row) => ({
+          '場租日期': formatTime(row.date),
+          '承租對象': row.renterName || '',
+          '場租金額 (NT$)': row.amount ?? 300,
+          '用途備註': row.notes || '',
+          '登記教練': trainerMap[row.trainerId] || ''
+        })
+        break
+
+      case 'activityLogs':
+        headers = ['操作時間', '操作人員 (教練)', '動作', '模組', '異動摘要說明']
+        mapper = (row) => ({
+          '操作時間': formatTime(row.timestamp),
+          '操作人員 (教練)': row.trainerName || '',
+          '動作': row.action === 'create' ? '新增' :
+                 row.action === 'update' ? '修改' : '刪除',
+          '模組': row.module === 'lessonRecords' ? '教練銷課' :
+                 row.module === 'trialRecords' ? '體驗課' :
+                 row.module === 'venueBookings' ? '場租預約' : '學員合約與檔案',
+          '異動摘要說明': row.recordSummary || ''
+        })
+        break
+
+      default:
+        // Fallback: use generic keys if unknown
+        const keys = Array.from(new Set(data.flatMap(item => Object.keys(item)))).filter(k => k !== 'id')
+        headers = ['id', ...keys]
+        mapper = (row) => {
+          const item: Record<string, any> = { 'id': row.id }
+          keys.forEach(k => {
+            item[k] = row[k]
+          })
+          return item
+        }
     }
 
     const csvRows = []
@@ -145,10 +261,14 @@ export default function BackupPage() {
     
     // Data Rows
     for (const row of data) {
+      const mapped = mapper(row)
       const values = headers.map(header => {
-        const val = row[header]
-        const formatted = formatValue(val)
-        return `"${formatted.replace(/"/g, '""')}"`
+        const val = mapped[header]
+        let strVal = ''
+        if (val !== undefined && val !== null) {
+          strVal = typeof val === 'object' ? JSON.stringify(val) : String(val)
+        }
+        return `"${strVal.replace(/"/g, '""')}"`
       })
       csvRows.push(values.join(','))
     }
@@ -195,6 +315,34 @@ export default function BackupPage() {
       const jsonFolder = zip.folder('json')
       const csvFolder = zip.folder('csv')
 
+      // Fetch lookup mappings for reader-friendly CSVs
+      const trainerMap: Record<string, string> = {}
+      try {
+        const trainerSnap = await getDocs(collection(db, 'trainers'))
+        trainerSnap.docs.forEach(d => {
+          trainerMap[d.id] = d.data().name || ''
+        })
+        const userSnap = await getDocs(collection(db, 'users'))
+        userSnap.docs.forEach(d => {
+          const udata = d.data()
+          if (udata.displayName) {
+            trainerMap[d.id] = udata.displayName
+          }
+        })
+      } catch (e) {
+        console.warn('Could not build trainer map:', e)
+      }
+
+      const customerMap: Record<string, string> = {}
+      try {
+        const customerSnap = await getDocs(collection(db, 'customers'))
+        customerSnap.docs.forEach(d => {
+          customerMap[d.id] = d.data().name || ''
+        })
+      } catch (e) {
+        console.warn('Could not build customer map:', e)
+      }
+
       let completedSteps = 0
       const totalSteps = initialLogs.length
 
@@ -229,7 +377,7 @@ export default function BackupPage() {
           jsonFolder?.file(`${logItem.collection}.json`, JSON.stringify(dataList, null, 2))
           
           // Write CSV
-          const csvContent = jsonToCsv(dataList)
+          const csvContent = jsonToFriendlyCsv(logItem.collection, dataList, trainerMap, customerMap)
           csvFolder?.file(`${logItem.collection}.csv`, '\ufeff' + csvContent) // Prepend UTF-8 BOM for Excel Chinese compatibility
         }
 
