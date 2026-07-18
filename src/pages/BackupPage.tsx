@@ -19,6 +19,7 @@ import { db } from '../lib/firebase'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import JSZip from 'jszip'
+import { Label } from '../components/ui/label'
 
 type ScopeType = 'all' | 'r27' | 'coffit'
 
