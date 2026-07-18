@@ -13,6 +13,7 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useAuthStore } from '@/stores/authStore'
 import { useCenterStore } from '@/stores/centerStore'
+import r27Stamp from '@/assets/r27-stamp.png'
 
 interface CustomerContractModalProps {
   open: boolean
@@ -1027,12 +1028,12 @@ export function CustomerContractModal({
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
-                    <div className="w-24 h-24 border-2 border-brand-200 rounded-full flex items-center justify-center relative">
-                      <div className="text-brand-500 font-bold text-center leading-tight border-2 border-brand-500 rounded-full w-20 h-20 flex flex-col items-center justify-center rotate-[-15deg]">
-                        <span className="text-[8px]">{brandName}</span>
-                        <span className="text-xs font-black">合約專用章</span>
-                        <span className="text-[7px]">{contract?.createdAt ? format(contract.createdAt.toDate(), 'yyyy.MM.dd') : format(new Date(), 'yyyy.MM.dd')}</span>
-                      </div>
+                    <div className="w-24 h-24 flex items-center justify-center relative select-none pointer-events-none">
+                      <img 
+                        src={r27Stamp} 
+                        alt="乙方蓋印" 
+                        className="max-w-full max-h-full object-contain mix-blend-multiply" 
+                      />
                     </div>
                   </div>
                 </div>
