@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { RiPieChartLine } from '@remixicon/react'
 import { useCashFlow } from '../hooks/useCashFlow'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
 import { normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
@@ -86,7 +87,10 @@ export default function ProfitLossPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">損益表</h1>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiPieChartLine className="w-6 h-6 text-orange-500" />
+            損益表
+          </h1>
           <p className="text-sm text-stone-500 mt-1">管理 {selectedYear} 年 {monthLabel} 損益統計與分析</p>
         </div>
 

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Settings, GripVertical, RotateCcw, Clock, Lock, Check } from 'lucide-react'
+import { RiSettings4Line } from '@remixicon/react'
 import { Reorder } from 'framer-motion'
 import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
 import { db, firebaseConfig } from '@/lib/firebase'
@@ -205,12 +206,10 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
-          <span className="p-2 bg-stone-100 rounded-xl inline-flex">
-            <Settings className="h-6 w-6 text-stone-700" />
-          </span>
+          <RiSettings4Line className="w-6 h-6 text-orange-500" />
           系統設定
         </h1>
-        <p className="text-sm text-stone-500 mt-2 pl-1">
+        <p className="text-sm text-stone-500 mt-1">
           個人化調整您的系統介面與導覽選單排版
         </p>
       </div>

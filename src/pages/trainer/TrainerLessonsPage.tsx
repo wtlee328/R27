@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight } from 'lucide-react'
+import { RiCalendarCheckLine } from '@remixicon/react'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useContracts } from '@/hooks/useContracts'
@@ -156,10 +157,13 @@ export default function TrainerLessonsPage() {
   return (
     <div className="space-y-6">
       {/* ---- Header Section ---- */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-stone-900">教練銷課</h1>
-          <p className="text-stone-500 text-sm mt-1">快速為學員紀錄上課堂數</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiCalendarCheckLine className="w-6 h-6 text-orange-500" />
+            教練銷課
+          </h1>
+          <p className="text-sm text-stone-500 mt-1">快速為學員紀錄上課堂數</p>
         </div>
         {!isRecording && (
           <Button

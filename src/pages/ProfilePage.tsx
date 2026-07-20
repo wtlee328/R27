@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/stores/authStore'
 import { User } from 'lucide-react'
+import { RiUser3Line } from '@remixicon/react'
 
 export default function ProfilePage() {
   const { user } = useAuthStore()
@@ -7,7 +8,10 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto w-full">
       <div>
-        <h1 className="text-2xl font-bold text-stone-900">個人資訊</h1>
+        <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+          <RiUser3Line className="w-6 h-6 text-orange-500" />
+          個人資訊
+        </h1>
         <p className="text-sm text-stone-500 mt-1">查看您的帳號詳情</p>
       </div>
 

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { Database, Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp } from 'lucide-react'
+import { Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp } from 'lucide-react'
+import { RiHistoryLine } from '@remixicon/react'
 import { useActivityLogs } from '@/hooks/useActivityLogs'
 import { useTrainers } from '@/hooks/useTrainers'
 import { Card, CardContent } from '@/components/ui/card'
@@ -43,8 +44,8 @@ export default function ActivityLogPage() {
     <div className="flex flex-col gap-6 max-w-4xl mx-auto">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-          <Database className="h-6 w-6 text-brand-500" />
+        <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+          <RiHistoryLine className="w-6 h-6 text-orange-500" />
           操作記錄
         </h1>
         <p className="text-sm text-stone-500 mt-1">審查與追蹤教練介面的銷課、預約與表單異動記錄</p>
