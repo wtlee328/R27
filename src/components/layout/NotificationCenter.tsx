@@ -71,7 +71,7 @@ export function NotificationCenter() {
       <button
         ref={buttonRef}
         onClick={() => setOpen(prev => !prev)}
-        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-stone-400 hover:text-white hover:bg-white/10 transition-all duration-200"
+        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-stone-600 hover:text-stone-950 hover:bg-stone-100 transition-all duration-200"
         aria-label="通知中心"
       >
         {unreadCount > 0 ? (

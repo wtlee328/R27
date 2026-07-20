@@ -1,8 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react'
 import {
-  Users, BookOpen, TrendingUp, BarChart2,
-  Database, UserCheck, Building2, Settings,
-  LogOut, Menu, X,
+  LogOut, Menu, X, Building2, UserCheck, Settings, ChevronDown,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
@@ -39,30 +37,30 @@ export function Navbar() {
     .map((id) => ALL_NAV_ITEMS.find((item) => item.id === id))
     .filter((item): item is NavItem => !!item)
 
-  const filteredNavItems = orderedItems.filter(item => {
+  const filteredNavItems = orderedItems.filter((item) => {
     if (item.adminOnly) return user?.role === 'admin'
     return true
   })
 
   return (
     <>
-      {/* ── Top bar ──────────────────────────────────────── */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-stone-950 flex items-center px-2 gap-3 shadow-lg shadow-black/10">
+      {/* ── Top Bar Header (Light background with crisp border line) ────────────────────── */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-white border-b border-stone-200/80 flex items-center px-4 sm:px-6 gap-3 shadow-2xs">
         {/* Mobile hamburger */}
         <button
           onClick={toggleSidebar}
-          className="lg:hidden rounded-lg p-2 text-stone-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="lg:hidden rounded-xl p-2 text-stone-600 hover:text-stone-950 hover:bg-stone-100 transition-colors"
           aria-label="Toggle menu"
         >
           {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
 
-        {/* Logo — visible on all screen sizes, aligned left in top bar */}
+        {/* Brand Logo area in topbar */}
         <div className="flex items-center h-full">
           {centerId === 'r27' ? (
-            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[75px] w-auto object-contain translate-y-4" />
+            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-[52px] w-auto object-contain brightness-0 shrink-0" />
           ) : (
-            <div className="flex items-center text-white font-semibold tracking-widest text-base pl-2 select-none">
+            <div className="flex items-center text-stone-950 font-black tracking-widest text-base pl-2 select-none">
               COFFIT
             </div>
           )}
@@ -70,41 +68,47 @@ export function Navbar() {
 
         <div className="flex-1" />
 
-        {/* Right side: notifications + profile */}
-        <div className="flex items-center gap-2">
+        {/* Right side: Center Switcher + Notification + User Profile */}
+        <div className="flex items-center gap-3">
+          <CenterSwitcher centerId={centerId} setCenterId={setCenterId} />
+
+          <div className="h-4 w-px bg-stone-200 hidden sm:block" />
+
           <NotificationCenter />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 outline-none group">
-                <Avatar className="h-8 w-8 ring-2 ring-brand-500/30 group-hover:ring-brand-400 transition-all">
+              <button className="flex items-center gap-2.5 outline-none group cursor-pointer p-1 rounded-xl hover:bg-stone-100/80 transition-all">
+                <Avatar className="h-8 w-8 ring-2 ring-stone-200 group-hover:ring-orange-500/50 transition-all">
                   <AvatarImage src="" />
-                  <AvatarFallback className="bg-brand-500 text-white text-xs font-bold">
+                  <AvatarFallback className="bg-stone-900 text-white text-xs font-black">
                     {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="hidden sm:flex flex-col items-start">
-                  <span className="text-sm font-medium text-stone-200 group-hover:text-white transition-colors">
+                <div className="hidden sm:flex flex-col items-start text-left">
+                  <span className="text-xs font-bold text-stone-900 group-hover:text-stone-950 transition-colors flex items-center gap-1">
                     {user?.displayName || user?.email?.split('@')[0]}
+                    <ChevronDown className="w-3 h-3 text-stone-400" />
                   </span>
                   {user?.role === 'admin' && (
-                    <span className="text-[10px] text-brand-400 font-semibold">管理員</span>
+                    <span className="text-[10px] text-orange-600 font-bold">系統管理員</span>
                   )}
                 </div>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 mt-2">
-              <DropdownMenuLabel>我的帳號</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-stone-500 font-bold">我的帳號</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
-                <UserCheck className="mr-2 h-4 w-4" />
+              <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+                <UserCheck className="mr-2 h-4 w-4 text-stone-500" />
                 <span>個人資訊</span>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
+              <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+                <Settings className="mr-2 h-4 w-4 text-stone-500" />
                 <span>系統設定</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 focus:bg-red-50 cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>登出</span>
               </DropdownMenuItem>
@@ -113,29 +117,24 @@ export function Navbar() {
         </div>
       </header>
 
-      {/* ── Sidebar overlay (mobile) ────────────────────── */}
+      {/* ── Sidebar Overlay (Mobile) ────────────────────── */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-stone-950/40 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* ── Sidebar ─────────────────────────────────────── */}
+      {/* ── Left Sidebar Navigation (Matching Reference SaaS Layout) ────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-950 border-r border-stone-900/50 flex flex-col transition-transform duration-300 ease-out',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-50/90 border-r border-stone-200/80 flex flex-col transition-transform duration-300 ease-out',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        {/* Switcher — top of sidebar, all screen sizes */}
-        <div className="px-3 py-2 border-b border-stone-900/40 shrink-0">
-          <CenterSwitcher centerId={centerId} setCenterId={setCenterId} />
-        </div>
-
-        {/* Navigation list */}
-        <nav className="flex-1 flex flex-col gap-1 p-3 pt-3 overflow-y-auto">
+        {/* Navigation List */}
+        <nav className="flex-1 flex flex-col gap-1.5 p-3 pt-4 overflow-y-auto">
           {filteredNavItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -144,23 +143,23 @@ export function Navbar() {
               onClick={() => setSidebarOpen(false)}
               className={({ isActive }) =>
                 cn(
-                  'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  'group flex items-center gap-3.5 px-4 py-2.5 text-xs font-bold transition-all duration-150',
                   isActive
-                    ? 'bg-brand-500/15 text-brand-400'
-                    : 'text-stone-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-orange-50/90 text-orange-950 border-l-4 border-orange-500 rounded-r-xl shadow-2xs'
+                    : 'text-stone-600 hover:text-stone-950 hover:bg-stone-100/80 rounded-xl'
                 )
               }
             >
-              <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110" />
+              <Icon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
               {label}
             </NavLink>
           ))}
         </nav>
 
-        {/* Sidebar footer */}
-        <div className="p-4 border-t border-white/10 bg-stone-950 shrink-0">
-          <p className="text-[11px] text-stone-600 text-center">
-            © {new Date().getFullYear()} {centerId === 'r27' ? 'R27+ FITNESS' : 'COFFIT'}
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-stone-200/60 bg-stone-50 shrink-0">
+          <p className="text-[11px] font-bold text-stone-400 text-center">
+            © {new Date().getFullYear()} {centerId === 'r27' ? 'R27 FITNESS' : 'COFFIT'}
           </p>
         </div>
       </aside>
@@ -172,30 +171,30 @@ function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenter
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center justify-between w-full px-2.5 py-1.5 rounded-md bg-stone-900/60 hover:bg-stone-900 text-stone-400 hover:text-stone-200 transition-all text-[11px] font-medium select-none outline-none border border-stone-800/60 hover:border-stone-700">
+        <button className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer">
           <div className="flex items-center gap-1.5">
-            <Building2 className="h-3 w-3 text-brand-500 shrink-0" />
+            <Building2 className="h-3.5 w-3.5 text-orange-500 shrink-0" />
             <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
           </div>
-          <span className="text-[7px] text-stone-600">▼</span>
+          <ChevronDown className="h-3 w-3 text-stone-400" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-52 mt-1">
-        <DropdownMenuLabel className="text-xs text-stone-400">選擇場館</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-48 mt-1">
+        <DropdownMenuLabel className="text-[11px] font-bold text-stone-400">選擇切換場館</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => setCenterId('r27')}
-          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'r27' && "text-brand-500 font-bold bg-brand-500/5")}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2 font-bold", centerId === 'r27' && "text-orange-600 bg-orange-50")}
         >
           <span>R27 Fitness</span>
-          {centerId === 'r27' && <span className="text-[8px]">●</span>}
+          {centerId === 'r27' && <span className="text-[10px] text-orange-600">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setCenterId('coffit')}
-          className={cn("flex items-center justify-between cursor-pointer text-xs py-2", centerId === 'coffit' && "text-brand-500 font-bold bg-brand-500/5")}
+          className={cn("flex items-center justify-between cursor-pointer text-xs py-2 font-bold", centerId === 'coffit' && "text-orange-600 bg-orange-50")}
         >
           <span>Coffit</span>
-          {centerId === 'coffit' && <span className="text-[8px]">●</span>}
+          {centerId === 'coffit' && <span className="text-[10px] text-orange-600">✓</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
