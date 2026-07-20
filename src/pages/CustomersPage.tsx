@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Users, FileText, AlertCircle, Cake, PlusCircle, X, CreditCard } from 'lucide-react'
+import { RiGroupLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { CustomerTable } from '../components/customers/CustomerTable'
@@ -154,16 +155,16 @@ export default function CustomersPage() {
   return (
     <div className="flex flex-col gap-8 pb-12">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-stone-900 tracking-tight">客戶檔案管理</h1>
-          <p className="text-stone-500 font-medium mt-2">追蹤學員進度與合約狀態</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiGroupLine className="w-6 h-6 text-orange-500" />
+            客戶檔案管理
+          </h1>
+          <p className="text-sm text-stone-500 mt-1">追蹤學員進度與合約狀態</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="rounded-full px-6 border-stone-200 bg-white shadow-sm hover:bg-stone-50">
-            匯入客戶
-          </Button>
-          <Button onClick={handleOpenOnboarding} className="rounded-full px-8 bg-stone-950 hover:bg-stone-800 shadow-lg shadow-stone-200">
+          <Button onClick={handleOpenOnboarding} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
             <PlusCircle className="w-4 h-4 mr-2" /> 新增客戶
           </Button>
         </div>

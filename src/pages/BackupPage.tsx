@@ -441,14 +441,16 @@ export default function BackupPage() {
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="px-4">
-        <h1 className="text-4xl font-black text-stone-900 tracking-tight flex items-center gap-3">
-          <RiHardDrive2Line className="w-9 h-9 text-orange-500" />
-          資料備份
-        </h1>
-        <p className="text-stone-500 font-medium mt-2">
-          匯出系統資料以做備份或日後還原。支援匯出完整結構之 JSON 檔案，以及便於 Excel 閱讀之 CSV 檔案。
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiHardDrive2Line className="w-6 h-6 text-orange-500" />
+            資料備份
+          </h1>
+          <p className="text-sm text-stone-500 mt-1">
+            匯出系統資料以做備份或日後還原。支援匯出完整結構之 JSON 檔案，以及便於 Excel 閱讀之 CSV 檔案。
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

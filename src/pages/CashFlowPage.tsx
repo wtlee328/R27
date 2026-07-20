@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { DollarSign, ArrowUpRight, ArrowDownRight, Upload } from 'lucide-react'
+import { DollarSign, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { RiMoneyDollarCircleLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { CashFlowTable } from '../components/cashflow/CashFlowTable'
@@ -22,17 +23,16 @@ export default function CashFlowPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">現金流量表</h1>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiMoneyDollarCircleLine className="w-6 h-6 text-orange-500" />
+            現金流量表
+          </h1>
           <p className="text-sm text-stone-500 mt-1">管理借貸與收支紀錄</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Upload className="w-4 h-4 mr-2" />
-            匯入 CSV
-          </Button>
-          <Button onClick={() => setIsModalOpen(true)}>+ 新增記帳</Button>
+          <Button onClick={() => setIsModalOpen(true)} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">+ 新增記帳</Button>
         </div>
       </div>
 
