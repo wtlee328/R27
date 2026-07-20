@@ -125,16 +125,16 @@ export function Navbar() {
         />
       )}
 
-      {/* ── Left Sidebar Navigation (Solid to Original Boundary + 5px Gradient Blend) ────────────────────── */}
+      {/* ── Left Sidebar Navigation (Solid to Boundary + 5px Gradient Blend to Main Page) ────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-50 flex flex-col transition-transform duration-300 ease-out border-r-0',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-100/70 flex flex-col transition-transform duration-300 ease-out border-r-0',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
       >
-        {/* 5px Gradient blend strip starting at original boundary line */}
-        <div className="absolute top-0 -right-[6px] bottom-0 w-[6px] bg-gradient-to-r from-stone-50 to-transparent pointer-events-none z-10" />
+        {/* 5px Gradient blend strip at original 240px boundary line */}
+        <div className="absolute top-0 -right-[6px] bottom-0 w-[6px] bg-gradient-to-r from-stone-200/50 via-stone-100/30 to-transparent pointer-events-none z-20" />
 
         {/* Navigation List */}
         <nav className="flex-1 flex flex-col gap-1.5 p-3 pt-4 overflow-y-auto">
@@ -160,7 +160,7 @@ export function Navbar() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 bg-stone-50 shrink-0">
+        <div className="p-4 bg-transparent shrink-0">
           <p className="text-[11px] font-bold text-stone-400 text-center">
             © {new Date().getFullYear()} {centerId === 'r27' ? 'R27 FITNESS' : 'COFFIT'}
           </p>
