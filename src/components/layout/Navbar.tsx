@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LogOut, Menu, X, Building2, UserCheck, Settings, ChevronDown,
 } from 'lucide-react'
