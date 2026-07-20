@@ -297,7 +297,7 @@ export function CustomerTable({
                           </p>
                         </div>
                         {activeContract && (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && (
-                          <span className="text-[8px] text-purple-400 font-bold mt-0.5">(雙人共享額度)</span>
+                          <span className="text-[8px] text-orange-500 font-bold mt-0.5">(雙人共享額度)</span>
                         )}
                       </div>
                     </div>

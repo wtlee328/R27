@@ -348,13 +348,13 @@ export function LessonRecordWizard({
           </div>
 
           {selectedContract && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId) && (
-            <div className="space-y-2 p-4 bg-purple-50/50 border border-purple-100 rounded-xl animate-in fade-in duration-300">
-              <Label className="text-purple-950 font-bold block text-xs">👥 雙人合約上課學員 (可多選) *</Label>
+            <div className="space-y-2 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
+              <Label className="text-stone-900 font-bold block text-xs">雙人合約上課學員 (可多選) *</Label>
               <div className="flex gap-4">
                 <label className={cn(
                   "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                   (form.watch('attendingCustomerIds') || []).includes(selectedCustomerId)
-                    ? "bg-purple-600 border-purple-600 text-white"
+                    ? "bg-orange-500 border-orange-500 text-white"
                     : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                 )}>
                   <input
@@ -380,7 +380,7 @@ export function LessonRecordWizard({
                   <label className={cn(
                     "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
                     (form.watch('attendingCustomerIds') || []).includes(partner.id)
-                      ? "bg-purple-600 border-purple-600 text-white"
+                      ? "bg-orange-500 border-orange-500 text-white"
                       : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                   )}>
                     <input

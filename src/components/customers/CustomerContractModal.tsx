@@ -479,7 +479,7 @@ export function CustomerContractModal({
               <div className="space-y-3">
                 <h3 className="font-black text-stone-900 text-xs border-b-2 border-stone-800 pb-1 flex items-center justify-between">
                   <span>立契約書人</span>
-                  {partner && <span className="text-[10px] text-purple-600 font-bold">👥 雙人共享合約模式</span>}
+                  {partner && <span className="text-[10px] text-orange-600 font-bold">雙人共享合約模式</span>}
                 </h3>
                 
                 {/* 甲方: 主學員 */}
@@ -564,7 +564,7 @@ export function CustomerContractModal({
                 {/* 甲方: 學員 B (Partner) if dual */}
                 {partner && (
                   <div className="space-y-2.5 pt-2 border-t border-dashed border-stone-200">
-                    <div className="font-bold text-purple-800 bg-purple-50 px-2 py-0.5 rounded text-[11px]">
+                    <div className="font-bold text-orange-900 bg-orange-50 px-2 py-0.5 rounded text-[11px]">
                       <span>會員姓名（簡稱甲方） - 學員 B</span>
                     </div>
                     <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
@@ -725,7 +725,7 @@ export function CustomerContractModal({
                               </div>
                               {!isOneToTwo && (
                                 <div>
-                                  <span className="text-[10px] text-purple-600 font-bold block mb-1">學員 B ({partner.name}) 教練</span>
+                                  <span className="text-[10px] text-orange-600 font-bold block mb-1">學員 B ({partner.name}) 教練</span>
                                   <select 
                                     value={editSecondaryTrainerId || ''} 
                                     onChange={e => setEditSecondaryTrainerId(e.target.value)}
@@ -1057,7 +1057,7 @@ export function CustomerContractModal({
                     {/* Secondary Signature */}
                     {partner && (
                       <div className="space-y-1">
-                        <p className="text-[10px] text-purple-400 uppercase font-bold tracking-widest">甲方學員 B 簽名</p>
+                        <p className="text-[10px] text-orange-600 uppercase font-bold tracking-widest">甲方學員 B 簽名</p>
                         <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
                           {contract?.secondarySignatureDataUrl ? (
                             <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain mix-blend-multiply" />

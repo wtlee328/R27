@@ -522,7 +522,7 @@ export default function LessonsPage() {
                                       <span className={cn(
                                         "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold",
                                         contract.contractType === 'dual' 
-                                          ? "bg-purple-50 text-purple-700 border border-purple-100" 
+                                          ? "bg-orange-50 text-orange-700 border border-orange-100" 
                                           : "bg-blue-50 text-blue-700 border border-blue-100"
                                       )}>
                                         {contract.contractType === 'dual' ? '👥 雙人' : '👤 單人'}
@@ -640,7 +640,7 @@ export default function LessonsPage() {
                                                 <span className={cn(
                                                   "px-1.5 py-0.5 rounded font-bold uppercase",
                                                   c.contractType === 'dual' 
-                                                    ? "bg-purple-100 text-purple-700" 
+                                                    ? "bg-orange-100 text-orange-700" 
                                                     : "bg-blue-100 text-blue-700"
                                                 )}>
                                                   {c.contractType === 'dual' ? '👥 雙人' : '👤 單人'}

@@ -178,11 +178,11 @@ export function CustomerDetailsModal({
                     <div className={cn(
                       "border rounded-2xl p-6 relative overflow-hidden group",
                       isDual 
-                        ? "bg-purple-50/50 border-purple-100" 
+                        ? "bg-orange-50/50 border-orange-100" 
                         : "bg-emerald-50/50 border-emerald-100"
                     )}>
                       <div className="absolute right-0 top-0 p-4 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-500">
-                        <ShieldCheck className={cn("w-32 h-32", isDual ? "text-purple-600" : "text-emerald-600")} />
+                        <ShieldCheck className={cn("w-32 h-32", isDual ? "text-orange-500" : "text-emerald-600")} />
                       </div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
@@ -190,7 +190,7 @@ export function CustomerDetailsModal({
                             {isDual ? <><RiGroupLine className="w-3.5 h-3.5 text-orange-400" /> 雙人進行中合約</> : <><RiUser3Line className="w-3.5 h-3.5 text-stone-300" /> 進行中合約</>}
                           </Badge>
                           {isDual && activePartnerName && (
-                            <Badge variant="outline" className="bg-purple-100/60 text-purple-700 border-purple-200 text-[10px]">
+                            <Badge variant="outline" className="bg-orange-100/60 text-orange-700 border-orange-200 text-[10px]">
                               與 {activePartnerName} 共享額度
                             </Badge>
                           )}
@@ -204,10 +204,10 @@ export function CustomerDetailsModal({
                       <div className="grid grid-cols-3 gap-8">
                         <div>
                           <p className="text-xs text-stone-400 uppercase font-bold tracking-wider mb-1">剩餘堂數</p>
-                          <p className={cn("text-2xl font-black", isDual ? "text-purple-700" : "text-emerald-700")}>
+                          <p className={cn("text-2xl font-black", isDual ? "text-orange-600" : "text-emerald-700")}>
                             {activeContract.remainingSessions} / {activeContract.totalSessions}
                           </p>
-                          {isDual && <span className="text-[10px] text-purple-400 font-bold">(雙人共享)</span>}
+                          {isDual && <span className="text-[10px] text-orange-500 font-bold">(雙人共享)</span>}
                         </div>
                         <div>
                           <p className="text-xs text-stone-400 uppercase font-bold tracking-wider mb-1">合約期限</p>
@@ -225,7 +225,7 @@ export function CustomerDetailsModal({
                             className={cn(
                               "gap-1 font-bold",
                               isDual 
-                                ? "text-purple-600 hover:text-purple-700 hover:bg-purple-100/50" 
+                                ? "text-orange-600 hover:text-orange-700 hover:bg-orange-100/50" 
                                 : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100/50"
                             )}
                           >
@@ -315,7 +315,7 @@ export function CustomerDetailsModal({
                         <div className="flex items-center gap-4">
                           <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
                             contract.status === 'active' 
-                              ? (isContractDual ? 'bg-purple-50 text-purple-600' : 'bg-emerald-50 text-emerald-600') 
+                              ? (isContractDual ? 'bg-orange-50 text-orange-600' : 'bg-emerald-50 text-emerald-600') 
                               : 'bg-stone-50 text-stone-400'
                           }`}>
                             <FileText className="w-6 h-6" />
@@ -327,7 +327,7 @@ export function CustomerDetailsModal({
                                 variant={contract.status === 'active' ? 'default' : 'secondary'} 
                                 className={cn(
                                   "text-[10px] py-0",
-                                  contract.status === 'active' && isContractDual && "bg-purple-500 hover:bg-purple-600"
+                                  contract.status === 'active' && isContractDual && "bg-orange-500 hover:bg-orange-600"
                                 )}
                               >
                                 {contract.status === 'active' ? '進行中' : '已結束'}
@@ -338,7 +338,7 @@ export function CustomerDetailsModal({
                                 </Badge>
                               )}
                               {isContractDual && partnerName && (
-                                <span className="text-[10px] text-purple-400 font-bold">
+                                <span className="text-[10px] text-orange-500 font-bold">
                                   (共享人: {partnerName})
                                 </span>
                               )}
