@@ -47,6 +47,10 @@ export interface Customer {
   phone: string
   email: string
   dateOfBirth: Timestamp
+  ageGroup?: string
+  gender?: 'male' | 'female' | 'other'
+  exerciseHabit?: 'none' | 'weekly_1_2' | 'weekly_3_plus'
+  source?: string
   historicalSessions: number
   emergencyContact: EmergencyContact
   sharedContractCustomerId: string | null
