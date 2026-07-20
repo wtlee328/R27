@@ -110,7 +110,6 @@ export default function TrainerTrialsPage() {
             <RiUserSearchLine className="w-6 h-6 text-orange-500" />
             體驗客管理
           </h1>
-          <p className="text-sm text-stone-500 mt-1">追蹤體驗課程與轉換狀態</p>
         </div>
         {!isAdding && (
           <Button
@@ -272,7 +271,6 @@ export default function TrainerTrialsPage() {
                 <UserCheck className="h-5 w-5 text-brand-500" />
                 體驗客名單追蹤
               </h2>
-              <p className="text-stone-500 text-sm mt-0.5">顯示本場館近期體驗名單與成交進度</p>
             </div>
           </div>
 

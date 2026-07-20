@@ -161,9 +161,8 @@ export default function TrainerLessonsPage() {
         <div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
             <RiCalendarCheckLine className="w-6 h-6 text-orange-500" />
-            教練銷課
+            銷課紀錄
           </h1>
-          <p className="text-sm text-stone-500 mt-1">快速為學員紀錄上課堂數</p>
         </div>
         {!isRecording && (
           <Button
@@ -436,7 +435,6 @@ export default function TrainerLessonsPage() {
                 <Clock className="h-5 w-5 text-brand-500" />
                 最近銷課紀錄
               </h2>
-              <p className="text-stone-500 text-sm mt-0.5">顯示本場館近期已扣堂之銷課紀錄</p>
             </div>
           </div>
 
