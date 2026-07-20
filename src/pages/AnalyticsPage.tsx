@@ -6,7 +6,6 @@ import {
   Calendar,
   AlertTriangle,
   Award,
-  ArrowUpRight,
   UserX,
   Activity,
   Flame,
@@ -15,12 +14,23 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { StatCard } from '../components/shared/StatCard'
+import { Progress } from '../components/ui/progress'
+import { Badge } from '../components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../components/ui/table'
 import { useCustomers } from '../hooks/useCustomers'
 import { useContracts } from '../hooks/useContracts'
 import { useCashFlow } from '../hooks/useCashFlow'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../lib/firebase'
-import type { Customer, CustomerContract, TrialRecord, Trainer } from '../types'
+import type { Customer, TrialRecord, Trainer } from '../types'
 import { normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
 
 type RfmSortKey = 'frequency' | 'monetary' | 'recency'
@@ -40,7 +50,7 @@ export default function AnalyticsPage() {
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(now.getMonth() + 1)
 
-  // Fetch trainers, trials, and lessons
+  // Fetch extra data
   useEffect(() => {
     const fetchExtraData = async () => {
       try {
@@ -76,7 +86,7 @@ export default function AnalyticsPage() {
     return map
   }, [trainers])
 
-  // --- Filtered datasets based on selectedYear & selectedMonth ---
+  // --- Filtered datasets ---
   const filteredTrials = useMemo(() => {
     return trials.filter((t) => {
       if (!t.createdAt) return true
@@ -123,7 +133,6 @@ export default function AnalyticsPage() {
     const converted = filteredTrials.filter((t) => t.outcome === 'converted').length
     const rate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0'
 
-    // Per Trainer Conversion Ranking
     const trainerTrialMap: Record<string, { total: number; converted: number }> = {}
     filteredTrials.forEach((t) => {
       if (!t.trainerId) return
@@ -149,7 +158,7 @@ export default function AnalyticsPage() {
     return { total, converted, rate, trainerRanking }
   }, [filteredTrials, trainerMap])
 
-  // Renewal Rate (續課率)
+  // Renewal Rate
   const renewalStats = useMemo(() => {
     const renewals = filteredContracts.filter((c) => (c as any).partnerMode === 'renewal' || (c as any).isRenewal).length
     const totalEnded = contracts.filter((c) => c.status === 'completed' || c.status === 'expired').length
@@ -161,7 +170,6 @@ export default function AnalyticsPage() {
   const demographics = useMemo(() => {
     const genderCount = { female: 0, male: 0, other: 0 }
     const habitCount = { none: 0, weekly_1_2: 0, weekly_3_plus: 0 }
-    const ageCount = { '20歲以下': 0, '20-29歲': 0, '30-39歲': 0, '40-49歲': 0, '50歲以上': 0 }
     const channelCount: Record<string, number> = {
       Instagram: 0,
       Facebook: 0,
@@ -172,30 +180,14 @@ export default function AnalyticsPage() {
     }
 
     customers.forEach((c) => {
-      // Gender
       if (c.gender === 'male') genderCount.male += 1
       else if (c.gender === 'other') genderCount.other += 1
       else genderCount.female += 1
 
-      // Habit
       if (c.exerciseHabit === 'weekly_1_2') habitCount.weekly_1_2 += 1
       else if (c.exerciseHabit === 'weekly_3_plus') habitCount.weekly_3_plus += 1
       else habitCount.none += 1
 
-      // Age Group from dateOfBirth
-      if (c.dateOfBirth) {
-        const birthDate = c.dateOfBirth.toDate ? c.dateOfBirth.toDate() : new Date(c.dateOfBirth as any)
-        const age = new Date().getFullYear() - birthDate.getFullYear()
-        if (age < 20) ageCount['20歲以下'] += 1
-        else if (age <= 29) ageCount['20-29歲'] += 1
-        else if (age <= 39) ageCount['30-39歲'] += 1
-        else if (age <= 49) ageCount['40-49歲'] += 1
-        else ageCount['50歲以上'] += 1
-      } else {
-        ageCount['20-29歲'] += 1
-      }
-
-      // Channel
       const src = c.source || 'instagram'
       if (src === 'instagram') channelCount.Instagram += 1
       else if (src === 'facebook') channelCount.Facebook += 1
@@ -207,10 +199,10 @@ export default function AnalyticsPage() {
 
     const totalCust = customers.length || 1
 
-    return { genderCount, habitCount, ageCount, channelCount, totalCust }
+    return { genderCount, habitCount, channelCount, totalCust }
   }, [customers])
 
-  // --- 3. 合約分析 (Contract Specs) ---
+  // --- 3. 合約規格分佈 ---
   const contractSpecs = useMemo(() => {
     const specMap: Record<string, number> = {
       '10堂': 0,
@@ -236,7 +228,7 @@ export default function AnalyticsPage() {
     return { specMap, totalCount }
   }, [filteredContracts])
 
-  // --- 4. 營運與課耗分析 (Monthly 12-Month Lesson Trend Bar Chart) ---
+  // --- 4. 每月銷課總表 12-Month Trend Bar Chart ---
   const monthlyLessonsTrend = useMemo(() => {
     const months = Array(12).fill(0)
     lessons.forEach((l) => {
@@ -255,7 +247,6 @@ export default function AnalyticsPage() {
   const trainerPerformance = useMemo(() => {
     const map: Record<string, { sessions: number; revenue: number }> = {}
 
-    // Filtered lessons for performance
     filteredLessons.forEach((l) => {
       if (l.status === 'completed' && l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
@@ -263,7 +254,6 @@ export default function AnalyticsPage() {
       }
     })
 
-    // Filtered Cash flow revenue for performance
     filteredCashFlowRecords.map(normalizeCashFlowRecord).forEach((r) => {
       if (r.type === 'income' && r.trainerId) {
         if (!map[r.trainerId]) map[r.trainerId] = { sessions: 0, revenue: 0 }
@@ -281,15 +271,12 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.sessions - a.sessions)
 
     const maxSessions = Math.max(...list.map((t) => t.sessions), 1)
-    const maxRevenue = Math.max(...list.map((t) => t.revenue), 1)
 
-    return { list, maxSessions, maxRevenue }
+    return { list, maxSessions }
   }, [filteredLessons, filteredCashFlowRecords, trainerMap])
 
-  // --- 5. 會員留存與流失監控 (Ghost Members & Churn) ---
+  // --- 5. 幽靈會員預警 ---
   const churnAnalysis = useMemo(() => {
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-
     const inactiveGhostMembers: Array<{
       customer: Customer
       lastLessonDate: Date | null
@@ -331,7 +318,7 @@ export default function AnalyticsPage() {
     }
   }, [customers, contracts, lessons, trainerMap])
 
-  // --- 6. 會員活躍度 RFM 模型 (RFM Analysis) ---
+  // --- 6. RFM 會員活躍度 ---
   const rfmMembers = useMemo(() => {
     return customers.map((cust) => {
       const custContracts = contracts.filter((c) => c.customerId === cust.id || c.sharedWithCustomerId === cust.id)
@@ -372,22 +359,22 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      {/* Header & Shared Filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
+      {/* Clean Minimalist Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl border border-stone-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-emerald-600" />
+          <h1 className="text-2xl font-black tracking-tight text-stone-950 flex items-center gap-2">
+            <Activity className="w-6 h-6 text-stone-900" />
             數據分析與營運儀表板
           </h1>
-          <p className="text-sm text-stone-500 mt-1">
-            即時追蹤銷售轉換率、漏斗結構、銷課趨勢圖表、幽靈學員預警與 RFM 會員排行
+          <p className="text-xs font-medium text-stone-500 mt-1">
+            即時分析銷售轉換、客群結構、銷課趨勢圖表、幽靈會員與 RFM 會員活躍度
           </p>
         </div>
 
-        {/* Year & Month Selection Filters */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Timeframe Selectors */}
+        <div className="flex items-center gap-2">
           <select
-            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-900 cursor-pointer"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
@@ -402,7 +389,7 @@ export default function AnalyticsPage() {
           </select>
 
           <select
-            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-900 cursor-pointer"
             value={selectedMonth}
             onChange={(e) => {
               const val = e.target.value
@@ -423,389 +410,348 @@ export default function AnalyticsPage() {
         <div className="loading-spinner py-16"><span /></div>
       ) : (
         <>
-          {/* Top Key Performance Indicators (KPI Cards) */}
+          {/* Top KPI Cards (Sleek Monochrome) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
-              title={`體驗課成交率 (${monthLabel})`}
+              title={`體驗成交率 (${monthLabel})`}
               value={`${trialConversionStats.rate}%`}
               icon={TrendingUp}
-              iconColor="text-emerald-600"
-              iconBg="bg-emerald-50"
-              subtitle={`成交 ${trialConversionStats.converted} / 總體驗 ${trialConversionStats.total} 人`}
+              subtitle={`成交 ${trialConversionStats.converted} / 體驗 ${trialConversionStats.total} 人`}
             />
             <StatCard
               title={`續課率 (${monthLabel})`}
               value={`${renewalStats.rate}%`}
               icon={Award}
-              iconColor="text-blue-600"
-              iconBg="bg-blue-50"
               subtitle={`續約 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 件`}
             />
             <StatCard
-              title="幽靈會員預警 (>30天未到店)"
+              title="幽靈會員預警 (>30天)"
               value={`${churnAnalysis.inactiveGhostMembers.length} 人`}
               icon={AlertTriangle}
-              iconColor="text-amber-600"
-              iconBg="bg-amber-50"
-              subtitle="有合約但無未來預約紀錄"
+              subtitle="合約尚在但無未來預約"
             />
             <StatCard
-              title="場館學員資料庫"
+              title="場館總學員數"
               value={`${customers.length} 人`}
               icon={Users}
-              iconColor="text-purple-600"
-              iconBg="bg-purple-50"
-              subtitle="總註冊學員數"
+              subtitle="全館資料庫學員"
             />
           </div>
 
-          {/* 📈 Visualization 1: 每月課堂銷課總表趨勢圖 (12-Month Lesson Trend Bar Chart) */}
-          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          {/* 📈 12-Month Lesson Trend Bar Chart (Minimalist Monochrome) */}
+          <Card className="border border-stone-200/80 shadow-xs">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-stone-100 pb-4">
               <div>
-                <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-emerald-600" />
-                  {selectedYear} 年度銷課總表趨勢圖
-                </h3>
-                <p className="text-xs text-stone-400 mt-0.5">
-                  呈現 1~12 月「實際總銷課堂數」的起伏動態（當前篩選：{monthLabel}）
-                </p>
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-stone-900" />
+                  {selectedYear} 年度銷課趨勢圖
+                </CardTitle>
+                <CardDescription className="text-xs text-stone-500 mt-0.5">
+                  1~12 月實際總銷課堂數起伏（當前：{monthLabel}）
+                </CardDescription>
               </div>
-              <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-3 py-1 rounded-full border border-stone-200">
+              <Badge variant="secondary" className="bg-stone-100 text-stone-800 font-mono">
                 年總銷課: {monthlyLessonsTrend.months.reduce((a, b) => a + b, 0)} 堂
-              </span>
-            </div>
-
-            {/* 12-Month Bar Chart Container */}
-            <div className="pt-6 pb-2 px-2">
-              <div className="h-44 flex items-end justify-between gap-2 border-b border-stone-200 pb-2">
+              </Badge>
+            </CardHeader>
+            <CardContent className="pt-6 pb-2">
+              <div className="h-40 flex items-end justify-between gap-2 border-b border-stone-200/80 pb-2">
                 {monthlyLessonsTrend.months.map((count, idx) => {
                   const monthNum = idx + 1
                   const isSelected = selectedMonth === monthNum
-                  const heightPct = Math.max(10, (count / monthlyLessonsTrend.maxVal) * 100)
+                  const heightPct = Math.max(8, (count / monthlyLessonsTrend.maxVal) * 100)
 
                   return (
                     <div key={monthNum} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                      <span className={`text-[11px] font-mono font-bold transition-all ${isSelected ? 'text-amber-600 font-black' : 'text-stone-500'}`}>
+                      <span className={`text-[10px] font-mono font-bold transition-all ${isSelected ? 'text-stone-950 font-black' : 'text-stone-400'}`}>
                         {count > 0 ? `${count}堂` : ''}
                       </span>
                       <div
-                        className={`w-full rounded-t-lg transition-all duration-300 ${
+                        className={`w-full rounded-t-sm transition-all duration-200 ${
                           isSelected
-                            ? 'bg-gradient-to-t from-amber-500 to-amber-400 shadow-md shadow-amber-200'
-                            : 'bg-stone-200 hover:bg-stone-300'
+                            ? 'bg-stone-950 shadow-sm'
+                            : 'bg-stone-200 group-hover:bg-stone-300'
                         }`}
                         style={{ height: `${heightPct}%` }}
                       />
-                      <span className={`text-xs font-bold ${isSelected ? 'text-amber-800 font-black' : 'text-stone-600'}`}>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-stone-950 font-black' : 'text-stone-500'}`}>
                         {monthNum}月
                       </span>
                     </div>
                   )
                 })}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Section 2: 渠道轉化漏斗 & 客群結構圖表 (Demographics & Channels Visualizations) */}
+          {/* Section 2: 渠道轉化 & 客群結構 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 🎯 渠道轉化漏斗視覺條 (Channel Funnel Visual Progress Bars) */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                來客渠道漏斗分析 (Channel Breakdown)
-              </h3>
-
-              <div className="space-y-3 pt-2">
+            {/* 🎯 渠道轉化漏斗條狀圖 */}
+            <Card className="border border-stone-200/80 shadow-xs">
+              <CardHeader className="border-b border-stone-100 pb-4">
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-stone-800" />
+                  來客渠道分佈 (Channel Breakdown)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
                 {Object.entries(demographics.channelCount).map(([channel, count]) => {
                   const pct = ((count / demographics.totalCust) * 100).toFixed(1)
                   return (
-                    <div key={channel} className="space-y-1">
-                      <div className="flex justify-between text-xs font-bold text-stone-700">
+                    <div key={channel} className="space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-stone-800">
                         <span>{channel}</span>
-                        <span className="font-mono text-stone-900">{count} 人 ({pct}%)</span>
+                        <span className="font-mono text-stone-950">{count} 人 ({pct}%)</span>
                       </div>
-                      <div className="h-2.5 w-full bg-stone-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.max(4, Number(pct))}%` }}
-                        />
-                      </div>
+                      <Progress value={Number(pct)} indicatorClassName="bg-stone-900" />
                     </div>
                   )
                 })}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* 📊 客群結構與運動習慣 (Demographics Progress Bars) */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-purple-600" />
-                客群屬性與運動習慣視覺化
-              </h3>
-
-              <div className="space-y-4 pt-2">
-                {/* 性別比例條 */}
-                <div className="space-y-1.5">
+            {/* 📊 客群屬性與運動習慣 */}
+            <Card className="border border-stone-200/80 shadow-xs">
+              <CardHeader className="border-b border-stone-100 pb-4">
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <PieChart className="w-4 h-4 text-stone-800" />
+                  客群屬性與運動習慣分析
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5 pt-4">
+                {/* 性別比例 */}
+                <div className="space-y-2">
                   <span className="text-xs font-bold text-stone-500 block">性別比例</span>
-                  <div className="h-4 w-full bg-stone-100 rounded-full overflow-hidden flex font-mono text-[10px] text-white font-bold">
+                  <div className="h-3.5 w-full bg-stone-100 rounded-full overflow-hidden flex font-mono text-[10px] text-white font-bold">
                     <div
                       style={{ width: `${(demographics.genderCount.female / demographics.totalCust) * 100}%` }}
-                      className="bg-pink-500 flex items-center justify-center"
+                      className="bg-stone-800 flex items-center justify-center"
                     >
                       女 {((demographics.genderCount.female / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
                     <div
                       style={{ width: `${(demographics.genderCount.male / demographics.totalCust) * 100}%` }}
-                      className="bg-blue-500 flex items-center justify-center"
+                      className="bg-stone-400 flex items-center justify-center"
                     >
                       男 {((demographics.genderCount.male / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
                   </div>
                 </div>
 
-                {/* 運動習慣進度條 */}
-                <div className="space-y-2 pt-2 border-t border-stone-100">
+                {/* 運動習慣 */}
+                <div className="space-y-3 pt-2 border-t border-stone-100">
                   <span className="text-xs font-bold text-stone-500 block">運動習慣分佈</span>
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-red-600 font-bold">完全沒運動</span>
-                        <span className="font-mono font-bold">{demographics.habitCount.none} 人</span>
-                      </div>
-                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-red-400 rounded-full"
-                          style={{ width: `${(demographics.habitCount.none / demographics.totalCust) * 100}%` }}
-                        />
-                      </div>
+                  
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-stone-700">
+                      <span>完全沒運動</span>
+                      <span className="font-mono">{demographics.habitCount.none} 人</span>
                     </div>
+                    <Progress value={(demographics.habitCount.none / demographics.totalCust) * 100} indicatorClassName="bg-stone-400" />
+                  </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-emerald-600 font-bold">每週 1-2 次</span>
-                        <span className="font-mono font-bold">{demographics.habitCount.weekly_1_2} 人</span>
-                      </div>
-                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{ width: `${(demographics.habitCount.weekly_1_2 / demographics.totalCust) * 100}%` }}
-                        />
-                      </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-stone-700">
+                      <span>每週 1-2 次</span>
+                      <span className="font-mono">{demographics.habitCount.weekly_1_2} 人</span>
                     </div>
+                    <Progress value={(demographics.habitCount.weekly_1_2 / demographics.totalCust) * 100} indicatorClassName="bg-stone-700" />
+                  </div>
 
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-purple-600 font-bold">每週 3 次以上</span>
-                        <span className="font-mono font-bold">{demographics.habitCount.weekly_3_plus} 人</span>
-                      </div>
-                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-purple-500 rounded-full"
-                          style={{ width: `${(demographics.habitCount.weekly_3_plus / demographics.totalCust) * 100}%` }}
-                        />
-                      </div>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs font-bold text-stone-700">
+                      <span>每週 3 次以上</span>
+                      <span className="font-mono">{demographics.habitCount.weekly_3_plus} 人</span>
                     </div>
+                    <Progress value={(demographics.habitCount.weekly_3_plus / demographics.totalCust) * 100} indicatorClassName="bg-stone-950" />
                   </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Section 3: 合約規格分佈 & 教練課耗與產值排行圖表 */}
+          {/* Section 3: 合約規格 & 教練課耗排行 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 合約方案規格分佈視覺圖 */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                課程購買與合約規格分佈
-              </h3>
-              <div className="space-y-3 pt-2">
+            {/* 合約規格 */}
+            <Card className="border border-stone-200/80 shadow-xs">
+              <CardHeader className="border-b border-stone-100 pb-4">
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-stone-800" />
+                  課程購買與合約規格分佈
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3.5 pt-4">
                 {Object.entries(contractSpecs.specMap).map(([spec, count]) => {
                   const pct = ((count / contractSpecs.totalCount) * 100).toFixed(1)
                   return (
-                    <div key={spec} className="space-y-1">
+                    <div key={spec} className="space-y-1.5">
                       <div className="flex justify-between text-xs font-bold text-stone-800">
                         <span>{spec} 方案</span>
-                        <span className="font-mono text-purple-900">{count} 份 ({pct}%)</span>
+                        <span className="font-mono text-stone-950">{count} 份 ({pct}%)</span>
                       </div>
-                      <div className="h-2.5 w-full bg-purple-50 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                          style={{ width: `${Math.max(4, Number(pct))}%` }}
-                        />
-                      </div>
+                      <Progress value={Number(pct)} indicatorClassName="bg-stone-900" />
                     </div>
                   )
                 })}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* 教練銷課與產值排行視覺圖 */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-orange-500" />
-                教練銷課課耗與產值排行榜
-              </h3>
-              <div className="space-y-3">
+            {/* 教練課耗與產值排行 */}
+            <Card className="border border-stone-200/80 shadow-xs">
+              <CardHeader className="border-b border-stone-100 pb-4">
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-stone-800" />
+                  教練銷課與業績排行榜
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 pt-4">
                 {trainerPerformance.list.length === 0 ? (
-                  <p className="text-stone-400 text-xs py-4 text-center">該時段尚無教練銷課數據</p>
+                  <p className="text-stone-400 text-xs py-4 text-center italic">該時段尚無教練銷課紀錄</p>
                 ) : (
                   trainerPerformance.list.map((tp, idx) => {
                     const sessionPct = ((tp.sessions / trainerPerformance.maxSessions) * 100).toFixed(0)
                     return (
-                      <div key={tp.trainerId} className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-1.5">
+                      <div key={tp.trainerId} className="p-3 rounded-lg bg-stone-50/70 border border-stone-200/60 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                              idx === 0 ? 'bg-amber-400 text-stone-900' : idx === 1 ? 'bg-stone-300 text-stone-900' : 'bg-amber-700/20 text-amber-900'
-                            }`}>
+                            <span className="w-5 h-5 rounded-full bg-stone-900 text-white flex items-center justify-center text-xs font-bold font-mono">
                               {idx + 1}
                             </span>
-                            <span className="text-sm font-bold text-stone-900">{tp.trainerName}</span>
+                            <span className="text-xs font-bold text-stone-900">{tp.trainerName}</span>
                           </div>
                           <div className="text-right">
                             <span className="text-xs font-bold text-stone-700">完成 {tp.sessions} 堂銷課</span>
-                            <span className="text-xs font-black font-mono text-emerald-600 block">
-                              ${tp.revenue.toLocaleString()} 業績
+                            <span className="text-xs font-black font-mono text-stone-950 block">
+                              ${tp.revenue.toLocaleString()}
                             </span>
                           </div>
                         </div>
-                        <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full"
-                            style={{ width: `${Math.max(5, Number(sessionPct))}%` }}
-                          />
-                        </div>
+                        <Progress value={Number(sessionPct)} indicatorClassName="bg-stone-900" />
                       </div>
                     )
                   })
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Section 4: 幽靈會員預警 (Inactive Ghost Members) */}
-          <div className="bg-white border-2 border-amber-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-4">
-              <div>
-                <h3 className="text-base font-bold text-amber-900 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  幽靈會員預警清單 (超過 30 天未到店且無未來預約)
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  共有 <span className="font-bold text-amber-700">{churnAnalysis.inactiveGhostMembers.length}</span> 位學員合約尚在，但長期未到店，建議教練主動關懷！
-                </p>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-amber-50/80 text-amber-950 border-b border-amber-200">
-                  <tr>
-                    <th className="px-4 py-3 font-bold text-xs uppercase">學員姓名</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase">聯絡電話</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase">負責教練</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase text-right">上次到店時間</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase text-center">狀態</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
+          {/* Section 4: 幽靈會員預警 (Inactive Ghost Members Table) */}
+          <Card className="border border-stone-200/80 shadow-xs">
+            <CardHeader className="border-b border-stone-100 pb-4">
+              <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-stone-900" />
+                幽靈會員預警清單 (超過 30 天未到店且無未來預約)
+              </CardTitle>
+              <CardDescription className="text-xs text-stone-500">
+                共有 <span className="font-bold text-stone-950">{churnAnalysis.inactiveGhostMembers.length}</span> 位學員合約尚在，但長期未到店上課。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>學員姓名</TableHead>
+                    <TableHead>聯絡電話</TableHead>
+                    <TableHead>負責教練</TableHead>
+                    <TableHead className="text-right">上次到店時間</TableHead>
+                    <TableHead className="text-center">狀態</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {churnAnalysis.inactiveGhostMembers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-stone-400 text-xs">
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-8 text-center text-stone-400 text-xs italic">
                         🎉 太棒了！目前無任何超過 30 天未到店的幽靈學員
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     churnAnalysis.inactiveGhostMembers.map(({ customer, lastLessonDate, daysInactive, trainerName }) => (
-                      <tr key={customer.id} className="hover:bg-amber-50/30 transition-colors">
-                        <td className="px-4 py-3 font-bold text-stone-900">{customer.name}</td>
-                        <td className="px-4 py-3 text-stone-600 font-mono text-xs">{customer.phone}</td>
-                        <td className="px-4 py-3 text-stone-700 font-medium text-xs">{trainerName}</td>
-                        <td className="px-4 py-3 text-right font-mono text-xs text-stone-500">
+                      <TableRow key={customer.id}>
+                        <TableCell className="font-bold text-stone-900">{customer.name}</TableCell>
+                        <TableCell className="font-mono text-xs text-stone-600">{customer.phone}</TableCell>
+                        <TableCell className="font-medium text-xs text-stone-700">{trainerName}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-stone-600">
                           {lastLessonDate ? `${daysInactive} 天前` : '未會面過'}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            <UserX className="w-3 h-3" />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="bg-stone-100 text-stone-800 border-stone-200">
+                            <UserX className="w-3 h-3 mr-1" />
                             流失預警
-                          </span>
-                        </td>
-                      </tr>
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
 
-          {/* Section 5: 會員活躍度 RFM 模型 (RFM Ranking) */}
-          <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
+          {/* Section 5: 會員活躍度 RFM 模型 */}
+          <Card className="border border-stone-200/80 shadow-xs">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-4 gap-3">
               <div>
-                <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-emerald-600" />
+                <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-stone-900" />
                   會員活躍度 RFM 模型排行榜
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
+                </CardTitle>
+                <CardDescription className="text-xs text-stone-500">
                   R (最近到店) | F (每週平均上課頻率) | M (累計會籍與合約貢獻金額)
-                </p>
+                </CardDescription>
               </div>
 
               {/* Sorting Filter */}
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-stone-400" />
-                <span className="text-xs font-bold text-stone-600">排序依據：</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <Filter className="w-3.5 h-3.5 text-stone-400" />
+                <span className="text-xs font-bold text-stone-600">排序：</span>
                 <select
                   value={rfmSortBy}
                   onChange={(e) => setRfmSortBy(e.target.value as RfmSortKey)}
-                  className="border border-stone-200 rounded-xl px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none cursor-pointer"
+                  className="border border-stone-200 rounded-lg px-2.5 py-1 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none cursor-pointer"
                 >
                   <option value="frequency">按上課頻率 (F - 高至低)</option>
                   <option value="monetary">按消費貢獻度 (M - 高至低)</option>
                   <option value="recency">按到店時間 (R - 近至遠)</option>
                 </select>
               </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-stone-50 text-stone-600 border-b border-stone-200">
-                  <tr>
-                    <th className="px-4 py-3 font-bold text-xs uppercase w-12 text-center">排名</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase">學員姓名</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase">聯絡電話</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase text-right">R (最近到店)</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase text-right">F (每週頻率)</th>
-                    <th className="px-4 py-3 font-bold text-xs uppercase text-right">M (累計貢獻度)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12 text-center">排名</TableHead>
+                    <TableHead>學員姓名</TableHead>
+                    <TableHead>聯絡電話</TableHead>
+                    <TableHead className="text-right">R (最近到店)</TableHead>
+                    <TableHead className="text-right">F (每週頻率)</TableHead>
+                    <TableHead className="text-right">M (累計貢獻度)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {sortedRfmMembers.slice(0, 15).map((m, idx) => (
-                    <tr key={m.customer.id} className="hover:bg-stone-50 transition-colors">
-                      <td className="px-4 py-3 text-center">
-                        <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold ${
-                          idx === 0 ? 'bg-amber-400 text-stone-900' : idx === 1 ? 'bg-stone-300 text-stone-900' : idx === 2 ? 'bg-amber-700/20 text-amber-900' : 'bg-stone-100 text-stone-500'
+                    <TableRow key={m.customer.id}>
+                      <TableCell className="text-center font-mono font-bold text-xs">
+                        <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center ${
+                          idx === 0 ? 'bg-stone-900 text-white' : idx === 1 ? 'bg-stone-700 text-white' : idx === 2 ? 'bg-stone-500 text-white' : 'bg-stone-100 text-stone-600'
                         }`}>
                           {idx + 1}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 font-bold text-stone-900">{m.customer.name}</td>
-                      <td className="px-4 py-3 text-stone-500 font-mono text-xs">{m.customer.phone}</td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-stone-700">{m.recencyDays}</td>
-                      <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600 text-xs">
+                      </TableCell>
+                      <TableCell className="font-bold text-stone-900">{m.customer.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-stone-500">{m.customer.phone}</TableCell>
+                      <TableCell className="text-right font-mono text-xs text-stone-700">{m.recencyDays}</TableCell>
+                      <TableCell className="text-right font-mono font-bold text-stone-900 text-xs">
                         {m.frequency} 次/週 ({m.totalLessonsCount} 堂)
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono font-black text-stone-900 text-xs">
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
                         ${m.monetary.toLocaleString()}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
