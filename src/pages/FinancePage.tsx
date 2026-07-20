@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent } from 'lucide-react'
+import { RiCalculatorLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { CashFlowTable, normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
@@ -185,7 +186,10 @@ export default function FinancePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">會計管理</h1>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiCalculatorLine className="w-6 h-6 text-orange-500" />
+            會計管理
+          </h1>
           <p className="text-sm text-stone-500 mt-1">管理正規現金流量表、收支金流與月度損益統計</p>
         </div>
 

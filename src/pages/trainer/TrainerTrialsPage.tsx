@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
+import { RiUserSearchLine } from '@remixicon/react'
 import { UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
@@ -103,10 +104,13 @@ export default function TrainerTrialsPage() {
   return (
     <div className="space-y-6">
       {/* ---- Header Section ---- */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-stone-900">體驗客管理</h1>
-          <p className="text-stone-500 text-sm mt-1">追蹤體驗課程與轉換狀態</p>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiUserSearchLine className="w-6 h-6 text-orange-500" />
+            體驗客管理
+          </h1>
+          <p className="text-sm text-stone-500 mt-1">追蹤體驗課程與轉換狀態</p>
         </div>
         {!isAdding && (
           <Button

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, Plus, Database } from 'lucide-react'
+import { DollarSign, PlusCircle, Database } from 'lucide-react'
+import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
 import { VenueTable } from '@/components/venue/VenueTable'
@@ -66,13 +67,13 @@ export default function TrainerVenuePage() {
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-5xl mx-auto">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-stone-900 tracking-tight flex items-center gap-3">
-            <span className="text-3xl">🏠</span>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiBuilding4Line className="w-6 h-6 text-orange-500" />
             場租管理
           </h1>
-          <p className="text-stone-500 font-medium mt-2">記錄與查看您的場租預約與收費明細</p>
+          <p className="text-sm text-stone-500 mt-1">記錄與查看您的場租預約與收費明細</p>
         </div>
         <Button 
           onClick={() => {

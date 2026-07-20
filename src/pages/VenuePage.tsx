@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { DollarSign, PlusCircle, Database } from 'lucide-react'
+import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { VenueTable } from '../components/venue/VenueTable'
@@ -83,20 +84,20 @@ export default function VenuePage() {
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-5xl mx-auto">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-stone-900 tracking-tight flex items-center gap-3">
-            <span className="text-3xl">🏠</span>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiBuilding4Line className="w-6 h-6 text-orange-500" />
             場租管理
           </h1>
-          <p className="text-stone-500 font-medium mt-2">記錄與統計場租收入明細，系統會自動同步至金流對帳表</p>
+          <p className="text-sm text-stone-500 mt-1">記錄與統計場租收入明細，系統會自動同步至金流對帳表</p>
         </div>
         <Button 
           onClick={() => {
             setSelectedRental(null)
             setIsModalOpen(true)
           }} 
-          className="rounded-full px-8 bg-stone-950 hover:bg-stone-800 shadow-lg shadow-stone-200 cursor-pointer font-bold h-10 inline-flex items-center"
+          className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl"
         >
           <PlusCircle className="w-4 h-4 mr-2" /> 新增場租紀錄
         </Button>

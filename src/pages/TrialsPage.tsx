@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Users, UserCheck, TrendingUp } from 'lucide-react'
+import { RiUserSearchLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { TrialTable } from '../components/trials/TrialTable'
@@ -57,12 +58,15 @@ export default function TrialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900">體驗客管理</h1>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiUserSearchLine className="w-6 h-6 text-orange-500" />
+            體驗客管理
+          </h1>
           <p className="text-sm text-stone-500 mt-1">追蹤體驗課程與名單轉換率</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)}>+ 新增體驗客</Button>
+        <Button onClick={() => setIsModalOpen(true)} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">+ 新增體驗客</Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
