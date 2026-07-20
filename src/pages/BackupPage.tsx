@@ -189,17 +189,23 @@ export default function BackupPage() {
         break
 
       case 'cashFlowRecords':
-        headers = ['交易日期', '經手教練', '借方類別 (收入)', '借方金額', '貸方類別 (支出)', '貸方金額', '摘要說明', '備註說明']
-        mapper = (row) => ({
-          '交易日期': formatTime(row.date),
-          '經手教練': trainerMap[row.trainerId] || '',
-          '借方類別 (收入)': row.debitCategory || '',
-          '借方金額': row.debitAmount ?? 0,
-          '貸方類別 (支出)': row.creditCategory || '',
-          '貸方金額': row.creditAmount ?? 0,
-          '摘要說明': row.description || '',
-          '備註說明': row.notes || ''
-        })
+        headers = ['交易日期', '經手教練', '交易類型', '會計科目', '資金帳戶', '交易金額', '摘要說明', '備註說明']
+        mapper = (row) => {
+          const typeLabel = row.type === 'income' ? '收入 (+)' : row.type === 'expense' ? '支出 (-)' : '一般收支'
+          const cat = row.category || row.creditCategory || row.debitCategory || ''
+          const amt = row.amount ?? row.creditAmount ?? row.debitAmount ?? 0
+          const acc = row.account || (row.debitCategory && ['現金', '銀行存款', '公司存款'].some(c => row.debitCategory.includes(c)) ? row.debitCategory : '公司存款')
+          return {
+            '交易日期': formatTime(row.date),
+            '經手教練': trainerMap[row.trainerId] || '',
+            '交易類型': typeLabel,
+            '會計科目': cat,
+            '資金帳戶': acc,
+            '交易金額': amt,
+            '摘要說明': row.description || '',
+            '備註說明': row.notes || ''
+          }
+        }
         break
 
       case 'trialRecords':

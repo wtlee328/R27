@@ -103,9 +103,13 @@ export function useVenueRentals() {
     const cashFlowData = {
       date: Timestamp.fromDate(data.date),
       trainerId: user.uid,
-      debitCategory: '現金', // Default asset
+      type: 'income',
+      category: '場租收入',
+      amount: data.amount,
+      account: '公司存款',
+      debitCategory: '公司存款',
       debitAmount: data.amount,
-      creditCategory: '場租收入', // Revenue
+      creditCategory: '場租收入',
       creditAmount: data.amount,
       description: `場租收入 - ${data.renterName || ''}`,
       notes: data.notes,
@@ -176,6 +180,7 @@ export function useVenueRentals() {
       if (oldData?.cashFlowRecordId) {
         const cashFlowUpdate = {
           date: Timestamp.fromDate(data.date),
+          amount: data.amount,
           debitAmount: data.amount,
           creditAmount: data.amount,
           description: `場租收入 - ${finalRenterName}`,

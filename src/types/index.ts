@@ -122,10 +122,14 @@ export interface CashFlowRecord {
   centerId?: string
   trainerId: string
   date: Timestamp
-  debitCategory: string
-  debitAmount: number
-  creditCategory: string
-  creditAmount: number
+  type?: 'income' | 'expense'
+  category?: string
+  amount?: number
+  account?: string
+  debitCategory?: string
+  debitAmount?: number
+  creditCategory?: string
+  creditAmount?: number
   description: string
   notes: string
   source: CashFlowSource
