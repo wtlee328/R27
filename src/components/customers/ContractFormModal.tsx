@@ -506,7 +506,7 @@ export function ContractFormModal({
                             className={cn(
                               "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
                               form.watch('contractType') === 'dual'
-                                ? "bg-purple-600 border-purple-600 text-white shadow-lg"
+                                ? "bg-orange-500 border-orange-500 text-white shadow-lg"
                                 : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                             )}
                           >
@@ -516,8 +516,8 @@ export function ContractFormModal({
                       </div>
 
                       {form.watch('contractType') === 'dual' && (
-                        <div className="p-5 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <Label className="text-purple-950 font-bold block text-xs">👥 共享學員綁定方式 *</Label>
+                        <div className="p-5 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label className="text-stone-900 font-bold block text-xs">共享學員綁定方式 *</Label>
                           <div className="flex gap-4">
                             <button
                               type="button"
@@ -528,7 +528,7 @@ export function ContractFormModal({
                               className={cn(
                                 "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
                                 form.watch('partnerMode') === 'existing'
-                                  ? "bg-purple-600 border-purple-600 text-white"
+                                  ? "bg-orange-500 border-orange-500 text-white"
                                   : "bg-white border-stone-200 text-stone-600"
                               )}
                             >
@@ -555,7 +555,7 @@ export function ContractFormModal({
                               className={cn(
                                 "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
                                 form.watch('partnerMode') === 'new'
-                                  ? "bg-purple-600 border-purple-600 text-white"
+                                  ? "bg-orange-500 border-orange-500 text-white"
                                   : "bg-white border-stone-200 text-stone-600"
                               )}
                             >
@@ -565,7 +565,7 @@ export function ContractFormModal({
 
                           {form.watch('partnerMode') === 'existing' && (
                             <div className="space-y-2 pt-2">
-                              <Label className="text-xs text-purple-900 font-medium">選擇現有學員 *</Label>
+                              <Label className="text-xs text-stone-700 font-medium">選擇現有學員 *</Label>
                               <select
                                 value={form.watch('sharedWithCustomerId') || ''}
                                 onChange={(e) => {
@@ -573,7 +573,7 @@ export function ContractFormModal({
                                   form.setValue('sharedWithCustomerId', val)
                                   form.setValue('partnerId', val)
                                 }}
-                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                               >
                                 <option value="">-- 請選擇學員 --</option>
                                 {customers.filter(c => c.id !== customer.id).map((c) => (
@@ -583,7 +583,7 @@ export function ContractFormModal({
                                 ))}
                               </select>
                               {form.watch('sharedWithCustomerId') && (
-                                <p className="text-[10px] text-purple-500 font-bold">
+                                <p className="text-[10px] text-orange-600 font-bold">
                                   提示：此續約將會由當前學員與 {customers.find(c => c.id === form.watch('sharedWithCustomerId'))?.name} 共同持有一份合約。
                                 </p>
                               )}
@@ -592,7 +592,7 @@ export function ContractFormModal({
 
                           {form.watch('partnerMode') === 'new' && (
                             <div className="pt-2">
-                              <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
+                              <div className="p-3 bg-orange-100/50 text-orange-800 rounded-lg text-xs font-bold">
                                 ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
                               </div>
                             </div>
@@ -1155,7 +1155,7 @@ export function ContractFormModal({
                                   <div className="space-y-3">
                                     <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1 flex justify-between">
                                       <span>立契約書人</span>
-                                      {isDual && <span className="text-[9px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">👥 雙人共享合約模式</span>}
+                                      {isDual && <span className="text-[9px] text-orange-700 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-100">雙人共享合約模式</span>}
                                     </h3>
 
                                     {/* Primary Customer */}
@@ -1177,8 +1177,8 @@ export function ContractFormModal({
 
                                     {/* Partner Customer */}
                                     {isDual && partnerInfo && (
-                                      <div className="space-y-1.5 bg-purple-50/30 p-2.5 rounded-xl border border-purple-100/60">
-                                        <div className="font-bold text-purple-900 border-b border-purple-200 pb-0.5 text-[9px]">
+                                      <div className="space-y-1.5 bg-orange-50/30 p-2.5 rounded-xl border border-orange-100/60">
+                                        <div className="font-bold text-orange-900 border-b border-orange-200 pb-0.5 text-[9px]">
                                           <span>會員姓名（簡稱甲方） - 學員 B</span>
                                         </div>
                                         <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
@@ -1412,14 +1412,14 @@ export function ContractFormModal({
                           {/* Signature B */}
                           {form.watch('contractType') === 'dual' && (
                             <div className="relative">
-                              <Label className="font-bold text-purple-950 block mb-2">甲方學員 B 簽名 *</Label>
-                              <div className="border-2 border-dashed border-purple-200 rounded-3xl bg-white p-2 relative h-48">
+                              <Label className="font-bold text-stone-900 block mb-2">甲方學員 B 簽名 *</Label>
+                              <div className="border-2 border-dashed border-orange-200 rounded-3xl bg-white p-2 relative h-48">
                                 <SignatureCanvas
                                   ref={secondarySigCanvas}
                                   onEnd={() => form.setValue('secondarySignatureDataUrl', 'signed')}
                                   canvasProps={{ className: 'w-full h-full cursor-crosshair' }}
                                 />
-                                <Button variant="ghost" size="sm" className="absolute top-4 right-4 text-purple-400" onClick={() => {
+                                <Button variant="ghost" size="sm" className="absolute top-4 right-4 text-stone-400" onClick={() => {
                                   secondarySigCanvas.current?.clear()
                                   form.setValue('secondarySignatureDataUrl', null)
                                 }}>清除</Button>

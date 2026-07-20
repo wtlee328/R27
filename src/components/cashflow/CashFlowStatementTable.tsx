@@ -135,8 +135,8 @@ export function CashFlowStatementTable({ records, monthLabel }: CashFlowStatemen
       'financing',
       '三、籌資活動之現金流量',
       '包含業主資本投入、業主往來取回、融資借貸與預收款項變動',
-      'bg-purple-100 text-purple-800 border-purple-200',
-      'bg-purple-50/60 text-purple-950 border-purple-100',
+      'bg-amber-100 text-amber-900 border-amber-200',
+      'bg-amber-50/60 text-amber-950 border-amber-100',
       financingList
     ),
   ]

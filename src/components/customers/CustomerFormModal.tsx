@@ -813,7 +813,7 @@ export function CustomerFormModal({
                               className={cn(
                                 "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
                                 (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') === 'dual')
-                                  ? "bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-100"
+                                  ? "bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100"
                                   : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                               )}
                             >
@@ -934,8 +934,8 @@ export function CustomerFormModal({
                         {!form.watch('bindExistingContractMode') && (
                           <>
                             {form.watch('contract.contractType') === 'dual' && (
-                              <div className="col-span-2 p-6 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="p-3 bg-purple-100/50 text-purple-700 rounded-lg text-xs font-bold">
+                              <div className="col-span-2 p-6 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="p-3 bg-orange-100/50 text-orange-800 rounded-lg text-xs font-bold">
                                   ✨ 此合約模式為雙人合約。下一步我們將會引導您填寫第二位全新學員的基本資料與健康狀態。
                                 </div>
                               </div>
@@ -1394,7 +1394,7 @@ export function CustomerFormModal({
                         {/* Summary Card */}
                         <div className={cn(
                           "rounded-3xl p-6 text-white space-y-4 shadow-xl transition-colors duration-500",
-                          form.watch('contract.contractType') === 'dual' ? "bg-purple-950" : "bg-stone-900"
+                          form.watch('contract.contractType') === 'dual' ? "bg-[#293847]" : "bg-stone-900"
                         )}>
                           <div className="flex justify-between items-start">
                             <div>
@@ -1585,7 +1585,7 @@ export function CustomerFormModal({
                                   <div className="space-y-3">
                                     <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1 flex justify-between">
                                       <span>立契約書人</span>
-                                      {isDual && <span className="text-[9px] text-purple-700 font-bold bg-purple-50 px-1.5 py-0.2 rounded border border-purple-100">👥 雙人共享合約模式</span>}
+                                      {isDual && <span className="text-[9px] text-orange-700 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-100">雙人共享合約模式</span>}
                                     </h3>
 
                                     {/* Primary Customer */}
@@ -1607,8 +1607,8 @@ export function CustomerFormModal({
 
                                     {/* Partner Customer */}
                                     {isDual && partnerInfo && (
-                                      <div className="space-y-1.5 bg-purple-50/30 p-2.5 rounded-xl border border-purple-100/60">
-                                        <div className="font-bold text-purple-900 border-b border-purple-200 pb-0.5 text-[9px]">
+                                      <div className="space-y-1.5 bg-orange-50/30 p-2.5 rounded-xl border border-orange-100/60">
+                                        <div className="font-bold text-orange-900 border-b border-orange-200 pb-0.5 text-[9px]">
                                           <span>會員姓名（簡稱甲方） - 學員 B</span>
                                         </div>
                                         <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
@@ -1881,8 +1881,8 @@ export function CustomerFormModal({
                           {/* Signature B */}
                           {form.watch('contract.contractType') === 'dual' && !form.watch('bindExistingContractMode') && (
                             <div className="relative">
-                              <Label className="text-purple-950 font-bold mb-2 block">甲方學員 B 簽名 *</Label>
-                              <div className="border-2 border-dashed border-purple-200 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
+                              <Label className="text-stone-900 font-bold mb-2 block">甲方學員 B 簽名 *</Label>
+                              <div className="border-2 border-dashed border-orange-200 rounded-3xl p-2 bg-white shadow-inner relative min-h-[200px]">
                                 {form.watch('contract.secondarySignatureDataUrl') && form.watch('contract.secondarySignatureDataUrl') !== 'signed' && (
                                   <div className="absolute inset-2 z-10 bg-white rounded-2xl flex items-center justify-center">
                                     <img 
@@ -1902,7 +1902,7 @@ export function CustomerFormModal({
                                 <Button type="button" variant="ghost" size="sm" onClick={() => {
                                   secondarySigCanvas.current?.clear()
                                   form.setValue('contract.secondarySignatureDataUrl', null)
-                                }} className="h-8 text-xs text-purple-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
+                                }} className="h-8 text-xs text-stone-400 hover:text-red-500 bg-white/80 backdrop-blur-sm">
                                   清除
                                 </Button>
                               </div>
