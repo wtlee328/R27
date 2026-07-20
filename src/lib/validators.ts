@@ -30,6 +30,10 @@ export const customerFormSchema = z.object({
   dateOfBirth: z.preprocess(preprocessDate, z.date({
     required_error: '請選擇出生年月日',
   })),
+  ageGroup: z.string().optional().default(''),
+  gender: z.enum(['male', 'female', 'other']).optional().default('female'),
+  exerciseHabit: z.enum(['none', 'weekly_1_2', 'weekly_3_plus']).optional().default('none'),
+  source: z.string().optional().default('instagram'),
   historicalSessions: z.coerce.number().min(0).default(0),
   emergencyContact: emergencyContactSchema,
   sharedContractCustomerId: z.string().nullable().default(null),

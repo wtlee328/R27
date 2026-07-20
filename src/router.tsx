@@ -19,6 +19,8 @@ import TrainerVenuePage from '@/pages/trainer/TrainerVenuePage'
 import TrainerSelectPage from '@/pages/trainer/TrainerSelectPage'
 import TrainerCustomersPage from '@/pages/trainer/TrainerCustomersPage'
 
+import AnalyticsPage from '@/pages/AnalyticsPage'
+
 const router = createBrowserRouter([
   {
     path: '/login',
@@ -34,6 +36,7 @@ const router = createBrowserRouter([
     children: [
       { index: true,          element: <CustomersPage /> },
       { path: 'lessons',      element: <LessonsPage /> },
+      { path: 'analytics',    element: <ProtectedRoute requiredRole="admin"><AnalyticsPage /></ProtectedRoute> },
       { path: 'finance',      element: <ProtectedRoute requiredRole="admin"><FinancePage /></ProtectedRoute> },
       { path: 'cash-flow',    element: <Navigate to="/finance" replace /> },
       { path: 'profit-loss',  element: <Navigate to="/finance" replace /> },

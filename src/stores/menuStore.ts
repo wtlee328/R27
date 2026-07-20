@@ -15,6 +15,7 @@ export interface NavItem {
 export const ALL_NAV_ITEMS: NavItem[] = [
   { id: 'customers',    to: '/',            label: '客戶檔案',   icon: Users },
   { id: 'lessons',      to: '/lessons',     label: '教練銷課',   icon: BookOpen },
+  { id: 'analytics',    to: '/analytics',   label: '數據分析',   icon: BarChart2,  adminOnly: true },
   { id: 'finance',      to: '/finance',     label: '會計管理',   icon: TrendingUp, adminOnly: true },
   { id: 'trials',       to: '/trials',      label: '體驗客',     icon: UserCheck },
   { id: 'venue',        to: '/venue',       label: '場租管理',   icon: Building2,  adminOnly: true },

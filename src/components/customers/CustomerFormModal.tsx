@@ -601,6 +601,42 @@ export function CustomerFormModal({
                           <Input type="date" {...form.register('dateOfBirth', { valueAsDate: true })} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
                         </div>
                         <div className="space-y-2">
+                          <Label className="text-stone-700">性別</Label>
+                          <select
+                            {...form.register('gender')}
+                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                          >
+                            <option value="female">女 (Female)</option>
+                            <option value="male">男 (Male)</option>
+                            <option value="other">不透露 (Other)</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">運動習慣 *</Label>
+                          <select
+                            {...form.register('exerciseHabit')}
+                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                          >
+                            <option value="none">完全沒運動</option>
+                            <option value="weekly_1_2">每週 1-2 次</option>
+                            <option value="weekly_3_plus">每週 3 次以上</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-stone-700">來客渠道 (Source)</Label>
+                          <select
+                            {...form.register('source')}
+                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                          >
+                            <option value="instagram">Instagram</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="google">Google 搜尋/地圖</option>
+                            <option value="referral">親友/會員介紹</option>
+                            <option value="walk_in">過路/現場親洽</option>
+                            <option value="other">其他管道</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
                           <Label className="text-stone-700">歷史已上堂數</Label>
                           <Input type="number" {...form.register('historicalSessions')} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
                         </div>
