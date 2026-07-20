@@ -1507,7 +1507,7 @@ export function CustomerFormModal({
                             if (isBindMode) {
                               return (
                                 <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
-                                  <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
+                                  <div className="printable-contract-sheet bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 leading-relaxed text-xs shadow-sm">
                                     <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
                                       <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 連結現有合約同意書</h1>
                                       <div className="flex justify-between text-[9px] font-bold text-stone-500">
@@ -1552,7 +1552,7 @@ export function CustomerFormModal({
 
                             return (
                               <div className="max-h-[400px] overflow-y-auto rounded-2xl border border-stone-200 bg-stone-100 p-4 space-y-6">
-                                <div className="bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 font-serif leading-relaxed text-xs shadow-sm">
+                                <div className="printable-contract-sheet bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 leading-relaxed text-xs shadow-sm">
                                   {/* Header */}
                                   <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
                                     <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
