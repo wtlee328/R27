@@ -64,10 +64,12 @@
 }
 
 /* Contract Monospace Alphanumerics & Digits */
+/* !important needed to override the font-serif parent container on the contract sheet */
+.printable-contract-sheet .font-mono,
 .printable-contract-sheet input,
 .printable-contract-sheet select {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-feature-settings: "tnum";
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-feature-settings: "tnum" !important;
 }
 
 .printable-contract-sheet {
