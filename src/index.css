@@ -223,3 +223,75 @@
   }
 }
 
+/* ─── Dark Mode Color Theme (#293847 Slate-Blue) ────────────────────────── */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #1a232c;
+  color: #f8fafc;
+}
+
+html.dark header {
+  background-color: #24313e;
+  border-color: #384959;
+}
+
+html.dark aside {
+  background-color: #232f3d;
+}
+
+html.dark aside .absolute {
+  background: linear-gradient(to right, #232f3d, transparent);
+}
+
+html.dark main,
+html.dark main > div {
+  background-color: #1a232c;
+}
+
+html.dark .bg-white {
+  background-color: #293847;
+  color: #f8fafc;
+}
+
+html.dark .bg-stone-50,
+html.dark .bg-stone-100\/60,
+html.dark .bg-stone-100\/70,
+html.dark .bg-stone-100\/80,
+html.dark .bg-stone-100 {
+  background-color: #232f3d;
+  color: #f8fafc;
+}
+
+html.dark .text-stone-900,
+html.dark .text-stone-950,
+html.dark .text-stone-800,
+html.dark .text-stone-700 {
+  color: #f8fafc;
+}
+
+html.dark .text-stone-600,
+html.dark .text-stone-500 {
+  color: #94a3b8;
+}
+
+html.dark .text-stone-400 {
+  color: #64748b;
+}
+
+html.dark .border-stone-200,
+html.dark .border-stone-200\/80,
+html.dark .border-stone-200\/60,
+html.dark .border-stone-150,
+html.dark .border-stone-100 {
+  border-color: #384959;
+}
+
+/* Ensure contract printable sheet remains crisp white in all modes */
+html.dark .printable-contract-sheet {
+  background-color: #ffffff !important;
+  color: #1c1917 !important;
+}
+
