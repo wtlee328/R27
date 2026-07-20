@@ -398,7 +398,7 @@ export function CustomerContractModal({
 
   const renderContractSheet = () => {
     return (
-      <div className="printable-contract-sheet max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col font-serif text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
+      <div className="printable-contract-sheet max-w-[210mm] mx-auto bg-white shadow-lg border border-stone-200 p-12 print:shadow-none print:border-none min-h-[297mm] flex flex-col text-stone-850 text-xs leading-relaxed space-y-6 select-text print:p-0 print:text-[11px] print:leading-normal relative">
 
               {/* Main Document Header */}
               <div className="text-center space-y-2 border-b-2 border-stone-800 pb-4">

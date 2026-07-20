@@ -63,17 +63,38 @@
   }
 }
 
-/* Contract Monospace Alphanumerics & Digits */
-/* !important needed to override the font-serif parent container on the contract sheet */
-.printable-contract-sheet .font-mono,
-.printable-contract-sheet input,
-.printable-contract-sheet select {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
-  font-feature-settings: "tnum" !important;
+/* ─── Contract Sheet: Auto-monospace for all alphanumerics ──────────────── */
+/*
+ * Define a virtual font that ONLY covers ASCII alphanumeric + punctuation.
+ * When used as the first font in the contract sheet's font-family stack,
+ * the browser uses monospace for any character in the unicode-range,
+ * and falls through to the next font (serif) for Chinese characters.
+ * This means ALL numbers/letters in the contract auto-render in monospace
+ * without any manual font-mono classes needed.
+ */
+@font-face {
+  font-family: 'ContractAlphanumeric';
+  src: local('ui-monospace'),
+       local('SFMono-Regular'),
+       local('Menlo'),
+       local('Monaco'),
+       local('Consolas'),
+       local('Courier New'),
+       local('monospace');
+  /* Basic Latin (space through tilde): covers 0-9, A-Z, a-z, and common symbols */
+  unicode-range: U+0020-007E, U+00A0-00FF;
 }
 
 .printable-contract-sheet {
+  font-family: 'ContractAlphanumeric', ui-serif, Georgia, "Noto Serif TC", serif;
   font-feature-settings: "tnum";
+}
+
+/* inputs/selects inside contract also use full monospace */
+.printable-contract-sheet input,
+.printable-contract-sheet select {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace !important;
+  font-feature-settings: "tnum" !important;
 }
 
 /* ─── Animations ──────────────────────────────────────────── */
