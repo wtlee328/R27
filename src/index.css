@@ -59,9 +59,19 @@
     --destructive-foreground: 60 9.1% 97.8%;
     --border: 20 5.9% 90%;
     --input: 20 5.9% 90%;
-    --ring: 25 95% 53%;
     --radius: 0.75rem;
   }
+}
+
+/* Contract Monospace Alphanumerics & Digits */
+.printable-contract-sheet input,
+.printable-contract-sheet select {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-feature-settings: "tnum";
+}
+
+.printable-contract-sheet {
+  font-feature-settings: "tnum";
 }
 
 /* ─── Animations ──────────────────────────────────────────── */

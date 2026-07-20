@@ -412,11 +412,11 @@ export function CustomerContractModal({
                         type="text" 
                         value={editContractNo} 
                         onChange={e => setEditContractNo(e.target.value)}
-                        className="border-b border-stone-400 bg-stone-50 px-1 py-0.5 font-bold w-36 text-center focus:outline-none focus:bg-white focus:border-brand-500" 
+                        className="border-b border-stone-400 bg-stone-50 px-1 py-0.5 font-bold font-mono w-36 text-center focus:outline-none focus:bg-white focus:border-brand-500" 
                         placeholder="請輸入合約編號"
                       />
                     ) : (
-                      <span className="border-b border-stone-300 font-bold px-1">{editContractNo || contract?.id || '未設定'}</span>
+                      <span className="border-b border-stone-300 font-bold font-mono px-1">{editContractNo || contract?.id || '未設定'}</span>
                     )}
                   </div>
                 </div>
@@ -436,26 +436,26 @@ export function CustomerContractModal({
                         type="number" 
                         value={editReviewYear} 
                         onChange={e => setEditReviewYear(Number(e.target.value))}
-                        className="w-12 border-b border-stone-400 bg-stone-50 text-center focus:outline-none" 
+                        className="w-12 border-b border-stone-400 bg-stone-50 text-center font-mono focus:outline-none" 
                       />{' '}年{' '}
                       <input 
                         type="number" 
                         value={editReviewMonth} 
                         onChange={e => setEditReviewMonth(Number(e.target.value))}
-                        className="w-8 border-b border-stone-400 bg-stone-50 text-center focus:outline-none" 
+                        className="w-8 border-b border-stone-400 bg-stone-50 text-center font-mono focus:outline-none" 
                       />{' '}月{' '}
                       <input 
                         type="number" 
                         value={editReviewDay} 
                         onChange={e => setEditReviewDay(Number(e.target.value))}
-                        className="w-8 border-b border-stone-400 bg-stone-50 text-center focus:outline-none" 
+                        className="w-8 border-b border-stone-400 bg-stone-50 text-center font-mono focus:outline-none" 
                       />
                     </>
                   ) : (
                     <>
-                      <span className="font-bold underline px-1">{editReviewYear}</span> 年{' '}
-                      <span className="font-bold underline px-1">{editReviewMonth}</span> 月{' '}
-                      <span className="font-bold underline px-1">{editReviewDay}</span>
+                      <span className="font-bold font-mono underline px-1">{editReviewYear}</span> 年{' '}
+                      <span className="font-bold font-mono underline px-1">{editReviewMonth}</span> 月{' '}
+                      <span className="font-bold font-mono underline px-1">{editReviewDay}</span>
                     </>
                   )}{' '}日交由消費者審閱。
                 </p>
@@ -494,7 +494,7 @@ export function CustomerContractModal({
                     </div>
                     <div className="col-span-2">
                       <span>身分證字號：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{customer.idNumber || '──────'}</span>
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{customer.idNumber || '──────'}</span>
                     </div>
                     <div className="col-span-2">
                       <span>生日：</span>
@@ -503,20 +503,20 @@ export function CustomerContractModal({
                           type="date" 
                           value={editBirthDate} 
                           onChange={e => setEditBirthDate(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 text-[11px] w-28 focus:outline-none focus:bg-white focus:border-brand-500"
+                          className="border-b border-stone-400 bg-stone-50 font-mono text-[11px] w-28 focus:outline-none focus:bg-white focus:border-brand-500"
                         />
                       ) : (
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editBirthDate || '──────'}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editBirthDate || '──────'}</span>
                       )}
                     </div>
 
                     <div className="col-span-3">
                       <span>電話：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{customer.phone}</span>
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{customer.phone}</span>
                     </div>
                     <div className="col-span-3">
                       <span>電子郵件：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{customer.email || '──────'}</span>
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{customer.email || '──────'}</span>
                     </div>
 
                     <div className="col-span-2">
@@ -552,10 +552,10 @@ export function CustomerContractModal({
                           type="text" 
                           value={editEmergencyPhone} 
                           onChange={e => setEditEmergencyPhone(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 w-28 focus:outline-none" 
+                          className="border-b border-stone-400 bg-stone-50 font-mono w-28 focus:outline-none" 
                         />
                       ) : (
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editEmergencyPhone || '──────'}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editEmergencyPhone || '──────'}</span>
                       )}
                     </div>
                   </div>
@@ -574,7 +574,7 @@ export function CustomerContractModal({
                       </div>
                       <div className="col-span-2">
                         <span>身分證字號：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partner.idNumber || '──────'}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partner.idNumber || '──────'}</span>
                       </div>
                       <div className="col-span-2">
                         <span>生日：</span>
@@ -583,20 +583,20 @@ export function CustomerContractModal({
                             type="date" 
                             value={editPartnerBirthDate} 
                             onChange={e => setEditPartnerBirthDate(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 text-[11px] w-28 focus:outline-none"
+                            className="border-b border-stone-400 bg-stone-50 font-mono text-[11px] w-28 focus:outline-none"
                           />
                         ) : (
-                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editPartnerBirthDate || '──────'}</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editPartnerBirthDate || '──────'}</span>
                         )}
                       </div>
 
                       <div className="col-span-3">
                         <span>電話：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{partner.phone}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{partner.phone}</span>
                       </div>
                       <div className="col-span-3">
                         <span>電子郵件：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{partner.email || '──────'}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{partner.email || '──────'}</span>
                       </div>
 
                       <div className="col-span-2">
@@ -632,10 +632,10 @@ export function CustomerContractModal({
                             type="text" 
                             value={editPartnerEmergencyPhone} 
                             onChange={e => setEditPartnerEmergencyPhone(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 w-28 focus:outline-none" 
+                            className="border-b border-stone-400 bg-stone-50 font-mono w-28 focus:outline-none" 
                           />
                         ) : (
-                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editPartnerEmergencyPhone || '──────'}</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editPartnerEmergencyPhone || '──────'}</span>
                         )}
                       </div>
                     </div>
@@ -772,10 +772,10 @@ export function CustomerContractModal({
                         type="number" 
                         value={editTotalSessions} 
                         onChange={e => setEditTotalSessions(Number(e.target.value))}
-                        className="w-14 border-b border-stone-400 bg-stone-50 text-center font-bold focus:outline-none" 
+                        className="w-14 border-b border-stone-400 bg-stone-50 text-center font-mono font-bold focus:outline-none" 
                       />
                     ) : (
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-2 underline">{editTotalSessions}</span>
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">{editTotalSessions}</span>
                     )}
                     <span> 買堂。</span>
                   </div>
@@ -787,17 +787,17 @@ export function CustomerContractModal({
                         type="number" 
                         value={editTotalAmount} 
                         onChange={e => setEditTotalAmount(Number(e.target.value))}
-                        className="w-20 border-b border-stone-400 bg-stone-50 text-center font-bold focus:outline-none" 
+                        className="w-20 border-b border-stone-400 bg-stone-50 text-center font-mono font-bold focus:outline-none" 
                       />
                     ) : (
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-2 underline">{(editTotalAmount || 0).toLocaleString()}</span>
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">{(editTotalAmount || 0).toLocaleString()}</span>
                     )}
                     <span> 元</span>
                   </div>
 
                   <div className="col-span-4 flex items-center">
                     <span>每堂單價：新台幣 $ </span>
-                    <span className="font-bold text-stone-900 border-b border-stone-200 px-2 underline">
+                    <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">
                       {editTotalSessions > 0 ? Math.round(editTotalAmount / editTotalSessions).toLocaleString() : '0'}
                     </span>
                     <span> 元</span>
@@ -815,13 +815,13 @@ export function CustomerContractModal({
                         type="date" 
                         value={editStartDate} 
                         onChange={e => setEditStartDate(e.target.value)}
-                        className="border-b border-stone-400 bg-stone-50 text-xs w-28 focus:outline-none" 
+                        className="border-b border-stone-400 bg-stone-50 font-mono text-xs w-28 focus:outline-none" 
                       />
                     ) : (
                       <>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).y}</span> 年{' '}
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).m}</span> 月{' '}
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).d}</span>
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).y}</span> 年{' '}
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).m}</span> 月{' '}
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1">{parseDateString(editStartDate).d}</span>
                       </>
                     )}
                     <span> 日 起至 </span>
@@ -993,10 +993,10 @@ export function CustomerContractModal({
                             </div>
                             {editInstallments.map((inst, idx) => (
                               <div key={inst.id || idx} className="grid grid-cols-4 gap-2 py-0.5 text-stone-850">
-                                <div className="font-bold">第 {idx + 1} 期</div>
-                                <div className="font-bold">NT$ {inst.amount.toLocaleString()}</div>
-                                <div>{inst.dueDate}</div>
-                                <div className="text-right font-bold">
+                                <div className="font-bold font-mono">第 {idx + 1} 期</div>
+                                <div className="font-bold font-mono">NT$ {inst.amount.toLocaleString()}</div>
+                                <div className="font-mono">{inst.dueDate}</div>
+                                <div className="text-right font-bold font-mono">
                                   {inst.status === 'paid' ? (
                                     <span className="text-green-600">已收 {inst.paidDate && `(${inst.paidDate})`}</span>
                                   ) : inst.status === 'overdue' ? (
@@ -1011,7 +1011,7 @@ export function CustomerContractModal({
                         )}
                       </div>
                     ) : (
-                      <div className="text-[10px] text-stone-400 font-bold pl-1 pt-1">
+                      <div className="text-[10px] text-stone-400 font-bold pl-1 pt-1 font-mono">
                         一次付清模式 {isEditing && `(已付額: ${editPaidAmount} 元)`}
                       </div>
                     )}
@@ -1078,9 +1078,9 @@ export function CustomerContractModal({
                   </div>
                   <p className="text-[10px] text-stone-400">
                     日期：中華民國{' '}
-                    <span className="font-bold underline px-1">{editReviewYear}</span> 年{' '}
-                    <span className="font-bold underline px-1">{editReviewMonth}</span> 月{' '}
-                    <span className="font-bold underline px-1">{editReviewDay}</span> 日
+                    <span className="font-bold font-mono underline px-1">{editReviewYear}</span> 年{' '}
+                    <span className="font-bold font-mono underline px-1">{editReviewMonth}</span> 月{' '}
+                    <span className="font-bold font-mono underline px-1">{editReviewDay}</span> 日
                   </p>
                   <p className="text-[10px] font-bold text-stone-900">雙方同意本契約內容（含後附詳細條款）</p>
                 </div>
