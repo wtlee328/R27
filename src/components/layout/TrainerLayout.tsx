@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { BookOpen, UserCheck, Building2, LogOut, RefreshCw, ChevronDown, Users } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
@@ -134,8 +135,18 @@ export function TrainerLayout() {
 
         {/* Page Content */}
         <main className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-6xl mx-auto animate-fade-in">
-            <Outlet />
+          <div className="max-w-6xl mx-auto">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
       </div>
