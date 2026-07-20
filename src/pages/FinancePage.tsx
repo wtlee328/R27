@@ -94,7 +94,7 @@ export default function FinancePage() {
     }
   }, [filteredCashFlowRecords])
 
-  // Label for month (e.g., "03月")
+  // Label for month (e.g., "07月" or "全年度")
   const monthLabel = useMemo(() => {
     if (selectedMonth === 'all') return '全年度'
     return `${String(selectedMonth).padStart(2, '0')}月`
@@ -239,7 +239,7 @@ export default function FinancePage() {
               </div>
             </div>
 
-            {/* Year & Month Selection Filters */}
+            {/* Shared Year & Month Selection Filters */}
             <div className="flex flex-wrap items-center gap-2">
               <select
                 className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
@@ -349,28 +349,51 @@ export default function FinancePage() {
       {/* Tab Contents: Profit Loss */}
       {activeTab === 'profit-loss' && (
         <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-stone-600">{selectedYear} 年度損益統計</h3>
-            <select
-              className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-brand-400 focus:border-brand-400 transition-colors cursor-pointer"
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-            >
-              {[0, 1, 2].map((offset) => {
-                const y = new Date().getFullYear() - offset
-                return (
-                  <option key={y} value={y}>
-                    {y} 年度
+          {/* Action & Filter Toolbar for Profit Loss */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-sm">
+            <h3 className="text-sm font-bold text-stone-800">
+              {selectedYear} 年 {monthLabel} 損益統計
+            </h3>
+
+            {/* Shared Year & Month Selection Filters */}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+              >
+                {[0, 1, 2].map((offset) => {
+                  const y = now.getFullYear() - offset
+                  return (
+                    <option key={y} value={y}>
+                      {y} 年
+                    </option>
+                  )
+                })}
+              </select>
+
+              <select
+                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                value={selectedMonth}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setSelectedMonth(val === 'all' ? 'all' : Number(val))
+                }}
+              >
+                <option value="all">所有月份 (全年度)</option>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {String(m).padStart(2, '0')} 月
                   </option>
-                )
-              })}
-            </select>
+                ))}
+              </select>
+            </div>
           </div>
 
           {loading ? (
             <div className="loading-spinner"><span /></div>
           ) : (
-            <ProfitLossTable data={profitLossData} />
+            <ProfitLossTable data={profitLossData} selectedMonth={selectedMonth} />
           )}
         </div>
       )}
