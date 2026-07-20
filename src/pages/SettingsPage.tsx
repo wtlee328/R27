@@ -1,7 +1,6 @@
 import React from 'react'
 import { Settings, GripVertical, RotateCcw, Clock, Lock, Check } from 'lucide-react'
-import { RiSettings4Line, RiSunLine, RiMoonLine } from '@remixicon/react'
-import { useThemeStore } from '@/stores/themeStore'
+import { RiSettings4Line } from '@remixicon/react'
 import { Reorder } from 'framer-motion'
 import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
 import { db, firebaseConfig } from '@/lib/firebase'
@@ -215,47 +214,6 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Theme Selection Card */}
-      <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-stone-100">
-          <div>
-            <h2 className="text-lg font-bold text-stone-800">顯示主題</h2>
-            <p className="text-xs text-stone-400 mt-0.5">選擇您偏好的系統色彩模式</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <button
-            type="button"
-            onClick={() => useThemeStore.getState().setTheme('light')}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all cursor-pointer ${
-              useThemeStore((state) => state.theme) === 'light'
-                ? 'border-orange-500 bg-orange-50/50 text-stone-900 shadow-sm'
-                : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-300'
-            }`}
-          >
-            <RiSunLine className="w-5 h-5 text-amber-500 shrink-0" />
-            <div className="text-left">
-              <div className="text-sm font-bold">淺色模式</div>
-              <div className="text-[11px] text-stone-400">明亮高對比色調</div>
-            </div>
-          </button>
-          <button
-            type="button"
-            onClick={() => useThemeStore.getState().setTheme('dark')}
-            className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all cursor-pointer ${
-              useThemeStore((state) => state.theme) === 'dark'
-                ? 'border-orange-500 bg-[#293847] text-white shadow-sm'
-                : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-300'
-            }`}
-          >
-            <RiMoonLine className="w-5 h-5 text-amber-400 shrink-0" />
-            <div className="text-left">
-              <div className="text-sm font-bold">深色模式 (#293847)</div>
-              <div className="text-[11px] text-stone-400">藍灰深色奢華色調</div>
-            </div>
-          </button>
-        </div>
-      </div>
 
       {/* Main Settings Card */}
       <div className="bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">

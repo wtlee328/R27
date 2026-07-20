@@ -19,14 +19,11 @@ import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { useMenuStore, ALL_NAV_ITEMS, type NavItem } from '@/stores/menuStore'
 import { useCenterStore } from '@/stores/centerStore'
-import { useThemeStore } from '@/stores/themeStore'
-import { RiSunLine, RiMoonLine } from '@remixicon/react'
 
 export function Navbar() {
   const { user } = useAuthStore()
   const { centerId, setCenterId } = useCenterStore()
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore()
-  const { theme, toggleTheme } = useThemeStore()
   const order = useMenuStore((state) => state.order)
   const navigate = useNavigate()
 
@@ -71,24 +68,11 @@ export function Navbar() {
 
         <div className="flex-1" />
 
-        {/* Right side: Center Switcher + Theme Toggle + Notification + User Profile */}
+        {/* Right side: Center Switcher + Notification + User Profile */}
         <div className="flex items-center gap-3">
           <CenterSwitcher centerId={centerId} setCenterId={setCenterId} />
 
           <div className="h-4 w-px bg-stone-200 hidden sm:block" />
-
-          {/* Dark / Light Theme Toggle Button */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl text-stone-600 hover:text-stone-900 hover:bg-stone-100 dark:text-stone-300 dark:hover:text-white dark:hover:bg-stone-800 transition-all cursor-pointer flex items-center justify-center"
-            title={theme === 'dark' ? '切換為淺色主題' : '切換為深色主題'}
-          >
-            {theme === 'dark' ? (
-              <RiSunLine className="w-4.5 h-4.5 text-amber-400" />
-            ) : (
-              <RiMoonLine className="w-4.5 h-4.5 text-stone-600" />
-            )}
-          </button>
 
           <NotificationCenter />
 
