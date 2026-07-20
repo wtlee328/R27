@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp } from 'lucide-react'
+import { Database, Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp } from 'lucide-react'
 import { RiHistoryLine } from '@remixicon/react'
 import { useActivityLogs } from '@/hooks/useActivityLogs'
 import { useTrainers } from '@/hooks/useTrainers'
