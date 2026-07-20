@@ -168,7 +168,7 @@ export default function FinancePage() {
     }
   }, [records, selectedYear])
 
-  // P&L Percentage Summary for selected month
+  // P&L Summary for selected month
   const targetMonthIdx = typeof selectedMonth === 'number' ? selectedMonth - 1 : null
   const currentPnlIncome = targetMonthIdx !== null
     ? (profitLossData.totalIncome[targetMonthIdx] || 0)
@@ -177,9 +177,6 @@ export default function FinancePage() {
     ? (profitLossData.totalExpenses[targetMonthIdx] || 0)
     : profitLossData.totalExpenses.reduce((a, b) => (a || 0) + (b || 0), 0)
   const currentPnlNet = currentPnlIncome - currentPnlExpense
-
-  const expensePctStr = currentPnlIncome > 0 ? `${((currentPnlExpense / currentPnlIncome) * 100).toFixed(2)}%` : '-'
-  const netPctStr = currentPnlIncome > 0 ? `${((currentPnlNet / currentPnlIncome) * 100).toFixed(2)}%` : '-'
 
   const normalizedEditingRecord = editingRecord ? normalizeCashFlowRecord(editingRecord) : null
 
@@ -403,7 +400,7 @@ export default function FinancePage() {
             </div>
           </div>
 
-          {/* Stats cards for Profit Loss with Percentage (%) */}
+          {/* Stats cards for Profit Loss */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
               title={`營業總收入 (${monthLabel})`}
@@ -411,7 +408,7 @@ export default function FinancePage() {
               icon={ArrowUpRight}
               iconColor="text-emerald-600"
               iconBg="bg-emerald-50"
-              subtitle="100.00% 基數"
+              subtitle="收入 100.00% 基準"
             />
             <StatCard
               title={`營業支出小計 (${monthLabel})`}
@@ -419,7 +416,7 @@ export default function FinancePage() {
               icon={ArrowDownRight}
               iconColor="text-red-500"
               iconBg="bg-red-50"
-              subtitle={`占營業收入 ${expensePctStr}`}
+              subtitle="支出 100.00% 基準"
             />
             <StatCard
               title={`本期淨收益 (${monthLabel})`}
@@ -427,7 +424,7 @@ export default function FinancePage() {
               icon={Percent}
               iconColor={currentPnlNet >= 0 ? 'text-emerald-600' : 'text-red-500'}
               iconBg={currentPnlNet >= 0 ? 'bg-emerald-50' : 'bg-red-50'}
-              subtitle={`淨利率 ${netPctStr}`}
+              subtitle={currentPnlNet >= 0 ? '淨收益 (盈餘)' : '淨虧損'}
             />
           </div>
 

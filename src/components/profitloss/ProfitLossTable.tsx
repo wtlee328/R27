@@ -9,25 +9,33 @@ interface ProfitLossTableProps {
 export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTableProps) {
   const months = Array.from({ length: 12 }, (_, i) => `${i + 1}月`)
 
-  // Determine base revenue for percentage calculation
+  // Determine base amounts for income and expense separately
   const targetMonthIndex = typeof selectedMonth === 'number' ? selectedMonth - 1 : null
-  const baseRevenue =
+
+  const incomeBase =
     targetMonthIndex !== null
       ? data.totalIncome[targetMonthIndex] || 0
       : data.totalIncome.reduce((a, b) => (a || 0) + (b || 0), 0)
+
+  const expenseBase =
+    targetMonthIndex !== null
+      ? data.totalExpenses[targetMonthIndex] || 0
+      : data.totalExpenses.reduce((a, b) => (a || 0) + (b || 0), 0)
 
   const formatCurrency = (val: number | null) => {
     if (val === null || val === 0) return '-'
     return val.toLocaleString()
   }
 
-  const formatPercentage = (val: number | null) => {
-    if (val === null || val === 0 || !baseRevenue || baseRevenue <= 0) return '-'
-    const pct = (val / baseRevenue) * 100
+  const formatPercentage = (val: number | null, base: number) => {
+    if (val === null || val === 0 || !base || base <= 0) return '-'
+    const pct = (val / base) * 100
     return `${pct.toFixed(2)}%`
   }
 
-  const renderRow = (row: ProfitLossRow, isBold = false) => {
+  const renderRow = (row: ProfitLossRow, type: 'income' | 'expense', isBold = false) => {
+    const base = type === 'income' ? incomeBase : expenseBase
+
     return (
       <tr key={row.category} className="hover:bg-stone-50/80 border-b border-stone-100 last:border-0 transition-colors duration-150">
         <td className={`px-5 py-2.5 ${isBold ? 'font-bold text-stone-900' : 'text-stone-700'}`}>{row.category}</td>
@@ -44,10 +52,10 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
               >
                 {formatCurrency(m)}
               </td>
-              {/* If this month is the selected target month, insert percentage column directly next to it */}
+              {/* Insert percentage column right next to selected month */}
               {isHighlighted && (
                 <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-900 bg-amber-100/70 border-r border-amber-300 tabular-nums">
-                  {formatPercentage(m)}
+                  {formatPercentage(m, base)}
                 </td>
               )}
             </React.Fragment>
@@ -57,7 +65,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
         {/* If viewing all months, display full-year percentage right before total */}
         {targetMonthIndex === null && (
           <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-900 bg-amber-50/90 border-x border-amber-300 tabular-nums">
-            {formatPercentage(row.total)}
+            {formatPercentage(row.total, base)}
           </td>
         )}
 
@@ -68,8 +76,10 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
     )
   }
 
-  const renderTotalRow = (label: string, totals: (number | null)[], isNet = false) => {
+  const renderTotalRow = (label: string, totals: (number | null)[], type: 'income' | 'expense' | 'net') => {
     const yearTotal = totals.reduce((a, b) => (a || 0) + (b || 0), 0)
+    const isNet = type === 'net'
+    const base = type === 'income' ? incomeBase : type === 'expense' ? expenseBase : 0
 
     return (
       <tr className={`${isNet ? 'bg-stone-900 text-white' : 'bg-stone-100'} border-y border-stone-200`}>
@@ -93,16 +103,16 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
               >
                 {formatCurrency(m)}
               </td>
-              {/* Insert percentage directly next to selected month's total */}
+              {/* Percentage for totals (Net profit shows '-') */}
               {isHighlighted && (
                 <td
                   className={`px-4 py-3 text-right font-mono font-black border-r tabular-nums ${
                     isNet
-                      ? 'bg-stone-800 text-amber-300 border-stone-700'
+                      ? 'bg-stone-800 text-stone-400 border-stone-700'
                       : 'bg-amber-200/80 text-stone-950 border-amber-300'
                   }`}
                 >
-                  {formatPercentage(m)}
+                  {isNet ? '-' : formatPercentage(m, base)}
                 </td>
               )}
             </React.Fragment>
@@ -114,11 +124,11 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
           <td
             className={`px-4 py-3 text-right font-mono font-black border-x tabular-nums ${
               isNet
-                ? 'bg-stone-800 text-amber-300 border-stone-700'
+                ? 'bg-stone-800 text-stone-400 border-stone-700'
                 : 'bg-amber-100/90 text-stone-950 border-amber-300'
             }`}
           >
-            {formatPercentage(yearTotal)}
+            {isNet ? '-' : formatPercentage(yearTotal, base)}
           </td>
         )}
 
@@ -133,7 +143,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
     )
   }
 
-  const colSpanCount = targetMonthIndex !== null ? 15 : 15
+  const colSpanCount = 15
 
   return (
     <div className="border border-stone-200 rounded-2xl overflow-x-auto bg-white shadow-sm">
@@ -152,7 +162,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
                   >
                     {m}
                   </th>
-                  {/* Insert % column header right next to selected month */}
+                  {/* % column header next to selected month */}
                   {isHighlighted && (
                     <th className="px-3 py-3.5 text-right font-black text-xs uppercase tracking-wider bg-amber-200/80 text-amber-950 border-r border-amber-300 font-mono">
                       {m}占比 (%)
@@ -172,11 +182,11 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
         <tbody>
           <tr>
             <td colSpan={colSpanCount} className="px-5 py-2.5 font-bold bg-emerald-50/60 text-emerald-800 text-xs uppercase tracking-wider border-b border-stone-200">
-              一、營業收入
+              一、營業收入 (收入合計 100.00%)
             </td>
           </tr>
           {data.income.length > 0 ? (
-            data.income.map((row) => renderRow(row))
+            data.income.map((row) => renderRow(row, 'income'))
           ) : (
             <tr>
               <td colSpan={colSpanCount} className="px-5 py-3 text-center text-stone-400">
@@ -184,15 +194,15 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
               </td>
             </tr>
           )}
-          {renderTotalRow('營業收入合計 (實際總收入)', data.totalIncome)}
+          {renderTotalRow('營業收入合計 (實際總收入)', data.totalIncome, 'income')}
 
           <tr>
             <td colSpan={colSpanCount} className="px-5 py-2.5 font-bold bg-red-50/60 text-red-800 text-xs uppercase tracking-wider border-b border-stone-200">
-              二、營業支出
+              二、營業支出 (支出小計 100.00%)
             </td>
           </tr>
           {data.expenses.length > 0 ? (
-            data.expenses.map((row) => renderRow(row))
+            data.expenses.map((row) => renderRow(row, 'expense'))
           ) : (
             <tr>
               <td colSpan={colSpanCount} className="px-5 py-3 text-center text-stone-400">
@@ -200,9 +210,9 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
               </td>
             </tr>
           )}
-          {renderTotalRow('營業支出小計', data.totalExpenses)}
+          {renderTotalRow('營業支出小計', data.totalExpenses, 'expense')}
 
-          {renderTotalRow('三、本期損益 (收益淨額)', data.netIncome, true)}
+          {renderTotalRow('三、本期損益 (收益淨額)', data.netIncome, 'net')}
         </tbody>
       </table>
     </div>
