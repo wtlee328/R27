@@ -24,7 +24,7 @@ export default function ProfitLossPage() {
     // For simplicity, let's treat all creditCategories NOT containing '現金' or '銀行' as income.
     // And all debitCategories NOT containing '現金' or '銀行' as expense.
     const isAssetOrLiability = (cat: string) =>
-      ['現金', '銀行存款', '應收帳款', '應付帳款'].some((a) => cat.includes(a))
+      ['現金', '銀行存款', '公司存款', '預收款', '應付帳款', '業主資本', '業主往來', '應收帳款'].some((a) => cat.includes(a))
 
     yearRecords.forEach((r) => {
       const monthIndex = r.date.toDate().getMonth()

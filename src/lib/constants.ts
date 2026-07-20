@@ -5,13 +5,47 @@ export const USER_ROLES = {
 } as const
 
 // ─── Cash Flow Categories ─────────────────────────────────────
+export const ACCOUNT_CATEGORY_GROUPS = [
+  {
+    group: '資產與權益類',
+    items: ['現金', '公司存款', '預收款', '應付帳款', '業主資本', '業主往來', '銀行存款', '應收帳款'],
+  },
+  {
+    group: '收入類',
+    items: ['課程收入', '體驗收入', '場租收入', '拳擊團課/贈與課程'],
+  },
+  {
+    group: '費用與支出類',
+    items: [
+      '攤提',
+      '房租',
+      '雜項',
+      '水電',
+      '行銷',
+      '會計',
+      '網路',
+      '器材',
+      '新光AED',
+      '公司福利',
+      '保險',
+      '薪資',
+      '營業稅',
+    ],
+  },
+]
+
+export const ALL_ACCOUNT_CATEGORIES = ACCOUNT_CATEGORY_GROUPS.flatMap((g) => g.items)
+
 export const DEBIT_CATEGORIES = [
   '現金',
+  '公司存款',
   '銀行存款',
+  '預收款',
   '應收帳款',
 ]
 
 export const CREDIT_INCOME_CATEGORIES = [
+  '課程收入',
   '課程收入（實際收入）',
   '體驗收入',
   '場租收入',
