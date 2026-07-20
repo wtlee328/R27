@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand palette — derived from logo orange + black */
+  /* Brand palette — derived from logo orange + slate blue-gray dark tone (#293847) */
   --color-brand-50: #fff7ed;
   --color-brand-100: #ffedd5;
   --color-brand-200: #fed7aa;
@@ -12,6 +12,13 @@
   --color-brand-700: #c2410c;
   --color-brand-800: #9a3412;
   --color-brand-900: #7c2d12;
+
+  /* Blue-Gray Dark Slate Theme Color (#293847) */
+  --color-stone-950: #293847;
+  --color-stone-900: #293847;
+  --color-stone-850: #334454;
+  --color-stone-800: #3b4d5e;
+  --color-brand-dark: #293847;
 
   --color-surface: #fafaf9;
   --color-surface-card: #ffffff;
