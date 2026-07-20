@@ -6,10 +6,10 @@ export function AppLayout() {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1e2832]">
+    <div className="min-h-screen bg-stone-100/60 dark:bg-[#1e2832]">
       <Navbar />
       <main className="lg:pl-60 pt-16">
-        <div className="min-h-[calc(100vh-4rem)] bg-white dark:bg-[#1e2832]">
+        <div className="min-h-[calc(100vh-4rem)] bg-stone-50 dark:bg-[#1e2832]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
