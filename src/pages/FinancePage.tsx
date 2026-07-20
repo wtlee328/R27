@@ -148,10 +148,10 @@ export default function FinancePage() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex p-1 bg-stone-100 rounded-xl border border-stone-200/50 self-start sm:self-center">
+        <div className="flex p-1 bg-stone-100/80 rounded-2xl border border-stone-200/60 self-start sm:self-center">
           <button
             onClick={() => setActiveTab('cash-flow')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'cash-flow'
                 ? 'bg-white text-stone-900 shadow-sm'
                 : 'text-stone-500 hover:text-stone-900'
@@ -162,7 +162,7 @@ export default function FinancePage() {
           </button>
           <button
             onClick={() => setActiveTab('profit-loss')}
-            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
               activeTab === 'profit-loss'
                 ? 'bg-white text-stone-900 shadow-sm'
                 : 'text-stone-500 hover:text-stone-900'
@@ -181,10 +181,10 @@ export default function FinancePage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-sm">
             {/* View Mode Switcher */}
             <div className="flex items-center gap-2">
-              <div className="flex p-1 bg-stone-100 rounded-xl border border-stone-200/60">
+              <div className="flex p-1 bg-stone-100/80 rounded-2xl border border-stone-200/60">
                 <button
                   onClick={() => setCashFlowSubView('trial-balance')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
                     cashFlowSubView === 'trial-balance'
                       ? 'bg-stone-900 text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
@@ -195,7 +195,7 @@ export default function FinancePage() {
                 </button>
                 <button
                   onClick={() => setCashFlowSubView('detailed')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
                     cashFlowSubView === 'detailed'
                       ? 'bg-stone-900 text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
