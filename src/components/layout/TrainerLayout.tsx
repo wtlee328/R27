@@ -116,23 +116,6 @@ export function TrainerLayout() {
 
       {/* ---- Main Content ---- */}
       <div className="flex-1 ml-56 flex flex-col min-h-screen">
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 h-14 bg-white border-b border-stone-200 flex items-center justify-between px-8 shrink-0 shadow-sm">
-          <div className="flex items-center gap-3">
-            {activeTab && <activeTab.icon className="h-4 w-4 text-brand-500" />}
-            <h1 className="text-stone-800 font-bold text-sm">{activeTab?.label ?? '教練介面'}</h1>
-          </div>
-          {/* Trainer badge in header */}
-          <button
-            onClick={handleSwitchTrainer}
-            className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-            {selectedTrainerName}
-            <ChevronDown className="h-3 w-3 text-stone-400" />
-          </button>
-        </header>
-
         {/* Page Content */}
         <main className="flex-1 p-8 overflow-y-auto">
           <div className="max-w-6xl mx-auto">
