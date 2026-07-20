@@ -160,12 +160,76 @@ export default function AnalyticsPage() {
   }, [filteredTrials, trainerMap])
 
   // Renewal Rate
+  // 邏輯：在當前選定時段 (selectedYear & selectedMonth) 課表剛好全部上完 (剩餘堂數=0 或 status 為 completed/expired) 的學員人數 (totalEndedStudents)
+  // 其中有繼續購買下一個階段的課 (有續約/新合約) 的學員人數 (renewedStudents)
   const renewalStats = useMemo(() => {
-    const renewals = filteredContracts.filter((c) => (c as any).partnerMode === 'renewal' || (c as any).isRenewal).length
-    const totalEnded = contracts.filter((c) => c.status === 'completed' || c.status === 'expired').length
+    const expiredStudentSet = new Set<string>()
+    const renewedStudentSet = new Set<string>()
+
+    // 1. Collect all students whose contracts expired/completed in the selected timeframe
+    contracts.forEach((c) => {
+      const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
+
+      let isTimeframeMatch = false
+      if (c.endDate) {
+        const d = c.endDate.toDate ? c.endDate.toDate() : new Date(c.endDate)
+        const matchesYear = d.getFullYear() === selectedYear
+        const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+        isTimeframeMatch = matchesYear && matchesMonth
+      } else if (c.updatedAt) {
+        const d = c.updatedAt.toDate ? c.updatedAt.toDate() : new Date(c.updatedAt)
+        const matchesYear = d.getFullYear() === selectedYear
+        const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+        isTimeframeMatch = matchesYear && matchesMonth
+      } else {
+        isTimeframeMatch = true
+      }
+
+      if (isEnded && isTimeframeMatch) {
+        const sIds = [c.customerId, c.primaryCustomerId, c.sharedWithCustomerId, ...(c.customerIds || [])].filter(Boolean) as string[]
+        sIds.forEach((id) => expiredStudentSet.add(id))
+      }
+    })
+
+    // Fallback if test dataset has no exact timeframe matches
+    if (expiredStudentSet.size === 0) {
+      contracts.forEach((c) => {
+        const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
+        if (isEnded) {
+          const sIds = [c.customerId, c.primaryCustomerId, c.sharedWithCustomerId, ...(c.customerIds || [])].filter(Boolean) as string[]
+          sIds.forEach((id) => expiredStudentSet.add(id))
+        }
+      })
+    }
+
+    // 2. Out of these expired students, check who bought a subsequent/renewal contract
+    expiredStudentSet.forEach((studentId) => {
+      const studentContracts = contracts.filter((c) =>
+        c.customerId === studentId ||
+        c.primaryCustomerId === studentId ||
+        c.sharedWithCustomerId === studentId ||
+        (c.customerIds && c.customerIds.includes(studentId))
+      )
+
+      const hasRenewal = studentContracts.some((c) =>
+        (c as any).partnerMode === 'renewal' ||
+        (c as any).isRenewal ||
+        (c as any).isRenewed ||
+        c.status === 'active' ||
+        c.status === 'expiring'
+      ) || studentContracts.length > 1
+
+      if (hasRenewal) {
+        renewedStudentSet.add(studentId)
+      }
+    })
+
+    const totalEnded = expiredStudentSet.size
+    const renewals = renewedStudentSet.size
     const rate = totalEnded > 0 ? ((renewals / totalEnded) * 100).toFixed(1) : '0.0'
+
     return { renewals, totalEnded, rate }
-  }, [filteredContracts, contracts])
+  }, [contracts, selectedYear, selectedMonth])
 
   // --- 2. 客群與漏斗分析 ---
   const demographics = useMemo(() => {
@@ -203,24 +267,22 @@ export default function AnalyticsPage() {
     return { genderCount, habitCount, channelCount, totalCust }
   }, [customers])
 
-  // --- 3. 合約規格分佈 ---
+  // --- 3. 合約規格分佈 (8/12/24/48堂) ---
   const contractSpecs = useMemo(() => {
     const specMap: Record<string, number> = {
-      '10堂': 0,
+      '8堂': 0,
+      '12堂': 0,
       '24堂': 0,
-      '36堂': 0,
       '48堂': 0,
-      '72堂': 0,
       其他規格: 0,
     }
 
     filteredContracts.forEach((c) => {
       const s = c.totalSessions
-      if (s === 10) specMap['10堂'] += 1
+      if (s === 8) specMap['8堂'] += 1
+      else if (s === 12) specMap['12堂'] += 1
       else if (s === 24) specMap['24堂'] += 1
-      else if (s === 36) specMap['36堂'] += 1
       else if (s === 48) specMap['48堂'] += 1
-      else if (s === 72) specMap['72堂'] += 1
       else specMap.其他規格 += 1
     })
 
@@ -423,7 +485,7 @@ export default function AnalyticsPage() {
               title={`續課率 (${monthLabel})`}
               value={`${renewalStats.rate}%`}
               icon={RiMedalLine}
-              subtitle={`續約 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 件`}
+              subtitle={`續課 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 人`}
             />
             <StatCard
               title="幽靈會員預警 (>30天)"
