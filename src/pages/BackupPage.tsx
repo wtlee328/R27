@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { RiHardDrive2Line } from '@remixicon/react'
 import { 
   Database, 
   AlertTriangle, 
@@ -442,7 +443,7 @@ export default function BackupPage() {
       {/* Header */}
       <div className="px-4">
         <h1 className="text-4xl font-black text-stone-900 tracking-tight flex items-center gap-3">
-          <span className="text-3xl">💾</span>
+          <RiHardDrive2Line className="w-9 h-9 text-orange-500" />
           資料備份
         </h1>
         <p className="text-stone-500 font-medium mt-2">

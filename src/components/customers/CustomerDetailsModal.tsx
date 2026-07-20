@@ -11,6 +11,7 @@ import { format } from 'date-fns'
 import { Timestamp, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
+import { RiGroupLine, RiUser3Line } from '@remixicon/react'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { 
@@ -185,8 +186,8 @@ export function CustomerDetailsModal({
                       </div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <Badge className={cn("text-white border-none", isDual ? "bg-purple-500" : "bg-emerald-500")}>
-                            {isDual ? '👥 雙人進行中合約' : '👤 進行中合約'}
+                          <Badge className={cn("text-white border-none flex items-center gap-1", isDual ? "bg-stone-900" : "bg-stone-950")}>
+                            {isDual ? <><RiGroupLine className="w-3.5 h-3.5 text-orange-400" /> 雙人進行中合約</> : <><RiUser3Line className="w-3.5 h-3.5 text-stone-300" /> 進行中合約</>}
                           </Badge>
                           {isDual && activePartnerName && (
                             <Badge variant="outline" className="bg-purple-100/60 text-purple-700 border-purple-200 text-[10px]">
@@ -332,8 +333,8 @@ export function CustomerDetailsModal({
                                 {contract.status === 'active' ? '進行中' : '已結束'}
                               </Badge>
                               {isContractDual && (
-                                <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-100/50 text-[10px] py-0 px-2 h-5 flex items-center">
-                                  👥 雙人合約
+                                <Badge variant="outline" className="bg-stone-100 text-stone-800 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center gap-1">
+                                  <RiGroupLine className="w-3 h-3 text-orange-500" /> 雙人合約
                                 </Badge>
                               )}
                               {isContractDual && partnerName && (

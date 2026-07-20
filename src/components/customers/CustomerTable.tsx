@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
+import { RiGroupLine, RiUser3Line } from '@remixicon/react'
 import { Badge } from '../ui/badge'
 import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake } from 'lucide-react'
 import { Input } from '../ui/input'
@@ -254,7 +255,11 @@ export function CustomerTable({
                                   : "bg-stone-900 text-white",
                                 "text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold"
                               )}>
-                                {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? '👥 雙人合約' : '👤 進行中'}
+                                {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? (
+                                  <span className="flex items-center gap-1"><RiGroupLine className="w-3 h-3 text-orange-400" /> 雙人合約</span>
+                                ) : (
+                                  <span className="flex items-center gap-1"><RiUser3Line className="w-3 h-3 text-stone-300" /> 進行中</span>
+                                )}
                               </Badge>
                             )}
                             {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (

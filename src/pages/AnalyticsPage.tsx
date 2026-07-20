@@ -1,18 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
-  TrendingUp,
-  Users,
-  PieChart,
-  Calendar,
-  AlertTriangle,
-  Award,
-  UserX,
-  Activity,
-  Flame,
-  Filter,
-  BarChart3,
-  Sparkles,
-} from 'lucide-react'
+  RiLineChartLine,
+  RiTeamLine,
+  RiPieChartLine,
+  RiCalendarCheckLine,
+  RiAlertLine,
+  RiUserForbidLine,
+  RiPulseLine,
+  RiFireLine,
+  RiFilter3Line,
+  RiBarChartBoxLine,
+  RiSparklingLine,
+  RiCheckboxCircleLine,
+  RiMedalLine,
+} from '@remixicon/react'
 import { StatCard } from '../components/shared/StatCard'
 import { Progress } from '../components/ui/progress'
 import { Badge } from '../components/ui/badge'
@@ -127,7 +128,7 @@ export default function AnalyticsPage() {
     })
   }, [lessons, selectedYear, selectedMonth])
 
-  // --- 1. 銷售與轉換分析 (Sales & Conversion) ---
+  // --- 1. 銷售與轉換分析 ---
   const trialConversionStats = useMemo(() => {
     const total = filteredTrials.length
     const converted = filteredTrials.filter((t) => t.outcome === 'converted').length
@@ -166,7 +167,7 @@ export default function AnalyticsPage() {
     return { renewals, totalEnded, rate }
   }, [filteredContracts, contracts])
 
-  // --- 2. 客群與漏斗分析 (Demographics & Channels) ---
+  // --- 2. 客群與漏斗分析 ---
   const demographics = useMemo(() => {
     const genderCount = { female: 0, male: 0, other: 0 }
     const habitCount = { none: 0, weekly_1_2: 0, weekly_3_plus: 0 }
@@ -359,11 +360,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      {/* Clean Minimalist Header */}
+      {/* Clean Black & Orange Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl border border-stone-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-stone-950 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-stone-900" />
+          <h1 className="text-2xl font-black tracking-tight text-stone-950 flex items-center gap-2.5">
+            <RiBarChartBoxLine className="w-7 h-7 text-orange-500" />
             數據分析與營運儀表板
           </h1>
           <p className="text-xs font-medium text-stone-500 mt-1">
@@ -374,7 +375,7 @@ export default function AnalyticsPage() {
         {/* Timeframe Selectors */}
         <div className="flex items-center gap-2">
           <select
-            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-900 cursor-pointer"
+            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
@@ -389,7 +390,7 @@ export default function AnalyticsPage() {
           </select>
 
           <select
-            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-stone-900 cursor-pointer"
+            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
             value={selectedMonth}
             onChange={(e) => {
               const val = e.target.value
@@ -410,52 +411,52 @@ export default function AnalyticsPage() {
         <div className="loading-spinner py-16"><span /></div>
       ) : (
         <>
-          {/* Top KPI Cards (Sleek Monochrome) */}
+          {/* Top KPI Cards (Black & Orange Brand Style) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               title={`體驗成交率 (${monthLabel})`}
               value={`${trialConversionStats.rate}%`}
-              icon={TrendingUp}
+              icon={RiLineChartLine}
               subtitle={`成交 ${trialConversionStats.converted} / 體驗 ${trialConversionStats.total} 人`}
             />
             <StatCard
               title={`續課率 (${monthLabel})`}
               value={`${renewalStats.rate}%`}
-              icon={Award}
+              icon={RiMedalLine}
               subtitle={`續約 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 件`}
             />
             <StatCard
               title="幽靈會員預警 (>30天)"
               value={`${churnAnalysis.inactiveGhostMembers.length} 人`}
-              icon={AlertTriangle}
+              icon={RiAlertLine}
               subtitle="合約尚在但無未來預約"
             />
             <StatCard
               title="場館總學員數"
               value={`${customers.length} 人`}
-              icon={Users}
+              icon={RiTeamLine}
               subtitle="全館資料庫學員"
             />
           </div>
 
-          {/* 📈 12-Month Lesson Trend Bar Chart (Minimalist Monochrome) */}
+          {/* 📈 12-Month Lesson Trend Bar Chart (Black & Orange Accent) */}
           <Card className="border border-stone-200/80 shadow-xs">
             <CardHeader className="flex flex-row items-center justify-between border-b border-stone-100 pb-4">
               <div>
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-stone-900" />
+                  <RiBarChartBoxLine className="w-5 h-5 text-orange-500" />
                   {selectedYear} 年度銷課趨勢圖
                 </CardTitle>
                 <CardDescription className="text-xs text-stone-500 mt-0.5">
                   1~12 月實際總銷課堂數起伏（當前：{monthLabel}）
                 </CardDescription>
               </div>
-              <Badge variant="secondary" className="bg-stone-100 text-stone-800 font-mono">
+              <Badge variant="secondary" className="bg-stone-900 text-white font-mono border-none">
                 年總銷課: {monthlyLessonsTrend.months.reduce((a, b) => a + b, 0)} 堂
               </Badge>
             </CardHeader>
             <CardContent className="pt-6 pb-2">
-              <div className="h-40 flex items-end justify-between gap-2 border-b border-stone-200/80 pb-2">
+              <div className="h-44 flex items-end justify-between gap-2 border-b border-stone-200/80 pb-2">
                 {monthlyLessonsTrend.months.map((count, idx) => {
                   const monthNum = idx + 1
                   const isSelected = selectedMonth === monthNum
@@ -463,18 +464,18 @@ export default function AnalyticsPage() {
 
                   return (
                     <div key={monthNum} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                      <span className={`text-[10px] font-mono font-bold transition-all ${isSelected ? 'text-stone-950 font-black' : 'text-stone-400'}`}>
+                      <span className={`text-[10px] font-mono font-bold transition-all ${isSelected ? 'text-orange-600 font-black' : 'text-stone-400'}`}>
                         {count > 0 ? `${count}堂` : ''}
                       </span>
                       <div
                         className={`w-full rounded-t-sm transition-all duration-200 ${
                           isSelected
-                            ? 'bg-stone-950 shadow-sm'
-                            : 'bg-stone-200 group-hover:bg-stone-300'
+                            ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-sm shadow-orange-200'
+                            : 'bg-stone-950 group-hover:bg-stone-800'
                         }`}
                         style={{ height: `${heightPct}%` }}
                       />
-                      <span className={`text-xs font-bold ${isSelected ? 'text-stone-950 font-black' : 'text-stone-500'}`}>
+                      <span className={`text-xs font-bold ${isSelected ? 'text-orange-600 font-black' : 'text-stone-600'}`}>
                         {monthNum}月
                       </span>
                     </div>
@@ -490,7 +491,7 @@ export default function AnalyticsPage() {
             <Card className="border border-stone-200/80 shadow-xs">
               <CardHeader className="border-b border-stone-100 pb-4">
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-stone-800" />
+                  <RiSparklingLine className="w-5 h-5 text-orange-500" />
                   來客渠道分佈 (Channel Breakdown)
                 </CardTitle>
               </CardHeader>
@@ -503,7 +504,7 @@ export default function AnalyticsPage() {
                         <span>{channel}</span>
                         <span className="font-mono text-stone-950">{count} 人 ({pct}%)</span>
                       </div>
-                      <Progress value={Number(pct)} indicatorClassName="bg-stone-900" />
+                      <Progress value={Number(pct)} indicatorClassName="bg-stone-950" />
                     </div>
                   )
                 })}
@@ -514,7 +515,7 @@ export default function AnalyticsPage() {
             <Card className="border border-stone-200/80 shadow-xs">
               <CardHeader className="border-b border-stone-100 pb-4">
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-stone-800" />
+                  <RiPieChartLine className="w-5 h-5 text-orange-500" />
                   客群屬性與運動習慣分析
                 </CardTitle>
               </CardHeader>
@@ -522,16 +523,16 @@ export default function AnalyticsPage() {
                 {/* 性別比例 */}
                 <div className="space-y-2">
                   <span className="text-xs font-bold text-stone-500 block">性別比例</span>
-                  <div className="h-3.5 w-full bg-stone-100 rounded-full overflow-hidden flex font-mono text-[10px] text-white font-bold">
+                  <div className="h-4 w-full bg-stone-100 rounded-full overflow-hidden flex font-mono text-[10px] text-white font-bold">
                     <div
                       style={{ width: `${(demographics.genderCount.female / demographics.totalCust) * 100}%` }}
-                      className="bg-stone-800 flex items-center justify-center"
+                      className="bg-stone-900 flex items-center justify-center"
                     >
                       女 {((demographics.genderCount.female / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
                     <div
                       style={{ width: `${(demographics.genderCount.male / demographics.totalCust) * 100}%` }}
-                      className="bg-stone-400 flex items-center justify-center"
+                      className="bg-orange-500 flex items-center justify-center"
                     >
                       男 {((demographics.genderCount.male / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
@@ -555,7 +556,7 @@ export default function AnalyticsPage() {
                       <span>每週 1-2 次</span>
                       <span className="font-mono">{demographics.habitCount.weekly_1_2} 人</span>
                     </div>
-                    <Progress value={(demographics.habitCount.weekly_1_2 / demographics.totalCust) * 100} indicatorClassName="bg-stone-700" />
+                    <Progress value={(demographics.habitCount.weekly_1_2 / demographics.totalCust) * 100} indicatorClassName="bg-stone-800" />
                   </div>
 
                   <div className="space-y-1.5">
@@ -563,7 +564,7 @@ export default function AnalyticsPage() {
                       <span>每週 3 次以上</span>
                       <span className="font-mono">{demographics.habitCount.weekly_3_plus} 人</span>
                     </div>
-                    <Progress value={(demographics.habitCount.weekly_3_plus / demographics.totalCust) * 100} indicatorClassName="bg-stone-950" />
+                    <Progress value={(demographics.habitCount.weekly_3_plus / demographics.totalCust) * 100} indicatorClassName="bg-orange-500" />
                   </div>
                 </div>
               </CardContent>
@@ -576,7 +577,7 @@ export default function AnalyticsPage() {
             <Card className="border border-stone-200/80 shadow-xs">
               <CardHeader className="border-b border-stone-100 pb-4">
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-stone-800" />
+                  <RiCalendarCheckLine className="w-5 h-5 text-orange-500" />
                   課程購買與合約規格分佈
                 </CardTitle>
               </CardHeader>
@@ -600,7 +601,7 @@ export default function AnalyticsPage() {
             <Card className="border border-stone-200/80 shadow-xs">
               <CardHeader className="border-b border-stone-100 pb-4">
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-stone-800" />
+                  <RiFireLine className="w-5 h-5 text-orange-500" />
                   教練銷課與業績排行榜
                 </CardTitle>
               </CardHeader>
@@ -614,7 +615,9 @@ export default function AnalyticsPage() {
                       <div key={tp.trainerId} className="p-3 rounded-lg bg-stone-50/70 border border-stone-200/60 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="w-5 h-5 rounded-full bg-stone-900 text-white flex items-center justify-center text-xs font-bold font-mono">
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold font-mono ${
+                              idx === 0 ? 'bg-orange-500 text-white' : 'bg-stone-900 text-white'
+                            }`}>
                               {idx + 1}
                             </span>
                             <span className="text-xs font-bold text-stone-900">{tp.trainerName}</span>
@@ -626,7 +629,7 @@ export default function AnalyticsPage() {
                             </span>
                           </div>
                         </div>
-                        <Progress value={Number(sessionPct)} indicatorClassName="bg-stone-900" />
+                        <Progress value={Number(sessionPct)} indicatorClassName={idx === 0 ? "bg-orange-500" : "bg-stone-900"} />
                       </div>
                     )
                   })
@@ -635,11 +638,11 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          {/* Section 4: 幽靈會員預警 (Inactive Ghost Members Table) */}
+          {/* Section 4: 幽靈會員預警 */}
           <Card className="border border-stone-200/80 shadow-xs">
             <CardHeader className="border-b border-stone-100 pb-4">
               <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-stone-900" />
+                <RiAlertLine className="w-5 h-5 text-orange-500" />
                 幽靈會員預警清單 (超過 30 天未到店且無未來預約)
               </CardTitle>
               <CardDescription className="text-xs text-stone-500">
@@ -660,8 +663,9 @@ export default function AnalyticsPage() {
                 <TableBody>
                   {churnAnalysis.inactiveGhostMembers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-stone-400 text-xs italic">
-                        🎉 太棒了！目前無任何超過 30 天未到店的幽靈學員
+                      <TableCell colSpan={5} className="py-8 text-center text-stone-500 text-xs font-bold">
+                        <RiCheckboxCircleLine className="w-5 h-5 text-emerald-500 inline mr-1" />
+                        太棒了！目前無任何超過 30 天未到店的幽靈學員
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -674,8 +678,8 @@ export default function AnalyticsPage() {
                           {lastLessonDate ? `${daysInactive} 天前` : '未會面過'}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="secondary" className="bg-stone-100 text-stone-800 border-stone-200">
-                            <UserX className="w-3 h-3 mr-1" />
+                          <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200/80 font-bold">
+                            <RiUserForbidLine className="w-3.5 h-3.5 mr-1" />
                             流失預警
                           </Badge>
                         </TableCell>
@@ -692,7 +696,7 @@ export default function AnalyticsPage() {
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-4 gap-3">
               <div>
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-stone-900" />
+                  <RiPulseLine className="w-5 h-5 text-orange-500" />
                   會員活躍度 RFM 模型排行榜
                 </CardTitle>
                 <CardDescription className="text-xs text-stone-500">
@@ -702,12 +706,12 @@ export default function AnalyticsPage() {
 
               {/* Sorting Filter */}
               <div className="flex items-center gap-2 shrink-0">
-                <Filter className="w-3.5 h-3.5 text-stone-400" />
+                <RiFilter3Line className="w-4 h-4 text-stone-400" />
                 <span className="text-xs font-bold text-stone-600">排序：</span>
                 <select
                   value={rfmSortBy}
                   onChange={(e) => setRfmSortBy(e.target.value as RfmSortKey)}
-                  className="border border-stone-200 rounded-lg px-2.5 py-1 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none cursor-pointer"
+                  className="border border-stone-200 rounded-lg px-2.5 py-1 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
                 >
                   <option value="frequency">按上課頻率 (F - 高至低)</option>
                   <option value="monetary">按消費貢獻度 (M - 高至低)</option>
@@ -732,7 +736,7 @@ export default function AnalyticsPage() {
                     <TableRow key={m.customer.id}>
                       <TableCell className="text-center font-mono font-bold text-xs">
                         <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center ${
-                          idx === 0 ? 'bg-stone-900 text-white' : idx === 1 ? 'bg-stone-700 text-white' : idx === 2 ? 'bg-stone-500 text-white' : 'bg-stone-100 text-stone-600'
+                          idx === 0 ? 'bg-orange-500 text-white' : idx === 1 ? 'bg-stone-900 text-white' : idx === 2 ? 'bg-stone-700 text-white' : 'bg-stone-100 text-stone-600'
                         }`}>
                           {idx + 1}
                         </span>
@@ -740,7 +744,7 @@ export default function AnalyticsPage() {
                       <TableCell className="font-bold text-stone-900">{m.customer.name}</TableCell>
                       <TableCell className="font-mono text-xs text-stone-500">{m.customer.phone}</TableCell>
                       <TableCell className="text-right font-mono text-xs text-stone-700">{m.recencyDays}</TableCell>
-                      <TableCell className="text-right font-mono font-bold text-stone-900 text-xs">
+                      <TableCell className="text-right font-mono font-bold text-stone-950 text-xs">
                         {m.frequency} 次/週 ({m.totalLessonsCount} 堂)
                       </TableCell>
                       <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
