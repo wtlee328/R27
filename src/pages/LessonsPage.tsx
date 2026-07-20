@@ -217,6 +217,14 @@ export default function LessonsPage() {
   // Dashboard Stats
   const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
 
+  // Calculate total system remaining monetary amount across all active/ongoing contracts
+  const totalSystemRemainingAmount = contracts.reduce((sum, c) => {
+    const remaining = Number(c.remainingSessions || 0)
+    if (remaining <= 0) return sum
+    const pricePerSession = Number(c.pricePerSession || (c.totalSessions ? c.totalAmount / c.totalSessions : 0))
+    return sum + (remaining * pricePerSession)
+  }, 0)
+
   // Calculate selected month's consumed lessons and revenue amount across all records
   const selectedMonthRecords = selectedMonth === 'all'
     ? records
@@ -272,12 +280,20 @@ export default function LessonsPage() {
       </div>
 
       {/* STATS OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="系統剩餘總堂數"
           value={`${totalSystemRemaining} 堂`}
           icon={CalendarCheck}
           subtitle="目前合約中所有未消耗的堂數"
+        />
+        <StatCard
+          title="系統剩餘總金額"
+          value={`NT$ ${Math.round(totalSystemRemainingAmount).toLocaleString()}`}
+          icon={DollarSign}
+          iconColor="text-amber-600"
+          iconBg="bg-amber-50"
+          subtitle="合約中未上課堂數之剩餘價值加總"
         />
         <StatCard
           title={selectedMonth === 'all' ? '累計已銷總堂數' : '當月已銷總堂數'}
@@ -287,7 +303,7 @@ export default function LessonsPage() {
         />
         <StatCard
           title={selectedMonth === 'all' ? '累計已銷總金額' : '當月已銷總金額'}
-          value={`NT$ ${selectedMonthRevenue.toLocaleString()}`}
+          value={`NT$ ${Math.round(selectedMonthRevenue).toLocaleString()}`}
           icon={DollarSign}
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
