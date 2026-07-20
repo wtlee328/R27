@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, PlusCircle, Database } from 'lucide-react'
+import { DollarSign, Plus, PlusCircle, Database } from 'lucide-react'
 import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
