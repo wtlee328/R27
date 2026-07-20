@@ -1,3 +1,4 @@
+import React from 'react'
 import type { ProfitLossData, ProfitLossRow } from '../../types'
 
 interface ProfitLossTableProps {
@@ -27,31 +28,39 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
   }
 
   const renderRow = (row: ProfitLossRow, isBold = false) => {
-    const valForPct =
-      targetMonthIndex !== null ? row.months[targetMonthIndex] : row.total
-
     return (
       <tr key={row.category} className="hover:bg-stone-50/80 border-b border-stone-100 last:border-0 transition-colors duration-150">
         <td className={`px-5 py-2.5 ${isBold ? 'font-bold text-stone-900' : 'text-stone-700'}`}>{row.category}</td>
         {row.months.map((m, i) => {
           const isHighlighted = targetMonthIndex === i
           return (
-            <td
-              key={i}
-              className={`px-4 py-2.5 text-right tabular-nums transition-colors ${
-                isHighlighted
-                  ? 'bg-amber-50/80 font-bold text-stone-950 border-x border-amber-200'
-                  : 'text-stone-500'
-              }`}
-            >
-              {formatCurrency(m)}
-            </td>
+            <React.Fragment key={i}>
+              <td
+                className={`px-4 py-2.5 text-right tabular-nums transition-colors ${
+                  isHighlighted
+                    ? 'bg-amber-50/80 font-bold text-stone-950 border-l border-amber-200'
+                    : 'text-stone-500'
+                }`}
+              >
+                {formatCurrency(m)}
+              </td>
+              {/* If this month is the selected target month, insert percentage column directly next to it */}
+              {isHighlighted && (
+                <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-900 bg-amber-100/70 border-r border-amber-300 tabular-nums">
+                  {formatPercentage(m)}
+                </td>
+              )}
+            </React.Fragment>
           )
         })}
-        {/* Percentage Column */}
-        <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-900 bg-amber-50/90 border-x border-amber-300 tabular-nums">
-          {formatPercentage(valForPct)}
-        </td>
+
+        {/* If viewing all months, display full-year percentage right before total */}
+        {targetMonthIndex === null && (
+          <td className="px-4 py-2.5 text-right font-mono font-bold text-amber-900 bg-amber-50/90 border-x border-amber-300 tabular-nums">
+            {formatPercentage(row.total)}
+          </td>
+        )}
+
         <td className={`px-5 py-2.5 text-right tabular-nums ${isBold ? 'font-bold text-stone-900' : 'font-medium text-stone-700'}`}>
           {formatCurrency(row.total)}
         </td>
@@ -61,7 +70,6 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
 
   const renderTotalRow = (label: string, totals: (number | null)[], isNet = false) => {
     const yearTotal = totals.reduce((a, b) => (a || 0) + (b || 0), 0)
-    const valForPct = targetMonthIndex !== null ? totals[targetMonthIndex] : yearTotal
 
     return (
       <tr className={`${isNet ? 'bg-stone-900 text-white' : 'bg-stone-100'} border-y border-stone-200`}>
@@ -69,34 +77,51 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
         {totals.map((m, i) => {
           const isHighlighted = targetMonthIndex === i
           return (
-            <td
-              key={i}
-              className={`px-4 py-3 text-right font-bold tabular-nums ${
-                isHighlighted
-                  ? isNet
-                    ? 'bg-stone-800 text-amber-300 border-x border-stone-700'
-                    : 'bg-amber-100/70 text-stone-950 border-x border-amber-300'
-                  : isNet && m !== null
-                  ? m >= 0
-                    ? 'text-emerald-400'
-                    : 'text-red-400'
-                  : ''
-              }`}
-            >
-              {formatCurrency(m)}
-            </td>
+            <React.Fragment key={i}>
+              <td
+                className={`px-4 py-3 text-right font-bold tabular-nums ${
+                  isHighlighted
+                    ? isNet
+                      ? 'bg-stone-800 text-amber-300 border-l border-stone-700'
+                      : 'bg-amber-100/70 text-stone-950 border-l border-amber-300'
+                    : isNet && m !== null
+                    ? m >= 0
+                      ? 'text-emerald-400'
+                      : 'text-red-400'
+                    : ''
+                }`}
+              >
+                {formatCurrency(m)}
+              </td>
+              {/* Insert percentage directly next to selected month's total */}
+              {isHighlighted && (
+                <td
+                  className={`px-4 py-3 text-right font-mono font-black border-r tabular-nums ${
+                    isNet
+                      ? 'bg-stone-800 text-amber-300 border-stone-700'
+                      : 'bg-amber-200/80 text-stone-950 border-amber-300'
+                  }`}
+                >
+                  {formatPercentage(m)}
+                </td>
+              )}
+            </React.Fragment>
           )
         })}
-        {/* Total Percentage Column */}
-        <td
-          className={`px-4 py-3 text-right font-mono font-black border-x tabular-nums ${
-            isNet
-              ? 'bg-stone-800 text-amber-300 border-stone-700'
-              : 'bg-amber-100/90 text-stone-950 border-amber-300'
-          }`}
-        >
-          {formatPercentage(valForPct)}
-        </td>
+
+        {/* Full year percentage column if all months selected */}
+        {targetMonthIndex === null && (
+          <td
+            className={`px-4 py-3 text-right font-mono font-black border-x tabular-nums ${
+              isNet
+                ? 'bg-stone-800 text-amber-300 border-stone-700'
+                : 'bg-amber-100/90 text-stone-950 border-amber-300'
+            }`}
+          >
+            {formatPercentage(yearTotal)}
+          </td>
+        )}
+
         <td
           className={`px-5 py-3 text-right font-bold tabular-nums ${
             isNet ? (yearTotal >= 0 ? 'text-emerald-400' : 'text-red-400') : ''
@@ -108,7 +133,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
     )
   }
 
-  const monthLabelText = targetMonthIndex !== null ? `${targetMonthIndex + 1}月` : '全年度'
+  const colSpanCount = targetMonthIndex !== null ? 15 : 15
 
   return (
     <div className="border border-stone-200 rounded-2xl overflow-x-auto bg-white shadow-sm">
@@ -119,25 +144,34 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
             {months.map((m, i) => {
               const isHighlighted = targetMonthIndex === i
               return (
-                <th
-                  key={m}
-                  className={`px-4 py-3.5 text-right font-semibold text-xs uppercase tracking-wider ${
-                    isHighlighted ? 'bg-amber-100/80 text-amber-900 border-x border-amber-300 font-black' : ''
-                  }`}
-                >
-                  {m}
-                </th>
+                <React.Fragment key={m}>
+                  <th
+                    className={`px-4 py-3.5 text-right font-semibold text-xs uppercase tracking-wider ${
+                      isHighlighted ? 'bg-amber-100/80 text-amber-900 border-l border-amber-300 font-black' : ''
+                    }`}
+                  >
+                    {m}
+                  </th>
+                  {/* Insert % column header right next to selected month */}
+                  {isHighlighted && (
+                    <th className="px-3 py-3.5 text-right font-black text-xs uppercase tracking-wider bg-amber-200/80 text-amber-950 border-r border-amber-300 font-mono">
+                      {m}占比 (%)
+                    </th>
+                  )}
+                </React.Fragment>
               )
             })}
-            <th className="px-4 py-3.5 text-right font-black text-xs uppercase tracking-wider bg-amber-100 text-amber-950 border-x border-amber-300">
-              {monthLabelText}占比 (%)
-            </th>
+            {targetMonthIndex === null && (
+              <th className="px-4 py-3.5 text-right font-black text-xs uppercase tracking-wider bg-amber-100 text-amber-950 border-x border-amber-300">
+                年度占比 (%)
+              </th>
+            )}
             <th className="px-5 py-3.5 text-right font-semibold text-xs uppercase tracking-wider">總計</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td colSpan={15} className="px-5 py-2.5 font-bold bg-emerald-50/60 text-emerald-800 text-xs uppercase tracking-wider border-b border-stone-200">
+            <td colSpan={colSpanCount} className="px-5 py-2.5 font-bold bg-emerald-50/60 text-emerald-800 text-xs uppercase tracking-wider border-b border-stone-200">
               一、營業收入
             </td>
           </tr>
@@ -145,7 +179,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
             data.income.map((row) => renderRow(row))
           ) : (
             <tr>
-              <td colSpan={15} className="px-5 py-3 text-center text-stone-400">
+              <td colSpan={colSpanCount} className="px-5 py-3 text-center text-stone-400">
                 無收入資料
               </td>
             </tr>
@@ -153,7 +187,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
           {renderTotalRow('營業收入合計 (實際總收入)', data.totalIncome)}
 
           <tr>
-            <td colSpan={15} className="px-5 py-2.5 font-bold bg-red-50/60 text-red-800 text-xs uppercase tracking-wider border-b border-stone-200">
+            <td colSpan={colSpanCount} className="px-5 py-2.5 font-bold bg-red-50/60 text-red-800 text-xs uppercase tracking-wider border-b border-stone-200">
               二、營業支出
             </td>
           </tr>
@@ -161,7 +195,7 @@ export function ProfitLossTable({ data, selectedMonth = 'all' }: ProfitLossTable
             data.expenses.map((row) => renderRow(row))
           ) : (
             <tr>
-              <td colSpan={15} className="px-5 py-3 text-center text-stone-400">
+              <td colSpan={colSpanCount} className="px-5 py-3 text-center text-stone-400">
                 無支出資料
               </td>
             </tr>
