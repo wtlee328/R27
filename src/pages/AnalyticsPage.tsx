@@ -361,13 +361,13 @@ export default function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* Clean Black & Orange Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-xl border border-stone-200/80 shadow-xs">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-stone-950 flex items-center gap-2.5">
-            <RiBarChartBoxLine className="w-7 h-7 text-orange-500" />
+          <h1 className="text-2xl font-black tracking-tight text-stone-900 flex items-center gap-2.5">
+            <RiBarChartBoxLine className="w-6 h-6 text-orange-500" />
             數據分析與營運儀表板
           </h1>
-          <p className="text-xs font-medium text-stone-500 mt-1">
+          <p className="text-sm text-stone-500 mt-1">
             即時分析銷售轉換、客群結構、銷課趨勢圖表、幽靈會員與 RFM 會員活躍度
           </p>
         </div>

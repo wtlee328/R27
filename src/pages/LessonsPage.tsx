@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
+import { RiCalendarCheckLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
@@ -248,7 +249,10 @@ export default function LessonsPage() {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-stone-900 tracking-tight">教練銷課管理</h1>
+          <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
+            <RiCalendarCheckLine className="w-6 h-6 text-orange-500" />
+            教練銷課管理
+          </h1>
           <p className="text-sm text-stone-500 mt-1">追蹤教練的課程堂數消耗與系統剩餘堂數</p>
         </div>
         <div className="flex gap-2">
