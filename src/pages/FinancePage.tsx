@@ -3,7 +3,7 @@ import { DollarSign, ArrowUpRight, ArrowDownRight, Upload, TrendingUp, BarChart2
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { CashFlowTable } from '../components/cashflow/CashFlowTable'
-import { TrialBalanceTable } from '../components/cashflow/TrialBalanceTable'
+import { CashFlowStatementTable } from '../components/cashflow/CashFlowStatementTable'
 import { CashFlowFormModal } from '../components/cashflow/CashFlowFormModal'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
 import { useCashFlow } from '../hooks/useCashFlow'
@@ -11,12 +11,12 @@ import type { CashFlowFormValues } from '../lib/validators'
 import type { ProfitLossData, ProfitLossRow, CashFlowRecord } from '../types'
 
 type TabType = 'cash-flow' | 'profit-loss'
-type CashFlowSubView = 'trial-balance' | 'detailed'
+type CashFlowSubView = 'statement' | 'detailed'
 
 export default function FinancePage() {
   const { records, loading, createRecord, updateRecord, deleteRecord } = useCashFlow()
   const [activeTab, setActiveTab] = useState<TabType>('cash-flow')
-  const [cashFlowSubView, setCashFlowSubView] = useState<CashFlowSubView>('trial-balance')
+  const [cashFlowSubView, setCashFlowSubView] = useState<CashFlowSubView>('statement')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingRecord, setEditingRecord] = useState<CashFlowRecord | null>(null)
 
@@ -53,19 +53,32 @@ export default function FinancePage() {
     })
   }, [records, selectedYear, selectedMonth])
 
-  // --- Cash Flow Stats ---
-  const totalDebitSum = useMemo(
-    () => filteredCashFlowRecords.reduce((sum, r) => sum + (r.debitAmount || 0), 0),
-    [filteredCashFlowRecords]
-  )
-  const totalCreditSum = useMemo(
-    () => filteredCashFlowRecords.reduce((sum, r) => sum + (r.creditAmount || 0), 0),
-    [filteredCashFlowRecords]
-  )
-  const netDifference = useMemo(
-    () => totalDebitSum - totalCreditSum,
-    [totalDebitSum, totalCreditSum]
-  )
+  // Helper to check if a category is a cash/bank asset
+  const isCashOrBank = (cat: string) =>
+    ['現金', '銀行存款', '公司存款'].some((a) => cat.includes(a))
+
+  // --- Cash Flow Statement Inflow/Outflow Calculation ---
+  const { totalInflowSum, totalOutflowSum, netCashChange } = useMemo(() => {
+    let inflow = 0
+    let outflow = 0
+
+    filteredCashFlowRecords.forEach((r) => {
+      if (isCashOrBank(r.debitCategory) && r.creditCategory && !isCashOrBank(r.creditCategory)) {
+        inflow += r.creditAmount || r.debitAmount || 0
+      } else if (isCashOrBank(r.creditCategory) && r.debitCategory && !isCashOrBank(r.debitCategory)) {
+        outflow += r.debitAmount || r.creditAmount || 0
+      } else {
+        outflow += r.debitAmount || 0
+        inflow += r.creditAmount || 0
+      }
+    })
+
+    return {
+      totalInflowSum: inflow,
+      totalOutflowSum: outflow,
+      netCashChange: inflow - outflow,
+    }
+  }, [filteredCashFlowRecords])
 
   // Label for month (e.g., "03月")
   const monthLabel = useMemo(() => {
@@ -144,7 +157,7 @@ export default function FinancePage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">會計管理</h1>
-          <p className="text-sm text-stone-500 mt-1">管理試算表、收支金流與月度損益統計</p>
+          <p className="text-sm text-stone-500 mt-1">管理正規現金流量表、收支金流與月度損益統計</p>
         </div>
 
         {/* Tab Controls */}
@@ -158,7 +171,7 @@ export default function FinancePage() {
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
-            試算表 / 金流
+            現金流量表
           </button>
           <button
             onClick={() => setActiveTab('profit-loss')}
@@ -174,7 +187,7 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Tab Contents: Cash Flow / Trial Balance */}
+      {/* Tab Contents: Cash Flow Statement */}
       {activeTab === 'cash-flow' && (
         <div className="flex flex-col gap-6">
           {/* Action & Filter Toolbar */}
@@ -183,15 +196,15 @@ export default function FinancePage() {
             <div className="flex items-center gap-2">
               <div className="flex p-1 bg-stone-100/80 rounded-2xl border border-stone-200/60">
                 <button
-                  onClick={() => setCashFlowSubView('trial-balance')}
+                  onClick={() => setCashFlowSubView('statement')}
                   className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                    cashFlowSubView === 'trial-balance'
+                    cashFlowSubView === 'statement'
                       ? 'bg-stone-900 text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
-                  試算表 (彙整按科目)
+                  現金流量表 (三大活動彙整)
                 </button>
                 <button
                   onClick={() => setCashFlowSubView('detailed')}
@@ -255,31 +268,31 @@ export default function FinancePage() {
           {/* Stats cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
-              title={`總借方金額 (${monthLabel})`}
-              value={`NT$ ${totalDebitSum.toLocaleString()}`}
+              title={`現金流入總額 (${monthLabel})`}
+              value={`NT$ ${totalInflowSum.toLocaleString()}`}
               icon={ArrowUpRight}
               iconColor="text-emerald-600"
               iconBg="bg-emerald-50"
             />
             <StatCard
-              title={`總貸方金額 (${monthLabel})`}
-              value={`NT$ ${totalCreditSum.toLocaleString()}`}
+              title={`現金流出總額 (${monthLabel})`}
+              value={`NT$ ${totalOutflowSum.toLocaleString()}`}
               icon={ArrowDownRight}
               iconColor="text-red-500"
               iconBg="bg-red-50"
             />
             <StatCard
-              title={`借貸差額 (${monthLabel})`}
-              value={`NT$ ${Math.abs(netDifference).toLocaleString()}`}
+              title={`本期現金淨變動額 (${monthLabel})`}
+              value={`NT$ ${Math.abs(netCashChange).toLocaleString()}`}
               icon={DollarSign}
-              subtitle={netDifference === 0 ? '✓ 完全平衡' : '未完全平衡'}
+              subtitle={netCashChange >= 0 ? '現金增加 (正流入)' : '現金減少 (淨流出)'}
             />
           </div>
 
           {loading ? (
             <div className="loading-spinner"><span /></div>
-          ) : cashFlowSubView === 'trial-balance' ? (
-            <TrialBalanceTable records={filteredCashFlowRecords} monthLabel={monthLabel} />
+          ) : cashFlowSubView === 'statement' ? (
+            <CashFlowStatementTable records={filteredCashFlowRecords} monthLabel={monthLabel} />
           ) : (
             <CashFlowTable
               records={filteredCashFlowRecords}
