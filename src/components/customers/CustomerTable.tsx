@@ -244,27 +244,27 @@ export function CustomerTable({
                         {activeContract ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {activeContract.status === 'expired' ? (
-                              <Badge variant="outline" className="bg-red-50 text-red-600 border-red-100/50 text-[10px] py-0 px-2 h-5 flex items-center shrink-0">
-                                ⚠️ 已到期
+                              <Badge variant="secondary" className="bg-stone-100 text-stone-700 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
+                                已到期
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className={cn(
+                              <Badge variant="default" className={cn(
                                 activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
-                                  ? "bg-purple-50 text-purple-600 border-purple-100/50" 
-                                  : "bg-emerald-50 text-emerald-600 border-emerald-100/50",
-                                "text-[10px] py-0 px-2 h-5 flex items-center shrink-0"
+                                  ? "bg-stone-800 text-white" 
+                                  : "bg-stone-900 text-white",
+                                "text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold"
                               )}>
                                 {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? '👥 雙人合約' : '👤 進行中'}
                               </Badge>
                             )}
                             {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
-                              <span className="text-[10px] text-purple-500 font-bold bg-purple-50/50 px-2 py-0.5 rounded-md border border-purple-100/30 shrink-0">
+                              <span className="text-[10px] text-stone-600 font-bold bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200 shrink-0">
                                 與 {partner.name} 共享
                               </span>
                             )}
                           </div>
                         ) : (
-                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200/50 text-[10px] py-0 px-2 h-5 flex items-center shrink-0">無有效合約</Badge>
+                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">無有效合約</Badge>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">

@@ -19,8 +19,6 @@ export function StatCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor = 'text-brand-600',
-  iconBg = 'bg-brand-50',
   className,
   onClick,
   isActive,
@@ -31,31 +29,46 @@ export function StatCard({
     <div
       onClick={onClick}
       className={cn(
-        'group relative rounded-xl border p-5 shadow-sm overflow-hidden transition-all duration-300',
-        isClickable ? 'cursor-pointer select-none active:scale-[0.98]' : '',
+        'group relative rounded-xl border border-stone-200/80 bg-white p-5 shadow-xs transition-all duration-200',
+        isClickable ? 'cursor-pointer select-none hover:border-stone-400 active:scale-[0.99]' : '',
         isActive 
-          ? 'border-stone-900 bg-stone-50/60 ring-2 ring-stone-900 shadow-md' 
-          : 'border-stone-200/80 bg-white hover:shadow-md hover:border-stone-300',
+          ? 'border-stone-900 bg-stone-900 text-white shadow-sm ring-1 ring-stone-900' 
+          : 'hover:shadow-sm',
         className
       )}
     >
-      {/* Subtle gradient accent on hover */}
-      {!isActive && (
-        <div className="absolute inset-0 bg-gradient-to-br from-stone-50/0 to-stone-50/0 group-hover:from-stone-50/40 group-hover:to-transparent transition-all duration-500 pointer-events-none" />
-      )}
-
-      <div className="relative flex items-start justify-between">
+      <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-stone-900 truncate tabular-nums">{value}</p>
-          {subtitle && <p className="mt-1.5 text-xs text-stone-400">{subtitle}</p>}
+          <p className={cn(
+            'text-[11px] font-bold uppercase tracking-wider',
+            isActive ? 'text-stone-300' : 'text-stone-500'
+          )}>
+            {title}
+          </p>
+          <p className={cn(
+            'mt-2 text-2xl font-black truncate tabular-nums tracking-tight',
+            isActive ? 'text-white' : 'text-stone-950'
+          )}>
+            {value}
+          </p>
+          {subtitle && (
+            <p className={cn(
+              'mt-1.5 text-xs font-medium truncate',
+              isActive ? 'text-stone-300' : 'text-stone-500'
+            )}>
+              {subtitle}
+            </p>
+          )}
         </div>
+
         {Icon && (
           <div className={cn(
-            'rounded-xl p-2.5 shrink-0 ml-3 transition-transform duration-300 group-hover:scale-110',
-            isActive ? 'bg-stone-900 text-white' : iconBg
+            'p-2.5 rounded-lg border shrink-0 transition-colors',
+            isActive 
+              ? 'bg-stone-800 border-stone-700 text-white' 
+              : 'bg-stone-50 border-stone-200/60 text-stone-700 group-hover:bg-stone-100 group-hover:text-stone-900'
           )}>
-            <Icon className={cn('h-5 w-5', isActive ? 'text-white' : iconColor)} />
+            <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
