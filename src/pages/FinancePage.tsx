@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, ArrowUpRight, ArrowDownRight, Upload, TrendingUp, BarChart2, List, FileSpreadsheet } from 'lucide-react'
+import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet } from 'lucide-react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
-import { CashFlowTable } from '../components/cashflow/CashFlowTable'
+import { CashFlowTable, normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
 import { CashFlowStatementTable } from '../components/cashflow/CashFlowStatementTable'
 import { CashFlowFormModal } from '../components/cashflow/CashFlowFormModal'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
@@ -25,11 +25,32 @@ export default function FinancePage() {
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(now.getMonth() + 1)
 
   const handleCreateOrUpdateRecord = async (data: CashFlowFormValues) => {
+    // Generate legacy compatibility fields for backwards compatibility
+    const legacyFields =
+      data.type === 'income'
+        ? {
+            debitCategory: data.account || '公司存款',
+            debitAmount: data.amount,
+            creditCategory: data.category,
+            creditAmount: data.amount,
+          }
+        : {
+            debitCategory: data.category,
+            debitAmount: data.amount,
+            creditCategory: data.account || '公司存款',
+            creditAmount: data.amount,
+          }
+
+    const payload = {
+      ...data,
+      ...legacyFields,
+    }
+
     if (editingRecord) {
-      await updateRecord(editingRecord.id, data)
+      await updateRecord(editingRecord.id, payload)
       setEditingRecord(null)
     } else {
-      await createRecord(data)
+      await createRecord(payload)
     }
   }
 
@@ -53,23 +74,16 @@ export default function FinancePage() {
     })
   }, [records, selectedYear, selectedMonth])
 
-  // Helper to check if a category is a cash/bank asset
-  const isCashOrBank = (cat: string) =>
-    ['現金', '銀行存款', '公司存款'].some((a) => cat.includes(a))
-
   // --- Cash Flow Statement Inflow/Outflow Calculation ---
   const { totalInflowSum, totalOutflowSum, netCashChange } = useMemo(() => {
     let inflow = 0
     let outflow = 0
 
-    filteredCashFlowRecords.forEach((r) => {
-      if (isCashOrBank(r.debitCategory) && r.creditCategory && !isCashOrBank(r.creditCategory)) {
-        inflow += r.creditAmount || r.debitAmount || 0
-      } else if (isCashOrBank(r.creditCategory) && r.debitCategory && !isCashOrBank(r.debitCategory)) {
-        outflow += r.debitAmount || r.creditAmount || 0
+    filteredCashFlowRecords.map(normalizeCashFlowRecord).forEach((r) => {
+      if (r.type === 'income') {
+        inflow += r.amount || 0
       } else {
-        outflow += r.debitAmount || 0
-        inflow += r.creditAmount || 0
+        outflow += r.amount || 0
       }
     })
 
@@ -99,19 +113,22 @@ export default function FinancePage() {
     const isAssetOrLiability = (cat: string) =>
       ['現金', '銀行存款', '公司存款', '預收款', '應付帳款', '業主資本', '業主往來', '應收帳款'].some((a) => cat.includes(a))
 
-    yearRecords.forEach((r) => {
+    yearRecords.map(normalizeCashFlowRecord).forEach((r) => {
       const monthIndex = r.date.toDate().getMonth()
+      const cat = r.category || '一般收支'
 
-      if (!isAssetOrLiability(r.creditCategory)) {
-        if (!incomeMap.has(r.creditCategory)) incomeMap.set(r.creditCategory, initMonths())
-        const arr = incomeMap.get(r.creditCategory)!
-        arr[monthIndex] = (arr[monthIndex] || 0) + r.creditAmount
-      }
-
-      if (!isAssetOrLiability(r.debitCategory)) {
-        if (!expenseMap.has(r.debitCategory)) expenseMap.set(r.debitCategory, initMonths())
-        const arr = expenseMap.get(r.debitCategory)!
-        arr[monthIndex] = (arr[monthIndex] || 0) + r.debitAmount
+      if (r.type === 'income') {
+        if (!isAssetOrLiability(cat)) {
+          if (!incomeMap.has(cat)) incomeMap.set(cat, initMonths())
+          const arr = incomeMap.get(cat)!
+          arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
+        }
+      } else {
+        if (!isAssetOrLiability(cat)) {
+          if (!expenseMap.has(cat)) expenseMap.set(cat, initMonths())
+          const arr = expenseMap.get(cat)!
+          arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
+        }
       }
     })
 
@@ -133,10 +150,10 @@ export default function FinancePage() {
     for (let i = 0; i < 12; i++) {
       const mIncome = income.reduce((sum, row) => sum + (row.months[i] || 0), 0)
       const mExpense = expenses.reduce((sum, row) => sum + (row.months[i] || 0), 0)
-      
+
       totalIncomeArr[i] = mIncome > 0 ? mIncome : null
       totalExpensesArr[i] = mExpense > 0 ? mExpense : null
-      
+
       const net = mIncome - mExpense
       netIncomeArr[i] = mIncome > 0 || mExpense > 0 ? net : null
     }
@@ -150,6 +167,8 @@ export default function FinancePage() {
       netIncome: netIncomeArr,
     }
   }, [records, selectedYear])
+
+  const normalizedEditingRecord = editingRecord ? normalizeCashFlowRecord(editingRecord) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -309,17 +328,17 @@ export default function FinancePage() {
             }}
             onSubmit={handleCreateOrUpdateRecord}
             initialData={
-              editingRecord
+              normalizedEditingRecord
                 ? {
-                    date: editingRecord.date?.toDate() || new Date(),
-                    debitCategory: editingRecord.debitCategory,
-                    debitAmount: editingRecord.debitAmount,
-                    creditCategory: editingRecord.creditCategory,
-                    creditAmount: editingRecord.creditAmount,
-                    description: editingRecord.description,
-                    notes: editingRecord.notes || '',
-                    source: editingRecord.source || 'manual',
-                    sourceId: editingRecord.sourceId || null,
+                    date: normalizedEditingRecord.date?.toDate() || new Date(),
+                    type: normalizedEditingRecord.type,
+                    category: normalizedEditingRecord.category,
+                    amount: normalizedEditingRecord.amount,
+                    account: normalizedEditingRecord.account || '公司存款',
+                    description: normalizedEditingRecord.description,
+                    notes: normalizedEditingRecord.notes || '',
+                    source: normalizedEditingRecord.source || 'manual',
+                    sourceId: normalizedEditingRecord.sourceId || null,
                   }
                 : undefined
             }

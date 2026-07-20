@@ -1,5 +1,6 @@
 import React from 'react'
 import type { CashFlowRecord } from '../../types'
+import { normalizeCashFlowRecord } from './CashFlowTable'
 
 interface CategoryCashFlow {
   category: string
@@ -47,46 +48,23 @@ export function CashFlowStatementTable({ records, monthLabel }: CashFlowStatemen
 
   const investingCategoryNames = ['器材', '新光AED', '攤提']
 
-  // Aggregate inflow and outflow per category
+  // Aggregate inflow and outflow per category using normalized record data
   const categoryMap = new Map<string, { inflow: number; outflow: number }>()
 
-  // Helper to check if a category is a cash/bank asset
-  const isCashOrBank = (cat: string) =>
-    ['現金', '銀行存款', '公司存款'].some((a) => cat.includes(a))
+  records.map(normalizeCashFlowRecord).forEach((r) => {
+    const cat = r.category || '一般收支'
+    const current = categoryMap.get(cat) || { inflow: 0, outflow: 0 }
 
-  records.forEach((r) => {
-    // 1. Debit side is Cash/Bank asset -> Credit side is Source of Funds (Inflow)
-    if (isCashOrBank(r.debitCategory) && r.creditCategory && !isCashOrBank(r.creditCategory)) {
-      const current = categoryMap.get(r.creditCategory) || { inflow: 0, outflow: 0 }
-      categoryMap.set(r.creditCategory, {
+    if (r.type === 'income') {
+      categoryMap.set(cat, {
         ...current,
-        inflow: current.inflow + (r.creditAmount || r.debitAmount || 0),
+        inflow: current.inflow + (r.amount || 0),
       })
-    }
-    // 2. Credit side is Cash/Bank asset -> Debit side is Use of Funds (Outflow)
-    else if (isCashOrBank(r.creditCategory) && r.debitCategory && !isCashOrBank(r.debitCategory)) {
-      const current = categoryMap.get(r.debitCategory) || { inflow: 0, outflow: 0 }
-      categoryMap.set(r.debitCategory, {
+    } else {
+      categoryMap.set(cat, {
         ...current,
-        outflow: current.outflow + (r.debitAmount || r.creditAmount || 0),
+        outflow: current.outflow + (r.amount || 0),
       })
-    }
-    // 3. Neither or both are cash assets -> treat debit as outflow, credit as inflow
-    else {
-      if (r.debitCategory) {
-        const current = categoryMap.get(r.debitCategory) || { inflow: 0, outflow: 0 }
-        categoryMap.set(r.debitCategory, {
-          ...current,
-          outflow: current.outflow + (r.debitAmount || 0),
-        })
-      }
-      if (r.creditCategory) {
-        const current = categoryMap.get(r.creditCategory) || { inflow: 0, outflow: 0 }
-        categoryMap.set(r.creditCategory, {
-          ...current,
-          inflow: current.inflow + (r.creditAmount || 0),
-        })
-      }
     }
   })
 
