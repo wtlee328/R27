@@ -10,8 +10,9 @@ import {
   UserX,
   Activity,
   Flame,
-  CheckCircle2,
   Filter,
+  BarChart3,
+  Sparkles,
 } from 'lucide-react'
 import { StatCard } from '../components/shared/StatCard'
 import { useCustomers } from '../hooks/useCustomers'
@@ -35,7 +36,9 @@ export default function AnalyticsPage() {
   const [loadingExtra, setLoadingExtra] = useState(true)
 
   const [rfmSortBy, setRfmSortBy] = useState<RfmSortKey>('frequency')
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
+  const now = new Date()
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(now.getMonth() + 1)
 
   // Fetch trainers, trials, and lessons
   useEffect(() => {
@@ -60,6 +63,11 @@ export default function AnalyticsPage() {
     fetchExtraData()
   }, [])
 
+  const monthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return '全年度'
+    return `${String(selectedMonth).padStart(2, '0')}月`
+  }, [selectedMonth])
+
   const trainerMap = useMemo(() => {
     const map: Record<string, string> = {}
     trainers.forEach((t) => {
@@ -68,15 +76,56 @@ export default function AnalyticsPage() {
     return map
   }, [trainers])
 
+  // --- Filtered datasets based on selectedYear & selectedMonth ---
+  const filteredTrials = useMemo(() => {
+    return trials.filter((t) => {
+      if (!t.createdAt) return true
+      const d = (t.createdAt as any).toDate ? (t.createdAt as any).toDate() : new Date(t.createdAt as any)
+      const matchesYear = d.getFullYear() === selectedYear
+      const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+      return matchesYear && matchesMonth
+    })
+  }, [trials, selectedYear, selectedMonth])
+
+  const filteredContracts = useMemo(() => {
+    return contracts.filter((c) => {
+      if (!c.startDate) return true
+      const d = (c.startDate as any).toDate ? (c.startDate as any).toDate() : new Date(c.startDate as any)
+      const matchesYear = d.getFullYear() === selectedYear
+      const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+      return matchesYear && matchesMonth
+    })
+  }, [contracts, selectedYear, selectedMonth])
+
+  const filteredCashFlowRecords = useMemo(() => {
+    return cashFlowRecords.filter((r) => {
+      if (!r.date) return false
+      const d = r.date.toDate()
+      const matchesYear = d.getFullYear() === selectedYear
+      const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+      return matchesYear && matchesMonth
+    })
+  }, [cashFlowRecords, selectedYear, selectedMonth])
+
+  const filteredLessons = useMemo(() => {
+    return lessons.filter((l) => {
+      if (!l.date) return false
+      const d = l.date.toDate ? l.date.toDate() : new Date(l.date)
+      const matchesYear = d.getFullYear() === selectedYear
+      const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
+      return matchesYear && matchesMonth
+    })
+  }, [lessons, selectedYear, selectedMonth])
+
   // --- 1. 銷售與轉換分析 (Sales & Conversion) ---
   const trialConversionStats = useMemo(() => {
-    const total = trials.length
-    const converted = trials.filter((t) => t.outcome === 'converted').length
+    const total = filteredTrials.length
+    const converted = filteredTrials.filter((t) => t.outcome === 'converted').length
     const rate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0'
 
     // Per Trainer Conversion Ranking
     const trainerTrialMap: Record<string, { total: number; converted: number }> = {}
-    trials.forEach((t) => {
+    filteredTrials.forEach((t) => {
       if (!t.trainerId) return
       if (!trainerTrialMap[t.trainerId]) {
         trainerTrialMap[t.trainerId] = { total: 0, converted: 0 }
@@ -98,15 +147,15 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.rate - a.rate)
 
     return { total, converted, rate, trainerRanking }
-  }, [trials, trainerMap])
+  }, [filteredTrials, trainerMap])
 
   // Renewal Rate (續課率)
   const renewalStats = useMemo(() => {
-    const renewals = contracts.filter((c) => (c as any).partnerMode === 'renewal' || (c as any).isRenewal).length
+    const renewals = filteredContracts.filter((c) => (c as any).partnerMode === 'renewal' || (c as any).isRenewal).length
     const totalEnded = contracts.filter((c) => c.status === 'completed' || c.status === 'expired').length
     const rate = totalEnded > 0 ? ((renewals / totalEnded) * 100).toFixed(1) : '0.0'
     return { renewals, totalEnded, rate }
-  }, [contracts])
+  }, [filteredContracts, contracts])
 
   // --- 2. 客群與漏斗分析 (Demographics & Channels) ---
   const demographics = useMemo(() => {
@@ -156,10 +205,12 @@ export default function AnalyticsPage() {
       else channelCount.其他管道 += 1
     })
 
-    return { genderCount, habitCount, ageCount, channelCount }
+    const totalCust = customers.length || 1
+
+    return { genderCount, habitCount, ageCount, channelCount, totalCust }
   }, [customers])
 
-  // --- 3. 合約分析 (Contract Specs & Ratio) ---
+  // --- 3. 合約分析 (Contract Specs) ---
   const contractSpecs = useMemo(() => {
     const specMap: Record<string, number> = {
       '10堂': 0,
@@ -170,7 +221,7 @@ export default function AnalyticsPage() {
       其他規格: 0,
     }
 
-    contracts.forEach((c) => {
+    filteredContracts.forEach((c) => {
       const s = c.totalSessions
       if (s === 10) specMap['10堂'] += 1
       else if (s === 24) specMap['24堂'] += 1
@@ -180,10 +231,12 @@ export default function AnalyticsPage() {
       else specMap.其他規格 += 1
     })
 
-    return specMap
-  }, [contracts])
+    const totalCount = filteredContracts.length || 1
 
-  // --- 4. 營運與課耗分析 (Operations & Lesson Consumption) ---
+    return { specMap, totalCount }
+  }, [filteredContracts])
+
+  // --- 4. 營運與課耗分析 (Monthly 12-Month Lesson Trend Bar Chart) ---
   const monthlyLessonsTrend = useMemo(() => {
     const months = Array(12).fill(0)
     lessons.forEach((l) => {
@@ -194,30 +247,31 @@ export default function AnalyticsPage() {
         }
       }
     })
-    return months
+    const maxVal = Math.max(...months, 1)
+    return { months, maxVal }
   }, [lessons, selectedYear])
 
   // Trainer Consumption & Revenue Ranking
   const trainerPerformance = useMemo(() => {
     const map: Record<string, { sessions: number; revenue: number }> = {}
 
-    // Lessons completed
-    lessons.forEach((l) => {
+    // Filtered lessons for performance
+    filteredLessons.forEach((l) => {
       if (l.status === 'completed' && l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
         map[l.trainerId].sessions += 1
       }
     })
 
-    // Cash flow revenue
-    cashFlowRecords.map(normalizeCashFlowRecord).forEach((r) => {
+    // Filtered Cash flow revenue for performance
+    filteredCashFlowRecords.map(normalizeCashFlowRecord).forEach((r) => {
       if (r.type === 'income' && r.trainerId) {
         if (!map[r.trainerId]) map[r.trainerId] = { sessions: 0, revenue: 0 }
         map[r.trainerId].revenue += r.amount || 0
       }
     })
 
-    return Object.entries(map)
+    const list = Object.entries(map)
       .map(([trainerId, data]) => ({
         trainerId,
         trainerName: trainerMap[trainerId] || '未指定教練',
@@ -225,11 +279,15 @@ export default function AnalyticsPage() {
         revenue: data.revenue,
       }))
       .sort((a, b) => b.sessions - a.sessions)
-  }, [lessons, cashFlowRecords, trainerMap])
+
+    const maxSessions = Math.max(...list.map((t) => t.sessions), 1)
+    const maxRevenue = Math.max(...list.map((t) => t.revenue), 1)
+
+    return { list, maxSessions, maxRevenue }
+  }, [filteredLessons, filteredCashFlowRecords, trainerMap])
 
   // --- 5. 會員留存與流失監控 (Ghost Members & Churn) ---
   const churnAnalysis = useMemo(() => {
-    const now = new Date()
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     const inactiveGhostMembers: Array<{
@@ -239,13 +297,10 @@ export default function AnalyticsPage() {
       trainerName: string
     }> = []
 
-    const confirmedChurnMembers: Customer[] = []
-
     customers.forEach((cust) => {
       const custContracts = contracts.filter((c) => c.customerId === cust.id || c.sharedWithCustomerId === cust.id)
       const hasActiveContract = custContracts.some((c) => c.status === 'active' || c.status === 'expiring')
 
-      // Customer's completed lessons
       const custLessons = lessons
         .filter((l) => l.customerId === cust.id && l.status === 'completed' && l.date)
         .map((l) => (l.date.toDate ? l.date.toDate() : new Date(l.date)))
@@ -269,22 +324,15 @@ export default function AnalyticsPage() {
           trainerName: activeContract ? trainerMap[activeContract.trainerId] || '未指定教練' : '未指定',
         })
       }
-
-      if (!hasActiveContract && custContracts.length > 0) {
-        confirmedChurnMembers.push(cust)
-      }
     })
 
     return {
       inactiveGhostMembers: inactiveGhostMembers.sort((a, b) => b.daysInactive - a.daysInactive),
-      confirmedChurnMembers,
     }
   }, [customers, contracts, lessons, trainerMap])
 
   // --- 6. 會員活躍度 RFM 模型 (RFM Analysis) ---
   const rfmMembers = useMemo(() => {
-    const now = new Date()
-
     return customers.map((cust) => {
       const custContracts = contracts.filter((c) => c.customerId === cust.id || c.sharedWithCustomerId === cust.id)
       const totalMonetary = custContracts.reduce((sum, c) => sum + (c.totalAmount || 0), 0)
@@ -299,7 +347,6 @@ export default function AnalyticsPage() {
         ? Math.floor((now.getTime() - lastLessonDate.getTime()) / (1000 * 60 * 60 * 24))
         : 999
 
-      // Frequency = Total lessons / 4 weeks (average weekly attendance rate)
       const frequency = (custLessons.length / 4).toFixed(1)
 
       return {
@@ -325,33 +372,49 @@ export default function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Header & Shared Filters */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-stone-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-brand-600" />
-            數據分析與營 universal 儀表板
+            <Activity className="w-6 h-6 text-emerald-600" />
+            數據分析與營運儀表板
           </h1>
           <p className="text-sm text-stone-500 mt-1">
-            即時監控轉換率、漏斗結構、銷課產值、幽靈流失警示與 RFM 會員活躍度
+            即時追蹤銷售轉換率、漏斗結構、銷課趨勢圖表、幽靈學員預警與 RFM 會員排行
           </p>
         </div>
 
-        {/* Year Filter */}
-        <div className="flex items-center gap-2">
+        {/* Year & Month Selection Filters */}
+        <div className="flex flex-wrap items-center gap-2">
           <select
-            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-bold text-stone-700 shadow-sm focus:outline-none cursor-pointer"
+            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
           >
             {[0, 1, 2].map((offset) => {
-              const y = new Date().getFullYear() - offset
+              const y = now.getFullYear() - offset
               return (
                 <option key={y} value={y}>
-                  {y} 年度數據
+                  {y} 年
                 </option>
               )
             })}
+          </select>
+
+          <select
+            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+            value={selectedMonth}
+            onChange={(e) => {
+              const val = e.target.value
+              setSelectedMonth(val === 'all' ? 'all' : Number(val))
+            }}
+          >
+            <option value="all">所有月份 (全年度)</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {String(m).padStart(2, '0')} 月
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -363,7 +426,7 @@ export default function AnalyticsPage() {
           {/* Top Key Performance Indicators (KPI Cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
-              title="體驗課成交率"
+              title={`體驗課成交率 (${monthLabel})`}
               value={`${trialConversionStats.rate}%`}
               icon={TrendingUp}
               iconColor="text-emerald-600"
@@ -371,12 +434,12 @@ export default function AnalyticsPage() {
               subtitle={`成交 ${trialConversionStats.converted} / 總體驗 ${trialConversionStats.total} 人`}
             />
             <StatCard
-              title="續課率 (Renewal Rate)"
+              title={`續課率 (${monthLabel})`}
               value={`${renewalStats.rate}%`}
               icon={Award}
               iconColor="text-blue-600"
               iconBg="bg-blue-50"
-              subtitle={`續約 ${renewalStats.renewals} / 到期合約 ${renewalStats.totalEnded} 件`}
+              subtitle={`續約 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 件`}
             />
             <StatCard
               title="幽靈會員預警 (>30天未到店)"
@@ -384,168 +447,245 @@ export default function AnalyticsPage() {
               icon={AlertTriangle}
               iconColor="text-amber-600"
               iconBg="bg-amber-50"
-              subtitle="有有效合約但無未來預約"
+              subtitle="有合約但無未來預約紀錄"
             />
             <StatCard
-              title="活躍學員數"
+              title="場館學員資料庫"
               value={`${customers.length} 人`}
               icon={Users}
               iconColor="text-purple-600"
               iconBg="bg-purple-50"
-              subtitle="場館資料庫總學員數"
+              subtitle="總註冊學員數"
             />
           </div>
 
-          {/* Section 1: Sales & Conversion + Demographics */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 教練體驗課成交率排行 */}
-            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between">
+          {/* 📈 Visualization 1: 每月課堂銷課總表趨勢圖 (12-Month Lesson Trend Bar Chart) */}
+          <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                  <Award className="w-5 h-5 text-amber-500" />
-                  教練體驗成交率排行榜
+                  <BarChart3 className="w-5 h-5 text-emerald-600" />
+                  {selectedYear} 年度銷課總表趨勢圖
                 </h3>
-                <span className="text-xs text-stone-400 font-medium">按轉換率排序</span>
+                <p className="text-xs text-stone-400 mt-0.5">
+                  呈現 1~12 月「實際總銷課堂數」的起伏動態（當前篩選：{monthLabel}）
+                </p>
               </div>
-              <div className="space-y-3">
-                {trialConversionStats.trainerRanking.length === 0 ? (
-                  <p className="text-stone-400 text-xs py-4 text-center">尚無教練體驗課轉換數據</p>
-                ) : (
-                  trialConversionStats.trainerRanking.map((t, idx) => (
-                    <div key={t.trainerId} className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          idx === 0 ? 'bg-amber-400 text-stone-900' : idx === 1 ? 'bg-stone-300 text-stone-900' : 'bg-amber-700/20 text-amber-900'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-bold text-stone-800">{t.trainerName}</p>
-                          <p className="text-xs text-stone-500">成交 {t.converted} / 帶體驗 {t.total} 人</p>
-                        </div>
+              <span className="text-xs font-mono font-bold text-stone-600 bg-stone-100 px-3 py-1 rounded-full border border-stone-200">
+                年總銷課: {monthlyLessonsTrend.months.reduce((a, b) => a + b, 0)} 堂
+              </span>
+            </div>
+
+            {/* 12-Month Bar Chart Container */}
+            <div className="pt-6 pb-2 px-2">
+              <div className="h-44 flex items-end justify-between gap-2 border-b border-stone-200 pb-2">
+                {monthlyLessonsTrend.months.map((count, idx) => {
+                  const monthNum = idx + 1
+                  const isSelected = selectedMonth === monthNum
+                  const heightPct = Math.max(10, (count / monthlyLessonsTrend.maxVal) * 100)
+
+                  return (
+                    <div key={monthNum} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
+                      <span className={`text-[11px] font-mono font-bold transition-all ${isSelected ? 'text-amber-600 font-black' : 'text-stone-500'}`}>
+                        {count > 0 ? `${count}堂` : ''}
+                      </span>
+                      <div
+                        className={`w-full rounded-t-lg transition-all duration-300 ${
+                          isSelected
+                            ? 'bg-gradient-to-t from-amber-500 to-amber-400 shadow-md shadow-amber-200'
+                            : 'bg-stone-200 hover:bg-stone-300'
+                        }`}
+                        style={{ height: `${heightPct}%` }}
+                      />
+                      <span className={`text-xs font-bold ${isSelected ? 'text-amber-800 font-black' : 'text-stone-600'}`}>
+                        {monthNum}月
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: 渠道轉化漏斗 & 客群結構圖表 (Demographics & Channels Visualizations) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* 🎯 渠道轉化漏斗視覺條 (Channel Funnel Visual Progress Bars) */}
+            <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
+              <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                來客渠道漏斗分析 (Channel Breakdown)
+              </h3>
+
+              <div className="space-y-3 pt-2">
+                {Object.entries(demographics.channelCount).map(([channel, count]) => {
+                  const pct = ((count / demographics.totalCust) * 100).toFixed(1)
+                  return (
+                    <div key={channel} className="space-y-1">
+                      <div className="flex justify-between text-xs font-bold text-stone-700">
+                        <span>{channel}</span>
+                        <span className="font-mono text-stone-900">{count} 人 ({pct}%)</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-base font-black font-mono text-emerald-600">
-                          {t.rate.toFixed(1)}%
-                        </span>
+                      <div className="h-2.5 w-full bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(4, Number(pct))}%` }}
+                        />
                       </div>
                     </div>
-                  ))
-                )}
+                  )
+                })}
               </div>
             </div>
 
-            {/* 客群結構分佈 (Demographics) */}
+            {/* 📊 客群結構與運動習慣 (Demographics Progress Bars) */}
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-blue-500" />
-                客群結構與運動習慣分析
+                <PieChart className="w-5 h-5 text-purple-600" />
+                客群屬性與運動習慣視覺化
               </h3>
 
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                {/* 性別比例 */}
-                <div className="p-4 bg-stone-50 rounded-xl border border-stone-100 space-y-2">
-                  <span className="text-xs font-bold text-stone-500">性別比例</span>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-pink-600 font-bold">女性</span>
-                      <span className="font-mono font-bold">{demographics.genderCount.female} 人</span>
+              <div className="space-y-4 pt-2">
+                {/* 性別比例條 */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-stone-500 block">性別比例</span>
+                  <div className="h-4 w-full bg-stone-100 rounded-full overflow-hidden flex font-mono text-[10px] text-white font-bold">
+                    <div
+                      style={{ width: `${(demographics.genderCount.female / demographics.totalCust) * 100}%` }}
+                      className="bg-pink-500 flex items-center justify-center"
+                    >
+                      女 {((demographics.genderCount.female / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-blue-600 font-bold">男性</span>
-                      <span className="font-mono font-bold">{demographics.genderCount.male} 人</span>
+                    <div
+                      style={{ width: `${(demographics.genderCount.male / demographics.totalCust) * 100}%` }}
+                      className="bg-blue-500 flex items-center justify-center"
+                    >
+                      男 {((demographics.genderCount.male / demographics.totalCust) * 100).toFixed(0)}%
                     </div>
                   </div>
                 </div>
 
-                {/* 運動習慣 */}
-                <div className="p-4 bg-stone-50 rounded-xl border border-stone-100 space-y-2">
-                  <span className="text-xs font-bold text-stone-500">運動習慣</span>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-red-500 font-bold">完全沒運動</span>
-                      <span className="font-mono font-bold">{demographics.habitCount.none} 人</span>
+                {/* 運動習慣進度條 */}
+                <div className="space-y-2 pt-2 border-t border-stone-100">
+                  <span className="text-xs font-bold text-stone-500 block">運動習慣分佈</span>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-red-600 font-bold">完全沒運動</span>
+                        <span className="font-mono font-bold">{demographics.habitCount.none} 人</span>
+                      </div>
+                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-red-400 rounded-full"
+                          style={{ width: `${(demographics.habitCount.none / demographics.totalCust) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-emerald-600 font-bold">每週 1-2 次</span>
-                      <span className="font-mono font-bold">{demographics.habitCount.weekly_1_2} 人</span>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-emerald-600 font-bold">每週 1-2 次</span>
+                        <span className="font-mono font-bold">{demographics.habitCount.weekly_1_2} 人</span>
+                      </div>
+                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-500 rounded-full"
+                          style={{ width: `${(demographics.habitCount.weekly_1_2 / demographics.totalCust) * 100}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-purple-600 font-bold">每週 3 次以上</span>
-                      <span className="font-mono font-bold">{demographics.habitCount.weekly_3_plus} 人</span>
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-purple-600 font-bold">每週 3 次以上</span>
+                        <span className="font-mono font-bold">{demographics.habitCount.weekly_3_plus} 人</span>
+                      </div>
+                      <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-purple-500 rounded-full"
+                          style={{ width: `${(demographics.habitCount.weekly_3_plus / demographics.totalCust) * 100}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* 渠道漏斗 */}
-              <div className="p-4 bg-stone-50 rounded-xl border border-stone-100 space-y-2">
-                <span className="text-xs font-bold text-stone-500 block mb-2">來客渠道分佈 (Channel Funnel)</span>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {Object.entries(demographics.channelCount).map(([channel, count]) => (
-                    <div key={channel} className="bg-white p-2.5 rounded-lg border border-stone-200/60 flex items-center justify-between text-xs">
-                      <span className="text-stone-600 font-medium">{channel}</span>
-                      <span className="font-bold font-mono text-stone-900">{count} 人</span>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Section 2: 合約規格分佈 & 每月銷課趨勢 */}
+          {/* Section 3: 合約規格分佈 & 教練課耗與產值排行圖表 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 合約方案規格分佈 */}
+            {/* 合約方案規格分佈視覺圖 */}
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-purple-500" />
+                <Calendar className="w-5 h-5 text-purple-600" />
                 課程購買與合約規格分佈
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-                {Object.entries(contractSpecs).map(([spec, count]) => (
-                  <div key={spec} className="p-4 bg-purple-50/50 border border-purple-100 rounded-xl space-y-1">
-                    <span className="text-xs font-bold text-purple-700 block">{spec} 方案</span>
-                    <span className="text-xl font-black font-mono text-purple-950">{count} 份</span>
-                  </div>
-                ))}
+              <div className="space-y-3 pt-2">
+                {Object.entries(contractSpecs.specMap).map(([spec, count]) => {
+                  const pct = ((count / contractSpecs.totalCount) * 100).toFixed(1)
+                  return (
+                    <div key={spec} className="space-y-1">
+                      <div className="flex justify-between text-xs font-bold text-stone-800">
+                        <span>{spec} 方案</span>
+                        <span className="font-mono text-purple-900">{count} 份 ({pct}%)</span>
+                      </div>
+                      <div className="h-2.5 w-full bg-purple-50 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                          style={{ width: `${Math.max(4, Number(pct))}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
 
-            {/* 教練銷課與產值排行 */}
+            {/* 教練銷課與產值排行視覺圖 */}
             <div className="bg-white p-6 rounded-2xl border border-stone-200 shadow-sm space-y-4">
               <h3 className="text-base font-bold text-stone-900 flex items-center gap-2">
                 <Flame className="w-5 h-5 text-orange-500" />
-                教練課耗與產值排行榜
+                教練銷課課耗與產值排行榜
               </h3>
               <div className="space-y-3">
-                {trainerPerformance.length === 0 ? (
-                  <p className="text-stone-400 text-xs py-4 text-center">尚無教練銷課與產值數據</p>
+                {trainerPerformance.list.length === 0 ? (
+                  <p className="text-stone-400 text-xs py-4 text-center">該時段尚無教練銷課數據</p>
                 ) : (
-                  trainerPerformance.map((tp, idx) => (
-                    <div key={tp.trainerId} className="flex items-center justify-between p-3 rounded-xl bg-stone-50 border border-stone-100">
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-stone-200 text-stone-800 flex items-center justify-center text-xs font-bold">
-                          {idx + 1}
-                        </span>
-                        <div>
-                          <p className="text-sm font-bold text-stone-900">{tp.trainerName}</p>
-                          <p className="text-xs text-stone-500">完成銷課 {tp.sessions} 堂</p>
+                  trainerPerformance.list.map((tp, idx) => {
+                    const sessionPct = ((tp.sessions / trainerPerformance.maxSessions) * 100).toFixed(0)
+                    return (
+                      <div key={tp.trainerId} className="p-3 rounded-xl bg-stone-50 border border-stone-100 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                              idx === 0 ? 'bg-amber-400 text-stone-900' : idx === 1 ? 'bg-stone-300 text-stone-900' : 'bg-amber-700/20 text-amber-900'
+                            }`}>
+                              {idx + 1}
+                            </span>
+                            <span className="text-sm font-bold text-stone-900">{tp.trainerName}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-stone-700">完成 {tp.sessions} 堂銷課</span>
+                            <span className="text-xs font-black font-mono text-emerald-600 block">
+                              ${tp.revenue.toLocaleString()} 業績
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 w-full bg-stone-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-orange-400 to-amber-500 rounded-full"
+                            style={{ width: `${Math.max(5, Number(sessionPct))}%` }}
+                          />
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-sm font-black font-mono text-emerald-600 block">
-                          ${tp.revenue.toLocaleString()}
-                        </span>
-                        <span className="text-[10px] text-stone-400">總業績產值</span>
-                      </div>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
           </div>
 
-          {/* Section 3: 幽靈會員預警 (Inactive Ghost Members) */}
+          {/* Section 4: 幽靈會員預警 (Inactive Ghost Members) */}
           <div className="bg-white border-2 border-amber-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-4">
               <div>
@@ -600,7 +740,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* Section 4: 會員活躍度 RFM 模型 (RFM Ranking) */}
+          {/* Section 5: 會員活躍度 RFM 模型 (RFM Ranking) */}
           <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-100 pb-4">
               <div>
