@@ -3,7 +3,7 @@ import { Navbar } from './Navbar'
 
 export function AppLayout() {
   return (
-    <div className="min-h-screen bg-stone-100/60">
+    <div className="min-h-screen bg-white">
       <Navbar />
       <main className="lg:pl-60 pt-16">
         <div className="min-h-[calc(100vh-4rem)] bg-white">

@@ -125,10 +125,10 @@ export function Navbar() {
         />
       )}
 
-      {/* ── Left Sidebar Navigation (Matching Reference SaaS Layout) ────────────────────── */}
+      {/* ── Left Sidebar Navigation (Gradient Blend to Main Page) ────────────────────── */}
       <aside
         className={cn(
-          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-stone-50/90 border-r border-stone-200/80 flex flex-col transition-transform duration-300 ease-out',
+          'fixed top-16 left-0 bottom-0 z-30 w-60 bg-gradient-to-r from-stone-100/90 via-stone-50/60 to-white flex flex-col transition-transform duration-300 ease-out',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0 animate-slide-in-left' : '-translate-x-full'
         )}
@@ -157,7 +157,7 @@ export function Navbar() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-stone-200/60 bg-stone-50 shrink-0">
+        <div className="p-4 bg-transparent shrink-0">
           <p className="text-[11px] font-bold text-stone-400 text-center">
             © {new Date().getFullYear()} {centerId === 'r27' ? 'R27 FITNESS' : 'COFFIT'}
           </p>
