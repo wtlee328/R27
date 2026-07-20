@@ -1,7 +1,15 @@
 import type { CashFlowRecord } from '../../types'
 import { format } from 'date-fns'
+import { Edit2, Trash2 } from 'lucide-react'
+import { Button } from '../ui/button'
 
-export function CashFlowTable({ records }: { records: CashFlowRecord[] }) {
+interface CashFlowTableProps {
+  records: CashFlowRecord[]
+  onEdit?: (record: CashFlowRecord) => void
+  onDelete?: (id: string) => void
+}
+
+export function CashFlowTable({ records, onEdit, onDelete }: CashFlowTableProps) {
   if (records.length === 0) {
     return (
       <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
@@ -33,19 +41,22 @@ export function CashFlowTable({ records }: { records: CashFlowRecord[] }) {
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">貸方金額</th>
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">摘要</th>
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-center">來源</th>
+            {(onEdit || onDelete) && (
+              <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
           {records.map((r) => (
-            <tr key={r.id} className="hover:bg-brand-50/30 transition-colors duration-150">
+            <tr key={r.id} className="hover:bg-stone-50/80 transition-colors duration-150">
               <td className="px-5 py-3.5 text-stone-500 tabular-nums">
                 {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}
               </td>
-              <td className="px-5 py-3.5 text-stone-700">{r.debitCategory}</td>
+              <td className="px-5 py-3.5 text-stone-700 font-medium">{r.debitCategory}</td>
               <td className="px-5 py-3.5 text-right font-medium text-emerald-600 tabular-nums">
                 {r.debitAmount.toLocaleString()}
               </td>
-              <td className="px-5 py-3.5 text-stone-700">{r.creditCategory}</td>
+              <td className="px-5 py-3.5 text-stone-700 font-medium">{r.creditCategory}</td>
               <td className="px-5 py-3.5 text-right font-medium text-red-500 tabular-nums">
                 {r.creditAmount.toLocaleString()}
               </td>
@@ -55,6 +66,34 @@ export function CashFlowTable({ records }: { records: CashFlowRecord[] }) {
                   {sourceLabels[r.source] ?? r.source}
                 </span>
               </td>
+              {(onEdit || onDelete) && (
+                <td className="px-5 py-3.5 text-right space-x-1">
+                  {onEdit && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-stone-400 hover:text-stone-700"
+                      onClick={() => onEdit(r)}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-stone-400 hover:text-red-600"
+                      onClick={() => {
+                        if (confirm('確定要刪除這筆記帳紀錄嗎？')) {
+                          onDelete(r.id)
+                        }
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
