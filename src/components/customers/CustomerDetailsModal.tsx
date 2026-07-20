@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '../ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { format } from 'date-fns'
 import { Timestamp, doc, getDoc } from 'firebase/firestore'
@@ -104,9 +105,13 @@ export function CustomerDetailsModal({
   const activeContract = contracts.find(c => c.status === 'active') || contracts[0]
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] min-h-[600px] overflow-hidden p-0 flex flex-col bg-stone-50">
-        <div className="bg-white px-8 pr-16 py-6 border-b border-stone-200">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl h-full p-0 flex flex-col bg-stone-50 overflow-hidden border-l border-stone-200">
+        <SheetHeader className="sr-only">
+          <SheetTitle>學員詳細檔案 - {customer.name}</SheetTitle>
+          <SheetDescription>檢視學員的合約歷史與健康備註</SheetDescription>
+        </SheetHeader>
+        <div className="bg-white px-6 pr-14 py-6 border-b border-stone-200">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-5">
               <div className="w-16 h-16 rounded-2xl bg-brand-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-brand-200">
@@ -394,7 +399,7 @@ export function CustomerDetailsModal({
             </TabsContent>
           </div>
         </Tabs>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
