@@ -56,11 +56,11 @@ export function Navbar() {
         </button>
 
         {/* Brand Logo area in topbar */}
-        <div className="flex items-center justify-center h-full my-auto">
+        <div className="flex items-center justify-center h-full">
           {centerId === 'r27' ? (
-            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-7 w-auto object-contain brightness-0 shrink-0 my-auto" />
+            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-11 sm:h-12 w-auto max-h-[50px] object-contain brightness-0 shrink-0 select-none" />
           ) : (
-            <div className="flex items-center text-stone-950 font-black tracking-widest text-base pl-2 select-none my-auto">
+            <div className="flex items-center text-stone-950 font-black tracking-widest text-lg pl-2 select-none">
               COFFIT
             </div>
           )}
