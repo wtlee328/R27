@@ -6,7 +6,14 @@ import type { ProfitLossData, ProfitLossRow } from '../types'
 
 export default function ProfitLossPage() {
   const { records, loading } = useCashFlow()
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const now = new Date()
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(now.getMonth() + 1)
+
+  const monthLabel = useMemo(() => {
+    if (selectedMonth === 'all') return '全年度'
+    return `${String(selectedMonth).padStart(2, '0')}月`
+  }, [selectedMonth])
 
   const profitLossData = useMemo<ProfitLossData>(() => {
     const yearRecords = records.filter(
@@ -77,31 +84,50 @@ export default function ProfitLossPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-stone-900">損益表</h1>
-          <p className="text-sm text-stone-500 mt-1">管理月度損益與統計分析</p>
+          <p className="text-sm text-stone-500 mt-1">管理 {selectedYear} 年 {monthLabel} 損益統計與分析</p>
         </div>
-        <select
-          className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-brand-400 focus:border-brand-400 transition-colors cursor-pointer"
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-        >
-          {[0, 1, 2].map((offset) => {
-            const y = new Date().getFullYear() - offset
-            return (
-              <option key={y} value={y}>
-                {y} 年度
+
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+          >
+            {[0, 1, 2].map((offset) => {
+              const y = now.getFullYear() - offset
+              return (
+                <option key={y} value={y}>
+                  {y} 年
+                </option>
+              )
+            })}
+          </select>
+
+          <select
+            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+            value={selectedMonth}
+            onChange={(e) => {
+              const val = e.target.value
+              setSelectedMonth(val === 'all' ? 'all' : Number(val))
+            }}
+          >
+            <option value="all">所有月份 (全年度)</option>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {String(m).padStart(2, '0')} 月
               </option>
-            )
-          })}
-        </select>
+            ))}
+          </select>
+        </div>
       </div>
 
       {loading ? (
         <div className="loading-spinner"><span /></div>
       ) : (
-        <ProfitLossTable data={profitLossData} />
+        <ProfitLossTable data={profitLossData} selectedMonth={selectedMonth} />
       )}
     </div>
   )
