@@ -42,7 +42,8 @@ export function ContractFormModal({
   customers,
 }: ContractFormModalProps) {
   const { centerId } = useCenterStore()
-  const brandName = centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+  const isCoffit = centerId === 'coffit'
+  const brandName = isCoffit ? 'Coffit' : 'R27 Fitness'
 
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)

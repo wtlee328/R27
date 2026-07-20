@@ -49,7 +49,8 @@ export function CustomerFormModal({
   contracts = [],
 }: CustomerFormModalProps) {
   const { centerId } = useCenterStore()
-  const brandName = centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+  const isCoffit = centerId === 'coffit'
+  const brandName = isCoffit ? 'Coffit' : 'R27 Fitness'
 
   const [currentStep, setCurrentStep] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -1627,15 +1628,17 @@ export function CustomerFormModal({
                                     {/* Company Details */}
                                     <div className="space-y-1.5 bg-stone-50/60 p-2.5 rounded-xl border border-stone-150 text-stone-600 text-[10px]">
                                       <div className="font-bold text-stone-850 border-b border-stone-200 pb-0.5 text-[9px]">
-                                        <span>R27健身站（簡稱乙方）</span>
+                                        <span>{isCoffit ? 'coffit健身咖' : 'R27健身站'}（簡稱乙方）</span>
                                       </div>
-                                      <div className="grid grid-cols-3 gap-y-1 gap-x-2">
+                                      <div className="space-y-1 text-[10px]">
                                         <div>公司名稱：<span className="font-bold text-stone-900">紅二七健身有限公司</span></div>
                                         <div>負責人：<span className="font-bold text-stone-900">郭沛霖</span></div>
-                                        <div>電話：<span className="font-bold text-stone-900">0905396658</span></div>
-                                        <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-900">新北市淡水區中正東路二段68號</span></div>
-                                        <div>官方IG：<span className="font-bold text-stone-900 underline">r27fitness</span></div>
-                                        <div className="col-span-3">公共意外責任險：<span className="font-bold text-stone-900">已投保（效期：114/11/21-115/11/21）</span></div>
+                                        <div className="grid grid-cols-3 gap-y-1 gap-x-2 pt-0.5">
+                                          <div>電話：<span className="font-bold text-stone-900">0905396658</span></div>
+                                          <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-900">{isCoffit ? '台北市士林區中山北路六段184號1樓' : '新北市淡水區中正東路二段68號'}</span></div>
+                                          <div>網址 / Email：<span className="font-bold text-stone-900 underline font-mono">{isCoffit ? 'coffit0814@gmail.com' : 'https://www.instagram.com/r27fitness'}</span></div>
+                                          <div className="col-span-2">公共意外責任險：<span className="font-bold text-stone-900">{isCoffit ? '已投保足額公共意外責任險' : '已投保（效期：114/11/21-115/11/21）'}</span></div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>

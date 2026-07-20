@@ -645,15 +645,17 @@ export function CustomerContractModal({
                 {/* 乙方 */}
                 <div className="space-y-2 pt-2 border-t border-dashed border-stone-200 text-stone-700">
                   <div className="font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded text-[11px]">
-                    <span>{brandNameAbbr}（簡稱乙方）</span>
+                    <span>{contractCenterId === 'coffit' ? 'coffit健身咖' : 'R27健身站'}（簡稱乙方）</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1 text-xs">
                     <div>公司名稱：<span className="font-bold text-stone-950">紅二七健身有限公司 ({brandNameStation})</span></div>
                     <div>負責人：<span className="font-bold text-stone-950">郭沛霖</span></div>
-                    <div>電話：<span className="font-bold text-stone-950">0905396658</span></div>
-                    <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-950">新北市淡水區中正東路二段68號</span></div>
-                    <div>網址：<span className="font-bold text-stone-950 underline font-mono text-[10px]">https://www.instagram.com/r27fitness</span></div>
-                    <div className="col-span-3">公共意外責任險：<span className="font-bold text-stone-950">已投保（效期：114/11/21-115/11/21）</span></div>
+                    <div className="grid grid-cols-3 gap-2 pt-0.5">
+                      <div>電話：<span className="font-bold text-stone-950">0905396658</span></div>
+                      <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '台北市士林區中山北路六段184號1樓' : '新北市淡水區中正東路二段68號'}</span></div>
+                      <div>網址：<span className="font-bold text-stone-950 underline font-mono text-[10px]">{contractCenterId === 'coffit' ? 'coffit0814@gmail.com' : 'https://www.instagram.com/r27fitness'}</span></div>
+                      <div className="col-span-2">公共意外責任險：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '已投保足額公共意外責任險' : '已投保（效期：114/11/21-115/11/21）'}</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
