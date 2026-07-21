@@ -3,8 +3,9 @@ import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
 import { RiGroupLine, RiUser3Line } from '@remixicon/react'
 import { Badge } from '../ui/badge'
-import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake } from 'lucide-react'
+import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake, User, Filter, ArrowUpDown } from 'lucide-react'
 import { Input } from '../ui/input'
+import { FilterDropdown } from '../shared/FilterDropdown'
 import { cn } from '@/lib/utils'
 
 export function CustomerTable({ 
@@ -157,50 +158,52 @@ export function CustomerTable({
           {trainers && trainers.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-stone-400 font-bold shrink-0">指派教練</span>
-              <select
+              <FilterDropdown
                 value={selectedTrainerId}
-                onChange={(e) => setSelectedTrainerId(e.target.value)}
-                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm"
-              >
-                <option value="all">全部教練</option>
-                {trainers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedTrainerId}
+                options={[
+                  { value: 'all', label: '全部教練' },
+                  ...trainers.map((t) => ({ value: t.id, label: t.name })),
+                ]}
+                icon={User}
+                label="指派教練"
+              />
             </div>
           )}
 
           {/* Filter Dropdown */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-stone-400 font-bold shrink-0">篩選合約</span>
-            <select
+            <FilterDropdown
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm"
-            >
-              <option value="all">全部學員</option>
-              <option value="has-active">有有效合約</option>
-              <option value="no-active">無有效合約/過期</option>
-            </select>
+              onChange={(v) => setFilterType(v as any)}
+              options={[
+                { value: 'all', label: '全部學員' },
+                { value: 'has-active', label: '有有效合約' },
+                { value: 'no-active', label: '無有效合約/過期' },
+              ]}
+              icon={Filter}
+              label="合約狀態"
+            />
           </div>
 
           {/* Sort Dropdown */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-stone-400 font-bold shrink-0">排序方式</span>
-            <select
+            <FilterDropdown
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm"
-            >
-              <option value="default">預設排序</option>
-              <option value="remaining-desc">剩餘堂數 (多 → 少)</option>
-              <option value="remaining-asc">剩餘堂數 (少 → 多)</option>
-              <option value="contract-date">合約建立日期</option>
-              <option value="end-date">合約到期日期 (近 → 遠)</option>
-              <option value="birthday">生日月份 (1月 → 12月)</option>
-            </select>
+              onChange={(v) => setSortBy(v as any)}
+              options={[
+                { value: 'default', label: '預設排序' },
+                { value: 'remaining-desc', label: '剩餘堂數 (多 → 少)' },
+                { value: 'remaining-asc', label: '剩餘堂數 (少 → 多)' },
+                { value: 'contract-date', label: '合約建立日期' },
+                { value: 'end-date', label: '合約到期日期 (近 → 遠)' },
+                { value: 'birthday', label: '生日月份 (1月 → 12月)' },
+              ]}
+              icon={ArrowUpDown}
+              label="排序方式"
+            />
           </div>
 
           <div className="hidden sm:block w-px h-4 bg-stone-200" />

@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, PlusCircle, Database } from 'lucide-react'
+import { DollarSign, PlusCircle, Database, User, Calendar } from 'lucide-react'
 import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
+import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { VenueTable } from '../components/venue/VenueTable'
 import { VenueFormModal } from '../components/venue/VenueFormModal'
 import { useVenueRentals } from '../hooks/useVenueRentals'
@@ -130,31 +131,31 @@ export default function VenuePage() {
             {/* Trainer Filter Select */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-stone-400 font-bold shrink-0">篩選教練</span>
-              <select
+              <FilterDropdown
                 value={selectedTrainerId}
-                onChange={(e) => setSelectedTrainerId(e.target.value)}
-                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
-              >
-                <option value="">全部教練</option>
-                {trainers.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+                onChange={setSelectedTrainerId}
+                options={[
+                  { value: '', label: '全部教練' },
+                  ...trainers.map((t) => ({ value: t.id, label: t.name })),
+                ]}
+                icon={User}
+                label="選擇教練"
+              />
             </div>
 
             {/* Month Filter Select */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
-              <select
+              <FilterDropdown
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
-              >
-                <option value="all">全部月份</option>
-                {monthOptions.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+                onChange={setSelectedMonth}
+                options={[
+                  { value: 'all', label: '全部月份' },
+                  ...monthOptions.map((m) => ({ value: m, label: m })),
+                ]}
+                icon={Calendar}
+                label="選擇月份"
+              />
             </div>
           </div>
         </div>

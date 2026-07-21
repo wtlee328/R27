@@ -14,7 +14,9 @@ import {
   RiCheckboxCircleLine,
   RiMedalLine,
 } from '@remixicon/react'
+import { Calendar } from 'lucide-react'
 import { StatCard } from '../components/shared/StatCard'
+import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { Progress } from '../components/ui/progress'
 import { Badge } from '../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
@@ -436,36 +438,29 @@ export default function AnalyticsPage() {
 
         {/* Timeframe Selectors */}
         <div className="flex items-center gap-2">
-          <select
-            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+          <FilterDropdown
             value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-          >
-            {[0, 1, 2].map((offset) => {
+            onChange={(v) => setSelectedYear(Number(v))}
+            options={[0, 1, 2].map((offset) => {
               const y = now.getFullYear() - offset
-              return (
-                <option key={y} value={y}>
-                  {y} 年
-                </option>
-              )
+              return { value: y, label: `${y} 年` }
             })}
-          </select>
+            icon={Calendar}
+            label="選擇年份"
+          />
 
-          <select
-            className="border border-stone-200 rounded-lg px-3 py-1.5 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+          <FilterDropdown
             value={selectedMonth}
-            onChange={(e) => {
-              const val = e.target.value
-              setSelectedMonth(val === 'all' ? 'all' : Number(val))
-            }}
-          >
-            <option value="all">所有月份 (全年度)</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {String(m).padStart(2, '0')} 月
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setSelectedMonth(v === 'all' ? 'all' : Number(v))}
+            options={[
+              { value: 'all', label: '所有月份 (全年度)' },
+              ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
+                value: m,
+                label: `${String(m).padStart(2, '0')} 月`,
+              })),
+            ]}
+            label="選擇月份"
+          />
         </div>
       </div>
 
@@ -768,17 +763,17 @@ export default function AnalyticsPage() {
 
               {/* Sorting Filter */}
               <div className="flex items-center gap-2 shrink-0">
-                <RiFilter3Line className="w-4 h-4 text-stone-400" />
                 <span className="text-xs font-bold text-stone-600">排序：</span>
-                <select
+                <FilterDropdown
                   value={rfmSortBy}
-                  onChange={(e) => setRfmSortBy(e.target.value as RfmSortKey)}
-                  className="border border-stone-200 rounded-lg px-2.5 py-1 text-xs bg-stone-50 font-bold text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
-                >
-                  <option value="frequency">按上課頻率 (F - 高至低)</option>
-                  <option value="monetary">按消費貢獻度 (M - 高至低)</option>
-                  <option value="recency">按到店時間 (R - 近至遠)</option>
-                </select>
+                  onChange={(v) => setRfmSortBy(v as RfmSortKey)}
+                  options={[
+                    { value: 'frequency', label: '按上課頻率 (F - 高至低)' },
+                    { value: 'monetary', label: '按消費貢獻度 (M - 高至低)' },
+                    { value: 'recency', label: '按到店時間 (R - 近至遠)' },
+                  ]}
+                  label="選擇排序方式"
+                />
               </div>
             </CardHeader>
             <CardContent className="p-0">

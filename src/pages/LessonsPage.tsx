@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
+import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign, Calendar } from 'lucide-react'
 import { RiCalendarCheckLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
+import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
 import { TrainerOnboardModal } from '../components/lessons/TrainerOnboardModal'
 import { useLessonRecords } from '../hooks/useLessonRecords'
@@ -315,19 +316,20 @@ export default function LessonsPage() {
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-100 pb-5">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-stone-700 select-none">選擇月份</span>
-            <select
+            <span className="text-xs font-bold text-stone-500 select-none">選擇月份</span>
+            <FilterDropdown
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-white border border-stone-200 text-stone-950 px-3 py-1.5 rounded-xl text-sm font-black shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
-            >
-              <option value="all">全部月份</option>
-              {monthOptions.map((m) => (
-                <option key={m} value={m}>
-                  {m.replace('/', ' 年 ')} 月
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={[
+                { value: 'all', label: '全部月份' },
+                ...monthOptions.map((m) => ({
+                  value: m,
+                  label: `${m.replace('/', ' 年 ')} 月`,
+                })),
+              ]}
+              icon={Calendar}
+              label="選擇月份"
+            />
           </div>
 
           <div className="relative w-full md:w-80">

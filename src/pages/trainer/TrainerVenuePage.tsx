@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, Plus, PlusCircle, Database } from 'lucide-react'
+import { DollarSign, Plus, PlusCircle, Database, Calendar } from 'lucide-react'
 import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
+import { FilterDropdown } from '@/components/shared/FilterDropdown'
 import { VenueTable } from '@/components/venue/VenueTable'
 import { VenueFormModal } from '@/components/venue/VenueFormModal'
 import { useVenueRentals } from '@/hooks/useVenueRentals'
@@ -111,16 +112,16 @@ export default function TrainerVenuePage() {
           
           <div className="flex items-center gap-2">
             <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
-            <select
+            <FilterDropdown
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-white font-medium text-stone-700 focus:ring-2 focus:ring-stone-400 focus:border-stone-400 transition-colors cursor-pointer outline-none shadow-sm h-9"
-            >
-              <option value="all">全部月份</option>
-              {monthOptions.map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              onChange={setSelectedMonth}
+              options={[
+                { value: 'all', label: '全部月份' },
+                ...monthOptions.map((m) => ({ value: m, label: m })),
+              ]}
+              icon={Calendar}
+              label="選擇月份"
+            />
           </div>
         </div>
 
