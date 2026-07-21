@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar, Building2 } from 'lucide-react'
+import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar, Building2, CreditCard } from 'lucide-react'
 import { RiCalculatorLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
@@ -9,12 +9,13 @@ import { CashFlowStatementTable } from '../components/cashflow/CashFlowStatement
 import { CashFlowFormModal } from '../components/cashflow/CashFlowFormModal'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
 import { BalanceSheetTable } from '../components/balancesheet/BalanceSheetTable'
+import { PrepaidLessonsTable } from '../components/prepaid/PrepaidLessonsTable'
 import { useCashFlow } from '../hooks/useCashFlow'
 import { useCustomers } from '../hooks/useCustomers'
 import type { CashFlowFormValues } from '../lib/validators'
 import type { ProfitLossData, ProfitLossRow, CashFlowRecord } from '../types'
 
-type TabType = 'cash-flow' | 'profit-loss' | 'balance-sheet'
+type TabType = 'cash-flow' | 'profit-loss' | 'balance-sheet' | 'prepaid-lessons'
 type CashFlowSubView = 'statement' | 'detailed'
 
 export default function FinancePage() {
@@ -231,6 +232,17 @@ export default function FinancePage() {
           >
             <Building2 className="w-3.5 h-3.5" />
             資產負債表
+          </button>
+          <button
+            onClick={() => setActiveTab('prepaid-lessons')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+              activeTab === 'prepaid-lessons'
+                ? 'bg-white text-stone-900 shadow-sm'
+                : 'text-stone-500 hover:text-stone-900'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            預收與銷課
           </button>
         </div>
       </div>
@@ -451,6 +463,14 @@ export default function FinancePage() {
           currentPnlIncome={currentPnlIncome}
           currentPnlExpense={currentPnlExpense}
           currentPnlNet={currentPnlNet}
+        />
+      )}
+
+      {/* Tab Contents: Prepaid & Realized Lessons */}
+      {activeTab === 'prepaid-lessons' && (
+        <PrepaidLessonsTable
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
         />
       )}
     </div>
