@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight } from 'lucide-react'
+import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight, RefreshCw } from 'lucide-react'
 import { RiCalendarCheckLine } from '@remixicon/react'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
 
 import type { Customer, Contract } from '@/types'
 
@@ -30,11 +31,15 @@ export default function TrainerLessonsPage() {
   const [notes, setNotes] = useState('')
   const [attendingCustomerIds, setAttendingCustomerIds] = useState<string[]>([])
 
-  // Search states
+  // Mode and Search states
+  const [entryMode, setEntryMode] = useState<'regular' | 'substitute'>('regular')
+  const [selectedSubstitutedTrainerId, setSelectedSubstitutedTrainerId] = useState('')
   const [customerSearch, setCustomerSearch] = useState('')
 
   // Fetch contracts for the selected customer
   const { contracts, loading: contractsLoading } = useContracts(selectedCustomerId)
+  // Fetch all venue contracts for contract-student prioritization & substitute filtering
+  const { contracts: venueContracts } = useContracts()
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId)
@@ -56,15 +61,80 @@ export default function TrainerLessonsPage() {
     return selectedTrainerId !== primaryId && selectedTrainerId !== secondaryId
   }, [selectedContract, selectedTrainerId])
 
-  // Filter customers by search term (return all customers if search term is empty)
-  const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return customers
-    const term = customerSearch.toLowerCase()
-    return customers.filter(c =>
-      c.name.toLowerCase().includes(term) ||
-      (c.phone && c.phone.includes(term))
-    )
-  }, [customers, customerSearch])
+  // Active contract summary for each customer
+  const customerContractMap = useMemo(() => {
+    const map = new Map<string, { activeCount: number; remainingTotal: number }>()
+    venueContracts.forEach((c) => {
+      if (c.remainingSessions > 0) {
+        const cIds = new Set<string>()
+        if (c.customerId) cIds.add(c.customerId)
+        if (c.customerIds && Array.isArray(c.customerIds)) {
+          c.customerIds.forEach((id) => cIds.add(id))
+        }
+        if (c.sharedWithCustomerId) cIds.add(c.sharedWithCustomerId)
+
+        cIds.forEach((cid) => {
+          const prev = map.get(cid) || { activeCount: 0, remainingTotal: 0 }
+          map.set(cid, {
+            activeCount: prev.activeCount + 1,
+            remainingTotal: prev.remainingTotal + c.remainingSessions,
+          })
+        })
+      }
+    })
+    return map
+  }, [venueContracts])
+
+  // Customer IDs for a specific substituted trainer
+  const substitutedTrainerCustomerIds = useMemo(() => {
+    if (!selectedSubstitutedTrainerId) return new Set<string>()
+    const set = new Set<string>()
+    venueContracts.forEach((c) => {
+      if (
+        (c.trainerId === selectedSubstitutedTrainerId || c.secondaryTrainerId === selectedSubstitutedTrainerId) &&
+        c.remainingSessions > 0
+      ) {
+        if (c.customerId) set.add(c.customerId)
+        if (c.customerIds && Array.isArray(c.customerIds)) {
+          c.customerIds.forEach((id) => set.add(id))
+        }
+        if (c.sharedWithCustomerId) set.add(c.sharedWithCustomerId)
+      }
+    })
+    return set
+  }, [venueContracts, selectedSubstitutedTrainerId])
+
+  // Filter and sort customers (Contract students prioritized!)
+  const filteredAndSortedCustomers = useMemo(() => {
+    let list = customers
+
+    // Substitute mode: filter strictly by selected substituted trainer's contract students
+    if (entryMode === 'substitute') {
+      if (!selectedSubstitutedTrainerId) return []
+      list = list.filter((c) => substitutedTrainerCustomerIds.has(c.id))
+    }
+
+    // Filter by search keyword
+    if (customerSearch.trim()) {
+      const term = customerSearch.toLowerCase()
+      list = list.filter(
+        (c) => c.name.toLowerCase().includes(term) || (c.phone && c.phone.includes(term))
+      )
+    }
+
+    // Sort: Customers with active remaining contracts prioritized first
+    return [...list].sort((a, b) => {
+      const infoA = customerContractMap.get(a.id)
+      const infoB = customerContractMap.get(b.id)
+      const hasContractA = infoA && infoA.remainingTotal > 0 ? 1 : 0
+      const hasContractB = infoB && infoB.remainingTotal > 0 ? 1 : 0
+
+      if (hasContractA !== hasContractB) {
+        return hasContractB - hasContractA // Active contract students first!
+      }
+      return a.name.localeCompare(b.name, 'zh-Hant')
+    })
+  }, [customers, entryMode, selectedSubstitutedTrainerId, substitutedTrainerCustomerIds, customerSearch, customerContractMap])
 
   // Handle customer selection
   const handleSelectCustomer = (customer: Customer) => {
@@ -105,6 +175,8 @@ export default function TrainerLessonsPage() {
     setSessionDate(format(new Date(), 'yyyy-MM-dd'))
     setNotes('')
     setCustomerSearch('')
+    setEntryMode('regular')
+    setSelectedSubstitutedTrainerId('')
   }
 
   const [submitting, setSubmitting] = useState(false)
@@ -203,53 +275,157 @@ export default function TrainerLessonsPage() {
           {step === 1 ? (
             /* ---- Step 1: Select Customer ---- */
             <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
+              {/* Mode Tabs */}
+              <div className="flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryMode('regular')
+                    setSelectedSubstitutedTrainerId('')
+                  }}
+                  className={cn(
+                    "flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    entryMode === 'regular'
+                      ? "bg-white text-stone-900 shadow-xs"
+                      : "text-stone-500 hover:text-stone-800"
+                  )}
+                >
+                  <User className="w-3.5 h-3.5 text-orange-500" />
+                  一般銷課 (同場館學員)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEntryMode('substitute')}
+                  className={cn(
+                    "flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    entryMode === 'substitute'
+                      ? "bg-white text-amber-700 shadow-xs"
+                      : "text-stone-500 hover:text-stone-800"
+                  )}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                  代課銷課 (選擇代課教練)
+                </button>
+              </div>
+
+              {/* Substitute Mode: Select Substituted Trainer First */}
+              {entryMode === 'substitute' && (
+                <div className="space-y-2 p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                  <Label className="text-amber-900 font-bold text-xs flex items-center gap-1.5">
+                    <span>選擇被代課的教練 *</span>
+                  </Label>
+                  <select
+                    value={selectedSubstitutedTrainerId}
+                    onChange={(e) => setSelectedSubstitutedTrainerId(e.target.value)}
+                    className="w-full bg-white border border-amber-300 text-stone-900 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-xs focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="">-- 請先選擇被代課的教練名稱 --</option>
+                    {trainers.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Search Input */}
               <div className="space-y-2">
-                <Label className="text-stone-700 font-bold text-sm">搜尋學員 *</Label>
+                <Label className="text-stone-700 font-bold text-xs">搜尋學員</Label>
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder="請輸入學員姓名或電話，或從下方列表選擇..."
+                    placeholder={
+                      entryMode === 'substitute'
+                        ? "搜尋該教練的合約學員姓名或電話..."
+                        : "請輸入學員姓名或電話，或從下方列表選擇..."
+                    }
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="h-11 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-sm"
+                    className="h-10 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-xs"
                     autoFocus
                   />
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
                 </div>
               </div>
 
-              {/* Search Results / Full Customer List */}
+              {/* Search Results / Customer List Display */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-stone-500 px-1">
-                  <span>{customerSearch.trim() ? '搜尋結果' : '選擇學員列表'}</span>
-                  <span className="text-[11px] text-stone-400 font-normal">共 {filteredCustomers.length} 位學員</span>
+                  <span>
+                    {entryMode === 'substitute'
+                      ? selectedSubstitutedTrainerId
+                        ? `${trainers.find(t => t.id === selectedSubstitutedTrainerId)?.name || '該教練'} 的合約學員名單`
+                        : '請先選擇被代課教練'
+                      : customerSearch.trim() ? '搜尋結果' : '學員列表 (合約學員優先)'}
+                  </span>
+                  <span className="text-[11px] text-stone-400 font-normal">
+                    共 {filteredAndSortedCustomers.length} 位學員
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
-                  {filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((cust) => (
-                      <button
-                        key={cust.id}
-                        onClick={() => handleSelectCustomer(cust)}
-                        className="flex items-center justify-between p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl hover:bg-orange-50/50 hover:border-orange-300 transition-all text-left cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-stone-200/60 text-stone-700 font-bold text-xs flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
-                            {cust.name.slice(0, 1)}
-                          </div>
-                          <div>
-                            <div className="font-bold text-stone-800 text-sm group-hover:text-stone-950 transition-colors">{cust.name}</div>
-                            <div className="text-xs text-stone-500 font-mono mt-0.5">{cust.phone || '無電話資料'}</div>
-                          </div>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
-                      </button>
-                    ))
-                  ) : (
-                    <div className="col-span-1 sm:col-span-2 text-center py-12 text-stone-400 text-sm">
-                      找不到符合「{customerSearch}」的學員
-                    </div>
-                  )}
-                </div>
+
+                {entryMode === 'substitute' && !selectedSubstitutedTrainerId ? (
+                  <div className="text-center py-10 text-stone-400 text-xs bg-stone-50 rounded-xl border border-dashed border-stone-200">
+                    👈 請先在上方選擇「被代課的教練」，系統將自動列出該教練之合約學員
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
+                    {filteredAndSortedCustomers.length > 0 ? (
+                      filteredAndSortedCustomers.map((cust) => {
+                        const contractInfo = customerContractMap.get(cust.id)
+                        const hasActiveContract = contractInfo && contractInfo.remainingTotal > 0
+
+                        return (
+                          <button
+                            key={cust.id}
+                            onClick={() => handleSelectCustomer(cust)}
+                            className={cn(
+                              "flex items-center justify-between p-3.5 rounded-xl border transition-all text-left cursor-pointer group",
+                              hasActiveContract
+                                ? "bg-white border-orange-200/90 hover:bg-orange-50/60 hover:border-orange-400 shadow-2xs"
+                                : "bg-stone-50/80 border-stone-200/80 hover:bg-stone-100"
+                            )}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className={cn(
+                                  "w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 transition-colors",
+                                  hasActiveContract
+                                    ? "bg-orange-100 text-orange-700 group-hover:bg-orange-500 group-hover:text-white"
+                                    : "bg-stone-200/60 text-stone-600"
+                                )}
+                              >
+                                {cust.name.slice(0, 1)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-stone-800 text-sm group-hover:text-stone-950 transition-colors truncate">
+                                    {cust.name}
+                                  </span>
+                                  {hasActiveContract && (
+                                    <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100/80 border border-orange-200/80 rounded px-1.5 py-0.2 shrink-0">
+                                      剩餘 {contractInfo.remainingTotal} 堂
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-stone-400 font-mono mt-0.5 truncate">
+                                  {cust.phone || '無電話資料'}
+                                </div>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                          </button>
+                        )
+                      })
+                    ) : (
+                      <div className="col-span-1 sm:col-span-2 text-center py-12 text-stone-400 text-sm bg-stone-50 rounded-xl">
+                        {entryMode === 'substitute'
+                          ? '該教練目前無進行中之合約學員'
+                          : `找不到符合「${customerSearch}」的學員`}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
