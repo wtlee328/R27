@@ -49,9 +49,6 @@ export function VenueTable({
   if (rentals.length === 0) {
     return (
       <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
-          <span className="text-stone-400 text-xl">🏠</span>
-        </div>
         <p className="text-stone-500 text-sm font-medium">目前沒有場租資料</p>
         <p className="text-stone-400 text-xs mt-1">點擊上方按鈕新增場租紀錄</p>
       </div>
