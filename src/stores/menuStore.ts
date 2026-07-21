@@ -13,16 +13,15 @@ export interface NavItem {
 }
 
 export const ALL_NAV_ITEMS: NavItem[] = [
-  { id: 'customers',       to: '/',                 label: '客戶檔案',   icon: Users },
-  { id: 'lessons',         to: '/lessons',          label: '教練銷課',   icon: BookOpen },
-  { id: 'analytics',       to: '/analytics',        label: '數據分析',   icon: BarChart2,    adminOnly: true },
-  { id: 'finance',         to: '/finance',          label: '會計管理',   icon: TrendingUp,   adminOnly: true },
-  { id: 'prepaid-lessons', to: '/prepaid-lessons',  label: '預收與銷課', icon: CreditCard,   adminOnly: true },
-  { id: 'trials',          to: '/trials',           label: '體驗客',     icon: UserCheck },
-  { id: 'venue',           to: '/venue',            label: '場租管理',   icon: Building2,    adminOnly: true },
-  { id: 'activityLog',     to: '/activity-log',     label: '操作記錄',   icon: History,      adminOnly: true },
-  { id: 'backup',          to: '/backup',           label: '資料備份',   icon: Database,     adminOnly: true },
-  { id: 'settings',        to: '/settings',         label: '系統設定',   icon: Settings },
+  { id: 'customers',    to: '/',            label: '客戶檔案',   icon: Users },
+  { id: 'lessons',      to: '/lessons',     label: '教練銷課',   icon: BookOpen },
+  { id: 'analytics',    to: '/analytics',   label: '數據分析',   icon: BarChart2,  adminOnly: true },
+  { id: 'finance',      to: '/finance',     label: '會計管理',   icon: TrendingUp, adminOnly: true },
+  { id: 'trials',       to: '/trials',      label: '體驗客',     icon: UserCheck },
+  { id: 'venue',        to: '/venue',       label: '場租管理',   icon: Building2,  adminOnly: true },
+  { id: 'activityLog',  to: '/activity-log',label: '操作記錄',   icon: History,    adminOnly: true },
+  { id: 'backup',       to: '/backup',      label: '資料備份',   icon: Database,   adminOnly: true },
+  { id: 'settings',     to: '/settings',    label: '系統設定',   icon: Settings },
 ]
 
 const DEFAULT_ORDER = ALL_NAV_ITEMS.map(item => item.id)
