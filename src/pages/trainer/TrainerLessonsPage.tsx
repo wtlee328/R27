@@ -44,9 +44,9 @@ export default function TrainerLessonsPage() {
     return contracts.find(c => c.id === selectedContractId)
   }, [contracts, selectedContractId])
 
-  // Filter customers by search term
+  // Filter customers by search term (return all customers if search term is empty)
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return []
+    if (!customerSearch.trim()) return customers
     const term = customerSearch.toLowerCase()
     return customers.filter(c =>
       c.name.toLowerCase().includes(term) ||
@@ -196,7 +196,7 @@ export default function TrainerLessonsPage() {
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder="請輸入學員姓名或電話..."
+                    placeholder="請輸入學員姓名或電話，或從下方列表選擇..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
                     className="h-11 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-sm"
@@ -206,31 +206,38 @@ export default function TrainerLessonsPage() {
                 </div>
               </div>
 
-              {/* Search Results — desktop grid */}
-              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
-                {filteredCustomers.length > 0 ? (
-                  filteredCustomers.map((cust) => (
-                    <button
-                      key={cust.id}
-                      onClick={() => handleSelectCustomer(cust)}
-                      className="flex items-center justify-between p-4 bg-stone-50 border border-stone-200 rounded-xl hover:bg-brand-50/30 hover:border-brand-300 transition-colors text-left cursor-pointer"
-                    >
-                      <div>
-                        <div className="font-bold text-stone-800 text-sm">{cust.name}</div>
-                        <div className="text-xs text-stone-500 mt-0.5">{cust.phone || '無電話資料'}</div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-stone-400" />
-                    </button>
-                  ))
-                ) : customerSearch.trim() ? (
-                  <div className="col-span-2 text-center py-12 text-stone-400 text-sm">
-                    找不到符合「{customerSearch}」的學員
-                  </div>
-                ) : (
-                  <div className="col-span-2 text-center py-12 text-stone-400 text-sm">
-                    請輸入關鍵字搜尋學員
-                  </div>
-                )}
+              {/* Search Results / Full Customer List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-stone-500 px-1">
+                  <span>{customerSearch.trim() ? '搜尋結果' : '選擇學員列表'}</span>
+                  <span className="text-[11px] text-stone-400 font-normal">共 {filteredCustomers.length} 位學員</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
+                  {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((cust) => (
+                      <button
+                        key={cust.id}
+                        onClick={() => handleSelectCustomer(cust)}
+                        className="flex items-center justify-between p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl hover:bg-orange-50/50 hover:border-orange-300 transition-all text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-stone-200/60 text-stone-700 font-bold text-xs flex items-center justify-center group-hover:bg-orange-500 group-hover:text-white transition-colors shrink-0">
+                            {cust.name.slice(0, 1)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-stone-800 text-sm group-hover:text-stone-950 transition-colors">{cust.name}</div>
+                            <div className="text-xs text-stone-500 font-mono mt-0.5">{cust.phone || '無電話資料'}</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </button>
+                    ))
+                  ) : (
+                    <div className="col-span-1 sm:col-span-2 text-center py-12 text-stone-400 text-sm">
+                      找不到符合「{customerSearch}」的學員
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : (
