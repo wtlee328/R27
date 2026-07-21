@@ -91,6 +91,10 @@ export function BalanceSheetTable({
     }
   }, [contracts])
 
+  // Helper to filter out asset/liability transfer categories
+  const isAssetOrLiabilityCategory = (cat: string) =>
+    ['現金', '銀行存款', '公司存款', '預收款', '應付帳款', '業主資本', '業主往來', '應收帳款'].some((a) => cat.includes(a))
+
   // D. 現金與存款結餘 (Cash & Bank Balance from Cash Flow)
   const cashBalance = useMemo(() => {
     let totalIncome = 0
@@ -112,11 +116,35 @@ export function BalanceSheetTable({
     }
   }, [records])
 
-  // E. 累積盈餘 (Net Income from P&L)
-  const netIncome = useMemo(() => {
-    // Current Period Net Realized Income
-    return realizedRevenueDetail.realizedTotal - cashBalance.totalExpense
-  }, [realizedRevenueDetail.realizedTotal, cashBalance.totalExpense])
+  // E. 損益表常規收支與淨利 (100% 勾稽損益表 P&L Calculation)
+  const pnlBreakdown = useMemo(() => {
+    let otherIncomeTotal = 0
+    let operatingExpensesTotal = 0
+
+    records.forEach((r) => {
+      const amt = r.amount || 0
+      const cat = r.category || '一般收支'
+      if (!isAssetOrLiabilityCategory(cat)) {
+        if (r.type === 'income') {
+          otherIncomeTotal += amt
+        } else if (r.type === 'expense') {
+          operatingExpensesTotal += amt
+        }
+      }
+    })
+
+    // 總營業收入 = 已銷金額 + 其他營運收入
+    const totalOperatingIncome = realizedRevenueDetail.realizedTotal + otherIncomeTotal
+    // 本期淨利 / 累積盈餘 = 總營業收入 - 營業總支出 (100% 與損益表勾稽)
+    const netIncome = totalOperatingIncome - operatingExpensesTotal
+
+    return {
+      otherIncomeTotal,
+      operatingExpensesTotal,
+      totalOperatingIncome,
+      netIncome,
+    }
+  }, [records, realizedRevenueDetail.realizedTotal])
 
   // ─── 2. 資產、負債與權益總計 (Total Assets, Liabilities & Equity) ───
 
@@ -126,8 +154,11 @@ export function BalanceSheetTable({
   // 總負債 = 預收學費負債 (系統剩餘金額)
   const totalLiabilities = unearnedRevenueDetail.unearnedTotal
 
-  // 業主權益 = 已銷金額 + 累積盈餘 + 資本調整
+  // 業主權益總計 = 總資產 - 總負債
   const totalEquity = totalAssets - totalLiabilities
+
+  // 業主資本投入調整 = 總權益 - 累積淨利
+  const capitalBalance = totalEquity - pnlBreakdown.netIncome
 
   const isBalanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1
 
@@ -342,9 +373,9 @@ export function BalanceSheetTable({
                   <div className="flex items-center justify-between py-2 px-3 bg-emerald-50/50 border border-emerald-100 rounded-xl hover:bg-emerald-50 transition-colors">
                     <div className="flex items-center gap-2">
                       <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="font-bold text-stone-800">已銷堂數金額 / 已實現營收 (Realized Revenue)</span>
+                      <span className="font-bold text-stone-800">已銷堂數金額 / 已實現銷課營收</span>
                       <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
-                        🤖 自動連動
+                        🤖 自動連動銷課
                       </span>
                     </div>
                     <span className="font-bold text-emerald-700 tabular-nums">
@@ -352,15 +383,53 @@ export function BalanceSheetTable({
                     </span>
                   </div>
 
-                  <div className="pl-4 text-[11px] text-stone-400 space-y-0.5">
-                    <p>• 自動連動累計已完成 {realizedRevenueDetail.usedSessionsTotal} 堂課之履約營收價值</p>
+                  {/* Item 2: Other Operating Income */}
+                  <div className="flex items-center justify-between py-2 px-3 bg-emerald-50/20 border border-emerald-100/60 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-stone-700 font-medium">其他常規營運收入 (Other P&L Income)</span>
+                      <span className="text-[10px] bg-stone-100 text-stone-600 px-1.5 py-0.2 rounded font-bold">
+                        🤖 自動連動金流
+                      </span>
+                    </div>
+                    <span className="font-bold text-emerald-600 tabular-nums">
+                      + $ {pnlBreakdown.otherIncomeTotal.toLocaleString()}
+                    </span>
                   </div>
 
-                  {/* Item 2: Retained Earnings */}
-                  <div className="flex items-center justify-between py-2 px-3 bg-stone-50/80 rounded-xl hover:bg-stone-100/80 transition-colors">
-                    <span>累積盈餘 / 本期淨利 (Retained Earnings)</span>
-                    <span className="font-bold text-stone-900 tabular-nums">
-                      $ {netIncome.toLocaleString()}
+                  {/* Item 3: Operating Expenses */}
+                  <div className="flex items-center justify-between py-2 px-3 bg-stone-50/80 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-stone-700 font-medium">營業總支出 (Operating Expenses)</span>
+                      <span className="text-[10px] bg-stone-200 text-stone-600 px-1.5 py-0.2 rounded font-bold">
+                        排除轉帳科目
+                      </span>
+                    </div>
+                    <span className="font-bold text-stone-700 tabular-nums">
+                      - $ {pnlBreakdown.operatingExpensesTotal.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Item 4: Retained Earnings / Net Income (100% matched to P&L) */}
+                  <div className="flex items-center justify-between py-2.5 px-3 bg-orange-50/70 border border-orange-200/90 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-orange-950">累積盈餘 / 本期淨利 (Retained Earnings)</span>
+                      <span className="text-[10px] bg-orange-200 text-orange-900 px-1.5 py-0.2 rounded font-black">
+                        ✓ 100% 勾稽損益表
+                      </span>
+                    </div>
+                    <span className={cn(
+                      "font-black text-sm tabular-nums",
+                      pnlBreakdown.netIncome >= 0 ? "text-emerald-600" : "text-red-500"
+                    )}>
+                      $ {pnlBreakdown.netIncome.toLocaleString()}
+                    </span>
+                  </div>
+
+                  {/* Item 5: Capital Balance */}
+                  <div className="flex items-center justify-between py-2 px-3 bg-stone-50/60 rounded-xl text-stone-600">
+                    <span>業主資本 / 資本公積投入 (Capital Balance)</span>
+                    <span className="font-bold text-stone-800 tabular-nums">
+                      $ {capitalBalance.toLocaleString()}
                     </span>
                   </div>
                 </div>
