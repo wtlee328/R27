@@ -42,76 +42,20 @@ export function useCustomers() {
       const customersRef = collection(db, 'customers')
       let custData: Customer[] = []
 
-      if (user.role === 'admin') {
-        const qCust = query(
-          customersRef,
-          where('centerId', '==', centerId),
-          orderBy('createdAt', 'desc')
-        )
-        const snap = await getDocs(qCust)
-        custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
-      } else {
-        const trainerFilterId = selectedTrainerId || user.uid
-        // Own customers (as primary trainer)
-        const qOwn = query(
-          customersRef,
-          where('centerId', '==', centerId),
-          where('trainerId', '==', trainerFilterId),
-          orderBy('createdAt', 'desc')
-        )
-        const ownSnap = await getDocs(qOwn)
-        const ownMap = new Map<string, Customer>()
-        ownSnap.docs.forEach(d => ownMap.set(d.id, { id: d.id, ...d.data() } as Customer))
-
-        // Also include customers from contracts where this trainer is secondaryTrainerId
-        // (needed so substitute/secondary trainers can log lessons for other trainers' students)
-        const qSecondary = query(
-          collection(db, 'contracts'),
-          where('centerId', '==', centerId),
-          where('secondaryTrainerId', '==', trainerFilterId)
-        )
-        const secondarySnap = await getDocs(qSecondary)
-        const extraCustomerIds = new Set<string>()
-        secondarySnap.docs.forEach(d => {
-          const data = d.data()
-          ;(data.customerIds || [data.customerId]).filter(Boolean).forEach((id: string) => {
-            if (!ownMap.has(id)) extraCustomerIds.add(id)
-          })
-        })
-
-        // Fetch extra customers by ID (in batches of 10 per Firestore 'in' limit)
-        const extraIds = Array.from(extraCustomerIds)
-        for (let i = 0; i < extraIds.length; i += 10) {
-          const batch = extraIds.slice(i, i + 10)
-          const qExtra = query(
-            customersRef,
-            where('centerId', '==', centerId),
-            where('__name__', 'in', batch)
-          )
-          const extraSnap = await getDocs(qExtra)
-          extraSnap.docs.forEach(d => {
-            if (!ownMap.has(d.id)) ownMap.set(d.id, { id: d.id, ...d.data() } as Customer)
-          })
-        }
-
-        custData = Array.from(ownMap.values())
-      }
+      // 1. Fetch Customers in current center
+      const qCust = query(
+        customersRef,
+        where('centerId', '==', centerId),
+        orderBy('createdAt', 'desc')
+      )
+      const snap = await getDocs(qCust)
+      custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
 
       setCustomers(custData)
 
-      // 2. Fetch Contracts
+      // 2. Fetch Contracts in current center
       const contractsRef = collection(db, 'contracts')
-      let qCont
-      if (user.role === 'admin') {
-        qCont = query(contractsRef, where('centerId', '==', centerId))
-      } else {
-        const trainerFilterId = selectedTrainerId || user.uid
-        qCont = query(
-          contractsRef,
-          where('centerId', '==', centerId),
-          where('trainerId', '==', trainerFilterId)
-        )
-      }
+      const qCont = query(contractsRef, where('centerId', '==', centerId))
 
       const contSnapshot = await getDocs(qCont)
       const contData = contSnapshot.docs.map((doc) => ({
