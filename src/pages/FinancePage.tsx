@@ -448,6 +448,9 @@ export default function FinancePage() {
           records={records}
           selectedYear={selectedYear}
           selectedMonth={selectedMonth}
+          currentPnlIncome={currentPnlIncome}
+          currentPnlExpense={currentPnlExpense}
+          currentPnlNet={currentPnlNet}
         />
       )}
     </div>

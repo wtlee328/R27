@@ -20,6 +20,9 @@ interface BalanceSheetTableProps {
   records: CashFlowRecord[]
   selectedYear: number
   selectedMonth: number | 'all'
+  currentPnlIncome?: number
+  currentPnlExpense?: number
+  currentPnlNet?: number
 }
 
 export function BalanceSheetTable({
@@ -27,6 +30,9 @@ export function BalanceSheetTable({
   records,
   selectedYear,
   selectedMonth,
+  currentPnlIncome = 0,
+  currentPnlExpense = 0,
+  currentPnlNet = 0,
 }: BalanceSheetTableProps) {
   // ─── 1. 自動帶入計算 (Auto-calculated Financial Line Items) ───
 
@@ -121,7 +127,15 @@ export function BalanceSheetTable({
     let otherIncomeTotal = 0
     let operatingExpensesTotal = 0
 
-    records.forEach((r) => {
+    const periodRecords = records.filter((r) => {
+      if (!r.date) return false
+      const d = r.date.toDate()
+      if (d.getFullYear() !== selectedYear) return false
+      if (typeof selectedMonth === 'number' && d.getMonth() + 1 !== selectedMonth) return false
+      return true
+    })
+
+    periodRecords.forEach((r) => {
       const amt = r.amount || 0
       const cat = r.category || '一般收支'
       if (!isAssetOrLiabilityCategory(cat)) {
@@ -133,18 +147,15 @@ export function BalanceSheetTable({
       }
     })
 
-    // 總營業收入 = 已銷金額 + 其他營運收入
-    const totalOperatingIncome = realizedRevenueDetail.realizedTotal + otherIncomeTotal
-    // 本期淨利 / 累積盈餘 = 總營業收入 - 營業總支出 (100% 與損益表勾稽)
-    const netIncome = totalOperatingIncome - operatingExpensesTotal
+    // 使用損益表 (P&L) 的淨利數據，保證 100.00% 絕對連動勾稽
+    const netIncome = currentPnlNet
 
     return {
       otherIncomeTotal,
       operatingExpensesTotal,
-      totalOperatingIncome,
       netIncome,
     }
-  }, [records, realizedRevenueDetail.realizedTotal])
+  }, [records, selectedYear, selectedMonth, currentPnlNet])
 
   // ─── 2. 資產、負債與權益總計 (Total Assets, Liabilities & Equity) ───
 
