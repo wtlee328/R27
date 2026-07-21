@@ -7,8 +7,10 @@ import {
   Search,
   BookOpen,
   FileSpreadsheet,
+  Calendar,
 } from 'lucide-react'
 import { StatCard } from '../shared/StatCard'
+import { FilterDropdown } from '../shared/FilterDropdown'
 import { Input } from '../ui/input'
 import { useCustomers } from '../../hooks/useCustomers'
 import { useLessonRecords } from '../../hooks/useLessonRecords'
@@ -21,11 +23,15 @@ type DetailTab = 'contracts' | 'lessons' | 'monthly-summary'
 interface PrepaidLessonsTableProps {
   selectedYear: number
   selectedMonth: number | 'all'
+  onYearChange?: (year: number) => void
+  onMonthChange?: (month: number | 'all') => void
 }
 
 export function PrepaidLessonsTable({
   selectedYear,
   selectedMonth,
+  onYearChange,
+  onMonthChange,
 }: PrepaidLessonsTableProps) {
   const { contracts, customers } = useCustomers()
   const { records } = useLessonRecords()
@@ -212,6 +218,47 @@ export function PrepaidLessonsTable({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Top Filter Bar for Year & Month Selection */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="font-extrabold text-stone-800 text-sm flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-orange-500" />
+            預收與銷課統計期間：
+          </span>
+          <span className="text-xs font-bold bg-orange-50 text-orange-700 px-2.5 py-1 rounded-lg border border-orange-200/60">
+            {selectedYear} 年 {selectedMonth === 'all' ? '全年度 (1-12月)' : String(selectedMonth).padStart(2, '0') + ' 月'}
+          </span>
+        </div>
+
+        {onYearChange && onMonthChange && (
+          <div className="flex flex-wrap items-center gap-2">
+            <FilterDropdown
+              value={selectedYear}
+              onChange={(v) => onYearChange(Number(v))}
+              options={[0, 1, 2, 3].map((offset) => {
+                const y = new Date().getFullYear() - offset
+                return { value: y, label: `${y} 年` }
+              })}
+              icon={Calendar}
+              label="選擇年份"
+            />
+
+            <FilterDropdown
+              value={selectedMonth}
+              onChange={(v) => onMonthChange(v === 'all' ? 'all' : Number(v))}
+              options={[
+                { value: 'all', label: '所有月份 (全年度)' },
+                ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
+                  value: m,
+                  label: `${String(m).padStart(2, '0')} 月`,
+                })),
+              ]}
+              label="選擇月份"
+            />
+          </div>
+        )}
+      </div>
+
       {/* Metric Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Stat 1: New Prepaid Tuition Collection */}

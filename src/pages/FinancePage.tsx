@@ -471,6 +471,8 @@ export default function FinancePage() {
         <PrepaidLessonsTable
           selectedYear={selectedYear}
           selectedMonth={selectedMonth}
+          onYearChange={setSelectedYear}
+          onMonthChange={setSelectedMonth}
         />
       )}
     </div>
