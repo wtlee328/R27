@@ -64,9 +64,6 @@ export function CashFlowTable({ records, onEdit, onDelete }: CashFlowTableProps)
   if (records.length === 0) {
     return (
       <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
-          <span className="text-stone-400 text-xl">💰</span>
-        </div>
         <p className="text-stone-500 text-sm font-medium">目前沒有記帳資料</p>
         <p className="text-stone-400 text-xs mt-1">點擊上方按鈕新增第一筆紀錄</p>
       </div>
