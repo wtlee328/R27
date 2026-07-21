@@ -100,8 +100,8 @@ export function PrepaidLessonsTable({
     let pendingInstallmentsTotal = 0
 
     periodContracts.forEach((c) => {
-      const total = c.totalAmount || 0
-      const paid = c.paidAmount || 0
+      const total = Number(c.totalAmount || 0)
+      const paid = Number(c.paidAmount || 0)
       newContractsTotalValue += total
       if (c.paymentType === 'installment' || (c.installments && c.installments.length > 0)) {
         installmentPaidTotal += paid
@@ -116,11 +116,11 @@ export function PrepaidLessonsTable({
 
     periodLessonRecords.forEach((r) => {
       const c = contractMap.get(r.contractId)
-      const sessions = r.sessionAmount || 1
+      const sessions = Number(r.sessionAmount || 1)
       totalSessionsUsed += sessions
 
-      if (c && c.totalSessions > 0) {
-        const avgPrice = (c.totalAmount || 0) / c.totalSessions
+      if (c && Number(c.totalSessions) > 0) {
+        const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
         realizedRevenueTotal += sessions * avgPrice
       } else {
         realizedRevenueTotal += sessions * 1500
@@ -131,18 +131,20 @@ export function PrepaidLessonsTable({
     let remainingSessionsCount = 0
 
     contracts.forEach((c) => {
-      if (c.remainingSessions > 0 && c.totalSessions > 0) {
-        const avgPrice = (c.totalAmount || 0) / c.totalSessions
-        unearnedLiabilityBalance += c.remainingSessions * avgPrice
-        remainingSessionsCount += c.remainingSessions
+      const rem = Number(c.remainingSessions || 0)
+      const tot = Number(c.totalSessions || 0)
+      if (rem > 0 && tot > 0) {
+        const avgPrice = Number(c.totalAmount || 0) / tot
+        unearnedLiabilityBalance += rem * avgPrice
+        remainingSessionsCount += rem
       }
     })
 
     return {
-      newContractsTotalValue,
-      lumpSumTotal,
-      installmentPaidTotal,
-      pendingInstallmentsTotal,
+      newContractsTotalValue: Math.round(newContractsTotalValue),
+      lumpSumTotal: Math.round(lumpSumTotal),
+      installmentPaidTotal: Math.round(installmentPaidTotal),
+      pendingInstallmentsTotal: Math.round(pendingInstallmentsTotal),
       realizedRevenueTotal: Math.round(realizedRevenueTotal),
       totalSessionsUsed,
       unearnedLiabilityBalance: Math.round(unearnedLiabilityBalance),
@@ -162,8 +164,8 @@ export function PrepaidLessonsTable({
         if (c.createdAt) {
           const dt = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt as any)
           if (dt.getFullYear() === selectedYear && dt.getMonth() + 1 === monthNum) {
-            const total = c.totalAmount || 0
-            const paid = c.paidAmount || 0
+            const total = Number(c.totalAmount || 0)
+            const paid = Number(c.paidAmount || 0)
             monthPrepaidValue += total
             if (c.paymentType === 'installment') {
               monthInstallmentPaid += paid
@@ -181,11 +183,11 @@ export function PrepaidLessonsTable({
         if (r.sessionDate) {
           const dt = r.sessionDate.toDate ? r.sessionDate.toDate() : new Date(r.sessionDate as any)
           if (dt.getFullYear() === selectedYear && dt.getMonth() + 1 === monthNum) {
-            const sessions = r.sessionAmount || 1
+            const sessions = Number(r.sessionAmount || 1)
             monthSessionsCount += sessions
             const c = contractMap.get(r.contractId)
-            if (c && c.totalSessions > 0) {
-              monthRealizedRev += sessions * ((c.totalAmount || 0) / c.totalSessions)
+            if (c && Number(c.totalSessions) > 0) {
+              monthRealizedRev += sessions * (Number(c.totalAmount || 0) / Number(c.totalSessions))
             } else {
               monthRealizedRev += sessions * 1500
             }
@@ -198,9 +200,9 @@ export function PrepaidLessonsTable({
       return {
         monthNum,
         monthLabel: `${String(monthNum).padStart(2, '0')} 月`,
-        monthPrepaidValue,
-        monthLumpSum,
-        monthInstallmentPaid,
+        monthPrepaidValue: Math.round(monthPrepaidValue),
+        monthLumpSum: Math.round(monthLumpSum),
+        monthInstallmentPaid: Math.round(monthInstallmentPaid),
         monthSessionsCount,
         monthRealizedRev: Math.round(monthRealizedRev),
         netPrepaidChange: Math.round(netPrepaidChange),
@@ -336,8 +338,8 @@ export function PrepaidLessonsTable({
                 {periodContracts.length > 0 ? (
                   periodContracts.map((c) => {
                     const cust = customerMap.get(c.customerId)
-                    const total = c.totalAmount || 0
-                    const paid = c.paidAmount || 0
+                    const total = Number(c.totalAmount || 0)
+                    const paid = Number(c.paidAmount || 0)
                     const pending = Math.max(0, total - paid)
                     const isInstallment =
                       c.paymentType === 'installment' || (c.installments && c.installments.length > 0)
@@ -429,8 +431,9 @@ export function PrepaidLessonsTable({
                   periodLessonRecords.map((r) => {
                     const dt = r.sessionDate?.toDate ? r.sessionDate.toDate() : new Date(r.sessionDate as any)
                     const c = contractMap.get(r.contractId)
-                    const avgPrice = c && c.totalSessions > 0 ? (c.totalAmount || 0) / c.totalSessions : 1500
-                    const sessionAmount = r.sessionAmount || 1
+                    const totSessions = c ? Number(c.totalSessions || 0) : 0
+                    const avgPrice = c && totSessions > 0 ? Number(c.totalAmount || 0) / totSessions : 1500
+                    const sessionAmount = Number(r.sessionAmount || 1)
                     const valueRealized = Math.round(sessionAmount * avgPrice)
                     const isSubstitute = c && c.trainerId !== r.trainerId
 
