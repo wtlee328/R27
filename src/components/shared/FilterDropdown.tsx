@@ -43,7 +43,7 @@ export function FilterDropdown({
         <button
           type="button"
           className={cn(
-            'flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-stone-200 dark:border-stone-700 shadow-2xs',
+            'flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#384959] dark:text-stone-200 dark:border-[#384959] shadow-2xs',
             className
           )}
         >
@@ -69,7 +69,8 @@ export function FilterDropdown({
               onClick={() => onChange(option.value)}
               className={cn(
                 'flex items-center justify-between cursor-pointer text-xs py-2 font-bold',
-                isSelected && 'text-orange-600 bg-orange-50 dark:bg-orange-950/30 dark:text-orange-400'
+                isSelected &&
+                  'text-orange-600 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400 dark:focus:bg-orange-900/50 dark:focus:text-orange-300'
               )}
             >
               <span className="truncate">{option.label}</span>
