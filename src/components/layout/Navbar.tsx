@@ -164,8 +164,8 @@ export function Navbar() {
                 cn(
                   'group flex items-center gap-3.5 px-4 py-2.5 text-xs font-bold transition-all duration-150',
                   isActive
-                    ? 'bg-orange-50 dark:bg-orange-500/20 text-[#293847] dark:text-orange-400 font-bold border-l-4 border-orange-500 rounded-r-xl shadow-2xs'
-                    : 'text-stone-600 dark:text-stone-300 hover:text-[#293847] dark:hover:text-white hover:bg-stone-100/80 dark:hover:bg-stone-800/60 rounded-xl'
+                    ? 'bg-orange-50 text-orange-700 font-bold border-l-4 border-orange-500 rounded-r-xl shadow-2xs'
+                    : 'text-stone-600 hover:text-[#293847] hover:bg-stone-100/80 rounded-xl'
                 )
               }
             >
