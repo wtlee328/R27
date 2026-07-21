@@ -44,6 +44,18 @@ export default function TrainerLessonsPage() {
     return contracts.find(c => c.id === selectedContractId)
   }, [contracts, selectedContractId])
 
+  const contractPrimaryTrainer = useMemo(() => {
+    if (!selectedContract) return null
+    return trainers.find(t => t.id === selectedContract.trainerId)
+  }, [selectedContract, trainers])
+
+  const isSubstituteTeaching = useMemo(() => {
+    if (!selectedContract || !selectedTrainerId) return false
+    const primaryId = selectedContract.trainerId
+    const secondaryId = selectedContract.secondaryTrainerId
+    return selectedTrainerId !== primaryId && selectedTrainerId !== secondaryId
+  }, [selectedContract, selectedTrainerId])
+
   // Filter customers by search term (return all customers if search term is empty)
   const filteredCustomers = useMemo(() => {
     if (!customerSearch.trim()) return customers
@@ -361,6 +373,12 @@ export default function TrainerLessonsPage() {
                     ))}
                   </select>
                 )}
+                {isSubstituteTeaching && (
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center gap-2 mt-2">
+                    <span className="font-bold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded text-[10px] shrink-0">代課提示</span>
+                    <span>目前選擇之教練與原合約教練（{contractPrimaryTrainer?.name || '主合約教練'}）不同，將自動建立為「代課紀錄」。</span>
+                  </div>
+                )}
               </div>
 
               {/* Date, Amount & Notes — desktop two-column */}
@@ -465,11 +483,19 @@ export default function TrainerLessonsPage() {
                   const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
                     ? record.attendingCustomerNames.join('、')
                     : record.customerName
+                  const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
 
                   return (
-                    <div key={record.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_80px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
+                    <div key={record.id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr_80px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
                       <span className="font-semibold text-stone-800 text-sm truncate">{attendingNames}</span>
-                      <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
+                        {isSubstituteRecord && (
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 rounded px-1.5 py-0.5">
+                            代課
+                          </span>
+                        )}
+                      </div>
                       <span className="text-sm text-stone-500 flex items-center gap-1.5">
                         <Calendar className="h-3.5 w-3.5 text-stone-400" />
                         {formatRecordDate(record.sessionDate)}
