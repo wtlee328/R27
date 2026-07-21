@@ -186,7 +186,7 @@ export default function CustomersPage() {
           subtitle="分期付款待收合約" 
           onClick={() => setActiveFilter('pending_collection')}
           isActive={activeFilter === 'pending_collection'}
-          iconColor="text-orange-500"
+          iconColor="text-orange-600"
           iconBg="bg-orange-50"
         />
         <StatCard 
@@ -246,7 +246,7 @@ export default function CustomersPage() {
           <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 dark:bg-orange-950/40 dark:text-orange-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>
@@ -254,7 +254,7 @@ export default function CustomersPage() {
                   <p className="text-xs text-stone-500">追蹤並個別管理未結清的分期付款合約</p>
                 </div>
               </div>
-              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-400 dark:border-orange-900/50">
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200">
                 待收合約: {pendingInstallmentItems.length} 件
               </span>
             </div>
