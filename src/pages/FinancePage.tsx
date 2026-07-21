@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar } from 'lucide-react'
+import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar, Building2 } from 'lucide-react'
 import { RiCalculatorLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
@@ -8,15 +8,18 @@ import { CashFlowTable, normalizeCashFlowRecord } from '../components/cashflow/C
 import { CashFlowStatementTable } from '../components/cashflow/CashFlowStatementTable'
 import { CashFlowFormModal } from '../components/cashflow/CashFlowFormModal'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
+import { BalanceSheetTable } from '../components/balancesheet/BalanceSheetTable'
 import { useCashFlow } from '../hooks/useCashFlow'
+import { useCustomers } from '../hooks/useCustomers'
 import type { CashFlowFormValues } from '../lib/validators'
 import type { ProfitLossData, ProfitLossRow, CashFlowRecord } from '../types'
 
-type TabType = 'cash-flow' | 'profit-loss'
+type TabType = 'cash-flow' | 'profit-loss' | 'balance-sheet'
 type CashFlowSubView = 'statement' | 'detailed'
 
 export default function FinancePage() {
   const { records, loading, createRecord, updateRecord, deleteRecord } = useCashFlow()
+  const { contracts } = useCustomers()
   const [activeTab, setActiveTab] = useState<TabType>('cash-flow')
   const [cashFlowSubView, setCashFlowSubView] = useState<CashFlowSubView>('statement')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -217,6 +220,17 @@ export default function FinancePage() {
           >
             <BarChart2 className="w-3.5 h-3.5" />
             損益表
+          </button>
+          <button
+            onClick={() => setActiveTab('balance-sheet')}
+            className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+              activeTab === 'balance-sheet'
+                ? 'bg-white text-stone-900 shadow-sm'
+                : 'text-stone-500 hover:text-stone-900'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            資產負債表
           </button>
         </div>
       </div>
@@ -425,6 +439,16 @@ export default function FinancePage() {
             <ProfitLossTable data={profitLossData} selectedMonth={selectedMonth} />
           )}
         </div>
+      )}
+
+      {/* Tab Contents: Balance Sheet */}
+      {activeTab === 'balance-sheet' && (
+        <BalanceSheetTable
+          contracts={contracts}
+          records={records}
+          selectedYear={selectedYear}
+          selectedMonth={selectedMonth}
+        />
       )}
     </div>
   )
