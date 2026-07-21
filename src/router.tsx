@@ -7,6 +7,7 @@ import LoginPage from '@/pages/LoginPage'
 import CustomersPage from '@/pages/CustomersPage'
 import LessonsPage from '@/pages/LessonsPage'
 import FinancePage from '@/pages/FinancePage'
+import PrepaidLessonsPage from '@/pages/PrepaidLessonsPage'
 import TrialsPage from '@/pages/TrialsPage'
 import VenuePage from '@/pages/VenuePage'
 import BackupPage from '@/pages/BackupPage'
@@ -36,9 +37,10 @@ const router = createBrowserRouter([
     children: [
       { index: true,          element: <CustomersPage /> },
       { path: 'lessons',      element: <LessonsPage /> },
-      { path: 'analytics',    element: <ProtectedRoute requiredRole="admin"><AnalyticsPage /></ProtectedRoute> },
-      { path: 'finance',      element: <ProtectedRoute requiredRole="admin"><FinancePage /></ProtectedRoute> },
-      { path: 'cash-flow',    element: <Navigate to="/finance" replace /> },
+      { path: 'analytics',       element: <ProtectedRoute requiredRole="admin"><AnalyticsPage /></ProtectedRoute> },
+      { path: 'finance',         element: <ProtectedRoute requiredRole="admin"><FinancePage /></ProtectedRoute> },
+      { path: 'prepaid-lessons', element: <ProtectedRoute requiredRole="admin"><PrepaidLessonsPage /></ProtectedRoute> },
+      { path: 'cash-flow',       element: <Navigate to="/finance" replace /> },
       { path: 'profit-loss',  element: <Navigate to="/finance" replace /> },
       { path: 'trials',       element: <TrialsPage /> },
       { path: 'venue',        element: <ProtectedRoute requiredRole="admin"><VenuePage /></ProtectedRoute> },
