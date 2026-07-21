@@ -6,6 +6,7 @@ import { useActivityLogs } from '@/hooks/useActivityLogs'
 import { useTrainers } from '@/hooks/useTrainers'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatCard } from '@/components/shared/StatCard'
+import { FilterDropdown } from '@/components/shared/FilterDropdown'
 import { ACTIVITY_ACTION_LABELS, ACTIVITY_MODULE_LABELS } from '@/lib/constants'
 
 export default function ActivityLogPage() {
@@ -90,29 +91,34 @@ export default function ActivityLogPage() {
           </div>
 
           {/* Module Filter */}
-          <select
+          <FilterDropdown
             value={selectedModule}
-            onChange={(e) => setSelectedModule(e.target.value)}
-            className="bg-white border border-stone-200 text-stone-950 px-3 py-2 rounded-xl text-xs font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer h-10"
-          >
-            <option value="all">所有功能模組</option>
-            <option value="lessonRecords">教練銷課 (Lessons)</option>
-            <option value="trialRecords">體驗客 (Trials)</option>
-            <option value="venueBookings">場租申請 (Bookings)</option>
-            <option value="customers">學員管理 (Customers)</option>
-          </select>
+            onChange={setSelectedModule}
+            options={[
+              { value: 'all', label: '所有功能模組' },
+              { value: 'lessonRecords', label: '教練銷課 (Lessons)' },
+              { value: 'trialRecords', label: '體驗客 (Trials)' },
+              { value: 'venueBookings', label: '場租申請 (Bookings)' },
+              { value: 'customers', label: '學員管理 (Customers)' },
+            ]}
+            icon={Filter}
+            label="功能模組"
+            className="h-10"
+          />
 
           {/* Action Filter */}
-          <select
+          <FilterDropdown
             value={selectedAction}
-            onChange={(e) => setSelectedAction(e.target.value)}
-            className="bg-white border border-stone-200 text-stone-950 px-3 py-2 rounded-xl text-xs font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer h-10"
-          >
-            <option value="all">所有動作類型</option>
-            <option value="create">新增 (Create)</option>
-            <option value="update">編輯 (Update)</option>
-            <option value="delete">刪除 (Delete)</option>
-          </select>
+            onChange={setSelectedAction}
+            options={[
+              { value: 'all', label: '所有動作類型' },
+              { value: 'create', label: '新增 (Create)' },
+              { value: 'update', label: '編輯 (Update)' },
+              { value: 'delete', label: '刪除 (Delete)' },
+            ]}
+            label="動作類型"
+            className="h-10"
+          />
         </div>
 
         {/* Logs List */}

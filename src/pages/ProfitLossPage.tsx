@@ -1,5 +1,7 @@
 import { useState, useMemo } from 'react'
+import { Calendar } from 'lucide-react'
 import { RiPieChartLine } from '@remixicon/react'
+import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { useCashFlow } from '../hooks/useCashFlow'
 import { ProfitLossTable } from '../components/profitloss/ProfitLossTable'
 import { normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
@@ -95,36 +97,29 @@ export default function ProfitLossPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+          <FilterDropdown
             value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-          >
-            {[0, 1, 2].map((offset) => {
+            onChange={(v) => setSelectedYear(Number(v))}
+            options={[0, 1, 2].map((offset) => {
               const y = now.getFullYear() - offset
-              return (
-                <option key={y} value={y}>
-                  {y} 年
-                </option>
-              )
+              return { value: y, label: `${y} 年` }
             })}
-          </select>
+            icon={Calendar}
+            label="選擇年份"
+          />
 
-          <select
-            className="border border-stone-200 rounded-xl px-3 py-2 text-xs bg-stone-50 font-bold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+          <FilterDropdown
             value={selectedMonth}
-            onChange={(e) => {
-              const val = e.target.value
-              setSelectedMonth(val === 'all' ? 'all' : Number(val))
-            }}
-          >
-            <option value="all">所有月份 (全年度)</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {String(m).padStart(2, '0')} 月
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setSelectedMonth(v === 'all' ? 'all' : Number(v))}
+            options={[
+              { value: 'all', label: '所有月份 (全年度)' },
+              ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
+                value: m,
+                label: `${String(m).padStart(2, '0')} 月`,
+              })),
+            ]}
+            label="選擇月份"
+          />
         </div>
       </div>
 
