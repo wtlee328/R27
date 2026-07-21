@@ -43,7 +43,7 @@ export function FilterDropdown({
         <button
           type="button"
           className={cn(
-            'flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#384959] dark:text-stone-200 dark:border-[#384959] shadow-2xs',
+            'flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#2c3b4d] dark:text-stone-100 dark:border-stone-700 shadow-2xs',
             className
           )}
         >
@@ -57,8 +57,8 @@ export function FilterDropdown({
       <DropdownMenuContent align={align} className="w-48 mt-1 max-h-64 overflow-y-auto z-50">
         {label && (
           <>
-            <DropdownMenuLabel className="text-[11px] font-bold text-stone-400">{label}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-[11px] font-bold text-stone-400 dark:text-stone-400">{label}</DropdownMenuLabel>
+            <DropdownMenuSeparator className="dark:bg-stone-700" />
           </>
         )}
         {options.map((option) => {
@@ -68,13 +68,14 @@ export function FilterDropdown({
               key={String(option.value)}
               onClick={() => onChange(option.value)}
               className={cn(
-                'flex items-center justify-between cursor-pointer text-xs py-2 font-bold',
-                isSelected &&
-                  'text-orange-600 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400 dark:focus:bg-orange-900/50 dark:focus:text-orange-300'
+                'flex items-center justify-between cursor-pointer text-xs py-2 px-2.5 font-bold rounded-lg transition-colors text-stone-700 dark:text-stone-200',
+                isSelected
+                  ? 'text-orange-600 bg-orange-50 focus:bg-orange-100 focus:text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 dark:focus:bg-orange-500/30 dark:focus:text-orange-300'
+                  : 'focus:bg-stone-100 focus:text-stone-900 dark:focus:bg-stone-700/80 dark:focus:text-white'
               )}
             >
               <span className="truncate">{option.label}</span>
-              {isSelected && <span className="text-[10px] text-orange-600 dark:text-orange-400 shrink-0 ml-2">✓</span>}
+              {isSelected && <span className="text-[10px] text-orange-600 dark:text-orange-400 shrink-0 ml-2 font-black">✓</span>}
             </DropdownMenuItem>
           )
         })}

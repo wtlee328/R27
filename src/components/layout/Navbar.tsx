@@ -190,7 +190,7 @@ function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenter
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#384959] dark:text-stone-200 dark:border-[#384959]">
+        <button className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#2c3b4d] dark:text-stone-100 dark:border-stone-700">
           <div className="flex items-center gap-1.5">
             <Building2 className="h-3.5 w-3.5 text-orange-500 shrink-0" />
             <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
@@ -199,27 +199,31 @@ function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenter
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48 mt-1">
-        <DropdownMenuLabel className="text-[11px] font-bold text-stone-400">選擇切換場館</DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-[11px] font-bold text-stone-400 dark:text-stone-400">選擇切換場館</DropdownMenuLabel>
+        <DropdownMenuSeparator className="dark:bg-stone-700" />
         <DropdownMenuItem
           onClick={() => setCenterId('r27')}
           className={cn(
-            "flex items-center justify-between cursor-pointer text-xs py-2 font-bold",
-            centerId === 'r27' && "text-orange-600 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400 dark:focus:bg-orange-900/50 dark:focus:text-orange-300"
+            "flex items-center justify-between cursor-pointer text-xs py-2 font-bold text-stone-700 dark:text-stone-200",
+            centerId === 'r27'
+              ? "text-orange-600 bg-orange-50 focus:bg-orange-100 focus:text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 dark:focus:bg-orange-500/30 dark:focus:text-orange-300"
+              : "focus:bg-stone-100 focus:text-stone-900 dark:focus:bg-stone-700/80 dark:focus:text-white"
           )}
         >
           <span>R27 Fitness</span>
-          {centerId === 'r27' && <span className="text-[10px] text-orange-600 dark:text-orange-400">✓</span>}
+          {centerId === 'r27' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => setCenterId('coffit')}
           className={cn(
-            "flex items-center justify-between cursor-pointer text-xs py-2 font-bold",
-            centerId === 'coffit' && "text-orange-600 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-400 dark:focus:bg-orange-900/50 dark:focus:text-orange-300"
+            "flex items-center justify-between cursor-pointer text-xs py-2 font-bold text-stone-700 dark:text-stone-200",
+            centerId === 'coffit'
+              ? "text-orange-600 bg-orange-50 focus:bg-orange-100 focus:text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 dark:focus:bg-orange-500/30 dark:focus:text-orange-300"
+              : "focus:bg-stone-100 focus:text-stone-900 dark:focus:bg-stone-700/80 dark:focus:text-white"
           )}
         >
           <span>Coffit</span>
-          {centerId === 'coffit' && <span className="text-[10px] text-orange-600 dark:text-orange-400">✓</span>}
+          {centerId === 'coffit' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
