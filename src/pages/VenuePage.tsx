@@ -1,6 +1,12 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, PlusCircle, Database, User, Calendar } from 'lucide-react'
-import { RiBuilding4Line } from '@remixicon/react'
+import { 
+  RiBuilding4Line, 
+  RiMoneyDollarCircleLine, 
+  RiDatabase2Line, 
+  RiAddCircleLine, 
+  RiUser3Line, 
+  RiCalendarLine 
+} from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
@@ -100,7 +106,7 @@ export default function VenuePage() {
           }} 
           className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl"
         >
-          <PlusCircle className="w-4 h-4 mr-2" /> 新增場租紀錄
+          <RiAddCircleLine className="w-4 h-4 mr-2" /> 新增場租紀錄
         </Button>
       </div>
 
@@ -109,68 +115,59 @@ export default function VenuePage() {
         <StatCard 
           title={`${selectedMonth === 'all' ? '歷年' : selectedMonth} 場租總收入`} 
           value={`NT$ ${totalIncomeSelectedMonth.toLocaleString()}`} 
-          icon={DollarSign}
+          icon={RiMoneyDollarCircleLine}
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
         />
         <StatCard 
           title={selectedTrainerId ? '該教練歷年總收入累計' : '歷年總收入累計'} 
           value={`NT$ ${totalIncomeAllTime.toLocaleString()}`} 
-          icon={Database}
+          icon={RiDatabase2Line}
           iconColor="text-blue-600"
           iconBg="bg-blue-50"
         />
       </div>
 
       {/* Main List Section */}
-      <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-stone-100 pb-4">
-          <h2 className="text-lg font-bold text-stone-900">場租收費明細</h2>
-          
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Trainer Filter Select */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-stone-400 font-bold shrink-0">篩選教練</span>
-              <FilterDropdown
-                value={selectedTrainerId}
-                onChange={setSelectedTrainerId}
-                options={[
-                  { value: '', label: '全部教練' },
-                  ...trainers.map((t) => ({ value: t.id, label: t.name })),
-                ]}
-                icon={User}
-                label="選擇教練"
-              />
-            </div>
-
-            {/* Month Filter Select */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
-              <FilterDropdown
-                value={selectedMonth}
-                onChange={setSelectedMonth}
-                options={[
-                  { value: 'all', label: '全部月份' },
-                  ...monthOptions.map((m) => ({ value: m, label: m })),
-                ]}
-                icon={Calendar}
-                label="選擇月份"
-              />
-            </div>
+      <div className="bg-white rounded-2xl overflow-hidden border border-stone-200 shadow-sm">
+        <div className="px-5 py-3.5 border-b border-stone-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <FilterDropdown
+              value={selectedTrainerId}
+              onChange={setSelectedTrainerId}
+              options={[
+                { value: '', label: '全部教練' },
+                ...trainers.map((t) => ({ value: t.id, label: t.name })),
+              ]}
+              icon={RiUser3Line}
+              label="選擇教練"
+            />
+            <FilterDropdown
+              value={selectedMonth}
+              onChange={setSelectedMonth}
+              options={[
+                { value: 'all', label: '全部月份' },
+                ...monthOptions.map((m) => ({ value: m, label: m })),
+              ]}
+              icon={RiCalendarLine}
+              label="選擇月份"
+            />
           </div>
         </div>
 
-        {loading ? (
-          <div className="py-20 flex justify-center">
-            <div className="loading-spinner"><span /></div>
-          </div>
-        ) : (
-          <VenueTable 
-            rentals={filteredRentals} 
-            onDelete={deleteRental}
-            onRowClick={handleRowClick}
-          />
-        )}
+        <div>
+          {loading ? (
+            <div className="py-20 flex justify-center">
+              <div className="loading-spinner"><span /></div>
+            </div>
+          ) : (
+            <VenueTable 
+              rentals={filteredRentals} 
+              onDelete={deleteRental}
+              onRowClick={handleRowClick}
+            />
+          )}
+        </div>
       </div>
 
       {/* Add / Edit Rental Modal */}

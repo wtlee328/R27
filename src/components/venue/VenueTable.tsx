@@ -1,7 +1,13 @@
 import { useState, useMemo } from 'react'
 import type { VenueRental } from '../../types'
 import { format } from 'date-fns'
-import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react'
+import { 
+  RiArrowUpSLine, 
+  RiArrowDownSLine, 
+  RiArrowUpDownLine, 
+  RiDeleteBinLine, 
+  RiBuilding4Line 
+} from '@remixicon/react'
 
 export function VenueTable({
   rentals,
@@ -48,7 +54,10 @@ export function VenueTable({
 
   if (rentals.length === 0) {
     return (
-      <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
+      <div className="py-16 flex flex-col items-center justify-center text-center bg-white">
+        <div className="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center mb-3">
+          <RiBuilding4Line className="w-6 h-6 text-stone-400" />
+        </div>
         <p className="text-stone-500 text-sm font-medium">目前沒有場租資料</p>
         <p className="text-stone-400 text-xs mt-1">點擊上方按鈕新增場租紀錄</p>
       </div>
@@ -56,41 +65,39 @@ export function VenueTable({
   }
 
   return (
-    <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-sm">
+    <div className="w-full overflow-x-auto bg-white">
       <table className="w-full text-sm text-left">
-        <thead className="bg-stone-50/80 text-stone-500 border-b border-stone-200">
+        <thead className="bg-stone-50/80 border-b border-stone-200">
           <tr>
-            {/* Clickable Date Column Header */}
             <th 
-              className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider cursor-pointer hover:bg-stone-100/50 transition-colors select-none"
+              className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider cursor-pointer hover:bg-stone-100/50 transition-colors select-none"
               onClick={() => handleSort('date')}
             >
               <div className="flex items-center gap-1">
                 日期
-                {sortBy === 'date-desc' && <ChevronDown className="h-3.5 w-3.5 text-stone-500" />}
-                {sortBy === 'date-asc' && <ChevronUp className="h-3.5 w-3.5 text-stone-500" />}
-                {!sortBy.startsWith('date') && <ArrowUpDown className="h-3 w-3 text-stone-300" />}
+                {sortBy === 'date-desc' && <RiArrowDownSLine className="h-4 w-4 text-stone-500" />}
+                {sortBy === 'date-asc' && <RiArrowUpSLine className="h-4 w-4 text-stone-500" />}
+                {!sortBy.startsWith('date') && <RiArrowUpDownLine className="h-3.5 w-3.5 text-stone-300" />}
               </div>
             </th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">承租教練</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">外部租借人</th>
-            {/* Clickable Amount Column Header */}
+            <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">承租教練</th>
+            <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">外部租借人</th>
             <th 
-              className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right cursor-pointer hover:bg-stone-100/50 transition-colors select-none"
+              className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider text-right cursor-pointer hover:bg-stone-100/50 transition-colors select-none"
               onClick={() => handleSort('amount')}
             >
               <div className="flex items-center justify-end gap-1">
                 金額
-                {sortBy === 'amount-desc' && <ChevronDown className="h-3.5 w-3.5 text-stone-500" />}
-                {sortBy === 'amount-asc' && <ChevronUp className="h-3.5 w-3.5 text-stone-500" />}
-                {!sortBy.startsWith('amount') && <ArrowUpDown className="h-3 w-3 text-stone-300" />}
+                {sortBy === 'amount-desc' && <RiArrowDownSLine className="h-4 w-4 text-stone-500" />}
+                {sortBy === 'amount-asc' && <RiArrowUpSLine className="h-4 w-4 text-stone-500" />}
+                {!sortBy.startsWith('amount') && <RiArrowUpDownLine className="h-3.5 w-3.5 text-stone-300" />}
               </div>
             </th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">備註</th>
-            {onDelete && <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>}
+            <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">備註</th>
+            {onDelete && <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider text-right">操作</th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-stone-100">
+        <tbody className="divide-y divide-stone-50">
           {sortedRentals.map((r) => {
             const parts = r.renterName ? r.renterName.split(' - ') : []
             const trainerName = parts[0] || '未知教練'
@@ -100,7 +107,7 @@ export function VenueTable({
               <tr 
                 key={r.id} 
                 onClick={() => onRowClick?.(r)}
-                className="hover:bg-brand-50/30 transition-colors duration-150 cursor-pointer"
+                className="group hover:bg-stone-50/60 transition-colors duration-150 cursor-pointer"
               >
                 <td className="px-5 py-3.5 text-stone-500 tabular-nums">
                   {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}
@@ -111,24 +118,26 @@ export function VenueTable({
                   NT$ {r.amount.toLocaleString()}
                 </td>
                 <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
-              {onDelete && (
-                <td className="px-5 py-3.5 text-right">
-                  <button
-                    className="text-red-500 hover:text-red-600 text-sm font-semibold transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation() // Prevents clicking the row to open the edit modal
-                      if (window.confirm('確定要刪除這筆場租紀錄嗎？系統將同步刪除關聯的現金流量紀錄。')) {
-                        onDelete(r.id, r.cashFlowRecordId)
-                      }
-                    }}
-                  >
-                    刪除
-                  </button>
-                </td>
-              )}
-            </tr>
-          )
-        })}
+                {onDelete && (
+                  <td className="px-5 py-3.5 text-right">
+                    <div className="flex justify-end">
+                      <button
+                        className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all"
+                        onClick={(e) => { 
+                          e.stopPropagation()
+                          if (window.confirm('確定要刪除這筆場租紀錄嗎？系統將同步刪除關聯的現金流量紀錄。')) { 
+                            onDelete(r.id, r.cashFlowRecordId) 
+                          } 
+                        }}
+                      >
+                        <RiDeleteBinLine className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                )}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

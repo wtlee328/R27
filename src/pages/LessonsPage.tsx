@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign, Calendar } from 'lucide-react'
-import { RiCalendarCheckLine } from '@remixicon/react'
+import { RiCalendarCheckLine, RiMailLine, RiPhoneLine, RiGroupLine, RiUser3Line } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
@@ -77,6 +77,7 @@ export default function LessonsPage() {
 
   // Delete trainer confirmation state
   const [deleteTrainerId, setDeleteTrainerId] = useState<string | null>(null)
+  const [reassignTrainerId, setReassignTrainerId] = useState<string>('')
 
   // Handle sorting trigger
   const handleSort = (field: SortField) => {
@@ -427,7 +428,11 @@ export default function LessonsPage() {
                     </div>
                     <div>
                       <h3 className="text-lg font-black text-stone-900">{t.name}</h3>
-                      <p className="text-xs text-stone-400 mt-1 font-mono">📧 {t.email} | 📞 {t.phone}</p>
+                      <p className="text-xs text-stone-400 mt-1 flex items-center gap-2.5">
+                        <span className="flex items-center gap-1"><RiMailLine className="w-3 h-3" />{t.email}</span>
+                        <span className="text-stone-200">|</span>
+                        <span className="flex items-center gap-1"><RiPhoneLine className="w-3 h-3" />{t.phone}</span>
+                      </p>
                     </div>
                   </div>
 
@@ -470,7 +475,7 @@ export default function LessonsPage() {
                               : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
                           )}
                         >
-                          📖 銷課明細 ({searchFilteredLessons.length})
+                          銷課明細 ({searchFilteredLessons.length})
                         </button>
                         <button
                           type="button"
@@ -482,7 +487,7 @@ export default function LessonsPage() {
                               : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
                           )}
                         >
-                          👥 專屬學員 & 剩餘課堂 ({trainerStudentIds.length})
+                          專屬學員 & 剩餘課堂 ({trainerStudentIds.length})
                         </button>
                       </div>
 
@@ -543,7 +548,7 @@ export default function LessonsPage() {
                                   <td className="px-5 py-3.5">
                                     {contract ? (
                                       <span className={cn(
-                                        "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold",
+                                        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold",
                                         contract.contractType === 'dual' 
                                           ? "bg-orange-50 text-orange-700 border border-orange-100" 
                                           : "bg-blue-50 text-blue-700 border border-blue-100"
@@ -661,12 +666,12 @@ export default function LessonsPage() {
                                             <div key={c.id} className="bg-stone-50 border border-stone-200/50 rounded-xl p-3 space-y-1.5 max-w-sm">
                                               <div className="flex justify-between items-center text-[10px]">
                                                 <span className={cn(
-                                                  "px-1.5 py-0.5 rounded font-bold uppercase",
+                                                  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-bold uppercase",
                                                   c.contractType === 'dual' 
                                                     ? "bg-orange-100 text-orange-700" 
                                                     : "bg-blue-100 text-blue-700"
                                                 )}>
-                                                  {c.contractType === 'dual' ? '👥 雙人' : '👤 單人'}
+                                                  {c.contractType === 'dual' ? <><RiGroupLine className="w-3 h-3" />雙人</> : <><RiUser3Line className="w-3 h-3" />單人</>}
                                                 </span>
                                                 <span className="font-extrabold text-stone-700">
                                                   剩餘 {c.remainingSessions} / {c.totalSessions} 堂

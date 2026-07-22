@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { Users, UserCheck, TrendingUp, Calendar } from 'lucide-react'
-import { RiUserSearchLine } from '@remixicon/react'
+import { Calendar } from 'lucide-react'
+import { RiUserSearchLine, RiGroupLine, RiUserFollowLine, RiLineChartLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
@@ -74,25 +74,25 @@ export default function TrialsPage() {
         <StatCard
           title={selectedMonth === 'all' ? '累計體驗人數' : '當月體驗人數'}
           value={`${totalCount} 人`}
-          icon={Users}
+          icon={RiGroupLine}
         />
         <StatCard
           title={selectedMonth === 'all' ? '累計成交人數' : '當月成交人數'}
           value={`${convertedCount} 人`}
-          icon={UserCheck}
+          icon={RiUserFollowLine}
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
         />
         <StatCard
           title={selectedMonth === 'all' ? '累計轉換率' : '當月轉換率'}
           value={`${conversionRate} %`}
-          icon={TrendingUp}
+          icon={RiLineChartLine}
           subtitle={`目標 > 30%`}
         />
       </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-100 pb-5">
+      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_1px_4px_0_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-stone-100">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-stone-500 select-none">選擇月份</span>
             <FilterDropdown
@@ -111,15 +111,17 @@ export default function TrialsPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="loading-spinner"><span /></div>
-        ) : (
-          <TrialTable 
-            trials={filteredTrials} 
-            onDelete={deleteTrial} 
-            onUpdateStatus={handleUpdateStatus}
-          />
-        )}
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="loading-spinner"><span /></div>
+          ) : (
+            <TrialTable 
+              trials={filteredTrials} 
+              onDelete={deleteTrial} 
+              onUpdateStatus={handleUpdateStatus}
+            />
+          )}
+        </div>
       </div>
 
       <TrialFormModal
