@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   collection,
   getDocs,
+  getDoc,
+  updateDoc,
   writeBatch,
   doc,
   serverTimestamp,
@@ -14,6 +16,7 @@ import { db } from '../lib/firebase'
 import { useCenterStore } from '../stores/centerStore'
 import { useAuthStore } from '../stores/authStore'
 import type { Trainer, Customer, Contract, LessonRecord } from '../types'
+import { logActivity } from '../lib/activityLogger'
 
 export interface TrainerWithMetrics {
   id: string
@@ -242,12 +245,72 @@ export function useTrainers() {
     }
   }
 
-  const deleteTrainer = async (trainerId: string) => {
+  const deleteTrainer = async (trainerId: string, reassignTrainerId?: string | null) => {
     try {
+      const trainerSnap = await getDoc(doc(db, 'trainers', trainerId))
+      const trainerName = trainerSnap.exists() ? trainerSnap.data()?.name || '未知教練' : '未知教練'
+
+      const newTrainerId = reassignTrainerId || ''
+
+      // 1. Reassign or clear trainerId on Customers
+      const customersRef = collection(db, 'customers')
+      const custSnap = await getDocs(query(customersRef, where('trainerId', '==', trainerId)))
+
+      for (const custDoc of custSnap.docs) {
+        await updateDoc(doc(db, 'customers', custDoc.id), {
+          trainerId: newTrainerId,
+          updatedAt: serverTimestamp(),
+        })
+      }
+
+      // 2. Reassign or clear trainerId on Contracts
+      const contractsRef = collection(db, 'contracts')
+      const [primaryContSnap, secondaryContSnap] = await Promise.all([
+        getDocs(query(contractsRef, where('trainerId', '==', trainerId))),
+        getDocs(query(contractsRef, where('secondaryTrainerId', '==', trainerId))),
+      ])
+
+      // Primary contracts
+      for (const contDoc of primaryContSnap.docs) {
+        const cData = contDoc.data() as Contract
+        let targetPrimaryId = newTrainerId
+        let targetSecondaryId = cData.secondaryTrainerId || null
+
+        if (!targetPrimaryId && cData.secondaryTrainerId && cData.secondaryTrainerId !== trainerId) {
+          targetPrimaryId = cData.secondaryTrainerId
+          targetSecondaryId = null
+        }
+
+        await updateDoc(doc(db, 'contracts', contDoc.id), {
+          trainerId: targetPrimaryId,
+          secondaryTrainerId: targetSecondaryId,
+          updatedAt: serverTimestamp(),
+        })
+      }
+
+      // Secondary contracts
+      for (const contDoc of secondaryContSnap.docs) {
+        await updateDoc(doc(db, 'contracts', contDoc.id), {
+          secondaryTrainerId: null,
+          updatedAt: serverTimestamp(),
+        })
+      }
+
+      // 3. Delete the trainer document
       const trainerRef = doc(db, 'trainers', trainerId)
       await deleteDoc(trainerRef)
+
+      // 4. Log activity
+      await logActivity({
+        action: 'delete_trainer',
+        targetType: 'trainer',
+        targetId: trainerId,
+        details: `刪除教練 ${trainerName} (受影響學員: ${custSnap.size} 人, 合約: ${primaryContSnap.size + secondaryContSnap.size} 筆, 移交教練: ${newTrainerId || '未指定'})`,
+      })
+
+      // 5. Refresh data
       await fetchTrainersData()
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting trainer:', err)
       throw err
     }
