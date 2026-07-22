@@ -3,7 +3,7 @@ import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
 import { RiGroupLine, RiUser3Line } from '@remixicon/react'
 import { Badge } from '../ui/badge'
-import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake, User, Filter, ArrowUpDown } from 'lucide-react'
+import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake, User, Filter, ArrowUpDown, Trash2 } from 'lucide-react'
 import { Input } from '../ui/input'
 import { FilterDropdown } from '../shared/FilterDropdown'
 import { cn } from '@/lib/utils'
@@ -12,11 +12,13 @@ export function CustomerTable({
   customers,
   contracts,
   onView,
+  onDelete,
   trainers,
 }: { 
   customers: Customer[] 
   contracts: Contract[]
   onView: (customer: Customer) => void
+  onDelete?: (customer: Customer) => void
   trainers?: any[]
 }) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -331,6 +333,20 @@ export function CustomerTable({
                         </p>
                       </div>
                     </div>
+
+                    {onDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDelete(c)
+                        }}
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 cursor-pointer"
+                        title="刪除客戶"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
 
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 group-hover:text-stone-800 group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
                       <ChevronRight className="w-4 h-4" />

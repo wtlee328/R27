@@ -9,14 +9,18 @@ import { CustomerContractModal } from '../components/customers/CustomerContractM
 import { CustomerDetailsModal } from '../components/customers/CustomerDetailsModal'
 import { ContractFormModal } from '../components/customers/ContractFormModal'
 import { InstallmentManagerModal } from '../components/customers/InstallmentManagerModal'
+import { DeleteCustomerModal } from '../components/customers/DeleteCustomerModal'
 import { useCustomers } from '../hooks/useCustomers'
 import { useTrainers } from '../hooks/useTrainers'
+import { useAuthStore } from '../stores/authStore'
 import type { CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import type { Customer, Contract } from '../types'
 
 type FilterType = 'all' | 'active' | 'expiring' | 'birthday' | 'pending_collection'
 
 export default function CustomersPage() {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
   const { trainers } = useTrainers()
   const { 
     customers, 
@@ -28,6 +32,7 @@ export default function CustomersPage() {
     updateCustomerProfile, 
     onboardNewCustomer, 
     createContract,
+    deleteCustomer,
     refresh
   } = useCustomers()
 
@@ -37,16 +42,31 @@ export default function CustomersPage() {
   const [isRenewalOpen, setIsRenewalOpen] = useState(false)
   const [isContractViewOpen, setIsContractViewOpen] = useState(false)
   const [isInstallmentManagerOpen, setIsInstallmentManagerOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   // Selected Data
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
   const [selectedInstallmentContract, setSelectedInstallmentContract] = useState<Contract | null>(null)
   const [selectedInstallmentCustomer, setSelectedInstallmentCustomer] = useState<Customer | null>(null)
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null)
   const [isEditingProfile, setIsEditingProfile] = useState(false)
 
   // Filter State
   const [activeFilter, setActiveFilter] = useState<FilterType>('all')
+
+  const handleOpenDeleteCustomer = (customer: Customer) => {
+    setCustomerToDelete(customer)
+    setIsDeleteModalOpen(true)
+  }
+
+  const handleConfirmDeleteCustomer = async (customerId: string) => {
+    await deleteCustomer(customerId)
+    if (selectedCustomer?.id === customerId) {
+      setIsDetailOpen(false)
+      setSelectedCustomer(null)
+    }
+  }
 
   const handleViewDetails = (customer: Customer) => {
     setSelectedCustomer(customer)
@@ -327,6 +347,7 @@ export default function CustomersPage() {
               customers={filteredCustomers} 
               contracts={contracts}
               onView={handleViewDetails}
+              onDelete={isAdmin ? handleOpenDeleteCustomer : undefined}
               trainers={trainers}
             />
           )}
@@ -341,6 +362,7 @@ export default function CustomersPage() {
         onEditProfile={handleOpenEditProfile}
         onCreateContract={handleOpenRenewal}
         onViewContract={handleViewContract}
+        onDeleteCustomer={isAdmin ? handleOpenDeleteCustomer : undefined}
       />
 
       <CustomerFormModal
@@ -387,6 +409,15 @@ export default function CustomersPage() {
         contract={selectedInstallmentContract}
         customer={selectedInstallmentCustomer}
         onUpdated={refresh}
+      />
+
+      <DeleteCustomerModal
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        customer={customerToDelete}
+        contracts={contracts}
+        customers={customers}
+        onConfirmDelete={handleConfirmDeleteCustomer}
       />
     </div>
   )
