@@ -31,14 +31,16 @@ import {
 import { useCustomers } from '../hooks/useCustomers'
 import { useContracts } from '../hooks/useContracts'
 import { useCashFlow } from '../hooks/useCashFlow'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../lib/firebase'
+import { useCenterStore } from '@/stores/centerStore'
 import type { Customer, TrialRecord, Trainer } from '../types'
 import { normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
 
 type RfmSortKey = 'frequency' | 'monetary' | 'recency'
 
 export default function AnalyticsPage() {
+  const { centerId } = useCenterStore()
   const { customers, loading: loadingCustomers } = useCustomers()
   const { contracts, loading: loadingContracts } = useContracts()
   const { records: cashFlowRecords, loading: loadingCashFlow } = useCashFlow()
@@ -58,9 +60,9 @@ export default function AnalyticsPage() {
     const fetchExtraData = async () => {
       try {
         const [trainersSnap, trialsSnap, lessonsSnap] = await Promise.all([
-          getDocs(collection(db, 'trainers')),
-          getDocs(collection(db, 'trialRecords')),
-          getDocs(collection(db, 'lessons')),
+          getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId))),
+          getDocs(query(collection(db, 'trialRecords'), where('centerId', '==', centerId))),
+          getDocs(query(collection(db, 'lessons'), where('centerId', '==', centerId))),
         ])
 
         setTrainers(trainersSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Trainer)))
@@ -74,7 +76,7 @@ export default function AnalyticsPage() {
     }
 
     fetchExtraData()
-  }, [])
+  }, [centerId])
 
   const monthLabel = useMemo(() => {
     if (selectedMonth === 'all') return '全年度'
