@@ -196,9 +196,10 @@ export default function LessonsPage() {
 
   const handleDeleteTrainer = async () => {
     if (deleteTrainerId) {
-      await deleteTrainer(deleteTrainerId)
+      await deleteTrainer(deleteTrainerId, reassignTrainerId || null)
       setSelectedTrainerId(null)
       setDeleteTrainerId(null)
+      setReassignTrainerId('')
       await handleRefreshAll()
     }
   }
@@ -743,23 +744,73 @@ export default function LessonsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteTrainerId} onOpenChange={(open) => !open && setDeleteTrainerId(null)}>
-        <DialogContent className="max-w-md">
+      <Dialog open={!!deleteTrainerId} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteTrainerId(null)
+          setReassignTrainerId('')
+        }
+      }}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-stone-200">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3 border border-red-100">
               <ShieldAlert className="w-6 h-6 text-red-600" />
             </div>
-            <DialogTitle className="text-lg font-bold text-stone-900">確認刪除教練？</DialogTitle>
-            <DialogDescription className="text-stone-500 mt-2 text-xs leading-relaxed">
-              刪除此教練後，該教練的資料將會被移除。原專屬學員及合約將會失去教練關聯（但不會被刪除，您需要手動將其重新指派給其他教練）。此操作無法復原。
+            <DialogTitle className="text-lg font-bold text-stone-900">
+              確認刪除教練「{trainers.find(t => t.id === deleteTrainerId)?.name || ''}」？
+            </DialogTitle>
+            <DialogDescription className="text-stone-500 mt-1 text-xs leading-relaxed">
+              刪除此教練後，教練資料將被移除。系統會自動維護銷課歷史營收帳目（歷史銷課紀錄完好保留以保護盈餘與會計報表）。
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-6 flex gap-3">
-            <Button variant="outline" onClick={() => setDeleteTrainerId(null)} className="flex-1 font-semibold">
+
+          {deleteTrainerId && (() => {
+            const affectedCustCount = customers.filter(c => c.trainerId === deleteTrainerId).length
+            const affectedContCount = contracts.filter(c => c.trainerId === deleteTrainerId || c.secondaryTrainerId === deleteTrainerId).length
+            const otherTrainers = trainers.filter(t => t.id !== deleteTrainerId)
+
+            return (
+              <div className="space-y-3 my-2 text-xs">
+                <div className="bg-stone-50 rounded-2xl p-3.5 border border-stone-200/60 space-y-1.5">
+                  <p className="font-bold text-stone-900">受影響數據彙整：</p>
+                  <div className="flex items-center justify-between text-stone-600">
+                    <span>專屬學員數：</span>
+                    <span className="font-bold text-stone-900">{affectedCustCount} 人</span>
+                  </div>
+                  <div className="flex items-center justify-between text-stone-600">
+                    <span>簽署/經手合約數：</span>
+                    <span className="font-bold text-stone-900">{affectedContCount} 筆</span>
+                  </div>
+                </div>
+
+                {otherTrainers.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <label className="font-bold text-stone-800">
+                      選擇將學員與合約移交給：
+                    </label>
+                    <select
+                      value={reassignTrainerId}
+                      onChange={(e) => setReassignTrainerId(e.target.value)}
+                      className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                    >
+                      <option value="">不指定 (設為無教練)</option>
+                      {otherTrainers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} 教練
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+
+          <DialogFooter className="mt-4 flex gap-3">
+            <Button variant="outline" onClick={() => setDeleteTrainerId(null)} className="flex-1 font-semibold rounded-xl text-xs">
               取消
             </Button>
-            <Button variant="destructive" onClick={handleDeleteTrainer} className="flex-1 font-semibold">
-              確認刪除
+            <Button variant="destructive" onClick={handleDeleteTrainer} className="flex-1 font-semibold rounded-xl text-xs bg-red-600 hover:bg-red-700">
+              確認刪除教練
             </Button>
           </DialogFooter>
         </DialogContent>
