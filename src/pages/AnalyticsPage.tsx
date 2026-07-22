@@ -245,6 +245,7 @@ export default function AnalyticsPage() {
       'Google 搜尋': 0,
       '親友/會員介紹': 0,
       '路過/現場親洽': 0,
+      舊客戶: 0,
       其他管道: 0,
     }
 
@@ -263,6 +264,7 @@ export default function AnalyticsPage() {
       else if (src === 'google') channelCount['Google 搜尋'] += 1
       else if (src === 'referral') channelCount['親友/會員介紹'] += 1
       else if (src === 'walk_in') channelCount['路過/現場親洽'] += 1
+      else if (src === 'existing') channelCount.舊客戶 += 1
       else channelCount.其他管道 += 1
     })
 

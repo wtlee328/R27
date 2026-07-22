@@ -634,6 +634,7 @@ export function CustomerFormModal({
                             <option value="google">Google 搜尋/地圖</option>
                             <option value="referral">親友/會員介紹</option>
                             <option value="walk_in">過路/現場親洽</option>
+                            <option value="existing">舊客戶</option>
                             <option value="other">其他管道</option>
                           </select>
                         </div>
