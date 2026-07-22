@@ -1,9 +1,20 @@
 import { useState, useMemo, useCallback } from 'react'
 import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
-import { RiGroupLine, RiUser3Line } from '@remixicon/react'
+import { 
+  RiGroupLine, 
+  RiUser3Line, 
+  RiSearchLine, 
+  RiPhoneLine, 
+  RiMailLine, 
+  RiArrowRightSLine, 
+  RiTimeLine, 
+  RiCake2Line, 
+  RiFilterLine, 
+  RiArrowUpDownLine, 
+  RiDeleteBinLine 
+} from '@remixicon/react'
 import { Badge } from '../ui/badge'
-import { Search, Phone, Mail, FileText, ChevronRight, Clock, Cake, User, Filter, ArrowUpDown, Trash2 } from 'lucide-react'
 import { Input } from '../ui/input'
 import { FilterDropdown } from '../shared/FilterDropdown'
 import { cn } from '@/lib/utils'
@@ -131,9 +142,9 @@ export function CustomerTable({
 
   if (customers.length === 0) {
     return (
-      <div className="py-20 text-center bg-white rounded-[2.5rem] border border-dashed border-stone-200">
+      <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-stone-200">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-stone-50 mb-4 text-stone-300">
-          <Search className="w-8 h-8" />
+          <RiSearchLine className="w-8 h-8" />
         </div>
         <h3 className="text-stone-900 font-bold text-lg">尚無客戶資料</h3>
         <p className="text-stone-400 text-sm mt-1">點擊上方按鈕開始建立您的第一位客戶</p>
@@ -144,14 +155,14 @@ export function CustomerTable({
   return (
     <div className="flex flex-col">
       {/* Search & Sort & Filter Header */}
-      <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white rounded-t-[2.5rem] border-b border-stone-100">
+      <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white rounded-t-2xl border-b border-stone-100">
         <div className="relative w-full md:max-w-xs">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+          <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <Input 
             placeholder="搜尋姓名或電話..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-11 h-11 bg-stone-50 border-none rounded-2xl focus:ring-2 focus:ring-stone-200 transition-all text-sm font-medium"
+            className="pl-11 h-11 bg-stone-50 border-none rounded-xl focus:ring-2 focus:ring-stone-200 transition-all text-sm font-medium"
           />
         </div>
 
@@ -167,7 +178,7 @@ export function CustomerTable({
                   { value: 'all', label: '全部教練' },
                   ...trainers.map((t) => ({ value: t.id, label: t.name })),
                 ]}
-                icon={User}
+                icon={RiUser3Line}
                 label="指派教練"
               />
             </div>
@@ -184,7 +195,7 @@ export function CustomerTable({
                 { value: 'has-active', label: '有有效合約' },
                 { value: 'no-active', label: '無有效合約/過期' },
               ]}
-              icon={Filter}
+              icon={RiFilterLine}
               label="合約狀態"
             />
           </div>
@@ -203,7 +214,7 @@ export function CustomerTable({
                 { value: 'end-date', label: '合約到期日期 (近 → 遠)' },
                 { value: 'birthday', label: '生日月份 (1月 → 12月)' },
               ]}
-              icon={ArrowUpDown}
+              icon={RiArrowUpDownLine}
               label="排序方式"
             />
           </div>
@@ -214,7 +225,7 @@ export function CustomerTable({
       </div>
 
       {/* Modern List */}
-      <div className="bg-white rounded-b-[2.5rem] overflow-hidden">
+      <div className="bg-white rounded-b-2xl overflow-hidden">
         {processedCustomers.length === 0 ? (
           <div className="py-16 text-center">
             <p className="text-stone-400 font-medium italic">找不到符合條件的學員</p>
@@ -278,8 +289,8 @@ export function CustomerTable({
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
-                        <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> {c.phone}</span>
-                        <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> {c.email || '未填寫'}</span>
+                        <span className="flex items-center gap-1.5"><RiPhoneLine className="w-3.5 h-3.5" /> {c.phone}</span>
+                        <span className="flex items-center gap-1.5"><RiMailLine className="w-3.5 h-3.5" /> {c.email || '未填寫'}</span>
                       </div>
                     </div>
                   </div>
@@ -287,31 +298,48 @@ export function CustomerTable({
                   {/* Stats Section */}
                   <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 sm:gap-10 mt-4 lg:mt-0">
                     {/* Remaining Sessions */}
-                    <div className="space-y-1 min-w-[90px]">
+                    <div className="space-y-1.5 min-w-[110px]">
                       <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">剩餘堂數</p>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-stone-400" />
-                          <p className={cn(
-                            "text-xs font-bold",
-                            activeContract 
-                              ? (activeContract.status === 'expired' ? "text-red-500" : "text-stone-700") 
-                              : "text-stone-400 italic"
-                          )}>
-                            {activeContract ? `${activeContract.remainingSessions} / ${activeContract.totalSessions} 堂` : '無合約'}
-                          </p>
+                      {activeContract ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className={cn(
+                              "text-xs font-bold tabular-nums",
+                              activeContract.status === 'expired' ? "text-red-500" : "text-stone-700"
+                            )}>
+                              {activeContract.remainingSessions} / {activeContract.totalSessions}
+                            </span>
+                            <span className="text-[9px] text-stone-400">堂</span>
+                          </div>
+                          {/* Progress bar */}
+                          {activeContract.status !== 'expired' && activeContract.totalSessions > 0 && (() => {
+                            const pct = Math.round((activeContract.remainingSessions / activeContract.totalSessions) * 100)
+                            return (
+                              <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    pct <= 20 ? "bg-red-500" : pct <= 50 ? "bg-amber-500" : "bg-stone-800"
+                                  )}
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            )
+                          })()}
+                          {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && (
+                            <span className="text-[8px] text-orange-500 font-bold">(雙人共享)</span>
+                          )}
                         </div>
-                        {activeContract && (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && (
-                          <span className="text-[8px] text-orange-500 font-bold mt-0.5">(雙人共享額度)</span>
-                        )}
-                      </div>
+                      ) : (
+                        <p className="text-xs font-bold text-stone-300 italic">無合約</p>
+                      )}
                     </div>
 
                     {/* Expiration Date */}
                     <div className="space-y-1 min-w-[100px]">
                       <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">到期日期</p>
                       <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-stone-400" />
+                        <RiTimeLine className="w-3.5 h-3.5 text-stone-400" />
                         <p className={cn(
                           "text-xs font-bold",
                           activeContract 
@@ -327,7 +355,7 @@ export function CustomerTable({
                     <div className="space-y-1 min-w-[100px]">
                       <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">生日</p>
                       <div className="flex items-center gap-1.5">
-                        <Cake className="w-3.5 h-3.5 text-stone-400" />
+                        <RiCake2Line className="w-3.5 h-3.5 text-stone-400" />
                         <p className="text-xs font-bold text-stone-700">
                           {c.dateOfBirth ? format(c.dateOfBirth.toDate(), 'yyyy/MM/dd') : '未提供'}
                         </p>
@@ -344,12 +372,12 @@ export function CustomerTable({
                         className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 cursor-pointer"
                         title="刪除客戶"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <RiDeleteBinLine className="w-4 h-4" />
                       </button>
                     )}
 
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 group-hover:text-stone-800 group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
-                      <ChevronRight className="w-4 h-4" />
+                      <RiArrowRightSLine className="w-5 h-5" />
                     </div>
                   </div>
                 </div>
