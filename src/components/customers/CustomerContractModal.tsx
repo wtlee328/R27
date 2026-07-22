@@ -5,7 +5,7 @@ import {
   DialogContent,
 } from '../ui/dialog'
 import { format } from 'date-fns'
-import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp, collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
 import { Printer, X, Edit2, Trash2, Save, Plus, Trash, AlertTriangle, RefreshCw } from 'lucide-react'
@@ -91,7 +91,7 @@ export function CustomerContractModal({
   React.useEffect(() => {
     const fetchTrainers = async () => {
       try {
-        const snap = await getDocs(collection(db, 'trainers'))
+        const snap = await getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId)))
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         setTrainers(list)
       } catch (err) {
@@ -101,7 +101,7 @@ export function CustomerContractModal({
     if (open) {
       fetchTrainers()
     }
-  }, [open])
+  }, [open, centerId])
 
   React.useEffect(() => {
     const fetchPartner = async () => {

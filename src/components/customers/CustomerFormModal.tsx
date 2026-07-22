@@ -6,7 +6,7 @@ import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, ChevronRight, ChevronLeft, User, FileText, Activity, ShieldCheck } from 'lucide-react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
   Dialog,
@@ -128,7 +128,7 @@ export function CustomerFormModal({
   useEffect(() => {
     const fetchTrainers = async () => {
       try {
-        const snap = await getDocs(collection(db, 'trainers'))
+        const snap = await getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId)))
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         setTrainers(list)
         if (list.length > 0 && !form.getValues('contract.trainerId')) {
@@ -141,7 +141,7 @@ export function CustomerFormModal({
     if (open) {
       fetchTrainers()
     }
-  }, [open, form])
+  }, [open, form, centerId])
 
   useEffect(() => {
     if (open) {

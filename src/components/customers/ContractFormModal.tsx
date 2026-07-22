@@ -83,7 +83,7 @@ export function ContractFormModal({
   useEffect(() => {
     const fetchTrainers = async () => {
       try {
-        const snap = await getDocs(collection(db, 'trainers'))
+        const snap = await getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId)))
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         setTrainers(list)
         if (list.length > 0 && !form.getValues('trainerId')) {
@@ -96,7 +96,7 @@ export function ContractFormModal({
     if (open) {
       fetchTrainers()
     }
-  }, [open, form])
+  }, [open, form, centerId])
 
   useEffect(() => {
     if (open && customer) {
