@@ -459,11 +459,101 @@ export function useCustomers() {
   const deleteCustomer = async (id: string) => {
     try {
       const oldSnap = await getDoc(doc(db, 'customers', id))
-      const oldData = oldSnap.exists() ? oldSnap.data() as Customer : null
+      const oldData = oldSnap.exists() ? (oldSnap.data() as Customer) : null
       const clientName = oldData?.name || '未知學員'
 
+      // 1. Find all contracts linked to this customer
+      const contractsRef = collection(db, 'contracts')
+      const [snap1, snap2, snap3] = await Promise.all([
+        getDocs(query(contractsRef, where('customerId', '==', id))),
+        getDocs(query(contractsRef, where('sharedWithCustomerId', '==', id))),
+        getDocs(query(contractsRef, where('partnerId', '==', id))),
+      ])
+
+      const linkedContractDocsMap = new Map<string, any>()
+      snap1.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
+      snap2.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
+      snap3.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
+
+      let deletedContractsCount = 0
+      let convertedDualContractsCount = 0
+
+      // 2. Process each linked contract
+      for (const [contractId, docSnap] of linkedContractDocsMap.entries()) {
+        const cData = docSnap.data() as Contract
+        const isDual =
+          cData.contractType === 'dual' ||
+          Boolean(cData.sharedWithCustomerId) ||
+          Boolean(cData.partnerId) ||
+          (cData.customerIds && cData.customerIds.length > 1)
+
+        // Find remaining partner ID if dual
+        let partnerCustomerId: string | null = null
+        if (isDual) {
+          if (cData.customerId !== id && cData.customerId) {
+            partnerCustomerId = cData.customerId
+          } else if (cData.sharedWithCustomerId && cData.sharedWithCustomerId !== id) {
+            partnerCustomerId = cData.sharedWithCustomerId
+          } else if (cData.partnerId && cData.partnerId !== id) {
+            partnerCustomerId = cData.partnerId
+          } else if (cData.customerIds && Array.isArray(cData.customerIds)) {
+            partnerCustomerId = cData.customerIds.find((cid) => cid !== id) || null
+          }
+        }
+
+        if (isDual && partnerCustomerId) {
+          // Convert Dual contract to Single contract for remaining partner
+          const contractRef = doc(db, 'contracts', contractId)
+          await updateDoc(contractRef, {
+            customerId: partnerCustomerId,
+            primaryCustomerId: partnerCustomerId,
+            contractType: 'single',
+            partnerMode: 'none',
+            partnerId: null,
+            sharedWithCustomerId: null,
+            partnerCustomerData: null,
+            secondaryTrainerId: null,
+            secondarySignatureDataUrl: null,
+            customerIds: [partnerCustomerId],
+            updatedAt: serverTimestamp(),
+          })
+          convertedDualContractsCount++
+        } else {
+          // Single contract or dual contract with no valid partner: Delete contract
+          await deleteDoc(doc(db, 'contracts', contractId))
+          deletedContractsCount++
+        }
+      }
+
+      // 3. Clean up any customer profiles referring to this customer as partner
+      const customersRef = collection(db, 'customers')
+      const [pSnap1, pSnap2] = await Promise.all([
+        getDocs(query(customersRef, where('partnerId', '==', id))),
+        getDocs(query(customersRef, where('sharedWithCustomerId', '==', id))),
+      ])
+      const partnerCustDocsMap = new Map<string, any>()
+      pSnap1.docs.forEach((d) => partnerCustDocsMap.set(d.id, d))
+      pSnap2.docs.forEach((d) => partnerCustDocsMap.set(d.id, d))
+
+      for (const [custDocId] of partnerCustDocsMap.entries()) {
+        await updateDoc(doc(db, 'customers', custDocId), {
+          partnerId: null,
+          sharedWithCustomerId: null,
+          updatedAt: serverTimestamp(),
+        })
+      }
+
+      // 4. Delete the customer profile itself
       await deleteDoc(doc(db, 'customers', id))
-      await logCustomerActivity('delete', id, clientName, undefined, oldData)
+
+      // 5. Log activity
+      await logCustomerActivity('delete', id, clientName, undefined, {
+        ...oldData,
+        deletedContractsCount,
+        convertedDualContractsCount,
+      })
+
+      // 6. Refresh data
       await fetchAllData()
     } catch (err: any) {
       console.error('Error deleting customer:', err)

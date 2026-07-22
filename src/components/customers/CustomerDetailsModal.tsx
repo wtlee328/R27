@@ -23,7 +23,8 @@ import {
   ShieldCheck, 
   CreditCard,
   ChevronRight,
-  Clock
+  Clock,
+  Trash2
 } from 'lucide-react'
 import { useCustomers } from '../../hooks/useCustomers'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ interface CustomerDetailsModalProps {
   onEditProfile: (customer: Customer) => void
   onCreateContract: (customer: Customer) => void
   onViewContract: (customer: Customer, contract: Contract) => void
+  onDeleteCustomer?: (customer: Customer) => void
 }
 
 export function CustomerDetailsModal({
@@ -44,6 +46,7 @@ export function CustomerDetailsModal({
   onEditProfile,
   onCreateContract,
   onViewContract,
+  onDeleteCustomer,
 }: CustomerDetailsModalProps) {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [partnerNames, setPartnerNames] = useState<Record<string, string>>({})
@@ -128,6 +131,19 @@ export function CustomerDetailsModal({
               </div>
             </div>
             <div className="flex gap-2">
+              {onDeleteCustomer && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    onOpenChange(false)
+                    onDeleteCustomer(customer)
+                  }}
+                  className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 shadow-sm"
+                >
+                  <Trash2 className="w-4 h-4" /> 刪除客戶
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => onEditProfile(customer)} className="gap-2 border-stone-200 shadow-sm">
                 <User className="w-4 h-4 text-stone-500" /> 編輯資料
               </Button>
