@@ -6,6 +6,8 @@ import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useContracts } from '@/hooks/useContracts'
 import { useTrainers } from '@/hooks/useTrainers'
+import { useAuthStore } from '@/stores/authStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,12 +17,22 @@ import { cn } from '@/lib/utils'
 import type { Customer, Contract } from '@/types'
 
 export default function TrainerLessonsPage() {
+  const { user } = useAuthStore()
+  const { selectedTrainerId: activeTrainerId } = useTrainerProfileStore()
+  const currentTrainerId = activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
+
   const { records, loading: recordsLoading, createRecord } = useLessonRecords()
   const { customers, loading: customersLoading } = useCustomers()
   const { trainers, loading: trainersLoading } = useTrainers()
 
   const [isRecording, setIsRecording] = useState(false)
   const [step, setStep] = useState(1) // 1: Select Customer, 2: Select Contract & Trainer & Details
+
+  // Filter records for current trainer
+  const myRecords = useMemo(() => {
+    if (!currentTrainerId) return records
+    return records.filter(r => r.trainerId === currentTrainerId || r.contractTrainerId === currentTrainerId)
+  }, [records, currentTrainerId])
 
   // Form states
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -652,9 +664,9 @@ export default function TrainerLessonsPage() {
 
             {recordsLoading ? (
               <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
-            ) : records.length > 0 ? (
+            ) : myRecords.length > 0 ? (
               <div className="divide-y divide-stone-100">
-                {records.slice(0, 20).map((record) => {
+                {myRecords.slice(0, 50).map((record) => {
                   const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '未指定教練'
                   const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
                     ? record.attendingCustomerNames.join('、')

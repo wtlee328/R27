@@ -1,16 +1,21 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
 import { RiUserSearchLine } from '@remixicon/react'
 import { UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
+import { useAuthStore } from '@/stores/authStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
-
 export default function TrainerTrialsPage() {
+  const { user } = useAuthStore()
+  const { selectedTrainerId: activeTrainerId } = useTrainerProfileStore()
+  const currentTrainerId = activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
+
   const { trials, loading: trialsLoading, createTrial, updateTrial } = useTrials()
   const { trainers, loading: trainersLoading } = useTrainers()
 
@@ -29,6 +34,19 @@ export default function TrainerTrialsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
+  // Filter trials by current trainer
+  const myTrials = useMemo(() => {
+    if (!currentTrainerId) return trials
+    return trials.filter(r => r.trialTrainerId === currentTrainerId || r.trainerId === currentTrainerId)
+  }, [trials, currentTrainerId])
+
+  // Set default trainer ID for form
+  useEffect(() => {
+    if (currentTrainerId && !trialTrainerId) {
+      setTrialTrainerId(currentTrainerId)
+    }
+  }, [currentTrainerId, trialTrainerId])
+
   const handleCancel = () => {
     setIsAdding(false)
     setEditingId(null)
@@ -36,7 +54,7 @@ export default function TrainerTrialsPage() {
     setPhone('')
     setEmail('')
     setDate(format(new Date(), 'yyyy-MM-dd'))
-    setTrialTrainerId('')
+    setTrialTrainerId(currentTrainerId || '')
     setOutcome('pending')
     setNotes('')
     setSubmitError(null)
@@ -88,7 +106,6 @@ export default function TrainerTrialsPage() {
     }
   }
 
-
   const formatTrialDate = (timestamp: any) => {
     if (!timestamp) return ''
     const d = timestamp.toDate()
@@ -110,10 +127,14 @@ export default function TrainerTrialsPage() {
             <RiUserSearchLine className="w-6 h-6 text-orange-500" />
             體驗客管理
           </h1>
+          <p className="text-sm text-stone-500 mt-1">管理您的專屬體驗客名單與轉換紀錄</p>
         </div>
         {!isAdding && (
           <Button
-            onClick={() => setIsAdding(true)}
+            onClick={() => {
+              if (currentTrainerId) setTrialTrainerId(currentTrainerId)
+              setIsAdding(true)
+            }}
             className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold"
           >
             <Plus className="h-4 w-4" />
@@ -269,7 +290,7 @@ export default function TrainerTrialsPage() {
             <div>
               <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
                 <UserCheck className="h-5 w-5 text-brand-500" />
-                體驗客名單追蹤
+                我的體驗客名單追蹤 ({myTrials.length} 人)
               </h2>
             </div>
           </div>
@@ -287,9 +308,9 @@ export default function TrainerTrialsPage() {
 
             {trialsLoading ? (
               <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
-            ) : trials.length > 0 ? (
+            ) : myTrials.length > 0 ? (
               <div className="divide-y divide-stone-100">
-                {trials.slice(0, 20).map((record) => {
+                {myTrials.slice(0, 50).map((record) => {
                   const trainerName = trainers.find(t => t.id === record.trialTrainerId)?.name || '未指定教練'
 
                   const statusConfig = record.outcome === 'converted'
@@ -361,4 +382,3 @@ export default function TrainerTrialsPage() {
     </div>
   )
 }
-
