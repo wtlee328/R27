@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Users, FileText, Cake, PlusCircle, CreditCard, Search } from 'lucide-react'
+import { Users, FileText, Cake, PlusCircle } from 'lucide-react'
 import { RiGroupLine } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
@@ -10,23 +10,91 @@ import { CustomerDetailsModal } from '@/components/customers/CustomerDetailsModa
 import { ContractFormModal } from '@/components/customers/ContractFormModal'
 import { InstallmentManagerModal } from '@/components/customers/InstallmentManagerModal'
 import { useCustomers } from '@/hooks/useCustomers'
+import { useAuthStore } from '@/stores/authStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import type { CombinedCustomerContractValues, ContractFormValues } from '@/lib/validators'
 import type { Customer, Contract } from '@/types'
 
 type FilterType = 'all' | 'active' | 'expiring' | 'birthday' | 'pending_collection'
 
 export default function TrainerCustomersPage() {
+  const { user } = useAuthStore()
+  const { selectedTrainerId } = useTrainerProfileStore()
+  const currentTrainerId = selectedTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
+
   const { 
     customers, 
     contracts,
     loading, 
-    activeContractsCount,
-    expiringContractsCount,
-    thisMonthBirthdaysCount,
     updateCustomerProfile, 
     onboardNewCustomer, 
     createContract,
+    refresh
   } = useCustomers()
+
+  // Filter customers that belong to current trainer
+  const myCustomers = useMemo(() => {
+    if (!currentTrainerId) return customers
+    return customers.filter(cust => {
+      // 1. Primary assigned trainer
+      if (cust.trainerId === currentTrainerId) return true
+      // 2. Or has a contract where current trainer is primary or secondary trainer
+      return contracts.some(con =>
+        (con.customerId === cust.id || con.sharedWithCustomerId === cust.id || (con.customerIds && con.customerIds.includes(cust.id))) &&
+        (con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId)
+      )
+    })
+  }, [customers, contracts, currentTrainerId])
+
+  // Filter contracts relevant to current trainer
+  const myContracts = useMemo(() => {
+    if (!currentTrainerId) return contracts
+    const myCustIds = new Set(myCustomers.map(c => c.id))
+    return contracts.filter(con =>
+      con.trainerId === currentTrainerId ||
+      con.secondaryTrainerId === currentTrainerId ||
+      myCustIds.has(con.customerId) ||
+      (con.sharedWithCustomerId && myCustIds.has(con.sharedWithCustomerId)) ||
+      (con.customerIds && con.customerIds.some(id => myCustIds.has(id)))
+    )
+  }, [contracts, currentTrainerId, myCustomers])
+
+  // Metrics for current trainer
+  const activeContractsCount = useMemo(() => {
+    const activeCustIds = new Set(
+      myContracts
+        .filter(c => c.status === 'active' || c.status === 'expiring')
+        .map(c => c.customerId)
+    )
+    return myCustomers.filter(cust => activeCustIds.has(cust.id)).length
+  }, [myCustomers, myContracts])
+
+  const expiringContractsCount = useMemo(() => {
+    const now = new Date()
+    const thirtyDaysFromNow = new Date()
+    thirtyDaysFromNow.setDate(now.getDate() + 30)
+
+    const expiringCustIds = new Set(
+      myContracts
+        .filter(c => {
+          if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
+          if (!c.endDate) return false
+          const end = c.endDate.toDate()
+          return end <= thirtyDaysFromNow
+        })
+        .map(c => c.customerId)
+    )
+    return myCustomers.filter(cust => expiringCustIds.has(cust.id)).length
+  }, [myCustomers, myContracts])
+
+  const thisMonthBirthdaysCount = useMemo(() => {
+    const currentMonth = new Date().getMonth()
+    return myCustomers.filter(cust => {
+      if (!cust.dateOfBirth) return false
+      const dob = cust.dateOfBirth.toDate()
+      return dob.getMonth() === currentMonth
+    }).length
+  }, [myCustomers])
 
   // Modals visibility
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -89,34 +157,34 @@ export default function TrainerCustomersPage() {
 
   // Pending installment contracts (unpaid installments)
   const pendingInstallmentItems = useMemo(() => {
-    const pendingContracts = contracts.filter(c => 
+    const pendingContracts = myContracts.filter(c => 
       c.paymentType === 'installments' && 
       (c.paidAmount || 0) < (c.totalAmount || 0)
     )
     return pendingContracts.map(contract => {
-      const customer = customers.find(cust => cust.id === contract.customerId || contract.customerIds?.includes(cust.id))
+      const customer = myCustomers.find(cust => cust.id === contract.customerId || contract.customerIds?.includes(cust.id))
       return { contract, customer }
     })
-  }, [contracts, customers])
+  }, [myContracts, myCustomers])
 
   // --- Real-time Filtered Customer list ---
   const filteredCustomers = useMemo(() => {
-    if (activeFilter === 'all') return customers
+    if (activeFilter === 'all') return myCustomers
 
     if (activeFilter === 'pending_collection') {
       const pendingCustomerIds = new Set(
         pendingInstallmentItems.map(item => item.customer?.id).filter(Boolean) as string[]
       )
-      return customers.filter(cust => pendingCustomerIds.has(cust.id))
+      return myCustomers.filter(cust => pendingCustomerIds.has(cust.id))
     }
 
     if (activeFilter === 'active') {
       const activeCustomerIds = new Set(
-        contracts
+        myContracts
           .filter(c => c.status === 'active' || c.status === 'expiring')
           .map(c => c.customerId)
       )
-      return customers.filter(cust => activeCustomerIds.has(cust.id))
+      return myCustomers.filter(cust => activeCustomerIds.has(cust.id))
     }
 
     if (activeFilter === 'expiring') {
@@ -125,7 +193,7 @@ export default function TrainerCustomersPage() {
       thirtyDaysFromNow.setDate(now.getDate() + 30)
 
       const expiringCustomerIds = new Set(
-        contracts
+        myContracts
           .filter(c => {
             if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
             if (!c.endDate) return false
@@ -134,20 +202,20 @@ export default function TrainerCustomersPage() {
           })
           .map(c => c.customerId)
       )
-      return customers.filter(cust => expiringCustomerIds.has(cust.id))
+      return myCustomers.filter(cust => expiringCustomerIds.has(cust.id))
     }
 
     if (activeFilter === 'birthday') {
       const currentMonth = new Date().getMonth()
-      return customers.filter(cust => {
+      return myCustomers.filter(cust => {
         if (!cust.dateOfBirth) return false
         const dob = cust.dateOfBirth.toDate()
         return dob.getMonth() === currentMonth
       })
     }
 
-    return customers
-  }, [customers, contracts, activeFilter, pendingInstallmentItems])
+    return myCustomers
+  }, [myCustomers, myContracts, activeFilter, pendingInstallmentItems])
 
   const pendingCollectionCount = pendingInstallmentItems.length
 
@@ -175,7 +243,7 @@ export default function TrainerCustomersPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
           title="我的學員總數"
-          value={loading ? '...' : String(customers.length)}
+          value={loading ? '...' : String(myCustomers.length)}
           icon={Users}
           onClick={() => setActiveFilter('all')}
           className={`cursor-pointer transition-all hover:scale-[1.01] ${activeFilter === 'all' ? 'ring-2 ring-brand-500' : ''}`}
@@ -250,30 +318,13 @@ export default function TrainerCustomersPage() {
         ) : (
           <CustomerTable 
             customers={filteredCustomers} 
-            contracts={contracts}
+            contracts={myContracts}
             onView={handleViewDetails}
           />
         )}
       </div>
 
-      {/* Onboarding Wizard (Add/Edit Profile + Init Contract) */}
-      <CustomerFormModal
-        open={isOnboardingOpen}
-        onOpenChange={setIsOnboardingOpen}
-        onSubmit={handleOnboardingSubmit}
-        customer={selectedCustomer}
-        isEditing={isEditingProfile}
-      />
-
-      {/* Contract Renewal Form Modal */}
-      <ContractFormModal
-        open={isRenewalOpen}
-        onOpenChange={setIsRenewalOpen}
-        onSubmit={handleRenewalSubmit}
-        customer={selectedCustomer}
-      />
-
-      {/* Customer Details Modal (Profile, Contracts List, History) */}
+      {/* Modals */}
       <CustomerDetailsModal
         open={isDetailOpen}
         onOpenChange={setIsDetailOpen}
@@ -283,30 +334,50 @@ export default function TrainerCustomersPage() {
         onViewContract={handleViewContract}
       />
 
-      {/* Contract Details / Payment / Signature Viewer & Editor Modal */}
+      <CustomerFormModal
+        open={isOnboardingOpen}
+        onOpenChange={(open) => {
+          setIsOnboardingOpen(open)
+          if (!open) setIsEditingProfile(false)
+        }}
+        onSubmit={handleOnboardingSubmit}
+        isEditMode={isEditingProfile}
+        customers={customers}
+        contracts={contracts}
+        initialData={selectedCustomer ? {
+          name: selectedCustomer.name,
+          phone: selectedCustomer.phone,
+          idNumber: selectedCustomer.idNumber,
+          email: selectedCustomer.email,
+          dateOfBirth: selectedCustomer.dateOfBirth.toDate(),
+          emergencyContact: selectedCustomer.emergencyContact,
+          medicalHistory: selectedCustomer.medicalHistory,
+          historicalSessions: selectedCustomer.historicalSessions,
+        } : undefined}
+      />
+
+      <ContractFormModal
+        open={isRenewalOpen}
+        onOpenChange={setIsRenewalOpen}
+        customer={selectedCustomer}
+        customers={customers}
+        onSubmit={handleRenewalSubmit}
+      />
+
       <CustomerContractModal
         open={isContractViewOpen}
         onOpenChange={setIsContractViewOpen}
         customer={selectedCustomer}
         contract={selectedContract}
-        onOpenInstallmentManager={(contract) => {
-          setSelectedInstallmentContract(contract)
-          setSelectedInstallmentCustomer(selectedCustomer)
-          setIsInstallmentManagerOpen(true)
-        }}
+        onContractUpdated={refresh}
       />
 
-      {/* Installments Manager Dialog */}
       <InstallmentManagerModal
         open={isInstallmentManagerOpen}
         onOpenChange={setIsInstallmentManagerOpen}
-        customer={selectedInstallmentCustomer}
         contract={selectedInstallmentContract}
-        onClose={() => {
-          setIsInstallmentManagerOpen(false)
-          setSelectedInstallmentContract(null)
-          setSelectedInstallmentCustomer(null)
-        }}
+        customer={selectedInstallmentCustomer}
+        onUpdated={refresh}
       />
     </div>
   )
