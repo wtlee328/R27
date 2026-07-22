@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, Plus, PlusCircle, Database, Calendar } from 'lucide-react'
+import { DollarSign, Plus, Database, Calendar } from 'lucide-react'
 import { RiBuilding4Line } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
@@ -7,10 +7,16 @@ import { FilterDropdown } from '@/components/shared/FilterDropdown'
 import { VenueTable } from '@/components/venue/VenueTable'
 import { VenueFormModal } from '@/components/venue/VenueFormModal'
 import { useVenueRentals } from '@/hooks/useVenueRentals'
+import { useAuthStore } from '@/stores/authStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import { format } from 'date-fns'
 import type { VenueRental } from '@/types'
 
 export default function TrainerVenuePage() {
+  const { user } = useAuthStore()
+  const { selectedTrainerId: activeTrainerId } = useTrainerProfileStore()
+  const currentTrainerId = activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
+
   const { rentals, loading, createRental, updateRental } = useVenueRentals()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedRental, setSelectedRental] = useState<VenueRental | null>(null)
@@ -19,29 +25,35 @@ export default function TrainerVenuePage() {
     return format(new Date(), 'yyyy/MM')
   })
 
-  // Generate month options dynamically from rentals
+  // Filter rentals by current trainer
+  const myRentals = useMemo(() => {
+    if (!currentTrainerId) return rentals
+    return rentals.filter((r) => r.renterTrainerId === currentTrainerId || r.trainerId === currentTrainerId)
+  }, [rentals, currentTrainerId])
+
+  // Generate month options dynamically from current trainer's rentals
   const monthOptions = useMemo(() => {
     const monthsSet = new Set<string>()
     const currentMonthStr = format(new Date(), 'yyyy/MM')
     monthsSet.add(currentMonthStr)
     
-    rentals.forEach(r => {
+    myRentals.forEach(r => {
       if (r.date) {
         monthsSet.add(format(r.date.toDate(), 'yyyy/MM'))
       }
     })
     
     return Array.from(monthsSet).sort().reverse()
-  }, [rentals])
+  }, [myRentals])
 
   // Filter rentals by selected month
   const filteredRentals = useMemo(() => {
-    if (selectedMonth === 'all') return rentals
-    return rentals.filter((r) => {
+    if (selectedMonth === 'all') return myRentals
+    return myRentals.filter((r) => {
       const d = r.date?.toDate()
       return d && format(d, 'yyyy/MM') === selectedMonth
     })
-  }, [rentals, selectedMonth])
+  }, [myRentals, selectedMonth])
 
   // Calculate statistics
   const totalExpenseSelectedMonth = useMemo(() => {
@@ -49,8 +61,8 @@ export default function TrainerVenuePage() {
   }, [filteredRentals])
 
   const totalExpenseAllTime = useMemo(() => {
-    return rentals.reduce((sum, r) => sum + r.amount, 0)
-  }, [rentals])
+    return myRentals.reduce((sum, r) => sum + r.amount, 0)
+  }, [myRentals])
 
   const handleFormSubmit = async (data: any) => {
     if (selectedRental) {
@@ -74,7 +86,7 @@ export default function TrainerVenuePage() {
             <RiBuilding4Line className="w-6 h-6 text-orange-500" />
             場租管理
           </h1>
-          <p className="text-sm text-stone-500 mt-1">記錄與查看您的場租預約與收費明細</p>
+          <p className="text-sm text-stone-500 mt-1">記錄與查看您的專屬場租預約與費用明細</p>
         </div>
         <Button 
           onClick={() => {
@@ -133,7 +145,6 @@ export default function TrainerVenuePage() {
           <VenueTable 
             rentals={filteredRentals}
             onRowClick={handleRowClick}
-            // Do not pass onDelete so trainers cannot delete rentals
           />
         )}
       </div>
