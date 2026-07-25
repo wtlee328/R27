@@ -19,6 +19,7 @@ import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { combinedCustomerContractSchema, type CombinedCustomerContractValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
+import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
 import type { Customer, Contract } from '../../types'
 import { useCenterStore } from '@/stores/centerStore'
 
@@ -599,7 +600,10 @@ export function CustomerFormModal({
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">出生年月日 *</Label>
-                          <Input type="date" {...form.register('dateOfBirth', { valueAsDate: true })} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                          <MinguoDatePickerInput
+                            value={form.watch('dateOfBirth')}
+                            onChange={(d) => form.setValue('dateOfBirth', d as any, { shouldValidate: true })}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">性別</Label>
@@ -1262,7 +1266,10 @@ export function CustomerFormModal({
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">出生年月日 *</Label>
-                          <Input type="date" {...form.register('partnerCustomerData.dateOfBirth', { valueAsDate: true })} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                          <MinguoDatePickerInput
+                            value={form.watch('partnerCustomerData.dateOfBirth')}
+                            onChange={(d) => form.setValue('partnerCustomerData.dateOfBirth', d as any, { shouldValidate: true })}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label className="text-stone-700">歷史已上堂數</Label>
