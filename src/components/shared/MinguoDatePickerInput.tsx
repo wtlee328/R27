@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useState, useEffect } from 'react'
 
 interface MinguoDatePickerInputProps {
   value?: Date | string | null
@@ -11,121 +11,86 @@ export function MinguoDatePickerInput({
   onChange,
   className = ''
 }: MinguoDatePickerInputProps) {
-  // Convert current value to Date object
-  const dateObj = useMemo(() => {
-    if (!value) return null
+  const [rocYear, setRocYear] = useState('')
+  const [month, setMonth] = useState('')
+  const [day, setDay] = useState('')
+
+  // Sync internal input fields whenever value changes externally
+  useEffect(() => {
+    if (!value) {
+      setRocYear('')
+      setMonth('')
+      setDay('')
+      return
+    }
     const d = value instanceof Date ? value : new Date(value)
-    return isNaN(d.getTime()) ? null : d
+    if (isNaN(d.getTime())) {
+      setRocYear('')
+      setMonth('')
+      setDay('')
+      return
+    }
+    setRocYear((d.getFullYear() - 1911).toString())
+    setMonth((d.getMonth() + 1).toString())
+    setDay(d.getDate().toString())
   }, [value])
 
-  const rocYear = dateObj ? (dateObj.getFullYear() - 1911).toString() : ''
-  const month = dateObj ? (dateObj.getMonth() + 1).toString() : ''
-  const day = dateObj ? dateObj.getDate().toString() : ''
+  const handleUpdate = (yStr: string, mStr: string, dStr: string) => {
+    setRocYear(yStr)
+    setMonth(mStr)
+    setDay(dStr)
 
-  const datePickerValue = useMemo(() => {
-    if (!dateObj) return ''
-    const y = dateObj.getFullYear()
-    const m = String(dateObj.getMonth() + 1).padStart(2, '0')
-    const d = String(dateObj.getDate()).padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }, [dateObj])
+    const y = parseInt(yStr, 10)
+    const m = parseInt(mStr, 10)
+    const d = parseInt(dStr, 10)
 
-  const updateDate = (yNum: number | null, mNum: number | null, dNum: number | null) => {
-    if (yNum === null || mNum === null || dNum === null) return
-    if (yNum <= 0 || mNum < 1 || mNum > 12 || dNum < 1 || dNum > 31) return
-    const fullYear = 1911 + yNum
-    const newD = new Date(fullYear, mNum - 1, dNum)
-    if (!isNaN(newD.getTime())) {
-      onChange(newD)
-    }
-  }
-
-  const handleRocYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    if (!val) {
+    if (!yStr && !mStr && !dStr) {
       onChange(null)
       return
     }
-    const y = parseInt(val, 10)
-    if (isNaN(y)) return
-    const currentM = dateObj ? dateObj.getMonth() + 1 : 1
-    const currentD = dateObj ? dateObj.getDate() : 1
-    updateDate(y, currentM, currentD)
-  }
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    const m = parseInt(val, 10)
-    if (isNaN(m)) return
-    const currentY = dateObj ? dateObj.getFullYear() - 1911 : 80
-    const currentD = dateObj ? dateObj.getDate() : 1
-    updateDate(currentY, m, currentD)
-  }
-
-  const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    const d = parseInt(val, 10)
-    if (isNaN(d)) return
-    const currentY = dateObj ? dateObj.getFullYear() - 1911 : 80
-    const currentM = dateObj ? dateObj.getMonth() + 1 : 1
-    updateDate(currentY, currentM, d)
+    if (!isNaN(y) && !isNaN(m) && !isNaN(d) && y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      const fullYear = 1911 + y
+      const newD = new Date(fullYear, m - 1, d)
+      if (!isNaN(newD.getTime())) {
+        onChange(newD)
+      }
+    }
   }
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <div className="flex items-center gap-1 bg-stone-50 p-1.5 rounded-xl border border-stone-200">
-          <span className="text-xs font-bold text-stone-500 pl-1">民國</span>
-          <input
-            type="number"
-            placeholder="例: 87"
-            value={rocYear}
-            onChange={handleRocYearChange}
-            className="w-16 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-          />
-          <span className="text-xs font-bold text-stone-500 pr-1">年</span>
+    <div className={`inline-flex items-center gap-1 bg-stone-50 p-1.5 rounded-xl border border-stone-200 ${className}`}>
+      <span className="text-xs font-bold text-stone-500 pl-1">民國</span>
+      <input
+        type="number"
+        placeholder="例: 87"
+        value={rocYear}
+        onChange={(e) => handleUpdate(e.target.value, month, day)}
+        className="w-16 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
+      />
+      <span className="text-xs font-bold text-stone-500 pr-1">年</span>
 
-          <input
-            type="number"
-            placeholder="5"
-            min={1}
-            max={12}
-            value={month}
-            onChange={handleMonthChange}
-            className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-          />
-          <span className="text-xs font-bold text-stone-500 pr-1">月</span>
+      <input
+        type="number"
+        placeholder="5"
+        min={1}
+        max={12}
+        value={month}
+        onChange={(e) => handleUpdate(rocYear, e.target.value, day)}
+        className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
+      />
+      <span className="text-xs font-bold text-stone-500 pr-1">月</span>
 
-          <input
-            type="number"
-            placeholder="12"
-            min={1}
-            max={31}
-            value={day}
-            onChange={handleDayChange}
-            className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-          />
-          <span className="text-xs font-bold text-stone-500 pr-1">日</span>
-        </div>
-
-        {/* Standard Picker Helper */}
-        <input
-          type="date"
-          value={datePickerValue}
-          onChange={(e) => {
-            const val = e.target.value
-            onChange(val ? new Date(val) : null)
-          }}
-          className="h-11 px-2.5 text-xs bg-stone-50 border border-stone-200 rounded-xl text-stone-700 font-medium cursor-pointer focus:bg-white focus:outline-none"
-        />
-      </div>
-
-      {dateObj && (
-        <div className="text-[11px] font-bold text-orange-800 bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200/80 inline-flex items-center gap-1.5 shadow-2xs">
-          <span>民國 {dateObj.getFullYear() - 1911} 年 {String(dateObj.getMonth() + 1).padStart(2, '0')} 月 {String(dateObj.getDate()).padStart(2, '0')} 日</span>
-          <span className="text-stone-400 font-normal">({dateObj.getFullYear()} / {String(dateObj.getMonth() + 1).padStart(2, '0')} / {String(dateObj.getDate()).padStart(2, '0')})</span>
-        </div>
-      )}
+      <input
+        type="number"
+        placeholder="12"
+        min={1}
+        max={31}
+        value={day}
+        onChange={(e) => handleUpdate(rocYear, month, e.target.value)}
+        className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
+      />
+      <span className="text-xs font-bold text-stone-500 pr-1">日</span>
     </div>
   )
 }
