@@ -387,11 +387,16 @@ export default function AnalyticsPage() {
 
   // --- 6. RFM 會員活躍度 ---
   const rfmMembers = useMemo(() => {
-    return customers.map((cust) => {
-      const custContracts = contracts.filter((c) => c.customerId === cust.id || c.sharedWithCustomerId === cust.id)
-      const totalMonetary = custContracts.reduce((sum, c) => sum + (c.totalAmount || 0), 0)
+    return (customers || []).map((cust) => {
+      const custContracts = (contracts || []).filter((c) => 
+        c.customerId === cust.id || 
+        c.primaryCustomerId === cust.id || 
+        c.sharedWithCustomerId === cust.id || 
+        (c.customerIds && c.customerIds.includes(cust.id))
+      )
+      const totalMonetary = custContracts.reduce((sum, c) => sum + Number(c.totalAmount || 0), 0)
 
-      const custLessons = lessons
+      const custLessons = (lessons || [])
         .filter((l) => l.customerId === cust.id && l.status === 'completed' && l.date)
         .map((l) => (l.date.toDate ? l.date.toDate() : new Date(l.date)))
         .sort((a, b) => b.getTime() - a.getTime())
@@ -409,7 +414,7 @@ export default function AnalyticsPage() {
         recencyRaw: recencyDays,
         frequency: Number(frequency),
         totalLessonsCount: custLessons.length,
-        monetary: totalMonetary,
+        monetary: Number(totalMonetary),
       }
     })
   }, [customers, contracts, lessons])
@@ -807,7 +812,7 @@ export default function AnalyticsPage() {
                         {m.frequency} 次/週 ({m.totalLessonsCount} 堂)
                       </TableCell>
                       <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
-                        ${m.monetary.toLocaleString()}
+                        NT$ {Number(m.monetary || 0).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}
