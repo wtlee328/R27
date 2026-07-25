@@ -1,6 +1,14 @@
 import { useState, useMemo } from 'react'
-import { Users, FileText, AlertCircle, Cake, PlusCircle, X, CreditCard } from 'lucide-react'
-import { RiGroupLine } from '@remixicon/react'
+import { 
+  RiGroupLine, 
+  RiFileTextLine, 
+  RiAlertLine, 
+  RiCake2Line, 
+  RiUserAddLine, 
+  RiBankCardLine,
+  RiCloseLine,
+  RiAddLine
+} from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { CustomerTable } from '../components/customers/CustomerTable'
@@ -128,44 +136,50 @@ export default function CustomersPage() {
 
     if (activeFilter === 'pending_collection') {
       const pendingCustomerIds = new Set(
-        pendingInstallmentItems.map(item => item.customer?.id).filter(Boolean) as string[]
+        pendingInstallmentItems
+          .map(item => item.customer?.id)
+          .filter((id): id is string => !!id)
       )
-      return customers.filter(cust => pendingCustomerIds.has(cust.id))
+      return customers.filter(c => pendingCustomerIds.has(c.id))
     }
 
     if (activeFilter === 'active') {
       const activeCustomerIds = new Set(
         contracts
-          .filter(c => c.status === 'active' || c.status === 'expiring')
-          .map(c => c.customerId)
+          .filter(c => c.status === 'active')
+          .flatMap(c => {
+            const ids: string[] = []
+            if (c.customerId) ids.push(c.customerId)
+            if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
+            if (c.customerIds) ids.push(...c.customerIds)
+            return ids
+          })
       )
-      return customers.filter(cust => activeCustomerIds.has(cust.id))
+      return customers.filter(c => activeCustomerIds.has(c.id))
     }
 
     if (activeFilter === 'expiring') {
       const now = new Date()
-      const thirtyDaysFromNow = new Date()
-      thirtyDaysFromNow.setDate(now.getDate() + 30)
-
+      const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
       const expiringCustomerIds = new Set(
         contracts
-          .filter(c => {
-            if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
-            if (!c.endDate) return false
-            const end = c.endDate.toDate()
-            return end <= thirtyDaysFromNow
+          .filter(c => c.status === 'active' && c.endDate && c.endDate.toDate() <= in30Days)
+          .flatMap(c => {
+            const ids: string[] = []
+            if (c.customerId) ids.push(c.customerId)
+            if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
+            if (c.customerIds) ids.push(...c.customerIds)
+            return ids
           })
-          .map(c => c.customerId)
       )
-      return customers.filter(cust => expiringCustomerIds.has(cust.id))
+      return customers.filter(c => expiringCustomerIds.has(c.id))
     }
 
     if (activeFilter === 'birthday') {
       const currentMonth = new Date().getMonth()
-      return customers.filter(cust => {
-        if (!cust.dateOfBirth) return false
-        const dob = cust.dateOfBirth.toDate()
-        return dob.getMonth() === currentMonth
+      return customers.filter(c => {
+        if (!c.dateOfBirth) return false
+        return c.dateOfBirth.toDate().getMonth() === currentMonth
       })
     }
 
@@ -184,8 +198,12 @@ export default function CustomersPage() {
           <p className="text-sm text-stone-500 mt-1">追蹤學員進度與合約狀態</p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={handleOpenOnboarding} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
-            <PlusCircle className="w-4 h-4 mr-2" /> 新增客戶
+          <Button 
+            onClick={handleOpenOnboarding} 
+            className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl flex items-center gap-1.5 shadow-sm"
+          >
+            <RiUserAddLine className="w-4 h-4" />
+            新增客戶
           </Button>
         </div>
       </div>
@@ -195,14 +213,14 @@ export default function CustomersPage() {
         <StatCard 
           title="總客戶數" 
           value={customers.length.toString()} 
-          icon={Users} 
+          icon={RiGroupLine} 
           onClick={() => setActiveFilter('all')}
           isActive={activeFilter === 'all'}
         />
         <StatCard 
           title="待收合約" 
           value={pendingInstallmentItems.length.toString()} 
-          icon={CreditCard} 
+          icon={RiBankCardLine} 
           subtitle="分期付款待收合約" 
           onClick={() => setActiveFilter('pending_collection')}
           isActive={activeFilter === 'pending_collection'}
@@ -212,7 +230,7 @@ export default function CustomersPage() {
         <StatCard 
           title="有效合約" 
           value={activeContractsCount.toString()} 
-          icon={FileText} 
+          icon={RiFileTextLine} 
           subtitle="進行中之合約" 
           onClick={() => setActiveFilter('active')}
           isActive={activeFilter === 'active'}
@@ -220,7 +238,7 @@ export default function CustomersPage() {
         <StatCard 
           title="即將到期" 
           value={expiringContractsCount.toString()} 
-          icon={AlertCircle} 
+          icon={RiAlertLine} 
           subtitle="未來 30 天內" 
           onClick={() => setActiveFilter('expiring')}
           isActive={activeFilter === 'expiring'}
@@ -230,7 +248,7 @@ export default function CustomersPage() {
         <StatCard 
           title="本月壽星" 
           value={thisMonthBirthdaysCount.toString()} 
-          icon={Cake} 
+          icon={RiCake2Line} 
           onClick={() => setActiveFilter('birthday')}
           isActive={activeFilter === 'birthday'}
           iconColor="text-rose-600"
@@ -256,7 +274,7 @@ export default function CustomersPage() {
               className="p-0.5 hover:bg-stone-200 rounded-md transition-colors text-stone-400 hover:text-stone-800"
               title="清除篩選"
             >
-              <X className="w-3.5 h-3.5" />
+              <RiCloseLine className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -267,7 +285,7 @@ export default function CustomersPage() {
             <div className="flex items-center justify-between border-b border-stone-100 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5" />
+                  <RiBankCardLine className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-stone-900">分期收款管理</h2>
@@ -278,58 +296,55 @@ export default function CustomersPage() {
                 待收合約: {pendingInstallmentItems.length} 件
               </span>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <div className="divide-y divide-stone-100">
               {pendingInstallmentItems.map(({ contract, customer }) => {
-                const totalAmount = contract.totalAmount || 0
-                const paidAmount = contract.paidAmount || 0
-                const pendingAmount = totalAmount - paidAmount
-                const installments = contract.installments || []
-                const paidCount = installments.filter(inst => inst.status === 'paid').length
-                const totalCount = installments.length
+                const paid = contract.paidAmount || 0
+                const total = contract.totalAmount || 0
+                const remaining = total - paid
+                const progressPct = total > 0 ? Math.round((paid / total) * 100) : 0
 
                 return (
-                  <div 
-                    key={contract.id} 
-                    className="bg-stone-50 border border-stone-200/60 rounded-2xl p-5 flex flex-col justify-between hover:border-stone-300 transition-all shadow-sm"
-                  >
-                    <div className="space-y-3.5">
-                      <div className="flex justify-between items-start gap-2">
-                        <div>
-                          <h4 className="font-bold text-stone-900 text-sm">{customer?.name || '未知學員'}</h4>
-                          <p className="text-[10px] text-stone-400 font-mono mt-0.5">{contract.contractNo || contract.id}</p>
-                        </div>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-                          已收 {paidCount} / {totalCount} 期
-                        </span>
+                  <div key={contract.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-sm">
+                        {customer?.name?.charAt(0) || '學'}
                       </div>
-
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">合約總額</span>
-                          <span className="font-bold text-stone-800">NT$ {totalAmount.toLocaleString()}</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-stone-900">{customer?.name || '未知學員'}</span>
+                          <span className="text-xs text-stone-400 font-mono">{customer?.phone}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">已收金額</span>
-                          <span className="font-bold text-green-600">NT$ {paidAmount.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-stone-500">待收金額</span>
-                          <span className="font-bold text-red-500">NT$ {pendingAmount.toLocaleString()}</span>
-                        </div>
+                        <p className="text-xs text-stone-500 mt-0.5">
+                          合約建立日期：
+                          {contract.createdAt ? format(contract.createdAt.toDate(), 'yyyy/MM/dd') : '未知'}
+                        </p>
                       </div>
                     </div>
 
-                    <Button 
-                      onClick={() => {
-                        setSelectedInstallmentContract(contract)
-                        setSelectedInstallmentCustomer(customer || null)
-                        setIsInstallmentManagerOpen(true)
-                      }}
-                      className="mt-5 w-full h-9 text-xs font-bold bg-stone-900 hover:bg-stone-850 text-white rounded-xl shadow-sm hover:shadow-md transition-all"
-                    >
-                      管理收款
-                    </Button>
+                    <div className="flex items-center gap-6 self-end sm:self-auto">
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-stone-900">
+                          已繳 <span className="text-emerald-600">NT$ {paid.toLocaleString()}</span> / 總額 NT$ {total.toLocaleString()}
+                        </div>
+                        <div className="text-[11px] text-orange-600 font-semibold mt-0.5">
+                          剩餘未繳：NT$ {remaining.toLocaleString()}
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedInstallmentContract(contract)
+                          setSelectedInstallmentCustomer(customer || null)
+                          setIsInstallmentManagerOpen(true)
+                        }}
+                        className="text-xs font-bold border-stone-200 hover:bg-stone-50"
+                      >
+                        管理收款
+                      </Button>
+                    </div>
                   </div>
                 )
               })}
@@ -337,6 +352,7 @@ export default function CustomersPage() {
           </div>
         )}
 
+        {/* Main Table Container */}
         <div className="bg-white p-2 rounded-[2.5rem] border border-stone-200 shadow-sm">
           {loading ? (
             <div className="py-20 flex justify-center">
@@ -369,38 +385,35 @@ export default function CustomersPage() {
         open={isOnboardingOpen}
         onOpenChange={(open) => {
           setIsOnboardingOpen(open)
-          if (!open) setIsEditingProfile(false)
+          if (!open) {
+            setSelectedCustomer(null)
+            setIsEditingProfile(false)
+          }
         }}
         onSubmit={handleOnboardingSubmit}
+        initialCustomer={isEditingProfile ? selectedCustomer : null}
         isEditMode={isEditingProfile}
-        customers={customers}
-        contracts={contracts}
-        initialData={selectedCustomer ? {
-          name: selectedCustomer.name,
-          phone: selectedCustomer.phone,
-          idNumber: selectedCustomer.idNumber,
-          email: selectedCustomer.email,
-          dateOfBirth: selectedCustomer.dateOfBirth.toDate(),
-          emergencyContact: selectedCustomer.emergencyContact,
-          medicalHistory: selectedCustomer.medicalHistory,
-          historicalSessions: selectedCustomer.historicalSessions,
-        } : undefined}
       />
 
       <ContractFormModal
         open={isRenewalOpen}
-        onOpenChange={setIsRenewalOpen}
+        onOpenChange={(open) => {
+          setIsRenewalOpen(open)
+          if (!open) setSelectedCustomer(null)
+        }}
         customer={selectedCustomer}
-        customers={customers}
         onSubmit={handleRenewalSubmit}
       />
 
       <CustomerContractModal
         open={isContractViewOpen}
-        onOpenChange={setIsContractViewOpen}
+        onOpenChange={(open) => {
+          setIsContractViewOpen(open)
+          if (!open) setSelectedContract(null)
+        }}
         customer={selectedCustomer}
         contract={selectedContract}
-        onContractUpdated={refresh}
+        onUpdate={refresh}
       />
 
       <InstallmentManagerModal
@@ -408,16 +421,14 @@ export default function CustomersPage() {
         onOpenChange={setIsInstallmentManagerOpen}
         contract={selectedInstallmentContract}
         customer={selectedInstallmentCustomer}
-        onUpdated={refresh}
+        onUpdate={refresh}
       />
 
       <DeleteCustomerModal
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         customer={customerToDelete}
-        contracts={contracts}
-        customers={customers}
-        onConfirmDelete={handleConfirmDeleteCustomer}
+        onConfirm={handleConfirmDeleteCustomer}
       />
     </div>
   )
