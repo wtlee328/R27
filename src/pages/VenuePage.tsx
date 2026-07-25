@@ -35,7 +35,7 @@ export default function VenuePage() {
     const currentMonthStr = format(new Date(), 'yyyy/MM')
     monthsSet.add(currentMonthStr)
     
-    rentals.forEach(r => {
+    ;(rentals || []).forEach(r => {
       if (r.date) {
         monthsSet.add(format(r.date.toDate(), 'yyyy/MM'))
       }
@@ -46,7 +46,7 @@ export default function VenuePage() {
 
   // Filter rentals by selected month and trainer
   const filteredRentals = useMemo(() => {
-    let list = rentals
+    let list = rentals || []
     
     if (selectedMonth !== 'all') {
       list = list.filter((r) => {

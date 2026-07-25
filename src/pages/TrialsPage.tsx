@@ -48,7 +48,7 @@ export default function TrialsPage() {
     const currentMonthStr = format(new Date(), 'yyyy/MM')
     monthsSet.add(currentMonthStr)
     
-    trials.forEach(r => {
+    ;(trials || []).forEach(r => {
       if (r.date) {
         monthsSet.add(format(r.date.toDate(), 'yyyy/MM'))
       }
@@ -59,8 +59,8 @@ export default function TrialsPage() {
 
   // Filter trials by selected month
   const filteredTrials = useMemo(() => {
-    if (selectedMonth === 'all') return trials
-    return trials.filter((r) => {
+    if (selectedMonth === 'all') return trials || []
+    return (trials || []).filter((r) => {
       const d = r.date?.toDate()
       return d && format(d, 'yyyy/MM') === selectedMonth
     })

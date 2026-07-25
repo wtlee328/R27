@@ -75,7 +75,7 @@ export default function LessonsPage() {
     const currentMonthStr = format(now, 'yyyy/MM')
     monthsSet.add(currentMonthStr)
     
-    records.forEach(r => {
+    ;(records || []).forEach(r => {
       if (r.sessionDate) {
         monthsSet.add(format(r.sessionDate.toDate(), 'yyyy/MM'))
       }
@@ -102,17 +102,17 @@ export default function LessonsPage() {
 
   // Dynamic metrics per trainer based on the selectedMonth
   const trainersWithDynamicMetrics = useMemo(() => {
-    return trainers.map((t) => {
-      const assignedCustomerIds = customers
+    return (trainers || []).map((t) => {
+      const assignedCustomerIds = (customers || [])
         .filter((c) => c.trainerId === t.id)
         .map((c) => c.id)
 
-      const trainerContracts = contracts.filter(
+      const trainerContracts = (contracts || []).filter(
         (c) => assignedCustomerIds.includes(c.customerId) || assignedCustomerIds.includes(c.primaryCustomerId)
       )
       const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
-      const taughtLessons = records.filter((lr) => lr.trainerId === t.id)
+      const taughtLessons = (records || []).filter((lr) => lr.trainerId === t.id)
 
       const filteredLessonsForMonth = selectedMonth === 'all'
         ? taughtLessons
