@@ -47,24 +47,24 @@ export function PrepaidLessonsTable({
 
   const customerMap = useMemo(() => {
     const map = new Map<string, Customer>()
-    customers.forEach((c) => map.set(c.id, c))
+    ;(customers || []).forEach((c) => map.set(c.id, c))
     return map
   }, [customers])
 
   const trainerMap = useMemo(() => {
     const map = new Map<string, string>()
-    trainers.forEach((t) => map.set(t.id, t.name))
+    ;(trainers || []).forEach((t) => map.set(t.id, t.name))
     return map
   }, [trainers])
 
   const contractMap = useMemo(() => {
     const map = new Map<string, Contract>()
-    contracts.forEach((c) => map.set(c.id, c))
+    ;(contracts || []).forEach((c) => map.set(c.id, c))
     return map
   }, [contracts])
 
   const periodContracts = useMemo(() => {
-    return contracts.filter((c) => {
+    return (contracts || []).filter((c) => {
       if (!c.createdAt) return false
       const dt = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt as any)
       if (dt.getFullYear() !== selectedYear) return false
@@ -81,7 +81,7 @@ export function PrepaidLessonsTable({
   }, [contracts, selectedYear, selectedMonth, searchTerm, customerMap, trainerMap])
 
   const periodLessonRecords = useMemo(() => {
-    return records.filter((r) => {
+    return (records || []).filter((r) => {
       if (!r.sessionDate) return false
       const dt = r.sessionDate.toDate ? r.sessionDate.toDate() : new Date(r.sessionDate as any)
       if (dt.getFullYear() !== selectedYear) return false
@@ -102,7 +102,7 @@ export function PrepaidLessonsTable({
     let installmentPaidTotal = 0
     let pendingInstallmentsTotal = 0
 
-    periodContracts.forEach((c) => {
+    ;(periodContracts || []).forEach((c) => {
       const total = Number(c.totalAmount || 0)
       const paid = Number(c.paidAmount || 0)
       newContractsTotalValue += total
@@ -117,7 +117,7 @@ export function PrepaidLessonsTable({
     let realizedRevenueTotal = 0
     let totalSessionsUsed = 0
 
-    periodLessonRecords.forEach((r) => {
+    ;(periodLessonRecords || []).forEach((r) => {
       const c = contractMap.get(r.contractId)
       const sessions = Number(r.sessionAmount || 1)
       totalSessionsUsed += sessions
@@ -132,7 +132,7 @@ export function PrepaidLessonsTable({
     let unearnedLiabilityBalance = 0
     let remainingSessionsCount = 0
 
-    contracts.forEach((c) => {
+    ;(contracts || []).forEach((c) => {
       const rem = Number(c.remainingSessions || 0)
       const tot = Number(c.totalSessions || 0)
       if (rem > 0 && tot > 0) {
@@ -161,7 +161,7 @@ export function PrepaidLessonsTable({
       let monthLumpSum = 0
       let monthInstallmentPaid = 0
 
-      contracts.forEach((c) => {
+      ;(contracts || []).forEach((c) => {
         if (c.createdAt) {
           const dt = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt as any)
           if (dt.getFullYear() === selectedYear && dt.getMonth() + 1 === monthNum) {
@@ -177,7 +177,7 @@ export function PrepaidLessonsTable({
       let monthRealizedRev = 0
       let monthSessionsCount = 0
 
-      records.forEach((r) => {
+      ;(records || []).forEach((r) => {
         if (r.sessionDate) {
           const dt = r.sessionDate.toDate ? r.sessionDate.toDate() : new Date(r.sessionDate as any)
           if (dt.getFullYear() === selectedYear && dt.getMonth() + 1 === monthNum) {

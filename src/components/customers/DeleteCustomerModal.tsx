@@ -27,7 +27,7 @@ export function DeleteCustomerModal({
   // Customer map lookup
   const customerMap = useMemo(() => {
     const map = new Map<string, Customer>()
-    customers.forEach((c) => map.set(c.id, c))
+    ;(customers || []).forEach((c) => map.set(c.id, c))
     return map
   }, [customers])
 
@@ -35,7 +35,7 @@ export function DeleteCustomerModal({
   const contractAnalysis = useMemo(() => {
     if (!customer) return { singleContracts: [], dualContracts: [] }
 
-    const linked = contracts.filter((c) => {
+    const linked = (contracts || []).filter((c) => {
       const isPrimary = c.customerId === customer.id || c.primaryCustomerId === customer.id
       const isShared = c.sharedWithCustomerId === customer.id || c.partnerId === customer.id
       const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(customer.id)

@@ -37,7 +37,7 @@ export function BalanceSheetTable({
   const pendingInstallmentsDetail = useMemo(() => {
     let pendingTotal = 0
     let pendingCount = 0
-    contracts.forEach((c) => {
+    ;(contracts || []).forEach((c) => {
       const total = c.totalAmount || 0
       const paid = c.paidAmount || 0
       const pending = total - paid
@@ -53,7 +53,7 @@ export function BalanceSheetTable({
     let unearnedTotal = 0
     let remainingSessionsTotal = 0
     let activeContractCount = 0
-    contracts.forEach((c) => {
+    ;(contracts || []).forEach((c) => {
       if (c.remainingSessions > 0 && c.totalSessions > 0) {
         const avgPrice = (c.totalAmount || 0) / c.totalSessions
         const unearned = c.remainingSessions * avgPrice
@@ -72,7 +72,7 @@ export function BalanceSheetTable({
   const realizedRevenueDetail = useMemo(() => {
     let realizedTotal = 0
     let usedSessionsTotal = 0
-    contracts.forEach((c) => {
+    ;(contracts || []).forEach((c) => {
       const usedSessions = (c.totalSessions || 0) - (c.remainingSessions || 0)
       if (usedSessions > 0 && c.totalSessions > 0) {
         const avgPrice = (c.totalAmount || 0) / c.totalSessions
@@ -92,7 +92,7 @@ export function BalanceSheetTable({
   const cashBalance = useMemo(() => {
     let totalIncome = 0
     let totalExpense = 0
-    records.forEach((r) => {
+    ;(records || []).forEach((r) => {
       const amt = r.amount || 0
       if (r.type === 'income') totalIncome += amt
       else if (r.type === 'expense') totalExpense += amt
@@ -103,7 +103,7 @@ export function BalanceSheetTable({
   const pnlBreakdown = useMemo(() => {
     let otherIncomeTotal = 0
     let operatingExpensesTotal = 0
-    const periodRecords = records.filter((r) => {
+    const periodRecords = (records || []).filter((r) => {
       if (!r.date) return false
       const d = r.date.toDate()
       if (d.getFullYear() !== selectedYear) return false

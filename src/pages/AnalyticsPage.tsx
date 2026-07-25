@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
 
   const trainerMap = useMemo(() => {
     const map: Record<string, string> = {}
-    trainers.forEach((t) => {
+    ;(trainers || []).forEach((t) => {
       map[t.id] = t.name
     })
     return map
@@ -93,7 +93,7 @@ export default function AnalyticsPage() {
 
   // --- Filtered datasets ---
   const filteredTrials = useMemo(() => {
-    return trials.filter((t) => {
+    return (trials || []).filter((t) => {
       if (!t.createdAt) return true
       const d = (t.createdAt as any).toDate ? (t.createdAt as any).toDate() : new Date(t.createdAt as any)
       const matchesYear = d.getFullYear() === selectedYear
@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
   }, [trials, selectedYear, selectedMonth])
 
   const filteredContracts = useMemo(() => {
-    return contracts.filter((c) => {
+    return (contracts || []).filter((c) => {
       if (!c.startDate) return true
       const d = (c.startDate as any).toDate ? (c.startDate as any).toDate() : new Date(c.startDate as any)
       const matchesYear = d.getFullYear() === selectedYear
@@ -113,7 +113,7 @@ export default function AnalyticsPage() {
   }, [contracts, selectedYear, selectedMonth])
 
   const filteredCashFlowRecords = useMemo(() => {
-    return cashFlowRecords.filter((r) => {
+    return (cashFlowRecords || []).filter((r) => {
       if (!r.date) return false
       const d = r.date.toDate()
       const matchesYear = d.getFullYear() === selectedYear
@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
   }, [cashFlowRecords, selectedYear, selectedMonth])
 
   const filteredLessons = useMemo(() => {
-    return lessons.filter((l) => {
+    return (lessons || []).filter((l) => {
       if (!l.date) return false
       const d = l.date.toDate ? l.date.toDate() : new Date(l.date)
       const matchesYear = d.getFullYear() === selectedYear
@@ -134,12 +134,12 @@ export default function AnalyticsPage() {
 
   // --- 1. 銷售與轉換分析 ---
   const trialConversionStats = useMemo(() => {
-    const total = filteredTrials.length
-    const converted = filteredTrials.filter((t) => t.outcome === 'converted').length
+    const total = (filteredTrials || []).length
+    const converted = (filteredTrials || []).filter((t) => t.outcome === 'converted').length
     const rate = total > 0 ? ((converted / total) * 100).toFixed(1) : '0.0'
 
     const trainerTrialMap: Record<string, { total: number; converted: number }> = {}
-    filteredTrials.forEach((t) => {
+    ;(filteredTrials || []).forEach((t) => {
       if (!t.trainerId) return
       if (!trainerTrialMap[t.trainerId]) {
         trainerTrialMap[t.trainerId] = { total: 0, converted: 0 }
@@ -164,14 +164,12 @@ export default function AnalyticsPage() {
   }, [filteredTrials, trainerMap])
 
   // Renewal Rate
-  // 邏輯：在當前選定時段 (selectedYear & selectedMonth) 課表剛好全部上完 (剩餘堂數=0 或 status 為 completed/expired) 的學員人數 (totalEndedStudents)
-  // 其中有繼續購買下一個階段的課 (有續約/新合約) 的學員人數 (renewedStudents)
   const renewalStats = useMemo(() => {
     const expiredStudentSet = new Set<string>()
     const renewedStudentSet = new Set<string>()
 
     // 1. Collect all students whose contracts expired/completed in the selected timeframe
-    contracts.forEach((c) => {
+    ;(contracts || []).forEach((c) => {
       const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
 
       let isTimeframeMatch = false
@@ -197,7 +195,7 @@ export default function AnalyticsPage() {
 
     // Fallback if test dataset has no exact timeframe matches
     if (expiredStudentSet.size === 0) {
-      contracts.forEach((c) => {
+      ;(contracts || []).forEach((c) => {
         const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
         if (isEnded) {
           const sIds = [c.customerId, c.primaryCustomerId, c.sharedWithCustomerId, ...(c.customerIds || [])].filter(Boolean) as string[]
@@ -208,7 +206,7 @@ export default function AnalyticsPage() {
 
     // 2. Out of these expired students, check who bought a subsequent/renewal contract
     expiredStudentSet.forEach((studentId) => {
-      const studentContracts = contracts.filter((c) =>
+      const studentContracts = (contracts || []).filter((c) =>
         c.customerId === studentId ||
         c.primaryCustomerId === studentId ||
         c.sharedWithCustomerId === studentId ||
@@ -249,7 +247,7 @@ export default function AnalyticsPage() {
       其他管道: 0,
     }
 
-    customers.forEach((c) => {
+    ;(customers || []).forEach((c) => {
       if (c.gender === 'male') genderCount.male += 1
       else if (c.gender === 'other') genderCount.other += 1
       else genderCount.female += 1
@@ -268,7 +266,7 @@ export default function AnalyticsPage() {
       else channelCount.其他管道 += 1
     })
 
-    const totalCust = customers.length || 1
+    const totalCust = (customers || []).length || 1
 
     return { genderCount, habitCount, channelCount, totalCust }
   }, [customers])
@@ -283,7 +281,7 @@ export default function AnalyticsPage() {
       其他規格: 0,
     }
 
-    filteredContracts.forEach((c) => {
+    ;(filteredContracts || []).forEach((c) => {
       const s = c.totalSessions
       if (s === 8) specMap['8堂'] += 1
       else if (s === 12) specMap['12堂'] += 1
@@ -292,7 +290,7 @@ export default function AnalyticsPage() {
       else specMap.其他規格 += 1
     })
 
-    const totalCount = filteredContracts.length || 1
+    const totalCount = (filteredContracts || []).length || 1
 
     return { specMap, totalCount }
   }, [filteredContracts])
@@ -300,7 +298,7 @@ export default function AnalyticsPage() {
   // --- 4. 每月銷課總表 12-Month Trend Bar Chart ---
   const monthlyLessonsTrend = useMemo(() => {
     const months = Array(12).fill(0)
-    lessons.forEach((l) => {
+    ;(lessons || []).forEach((l) => {
       if (l.status === 'completed' && l.date) {
         const d = l.date.toDate ? l.date.toDate() : new Date(l.date)
         if (d.getFullYear() === selectedYear) {
@@ -316,14 +314,14 @@ export default function AnalyticsPage() {
   const trainerPerformance = useMemo(() => {
     const map: Record<string, { sessions: number; revenue: number }> = {}
 
-    filteredLessons.forEach((l) => {
+    ;(filteredLessons || []).forEach((l) => {
       if (l.status === 'completed' && l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
         map[l.trainerId].sessions += 1
       }
     })
 
-    filteredCashFlowRecords.map(normalizeCashFlowRecord).forEach((r) => {
+    ;(filteredCashFlowRecords || []).map(normalizeCashFlowRecord).forEach((r) => {
       if (r.type === 'income' && r.trainerId) {
         if (!map[r.trainerId]) map[r.trainerId] = { sessions: 0, revenue: 0 }
         map[r.trainerId].revenue += r.amount || 0
