@@ -418,8 +418,11 @@ export default function AnalyticsPage() {
       )
       const totalMonetary = custContracts.reduce((sum, c) => sum + Number(c.totalAmount || 0), 0)
 
-      const custLessonDates = (lessons || [])
-        .filter((l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date))
+      const custLessons = (lessons || []).filter(
+        (l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date)
+      )
+
+      const custLessonDates = custLessons
         .map((l) => {
           const d = l.sessionDate || l.date
           return d.toDate ? d.toDate() : new Date(d)
@@ -431,17 +434,32 @@ export default function AnalyticsPage() {
         ? Math.floor((now.getTime() - lastLessonDate.getTime()) / (1000 * 60 * 60 * 24))
         : 999
 
-      const totalLessonsCount = (lessons || [])
-        .filter((l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date))
-        .reduce((sum, l) => sum + Number(l.sessionAmount || 1), 0)
+      const totalLessonsCount = custLessons.reduce((sum, l) => sum + Number(l.sessionAmount || 1), 0)
 
-      const frequency = (totalLessonsCount / 4).toFixed(1)
+      // Dynamic weekly frequency calculation based on active timeframe span
+      let frequency = 0
+      if (custLessons.length > 0) {
+        if (custLessons.length === 1) {
+          frequency = Number(totalLessonsCount.toFixed(1))
+        } else {
+          const earliestLessonDate = custLessonDates[custLessonDates.length - 1]
+          const latestLessonDate = custLessonDates[0]
+          const daysSpan = Math.max(1, Math.round((latestLessonDate.getTime() - earliestLessonDate.getTime()) / (1000 * 60 * 60 * 24)))
+          
+          if (daysSpan < 4) {
+            frequency = Number(totalLessonsCount.toFixed(1))
+          } else {
+            const weeksSpan = Math.max(1, daysSpan / 7)
+            frequency = Number((totalLessonsCount / weeksSpan).toFixed(1))
+          }
+        }
+      }
 
       return {
         customer: cust,
         recencyDays: recencyDays === 999 ? '未曾上課' : `${recencyDays} 天前`,
         recencyRaw: recencyDays,
-        frequency: Number(frequency),
+        frequency,
         totalLessonsCount,
         monetary: Number(totalMonetary),
       }
