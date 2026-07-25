@@ -10,17 +10,19 @@ import {
   DialogDescription
 } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { RiUserSearchLine, RiDeleteBinLine, RiAlertLine } from '@remixicon/react'
+import { RiUserSearchLine, RiDeleteBinLine, RiAlertLine, RiEditLine } from '@remixicon/react'
 import { useTrainers } from '../../hooks/useTrainers'
 
 export function TrialTable({
   trials,
   onDelete,
   onUpdateStatus,
+  onEdit,
 }: {
   trials: TrialRecord[]
   onDelete: (id: string) => void
   onUpdateStatus: (id: string, newStatus: 'pending' | 'converted' | 'not_converted') => void
+  onEdit?: (record: TrialRecord) => void
 }) {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const { trainers } = useTrainers()
@@ -70,7 +72,7 @@ export function TrialTable({
                 <td className="px-5 py-3.5 text-stone-700 font-medium">
                   {trainers.find((t) => t.id === r.trialTrainerId)?.name || '未指定'}
                 </td>
-                <td className="px-5 py-3.5 text-stone-500">{r.notes}</td>
+                <td className="px-5 py-3.5 text-stone-500 max-w-[200px] truncate">{r.notes}</td>
                 <td className="px-5 py-3.5 text-center">
                   <select
                     className={`text-[10px] font-bold border rounded-lg px-2.5 py-1 cursor-pointer focus:outline-none transition-all ${
@@ -87,16 +89,32 @@ export function TrialTable({
                   </select>
                 </td>
                 <td className="px-5 py-3.5 text-right">
-                  <button
-                    type="button"
-                    className="text-stone-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDeleteId(r.id)
-                    }}
-                  >
-                    <RiDeleteBinLine className="w-4 h-4" />
-                  </button>
+                  <div className="flex justify-end gap-2.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEdit && (
+                      <button
+                        type="button"
+                        className="text-stone-400 hover:text-stone-800 transition-colors"
+                        title="編輯資料"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit(r)
+                        }}
+                      >
+                        <RiEditLine className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="text-stone-400 hover:text-red-500 transition-colors"
+                      title="刪除紀錄"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDeleteId(r.id)
+                      }}
+                    >
+                      <RiDeleteBinLine className="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -107,7 +125,7 @@ export function TrialTable({
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4 border border-red-100">
               <RiAlertLine className="w-6 h-6 text-red-600" />
             </div>
             <DialogTitle className="text-xl font-bold text-stone-900">確認刪除體驗客紀錄？</DialogTitle>

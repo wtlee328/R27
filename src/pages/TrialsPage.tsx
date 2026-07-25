@@ -8,17 +8,34 @@ import { TrialTable } from '../components/trials/TrialTable'
 import { TrialFormModal } from '../components/trials/TrialFormModal'
 import { useTrials } from '../hooks/useTrials'
 import type { TrialRecordFormValues } from '../lib/validators'
+import type { TrialRecord } from '../types'
 import { format } from 'date-fns'
 
 export default function TrialsPage() {
   const { trials, loading, createTrial, deleteTrial, updateTrial } = useTrials()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTrial, setEditingTrial] = useState<TrialRecord | null>(null)
+  
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
     return format(new Date(), 'yyyy/MM')
   })
 
-  const handleCreateTrial = async (data: TrialRecordFormValues) => {
-    await createTrial(data)
+  const handleOpenCreate = () => {
+    setEditingTrial(null)
+    setIsModalOpen(true)
+  }
+
+  const handleOpenEdit = (trial: TrialRecord) => {
+    setEditingTrial(trial)
+    setIsModalOpen(true)
+  }
+
+  const handleSubmitTrial = async (data: TrialRecordFormValues) => {
+    if (editingTrial) {
+      await updateTrial(editingTrial.id, data)
+    } else {
+      await createTrial(data)
+    }
   }
 
   const handleUpdateStatus = async (id: string, outcome: 'pending' | 'converted' | 'not_converted') => {
@@ -67,7 +84,9 @@ export default function TrialsPage() {
           </h1>
           <p className="text-sm text-stone-500 mt-1">追蹤體驗課程與名單轉換率</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">+ 新增體驗客</Button>
+        <Button onClick={handleOpenCreate} className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
+          + 新增體驗客
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -119,6 +138,7 @@ export default function TrialsPage() {
               trials={filteredTrials} 
               onDelete={deleteTrial} 
               onUpdateStatus={handleUpdateStatus}
+              onEdit={handleOpenEdit}
             />
           )}
         </div>
@@ -127,7 +147,8 @@ export default function TrialsPage() {
       <TrialFormModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={handleCreateTrial}
+        onSubmit={handleSubmitTrial}
+        initialData={editingTrial}
       />
     </div>
   )

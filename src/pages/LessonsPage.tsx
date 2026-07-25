@@ -1,11 +1,28 @@
 import { useState, useMemo } from 'react'
-import { CalendarCheck, Activity, Users, Search, ShieldAlert, ChevronDown, ChevronUp, DollarSign, Calendar } from 'lucide-react'
-import { RiCalendarCheckLine, RiMailLine, RiPhoneLine, RiGroupLine, RiUser3Line } from '@remixicon/react'
+import { 
+  RiCalendarCheckLine, 
+  RiMailLine, 
+  RiPhoneLine, 
+  RiGroupLine, 
+  RiUser3Line,
+  RiMoneyDollarCircleLine,
+  RiBookOpenLine,
+  RiSearchLine,
+  RiFilterLine,
+  RiArrowUpDownLine,
+  RiDeleteBinLine,
+  RiArrowRightSLine,
+  RiAlertLine,
+  RiAddLine,
+  RiUserAddLine,
+  RiCalendarLine
+} from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
 import { TrainerOnboardModal } from '../components/lessons/TrainerOnboardModal'
+import { TrainerDetailsModal } from '../components/lessons/TrainerDetailsModal'
 import { useLessonRecords } from '../hooks/useLessonRecords'
 import { useTrainers } from '../hooks/useTrainers'
 import { useCustomers } from '../hooks/useCustomers'
@@ -13,6 +30,7 @@ import type { LessonRecordFormValues, TrainerFormValues } from '../lib/validator
 import type { LessonRecord } from '../types'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { Input } from '../components/ui/input'
 import { 
   Dialog, 
   DialogContent, 
@@ -22,23 +40,21 @@ import {
   DialogDescription
 } from '../components/ui/dialog'
 
-type SortField = 'name' | 'systemLessons' | 'totalUsedLessons'
-type SortOrder = 'asc' | 'desc'
+type SortField = 'systemLessons' | 'totalUsedLessons' | 'name'
 
 export default function LessonsPage() {
   const { records, createRecord, deleteRecord, updateRecord, refresh: refreshRecords } = useLessonRecords()
   const { trainers, loading: loadingTrainers, migrationRunning, addTrainer, deleteTrainer, refresh: refreshTrainers } = useTrainers()
   const { customers, contracts, refresh: refreshCustomers } = useCustomers()
 
-  // Selected trainer state (null = dashboard grid view, string = expanded trainer card)
+  // Selected trainer state for right-side drawer sheet
   const [selectedTrainerId, setSelectedTrainerId] = useState<string | null>(null)
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
   
   // Sorting state
-  const [sortField, setSortField] = useState<SortField>('systemLessons')
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [sortOption, setSortOption] = useState<'remaining-desc' | 'remaining-asc' | 'used-desc' | 'name'>('remaining-desc')
 
   // Lesson Record Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false)
@@ -46,9 +62,6 @@ export default function LessonsPage() {
 
   // Trainer Onboarding state
   const [isTrainerOnboardOpen, setIsTrainerOnboardOpen] = useState(false)
-
-  // Tab state in trainer detailed view ('students' | 'history')
-  const [activeTab, setActiveTab] = useState<'students' | 'history'>('history')
 
   // Selected Month filter state (defaults to current month)
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -58,7 +71,6 @@ export default function LessonsPage() {
   // List of all months that have records
   const monthOptions = useMemo(() => {
     const monthsSet = new Set<string>()
-    // Include current month by default
     const now = new Date()
     const currentMonthStr = format(now, 'yyyy/MM')
     monthsSet.add(currentMonthStr)
@@ -69,7 +81,7 @@ export default function LessonsPage() {
       }
     })
     
-    return Array.from(monthsSet).sort().reverse() // Newest month first
+    return Array.from(monthsSet).sort().reverse()
   }, [records])
   
   // Delete record confirmation state
@@ -78,16 +90,6 @@ export default function LessonsPage() {
   // Delete trainer confirmation state
   const [deleteTrainerId, setDeleteTrainerId] = useState<string | null>(null)
   const [reassignTrainerId, setReassignTrainerId] = useState<string>('')
-
-  // Handle sorting trigger
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
-    } else {
-      setSortField(field)
-      setSortOrder('desc')
-    }
-  }
 
   // Handle manual data refresh
   const handleRefreshAll = async () => {
@@ -101,23 +103,17 @@ export default function LessonsPage() {
   // Dynamic metrics per trainer based on the selectedMonth
   const trainersWithDynamicMetrics = useMemo(() => {
     return trainers.map((t) => {
-      // Find customers assigned to this trainer
       const assignedCustomerIds = customers
         .filter((c) => c.trainerId === t.id)
         .map((c) => c.id)
 
-      // Find active/ongoing contracts for these customers
       const trainerContracts = contracts.filter(
         (c) => assignedCustomerIds.includes(c.customerId) || assignedCustomerIds.includes(c.primaryCustomerId)
       )
       const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
-      // Find lesson records taught by this trainer
-      const taughtLessons = records.filter(
-        (lr) => lr.trainerId === t.id
-      )
+      const taughtLessons = records.filter((lr) => lr.trainerId === t.id)
 
-      // Calculate used lessons for the selected month or all-time
       const filteredLessonsForMonth = selectedMonth === 'all'
         ? taughtLessons
         : taughtLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
@@ -142,30 +138,30 @@ export default function LessonsPage() {
     )
 
     return [...filtered].sort((a, b) => {
-      if (sortField === 'name') {
-        const comparison = a.name.localeCompare(b.name, 'zh-Hant')
-        return sortOrder === 'asc' ? comparison : -comparison
+      if (sortOption === 'name') {
+        return a.name.localeCompare(b.name, 'zh-Hant')
+      } else if (sortOption === 'used-desc') {
+        return (b.totalUsedLessons || 0) - (a.totalUsedLessons || 0)
+      } else if (sortOption === 'remaining-asc') {
+        return (a.systemLessons || 0) - (b.systemLessons || 0)
       } else {
-        const valA = Number(a[sortField] || 0)
-        const valB = Number(b[sortField] || 0)
-        const comparison = valA - valB
-        return sortOrder === 'asc' ? comparison : -comparison
+        // remaining-desc (default)
+        return (b.systemLessons || 0) - (a.systemLessons || 0)
       }
     })
-  }, [trainersWithDynamicMetrics, searchQuery, sortField, sortOrder])
+  }, [trainersWithDynamicMetrics, searchQuery, sortOption])
 
-  // Helper to get contracts for a specific student
-  const getStudentContracts = (studentId: string) => {
-    return contracts.filter(con => 
-      (con.customerIds && con.customerIds.includes(studentId)) || 
-      con.customerId === studentId ||
-      con.primaryCustomerId === studentId ||
-      con.sharedWithCustomerId === studentId
-    )
-  }
+  // Selected trainer object for the right-side sheet drawer
+  const selectedTrainerObj = useMemo(() => {
+    if (!selectedTrainerId) return null
+    return trainersWithDynamicMetrics.find(t => t.id === selectedTrainerId) || null
+  }, [trainersWithDynamicMetrics, selectedTrainerId])
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = (targetTrainerId?: string) => {
     setEditingRecord(null)
+    if (targetTrainerId) {
+      setSelectedTrainerId(targetTrainerId)
+    }
     setIsWizardOpen(true)
   }
 
@@ -209,18 +205,9 @@ export default function LessonsPage() {
     await addTrainer(data)
   }
 
-  const toggleTrainerExpand = (trainerId: string) => {
-    if (selectedTrainerId === trainerId) {
-      setSelectedTrainerId(null)
-    } else {
-      setSelectedTrainerId(trainerId)
-    }
-  }
-
   // Dashboard Stats
-  const totalSystemRemaining = trainers.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
+  const totalSystemRemaining = trainersWithDynamicMetrics.reduce((sum, t) => sum + Number(t.systemLessons || 0), 0)
 
-  // Calculate total system remaining monetary amount across all active/ongoing contracts
   const totalSystemRemainingAmount = contracts.reduce((sum, c) => {
     const remaining = Number(c.remainingSessions || 0)
     if (remaining <= 0) return sum
@@ -228,7 +215,6 @@ export default function LessonsPage() {
     return sum + (remaining * pricePerSession)
   }, 0)
 
-  // Calculate selected month's consumed lessons and revenue amount across all records
   const selectedMonthRecords = selectedMonth === 'all'
     ? records
     : records.filter(r => r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
@@ -268,16 +254,18 @@ export default function LessonsPage() {
         </div>
         <div className="flex gap-2">
           <Button 
-            onClick={() => {
-              setSelectedTrainerId(null)
-              handleOpenCreate()
-            }} 
-            className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl"
+            onClick={() => handleOpenCreate()} 
+            className="font-semibold text-sm px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl flex items-center gap-1.5 shadow-sm"
           >
+            <RiAddLine className="w-4 h-4" />
             新增銷課
           </Button>
-          <Button onClick={() => setIsTrainerOnboardOpen(true)} className="font-semibold text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl">
-            + 新增教練
+          <Button 
+            onClick={() => setIsTrainerOnboardOpen(true)} 
+            className="font-semibold text-sm px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl flex items-center gap-1.5 shadow-sm"
+          >
+            <RiUserAddLine className="w-4 h-4" />
+            新增教練
           </Button>
         </div>
       </div>
@@ -287,13 +275,13 @@ export default function LessonsPage() {
         <StatCard
           title="系統剩餘總堂數"
           value={`${totalSystemRemaining} 堂`}
-          icon={CalendarCheck}
+          icon={RiCalendarCheckLine}
           subtitle="目前合約中所有未消耗的堂數"
         />
         <StatCard
           title="系統剩餘總金額"
           value={`NT$ ${Math.round(totalSystemRemainingAmount).toLocaleString()}`}
-          icon={DollarSign}
+          icon={RiMoneyDollarCircleLine}
           iconColor="text-amber-600"
           iconBg="bg-amber-50"
           subtitle="合約中未上課堂數之剩餘價值加總"
@@ -301,24 +289,35 @@ export default function LessonsPage() {
         <StatCard
           title={selectedMonth === 'all' ? '累計已銷總堂數' : '當月已銷總堂數'}
           value={`${selectedMonthConsumed} 堂`}
-          icon={Activity}
+          icon={RiBookOpenLine}
           subtitle={selectedMonth === 'all' ? '歷史累計上課堂數' : '當月累計上課堂數'}
         />
         <StatCard
           title={selectedMonth === 'all' ? '累計已銷總金額' : '當月已銷總金額'}
           value={`NT$ ${Math.round(selectedMonthRevenue).toLocaleString()}`}
-          icon={DollarSign}
+          icon={RiMoneyDollarCircleLine}
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
           subtitle={selectedMonth === 'all' ? '歷史累計上課金額加總' : '當月銷課金額加總'}
         />
       </div>
 
-      {/* TRAINERS SECTION WITH MONTH FILTER & ACCORDIONS */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-100 pb-5">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-stone-500 select-none">選擇月份</span>
+      {/* MAIN TRAINERS LIST CONTAINER */}
+      <div className="flex flex-col">
+        {/* Search & Sort & Filter Header */}
+        <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white rounded-t-2xl border-b border-stone-100">
+          <div className="relative w-full md:max-w-xs">
+            <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+            <Input 
+              placeholder="搜尋教練姓名、Email 或電話..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 h-11 bg-stone-50 border-none rounded-xl focus:ring-2 focus:ring-stone-200 transition-all text-sm font-medium"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+            {/* Selected Month Filter */}
             <FilterDropdown
               value={selectedMonth}
               onChange={setSelectedMonth}
@@ -329,388 +328,144 @@ export default function LessonsPage() {
                   label: `${m.replace('/', ' 年 ')} 月`,
                 })),
               ]}
-              icon={Calendar}
-              label="選擇月份"
+              icon={RiCalendarLine}
+              label="月份篩選"
             />
-          </div>
 
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              placeholder="搜尋教練名稱、Email 或電話..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500"
+            {/* Sort Dropdown */}
+            <FilterDropdown
+              value={sortOption}
+              onChange={(val) => setSortOption(val as any)}
+              options={[
+                { value: 'remaining-desc', label: '剩餘堂數 (多 → 少)' },
+                { value: 'remaining-asc', label: '剩餘堂數 (少 → 多)' },
+                { value: 'used-desc', label: '已銷堂數 (多 → 少)' },
+                { value: 'name', label: '教練姓名' },
+              ]}
+              icon={RiArrowUpDownLine}
+              label="排序方式"
             />
+
+            <div className="hidden sm:block w-px h-4 bg-stone-200" />
+            <span className="text-xs text-stone-400 font-black uppercase tracking-wider whitespace-nowrap">
+              Total: {filteredAndSortedTrainers.length} 位教練
+            </span>
           </div>
         </div>
 
-        {/* Sorting Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-4 bg-stone-50 p-4 rounded-xl border border-stone-100/80 text-xs text-stone-500 select-none">
-          <div className="flex items-center gap-2">
-            <span>排序依據:</span>
-            <button
-              onClick={() => handleSort('name')}
-              className={cn(
-                "px-2.5 py-1 rounded-md font-semibold hover:bg-stone-200 hover:text-stone-900 transition-colors flex items-center gap-1",
-                sortField === 'name' ? "bg-white text-stone-900 shadow-sm border border-stone-200 font-bold" : "bg-transparent"
-              )}
-            >
-              教練姓名 {sortField === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSort('systemLessons')}
-              className={cn(
-                "px-2.5 py-1 rounded-md font-semibold hover:bg-stone-200 hover:text-stone-900 transition-colors flex items-center gap-1",
-                sortField === 'systemLessons' ? "bg-white text-stone-900 shadow-sm border border-stone-200 font-bold" : "bg-transparent"
-              )}
-            >
-              剩餘堂數 {sortField === 'systemLessons' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            <button
-              onClick={() => handleSort('totalUsedLessons')}
-              className={cn(
-                "px-2.5 py-1 rounded-md font-semibold hover:bg-stone-200 hover:text-stone-900 transition-colors flex items-center gap-1",
-                sortField === 'totalUsedLessons' ? "bg-white text-stone-900 shadow-sm border border-stone-200 font-bold" : "bg-transparent"
-              )}
-            >
-              已銷堂數 {sortField === 'totalUsedLessons' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-          </div>
-          <div>
-            <span>共 {filteredAndSortedTrainers.length} 位教練</span>
-          </div>
-        </div>
+        {/* Modern List View */}
+        <div className="bg-white rounded-b-2xl overflow-hidden shadow-xs border border-t-0 border-stone-200/80">
+          {filteredAndSortedTrainers.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-stone-400 font-medium italic">找不到符合條件的教練</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-50">
+              {filteredAndSortedTrainers.map((t) => {
+                const assignedStudentCount = customers.filter(c => c.trainerId === t.id).length
 
-        {/* Trainer Accordion List */}
-        <div className="space-y-4">
-          {filteredAndSortedTrainers.map((t) => {
-            const isExpanded = selectedTrainerId === t.id
-            
-            // Get student list for this trainer
-            const trainerStudentIds = customers
-              .filter(c => c.trainerId === t.id)
-              .map(c => c.id)
+                return (
+                  <div 
+                    key={t.id}
+                    onClick={() => setSelectedTrainerId(t.id)}
+                    className="group flex flex-col lg:flex-row lg:items-center justify-between p-6 lg:px-8 hover:bg-stone-50/80 transition-all cursor-pointer relative"
+                  >
+                    {/* Active Indicator Strip on Hover */}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-stone-900 opacity-0 group-hover:opacity-100 transition-opacity" />
 
-            // Find lesson records belonging to this trainer (the trainer who actually taught/provided the class)
-            const trainerLessons = records.filter(lr => 
-              lr.trainerId === t.id
-            )
-
-            // Filter by selected month
-            const filteredLessons = selectedMonth === 'all'
-              ? trainerLessons
-              : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
-
-            // If query is present, filter inside the expanded history list too
-            const query = searchQuery.trim().toLowerCase()
-            const searchFilteredLessons = query 
-              ? filteredLessons.filter(r => 
-                  r.customerName.toLowerCase().includes(query) ||
-                  (r.attendingCustomerNames && r.attendingCustomerNames.some(name => name.toLowerCase().includes(query)))
-                )
-              : filteredLessons
-
-            return (
-              <div 
-                key={t.id} 
-                className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden transition-all duration-300"
-              >
-                {/* Accordion Header */}
-                <div 
-                  onClick={() => toggleTrainerExpand(t.id)}
-                  className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 cursor-pointer hover:bg-stone-50/50 transition-colors select-none"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center font-black text-lg shadow-sm">
-                      {t.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-stone-900">{t.name}</h3>
-                      <p className="text-xs text-stone-400 mt-1 flex items-center gap-2.5">
-                        <span className="flex items-center gap-1"><RiMailLine className="w-3 h-3" />{t.email}</span>
-                        <span className="text-stone-200">|</span>
-                        <span className="flex items-center gap-1"><RiPhoneLine className="w-3 h-3" />{t.phone}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2.5 self-stretch sm:self-auto justify-end">
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200">
-                      {selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數'}: {t.totalUsedLessons} 堂
-                    </span>
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                      累計剩餘堂數: {t.systemLessons} 堂
-                    </span>
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs font-bold text-stone-600 transition-colors ml-1">
-                      {isExpanded ? (
-                        <>
-                          <span>收合明細</span>
-                          <ChevronUp className="w-3.5 h-3.5" />
-                        </>
-                      ) : (
-                        <>
-                          <span>展開明細</span>
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Accordion Body (Expanded Panel) */}
-                {isExpanded && (
-                  <div className="border-t border-stone-100 bg-stone-50/40 p-6 space-y-6">
-                    {/* Inner Tabs & Actions */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/80 pb-3">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('history')}
-                          className={cn(
-                            "px-4 py-2 font-bold text-xs rounded-xl border transition-all",
-                            activeTab === 'history'
-                              ? "bg-stone-900 text-white border-stone-900 shadow-sm"
-                              : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                    {/* Trainer Profile Section */}
+                    <div className="flex items-center gap-5">
+                      <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-700 text-xl font-black group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
+                        {t.name.charAt(0)}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <h3 className="font-bold text-stone-900 text-base group-hover:text-stone-950 transition-colors">
+                            {t.name}
+                          </h3>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
+                          {t.email && (
+                            <span className="flex items-center gap-1.5">
+                              <RiMailLine className="w-3.5 h-3.5" /> {t.email}
+                            </span>
                           )}
-                        >
-                          銷課明細 ({searchFilteredLessons.length})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('students')}
-                          className={cn(
-                            "px-4 py-2 font-bold text-xs rounded-xl border transition-all",
-                            activeTab === 'students'
-                              ? "bg-stone-900 text-white border-stone-900 shadow-sm"
-                              : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50"
+                          {t.phone && (
+                            <span className="flex items-center gap-1.5 font-mono">
+                              <RiPhoneLine className="w-3.5 h-3.5" /> {t.phone}
+                            </span>
                           )}
-                        >
-                          專屬學員 & 剩餘課堂 ({trainerStudentIds.length})
-                        </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trainer Stats Section */}
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 sm:gap-10 mt-4 lg:mt-0">
+                      {/* Total Used Lessons */}
+                      <div className="space-y-1 min-w-[100px]">
+                        <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">
+                          {selectedMonth === 'all' ? '累計已銷' : '本月已銷'}
+                        </p>
+                        <p className="text-xs font-bold text-stone-700 tabular-nums">
+                          {t.totalUsedLessons || 0} 堂
+                        </p>
                       </div>
 
-                      <div className="flex gap-2 self-end sm:self-auto">
-                        <Button 
-                          variant="destructive"
+                      {/* System Remaining Lessons */}
+                      <div className="space-y-1 min-w-[100px]">
+                        <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">系統剩餘堂數</p>
+                        <p className="text-xs font-bold text-stone-900 tabular-nums">
+                          {t.systemLessons || 0} 堂
+                        </p>
+                      </div>
+
+                      {/* Dedicated Students */}
+                      <div className="space-y-1 min-w-[90px]">
+                        <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">專屬學員</p>
+                        <p className="text-xs font-bold text-stone-700 tabular-nums">
+                          {assignedStudentCount} 人
+                        </p>
+                      </div>
+
+                      {/* Action & Navigation */}
+                      <div className="flex items-center gap-2 pl-2">
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation()
                             setDeleteTrainerId(t.id)
                           }}
-                          className="px-3.5 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl"
+                          className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 cursor-pointer opacity-0 group-hover:opacity-100"
+                          title="刪除教練"
                         >
-                          刪除教練
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            setSelectedTrainerId(t.id)
-                            handleOpenCreate()
-                          }} 
-                          className="px-3.5 py-1.5 text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-xl"
-                        >
-                          + 新增銷課紀錄
-                        </Button>
+                          <RiDeleteBinLine className="w-4 h-4" />
+                        </button>
+                        <RiArrowRightSLine className="w-5 h-5 text-stone-300 group-hover:text-stone-800 transition-colors" />
                       </div>
                     </div>
-
-                    {/* Tab Panels */}
-                    {activeTab === 'history' ? (
-                      /* History Table view matching design layout */
-                      <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                        <table className="w-full text-sm text-left">
-                          <thead className="bg-stone-50 text-stone-500 border-b border-stone-200 select-none">
-                            <tr>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">日期</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">學生</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">合約</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">授課教練</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider text-center">堂數</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider text-right">金額</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">備註</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider text-right">操作</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-stone-100">
-                            {searchFilteredLessons.map((r) => {
-                              const contract = contracts.find(c => c.id === r.contractId)
-                              const fee = contract ? r.sessionAmount * contract.pricePerSession : 0
-                              return (
-                                <tr key={r.id} className="hover:bg-brand-50/10 transition-colors duration-150 group">
-                                  <td className="px-5 py-3.5 text-stone-500 tabular-nums">
-                                    {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy-MM-dd') : '-'}
-                                  </td>
-                                  <td className="px-5 py-3.5 font-bold text-stone-900">
-                                    {r.attendingCustomerNames && r.attendingCustomerNames.length > 0
-                                      ? r.attendingCustomerNames.join(' & ')
-                                      : r.customerName}
-                                  </td>
-                                  <td className="px-5 py-3.5">
-                                    {contract ? (
-                                      <span className={cn(
-                                        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold",
-                                        contract.contractType === 'dual' 
-                                          ? "bg-orange-50 text-orange-700 border border-orange-100" 
-                                          : "bg-blue-50 text-blue-700 border border-blue-100"
-                                      )}>
-                                        {contract.contractType === 'dual' ? '👥 雙人' : '👤 單人'}
-                                      </span>
-                                    ) : (
-                                      <span className="text-stone-400 text-xs">-</span>
-                                    )}
-                                  </td>
-                                  <td className="px-5 py-3.5">
-                                    {(() => {
-                                      const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
-                                      const contractTrainerId = contract?.trainerId
-                                      const secondaryTrainerId = contract?.secondaryTrainerId
-                                      const isContractTrainer = contract && (
-                                        contractTrainerId === r.trainerId ||
-                                        secondaryTrainerId === r.trainerId
-                                      )
-                                      const isSubstitute = contract && !isContractTrainer
-                                      return (
-                                        <div className="flex flex-col">
-                                          <span className="font-bold text-stone-700">{teachingTrainerName}</span>
-                                          {isSubstitute && (
-                                            <span className="text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.2 w-fit mt-0.5">
-                                              代課
-                                            </span>
-                                          )}
-                                        </div>
-                                      )
-                                    })()}
-                                  </td>
-                                  <td className="px-5 py-3.5 text-center">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-black bg-stone-100 text-stone-700 border border-stone-200/60 tabular-nums">
-                                      {r.sessionAmount} 堂
-                                    </span>
-                                  </td>
-                                  <td className="px-5 py-3.5 text-right font-bold text-stone-900 tabular-nums">
-                                    {contract ? `NT$ ${(fee).toLocaleString()}` : '-'}
-                                  </td>
-                                  <td className="px-5 py-3.5 text-stone-500 max-w-[150px] truncate">{r.notes || '-'}</td>
-                                  <td className="px-5 py-3.5 text-right">
-                                    <div className="flex justify-end gap-3.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                                      <button
-                                        type="button"
-                                        className="text-brand-500 hover:text-brand-600 text-xs font-bold transition-colors"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          handleOpenEdit(r)
-                                        }}
-                                      >
-                                        編輯
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="text-red-500 hover:text-red-600 text-xs font-bold transition-colors"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          setDeleteId(r.id)
-                                        }}
-                                      >
-                                        刪除
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                            {searchFilteredLessons.length === 0 && (
-                              <tr>
-                                <td colSpan={7} className="py-16 text-center text-stone-400 font-medium">
-                                  <p>此月份無銷課紀錄</p>
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      /* Trainee list directory */
-                      <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                        <table className="w-full text-sm text-left">
-                          <thead className="bg-stone-50 text-stone-500 border-b border-stone-200 select-none">
-                            <tr>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">學員姓名</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">聯絡電話</th>
-                              <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-wider">進行中合約與剩餘堂數</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-stone-100">
-                            {customers
-                              .filter(s => s.trainerId === t.id)
-                              .map((s) => {
-                                const studentContracts = getStudentContracts(s.id)
-                                return (
-                                  <tr key={s.id} className="hover:bg-brand-50/10 transition-colors duration-150">
-                                    <td className="px-5 py-4.5 font-bold text-stone-900 flex items-center gap-2.5">
-                                      <div className="w-7 h-7 rounded-full bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center font-bold text-xs">
-                                        {s.name.charAt(0)}
-                                      </div>
-                                      {s.name}
-                                    </td>
-                                    <td className="px-5 py-4.5 text-stone-600 font-mono text-xs">
-                                      {s.phone}
-                                    </td>
-                                    <td className="px-5 py-4.5 space-y-2">
-                                      {studentContracts.length === 0 ? (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-stone-100 text-stone-500">
-                                          暫無合約
-                                        </span>
-                                      ) : (
-                                        studentContracts.map((c) => {
-                                          const percent = c.totalSessions ? Math.round((c.remainingSessions / c.totalSessions) * 100) : 0
-                                          return (
-                                            <div key={c.id} className="bg-stone-50 border border-stone-200/50 rounded-xl p-3 space-y-1.5 max-w-sm">
-                                              <div className="flex justify-between items-center text-[10px]">
-                                                <span className={cn(
-                                                  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded font-bold uppercase",
-                                                  c.contractType === 'dual' 
-                                                    ? "bg-orange-100 text-orange-700" 
-                                                    : "bg-blue-100 text-blue-700"
-                                                )}>
-                                                  {c.contractType === 'dual' ? <><RiGroupLine className="w-3 h-3" />雙人</> : <><RiUser3Line className="w-3 h-3" />單人</>}
-                                                </span>
-                                                <span className="font-extrabold text-stone-700">
-                                                  剩餘 {c.remainingSessions} / {c.totalSessions} 堂
-                                                </span>
-                                              </div>
-                                              <div className="w-full bg-stone-200 rounded-full h-1">
-                                                <div 
-                                                  className={cn(
-                                                    "h-1 rounded-full transition-all",
-                                                    percent <= 20 ? "bg-red-500" : percent <= 50 ? "bg-amber-500" : "bg-brand-600"
-                                                  )}
-                                                  style={{ width: `${percent}%` }}
-                                                />
-                                              </div>
-                                            </div>
-                                          )
-                                        })
-                                      )}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
                   </div>
-                )}
-              </div>
-            )
-          })}
+                )
+              })}
+            </div>
+          )}
         </div>
-
-        {filteredAndSortedTrainers.length === 0 && (
-          <div className="py-12 text-center text-stone-400 font-medium text-sm">
-            無匹配的教練資料
-          </div>
-        )}
       </div>
+
+      {/* RIGHT-SIDE DRAWER SHEET (Trainer Details) */}
+      <TrainerDetailsModal
+        open={!!selectedTrainerId}
+        onOpenChange={(open) => !open && setSelectedTrainerId(null)}
+        trainer={selectedTrainerObj}
+        records={records}
+        customers={customers}
+        contracts={contracts}
+        trainers={trainers}
+        selectedMonth={selectedMonth}
+        onDeleteTrainer={(trainerId) => setDeleteTrainerId(trainerId)}
+        onCreateLesson={(trainerId) => handleOpenCreate(trainerId)}
+        onEditLesson={(record) => handleOpenEdit(record)}
+        onDeleteLesson={(recordId) => setDeleteId(recordId)}
+      />
 
       {/* MODALS & WIZARDS */}
       <LessonRecordWizard
@@ -727,11 +482,12 @@ export default function LessonsPage() {
         onSubmit={handleTrainerOnboardSubmit}
       />
 
+      {/* Delete Lesson Record Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-              <ShieldAlert className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4 border border-red-100">
+              <RiAlertLine className="w-6 h-6 text-red-600" />
             </div>
             <DialogTitle className="text-lg font-bold text-stone-900">確認刪除銷課紀錄？</DialogTitle>
             <DialogDescription className="text-stone-500 mt-2 text-xs">
@@ -739,16 +495,17 @@ export default function LessonsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-6 flex gap-3">
-            <Button variant="outline" onClick={() => setDeleteId(null)} className="flex-1 font-semibold">
+            <Button variant="outline" onClick={() => setDeleteId(null)} className="flex-1 font-semibold rounded-xl text-xs">
               取消
             </Button>
-            <Button variant="destructive" onClick={handleDeleteRecord} className="flex-1 font-semibold">
+            <Button variant="destructive" onClick={handleDeleteRecord} className="flex-1 font-semibold rounded-xl text-xs bg-red-600 hover:bg-red-700">
               確認刪除
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Delete Trainer Confirmation Dialog */}
       <Dialog open={!!deleteTrainerId} onOpenChange={(open) => {
         if (!open) {
           setDeleteTrainerId(null)
@@ -758,7 +515,7 @@ export default function LessonsPage() {
         <DialogContent className="max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-stone-200">
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-3 border border-red-100">
-              <ShieldAlert className="w-6 h-6 text-red-600" />
+              <RiAlertLine className="w-6 h-6 text-red-600" />
             </div>
             <DialogTitle className="text-lg font-bold text-stone-900">
               確認刪除教練「{trainers.find(t => t.id === deleteTrainerId)?.name || ''}」？
