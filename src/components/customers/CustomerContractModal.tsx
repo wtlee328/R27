@@ -4,7 +4,8 @@ import {
   Dialog,
   DialogContent,
 } from '../ui/dialog'
-import { format } from 'date-fns'
+import { cn, formatMinguoDate } from '@/lib/utils'
+import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
 import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
@@ -496,17 +497,17 @@ export function CustomerContractModal({
                       <span>身分證字號：</span>
                       <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{customer.idNumber || '──────'}</span>
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-3">
                       <span>生日：</span>
                       {isEditing ? (
-                        <input 
-                          type="date" 
-                          value={editBirthDate} 
-                          onChange={e => setEditBirthDate(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 font-mono text-[11px] w-28 focus:outline-none focus:bg-white focus:border-brand-500"
+                        <MinguoDatePickerInput
+                          value={editBirthDate ? new Date(editBirthDate) : null}
+                          onChange={(d) => setEditBirthDate(d ? d.toISOString().split('T')[0] : '')}
                         />
                       ) : (
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editBirthDate || '──────'}</span>
+                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
+                          {customer.dateOfBirth ? formatMinguoDate(customer.dateOfBirth) : (editBirthDate ? formatMinguoDate(editBirthDate) : '──────')}
+                        </span>
                       )}
                     </div>
 
@@ -576,17 +577,17 @@ export function CustomerContractModal({
                         <span>身分證字號：</span>
                         <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partner.idNumber || '──────'}</span>
                       </div>
-                      <div className="col-span-2">
+                      <div className="col-span-3">
                         <span>生日：</span>
                         {isEditing ? (
-                          <input 
-                            type="date" 
-                            value={editPartnerBirthDate} 
-                            onChange={e => setEditPartnerBirthDate(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 font-mono text-[11px] w-28 focus:outline-none"
+                          <MinguoDatePickerInput
+                            value={editPartnerBirthDate ? new Date(editPartnerBirthDate) : null}
+                            onChange={(d) => setEditPartnerBirthDate(d ? d.toISOString().split('T')[0] : '')}
                           />
                         ) : (
-                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{editPartnerBirthDate || '──────'}</span>
+                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
+                            {partner?.dateOfBirth ? formatMinguoDate(partner.dateOfBirth) : (editPartnerBirthDate ? formatMinguoDate(editPartnerBirthDate) : '──────')}
+                          </span>
                         )}
                       </div>
 
