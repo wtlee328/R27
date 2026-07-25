@@ -18,6 +18,29 @@ export function formatDate(ts: Timestamp | null | undefined, fmt = 'yyyy/MM/dd')
   return format(ts.toDate(), fmt, { locale: zhTW })
 }
 
+export function formatMinguoDate(val: Timestamp | Date | string | null | undefined, formatStyle: 'full' | 'slash' = 'full'): string {
+  if (!val) return '未提供'
+  let d: Date
+  if (val && typeof (val as any).toDate === 'function') {
+    d = (val as Timestamp).toDate()
+  } else if (val instanceof Date) {
+    d = val
+  } else if (typeof val === 'string') {
+    d = new Date(val)
+  } else {
+    return '未提供'
+  }
+  if (isNaN(d.getTime())) return '未提供'
+  const rocYear = d.getFullYear() - 1911
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+
+  if (formatStyle === 'slash') {
+    return `民國 ${rocYear}/${month}/${day}`
+  }
+  return `民國 ${rocYear} 年 ${month} 月 ${day} 日`
+}
+
 export function formatMonth(ts: Timestamp): string {
   return format(ts.toDate(), 'yyyy年M月', { locale: zhTW })
 }
