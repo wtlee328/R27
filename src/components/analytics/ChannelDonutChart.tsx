@@ -5,22 +5,24 @@ interface ChannelDonutChartProps {
   totalCust: number
 }
 
-const CHANNEL_CONFIG: Record<string, { color: string; badgeBg: string; textColor: string }> = {
-  Instagram: { color: '#E1306C', badgeBg: 'bg-rose-50 border-rose-200/80', textColor: 'text-rose-600' },
-  Facebook: { color: '#1877F2', badgeBg: 'bg-blue-50 border-blue-200/80', textColor: 'text-blue-600' },
-  'Google 搜尋': { color: '#EA4335', badgeBg: 'bg-red-50 border-red-200/80', textColor: 'text-red-600' },
-  '親友/會員介紹': { color: '#F59E0B', badgeBg: 'bg-amber-50 border-amber-200/80', textColor: 'text-amber-600' },
-  '路過/現場親洽': { color: '#10B981', badgeBg: 'bg-emerald-50 border-emerald-200/80', textColor: 'text-emerald-600' },
-  舊客戶: { color: '#8B5CF6', badgeBg: 'bg-purple-50 border-purple-200/80', textColor: 'text-purple-600' },
-  其他管道: { color: '#64748B', badgeBg: 'bg-slate-50 border-slate-200/80', textColor: 'text-slate-600' },
+// 柔和莫蘭迪配色 (Morandi Palette)
+const CHANNEL_CONFIG: Record<string, { color: string; hoverColor: string }> = {
+  Instagram: { color: '#D88A9A', hoverColor: '#C47787' },
+  Facebook: { color: '#7B92AB', hoverColor: '#677E97' },
+  'Google 搜尋': { color: '#D98A7D', hoverColor: '#C57669' },
+  '親友/會員介紹': { color: '#E2AF6D', hoverColor: '#CE9B59' },
+  '路過/現場親洽': { color: '#88A995', hoverColor: '#749581' },
+  舊客戶: { color: '#A293B8', hoverColor: '#8E7FA4' },
+  其他管道: { color: '#949E9E', hoverColor: '#808A8A' },
 }
 
-const DEFAULT_CONFIG = { color: '#94A3B8', badgeBg: 'bg-stone-50 border-stone-200', textColor: 'text-stone-600' }
+const DEFAULT_CONFIG = { color: '#A8B2B2', hoverColor: '#949E9E' }
 
 export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChartProps) {
   const [hoveredChannel, setHoveredChannel] = useState<string | null>(null)
 
-  const entries = Object.entries(channelCount).filter(([_, count]) => count > 0)
+  // 僅顯示人數大於 0 的項目 (Hide 0-count items)
+  const activeEntries = Object.entries(channelCount).filter(([_, count]) => count > 0)
   const validTotal = totalCust > 0 ? totalCust : 1
 
   // Donut SVG parameters
@@ -44,7 +46,7 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
     <div className="flex flex-col md:flex-row items-center gap-6 pt-2 pb-1">
       {/* Donut Chart SVG */}
       <div className="relative shrink-0 flex items-center justify-center">
-        <svg width={size} height={size} className="transform -rotate-90 drop-shadow-xs">
+        <svg width={size} height={size} className="transform -rotate-90">
           {/* Base Track */}
           <circle
             cx={size / 2}
@@ -55,7 +57,7 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
             fill="transparent"
           />
 
-          {entries.length === 0 ? (
+          {activeEntries.length === 0 ? (
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -65,7 +67,7 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
               fill="transparent"
             />
           ) : (
-            entries.map(([channel, count]) => {
+            activeEntries.map(([channel, count]) => {
               const pct = count / validTotal
               const dash = pct * circumference
               const gap = circumference - dash
@@ -109,10 +111,10 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
                 {activeChannelData.count} <span className="text-xs font-normal text-stone-500">人</span>
               </span>
               <span
-                className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full mt-0.5"
-                style={{ backgroundColor: `${activeChannelData.color}15`, color: activeChannelData.color }}
+                className="text-[11px] font-bold font-mono mt-0.5"
+                style={{ color: activeChannelData.color }}
               >
-                {activeChannelData.pct}%
+                ({activeChannelData.pct}%)
               </span>
             </>
           ) : (
@@ -127,52 +129,52 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
         </div>
       </div>
 
-      {/* Legend & Breakdown Grid */}
-      <div className="flex-1 w-full space-y-2.5">
-        {Object.entries(channelCount).map(([channel, count]) => {
-          const pctNumber = (count / validTotal) * 100
-          const pctStr = pctNumber.toFixed(1)
-          const config = CHANNEL_CONFIG[channel] || DEFAULT_CONFIG
-          const isHovered = hoveredChannel === channel
+      {/* Legend & Breakdown Grid - 無外框 clean 風格 */}
+      <div className="flex-1 w-full space-y-2">
+        {activeEntries.length === 0 ? (
+          <p className="text-xs text-stone-400 italic text-center py-4">目前尚無來客渠道數據</p>
+        ) : (
+          activeEntries.map(([channel, count]) => {
+            const pctNumber = (count / validTotal) * 100
+            const pctStr = pctNumber.toFixed(1)
+            const config = CHANNEL_CONFIG[channel] || DEFAULT_CONFIG
+            const isHovered = hoveredChannel === channel
 
-          return (
-            <div
-              key={channel}
-              className={`p-2 rounded-xl transition-all border cursor-pointer ${
-                isHovered
-                  ? 'bg-stone-50 border-stone-300 shadow-2xs scale-[1.01]'
-                  : 'bg-white border-stone-100 hover:bg-stone-50/60'
-              }`}
-              onMouseEnter={() => setHoveredChannel(channel)}
-              onMouseLeave={() => setHoveredChannel(null)}
-            >
-              <div className="flex items-center justify-between text-xs mb-1">
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
-                    style={{ backgroundColor: config.color }}
+            return (
+              <div
+                key={channel}
+                className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
+                  isHovered ? 'bg-stone-100/80' : 'hover:bg-stone-50'
+                }`}
+                onMouseEnter={() => setHoveredChannel(channel)}
+                onMouseLeave={() => setHoveredChannel(null)}
+              >
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: config.color }}
+                    />
+                    <span className="font-bold text-stone-800">{channel}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="font-bold text-stone-950">{count} 人</span>
+                    <span className="text-stone-500 font-normal">({pctStr}%)</span>
+                  </div>
+                </div>
+                <div className="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pctNumber}%`,
+                      backgroundColor: config.color,
+                    }}
                   />
-                  <span className="font-bold text-stone-800">{channel}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono font-bold text-stone-950">{count} 人</span>
-                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border ${config.badgeBg} ${config.textColor}`}>
-                    {pctStr}%
-                  </span>
                 </div>
               </div>
-              <div className="w-full bg-stone-100 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${pctNumber}%`,
-                    backgroundColor: config.color,
-                  }}
-                />
-              </div>
-            </div>
-          )
-        })}
+            )
+          })
+        )}
       </div>
     </div>
   )
