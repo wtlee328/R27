@@ -94,8 +94,9 @@ export default function AnalyticsPage() {
   // --- Filtered datasets ---
   const filteredTrials = useMemo(() => {
     return (trials || []).filter((t) => {
-      if (!t.createdAt) return true
-      const d = (t.createdAt as any).toDate ? (t.createdAt as any).toDate() : new Date(t.createdAt as any)
+      const dateVal = t.date || t.createdAt
+      if (!dateVal) return true
+      const d = (dateVal as any).toDate ? (dateVal as any).toDate() : new Date(dateVal as any)
       const matchesYear = d.getFullYear() === selectedYear
       const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
       return matchesYear && matchesMonth
@@ -104,8 +105,9 @@ export default function AnalyticsPage() {
 
   const filteredContracts = useMemo(() => {
     return (contracts || []).filter((c) => {
-      if (!c.startDate) return true
-      const d = (c.startDate as any).toDate ? (c.startDate as any).toDate() : new Date(c.startDate as any)
+      const dateVal = c.startDate || c.createdAt
+      if (!dateVal) return true
+      const d = (dateVal as any).toDate ? (dateVal as any).toDate() : new Date(dateVal as any)
       const matchesYear = d.getFullYear() === selectedYear
       const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
       return matchesYear && matchesMonth
@@ -141,13 +143,14 @@ export default function AnalyticsPage() {
 
     const trainerTrialMap: Record<string, { total: number; converted: number }> = {}
     ;(filteredTrials || []).forEach((t) => {
-      if (!t.trainerId) return
-      if (!trainerTrialMap[t.trainerId]) {
-        trainerTrialMap[t.trainerId] = { total: 0, converted: 0 }
+      const trainerId = t.trialTrainerId || t.trainerId
+      if (!trainerId) return
+      if (!trainerTrialMap[trainerId]) {
+        trainerTrialMap[trainerId] = { total: 0, converted: 0 }
       }
-      trainerTrialMap[t.trainerId].total += 1
+      trainerTrialMap[trainerId].total += 1
       if (t.outcome === 'converted') {
-        trainerTrialMap[t.trainerId].converted += 1
+        trainerTrialMap[trainerId].converted += 1
       }
     })
 
@@ -169,18 +172,14 @@ export default function AnalyticsPage() {
     const expiredStudentSet = new Set<string>()
     const renewedStudentSet = new Set<string>()
 
-    // 1. Collect all students whose contracts expired/completed in the selected timeframe
+    // 1. Collect all students whose contracts expired/completed/ended in the selected timeframe
     ;(contracts || []).forEach((c) => {
-      const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
+      const isEnded = c.status === 'completed' || c.status === 'expired' || Number(c.remainingSessions || 0) === 0 || c.status === 'expiring'
 
       let isTimeframeMatch = false
-      if (c.endDate) {
-        const d = c.endDate.toDate ? c.endDate.toDate() : new Date(c.endDate)
-        const matchesYear = d.getFullYear() === selectedYear
-        const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
-        isTimeframeMatch = matchesYear && matchesMonth
-      } else if (c.updatedAt) {
-        const d = c.updatedAt.toDate ? c.updatedAt.toDate() : new Date(c.updatedAt)
+      const dateVal = c.endDate || c.createdAt || c.startDate || c.updatedAt
+      if (dateVal) {
+        const d = (dateVal as any).toDate ? (dateVal as any).toDate() : new Date(dateVal as any)
         const matchesYear = d.getFullYear() === selectedYear
         const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
         isTimeframeMatch = matchesYear && matchesMonth
@@ -194,10 +193,10 @@ export default function AnalyticsPage() {
       }
     })
 
-    // Fallback if test dataset has no exact timeframe matches
+    // Fallback if no exact timeframe matches
     if (expiredStudentSet.size === 0) {
       ;(contracts || []).forEach((c) => {
-        const isEnded = c.status === 'completed' || c.status === 'expired' || c.remainingSessions === 0
+        const isEnded = c.status === 'completed' || c.status === 'expired' || Number(c.remainingSessions || 0) === 0 || c.status === 'expiring'
         if (isEnded) {
           const sIds = [c.customerId, c.primaryCustomerId, c.sharedWithCustomerId, ...(c.customerIds || [])].filter(Boolean) as string[]
           sIds.forEach((id) => expiredStudentSet.add(id))
