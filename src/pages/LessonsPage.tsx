@@ -303,58 +303,59 @@ export default function LessonsPage() {
       </div>
 
       {/* MAIN TRAINERS LIST CONTAINER */}
-      <div className="flex flex-col">
-        {/* Search & Sort & Filter Header */}
-        <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white rounded-t-2xl border-b border-stone-100">
-          <div className="relative w-full md:max-w-xs">
-            <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <Input 
-              placeholder="搜尋教練姓名、Email 或電話..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 h-11 bg-stone-50 border-none rounded-xl focus:ring-2 focus:ring-stone-200 transition-all text-sm font-medium"
-            />
+      <div className="bg-white p-2 rounded-[2.5rem] border border-stone-200 shadow-sm">
+        <div className="flex flex-col">
+          {/* Search & Sort & Filter Header */}
+          <div className="px-8 py-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white rounded-t-2xl border-b border-stone-100">
+            <div className="relative w-full md:max-w-xs">
+              <RiSearchLine className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <Input 
+                placeholder="搜尋教練姓名、Email 或電話..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 h-11 bg-stone-50 border-none rounded-xl focus:ring-2 focus:ring-stone-200 transition-all text-sm font-medium"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+              {/* Selected Month Filter */}
+              <FilterDropdown
+                value={selectedMonth}
+                onChange={setSelectedMonth}
+                options={[
+                  { value: 'all', label: '全部月份' },
+                  ...monthOptions.map((m) => ({
+                    value: m,
+                    label: `${m.replace('/', ' 年 ')} 月`,
+                  })),
+                ]}
+                icon={RiCalendarLine}
+                label="月份篩選"
+              />
+
+              {/* Sort Dropdown */}
+              <FilterDropdown
+                value={sortOption}
+                onChange={(val) => setSortOption(val as any)}
+                options={[
+                  { value: 'remaining-desc', label: '剩餘堂數 (多 → 少)' },
+                  { value: 'remaining-asc', label: '剩餘堂數 (少 → 多)' },
+                  { value: 'used-desc', label: '已銷堂數 (多 → 少)' },
+                  { value: 'name', label: '教練姓名' },
+                ]}
+                icon={RiArrowUpDownLine}
+                label="排序方式"
+              />
+
+              <div className="hidden sm:block w-px h-4 bg-stone-200" />
+              <span className="text-xs text-stone-400 font-black uppercase tracking-wider whitespace-nowrap">
+                Total: {filteredAndSortedTrainers.length} 位教練
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            {/* Selected Month Filter */}
-            <FilterDropdown
-              value={selectedMonth}
-              onChange={setSelectedMonth}
-              options={[
-                { value: 'all', label: '全部月份' },
-                ...monthOptions.map((m) => ({
-                  value: m,
-                  label: `${m.replace('/', ' 年 ')} 月`,
-                })),
-              ]}
-              icon={RiCalendarLine}
-              label="月份篩選"
-            />
-
-            {/* Sort Dropdown */}
-            <FilterDropdown
-              value={sortOption}
-              onChange={(val) => setSortOption(val as any)}
-              options={[
-                { value: 'remaining-desc', label: '剩餘堂數 (多 → 少)' },
-                { value: 'remaining-asc', label: '剩餘堂數 (少 → 多)' },
-                { value: 'used-desc', label: '已銷堂數 (多 → 少)' },
-                { value: 'name', label: '教練姓名' },
-              ]}
-              icon={RiArrowUpDownLine}
-              label="排序方式"
-            />
-
-            <div className="hidden sm:block w-px h-4 bg-stone-200" />
-            <span className="text-xs text-stone-400 font-black uppercase tracking-wider whitespace-nowrap">
-              Total: {filteredAndSortedTrainers.length} 位教練
-            </span>
-          </div>
-        </div>
-
-        {/* Modern List View */}
-        <div className="bg-white rounded-b-2xl overflow-hidden shadow-xs border border-t-0 border-stone-200/80">
+          {/* Modern List View */}
+          <div className="bg-white rounded-b-2xl overflow-hidden">
           {filteredAndSortedTrainers.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-stone-400 font-medium italic">找不到符合條件的教練</p>
@@ -450,8 +451,9 @@ export default function LessonsPage() {
           )}
         </div>
       </div>
+    </div>
 
-      {/* RIGHT-SIDE DRAWER SHEET (Trainer Details) */}
+    {/* RIGHT-SIDE DRAWER SHEET (Trainer Details) */}
       <TrainerDetailsModal
         open={!!selectedTrainerId}
         onOpenChange={(open) => !open && setSelectedTrainerId(null)}
