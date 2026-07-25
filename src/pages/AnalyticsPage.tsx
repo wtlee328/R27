@@ -54,6 +54,16 @@ export default function AnalyticsPage() {
   const [loadingExtra, setLoadingExtra] = useState(true)
 
   const [rfmSortBy, setRfmSortBy] = useState<RfmSortKey>('frequency')
+  const [rfmSortOrder, setRfmSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  const handleRfmSort = (key: RfmSortKey) => {
+    if (rfmSortBy === key) {
+      setRfmSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setRfmSortBy(key)
+      setRfmSortOrder(key === 'recency' ? 'asc' : 'desc')
+    }
+  }
   const now = new Date()
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>(now.getMonth() + 1)
@@ -440,11 +450,18 @@ export default function AnalyticsPage() {
 
   const sortedRfmMembers = useMemo(() => {
     return [...rfmMembers].sort((a, b) => {
-      if (rfmSortBy === 'frequency') return b.frequency - a.frequency
-      if (rfmSortBy === 'monetary') return b.monetary - a.monetary
-      return a.recencyRaw - b.recencyRaw
+      let diff = 0
+      if (rfmSortBy === 'frequency') {
+        diff = b.frequency - a.frequency
+      } else if (rfmSortBy === 'monetary') {
+        diff = b.monetary - a.monetary
+      } else if (rfmSortBy === 'recency') {
+        diff = a.recencyRaw - b.recencyRaw
+      }
+
+      return rfmSortOrder === 'desc' ? diff : -diff
     })
-  }, [rfmMembers, rfmSortBy])
+  }, [rfmMembers, rfmSortBy, rfmSortOrder])
 
   const loading = loadingCustomers || loadingContracts || loadingCashFlow || loadingExtra
 
@@ -791,12 +808,19 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <span className="text-xs font-bold text-stone-600">排序：</span>
                 <FilterDropdown
-                  value={rfmSortBy}
-                  onChange={(v) => setRfmSortBy(v as RfmSortKey)}
+                  value={`${rfmSortBy}-${rfmSortOrder}`}
+                  onChange={(v) => {
+                    const [key, order] = v.split('-') as [RfmSortKey, 'asc' | 'desc']
+                    setRfmSortBy(key)
+                    setRfmSortOrder(order)
+                  }}
                   options={[
-                    { value: 'frequency', label: '按上課頻率 (F - 高至低)' },
-                    { value: 'monetary', label: '按消費貢獻度 (M - 高至低)' },
-                    { value: 'recency', label: '按到店時間 (R - 近至遠)' },
+                    { value: 'frequency-desc', label: '按每週頻率 (F - 高至低)' },
+                    { value: 'frequency-asc', label: '按每週頻率 (F - 低至高)' },
+                    { value: 'monetary-desc', label: '按消費貢獻 (M - 高至低)' },
+                    { value: 'monetary-asc', label: '按消費貢獻 (M - 低至高)' },
+                    { value: 'recency-asc', label: '按最近到店 (R - 近至遠)' },
+                    { value: 'recency-desc', label: '按最近到店 (R - 遠至近)' },
                   ]}
                   label="選擇排序方式"
                 />
@@ -811,17 +835,21 @@ export default function AnalyticsPage() {
                     <TableHead className="font-bold text-stone-700">聯絡電話</TableHead>
                     <TableHead className="text-right">
                       <button
-                        onClick={() => setRfmSortBy('recency')}
+                        onClick={() => handleRfmSort('recency')}
                         className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
                           rfmSortBy === 'recency'
                             ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
                             : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                         }`}
-                        title="點擊依最近到店排序 (近至遠)"
+                        title={rfmSortBy === 'recency' ? (rfmSortOrder === 'asc' ? '目前：近至遠（點擊切換為遠至近）' : '目前：遠至近（點擊切換為近至遠）') : '點擊依最近到店排序'}
                       >
                         <span>R (最近到店)</span>
                         {rfmSortBy === 'recency' ? (
-                          <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                          rfmSortOrder === 'asc' ? (
+                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                          ) : (
+                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          )
                         ) : (
                           <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
                         )}
@@ -829,17 +857,21 @@ export default function AnalyticsPage() {
                     </TableHead>
                     <TableHead className="text-right">
                       <button
-                        onClick={() => setRfmSortBy('frequency')}
+                        onClick={() => handleRfmSort('frequency')}
                         className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
                           rfmSortBy === 'frequency'
                             ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
                             : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                         }`}
-                        title="點擊依每週頻率排序 (高至低)"
+                        title={rfmSortBy === 'frequency' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依每週頻率排序'}
                       >
                         <span>F (每週頻率)</span>
                         {rfmSortBy === 'frequency' ? (
-                          <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          rfmSortOrder === 'desc' ? (
+                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          ) : (
+                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                          )
                         ) : (
                           <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
                         )}
@@ -847,17 +879,21 @@ export default function AnalyticsPage() {
                     </TableHead>
                     <TableHead className="text-right">
                       <button
-                        onClick={() => setRfmSortBy('monetary')}
+                        onClick={() => handleRfmSort('monetary')}
                         className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
                           rfmSortBy === 'monetary'
                             ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
                             : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
                         }`}
-                        title="點擊依累計貢獻度排序 (高至低)"
+                        title={rfmSortBy === 'monetary' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依累計貢獻度排序'}
                       >
                         <span>M (累計貢獻度)</span>
                         {rfmSortBy === 'monetary' ? (
-                          <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          rfmSortOrder === 'desc' ? (
+                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          ) : (
+                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                          )
                         ) : (
                           <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
                         )}
