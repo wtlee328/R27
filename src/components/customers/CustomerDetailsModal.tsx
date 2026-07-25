@@ -29,7 +29,7 @@ import {
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { useCustomers } from '../../hooks/useCustomers'
-import { cn } from '@/lib/utils'
+import { cn, formatMinguoDate } from '@/lib/utils'
 
 interface CustomerDetailsModalProps {
   open: boolean
@@ -297,9 +297,7 @@ export function CustomerDetailsModal({
                     <div className="flex justify-between items-center">
                       <span className="text-stone-400 font-bold">出生日期</span>
                       <span className="text-stone-900 font-mono font-semibold">
-                        {customer.dateOfBirth instanceof Timestamp 
-                          ? format(customer.dateOfBirth.toDate(), 'yyyy/MM/dd') 
-                          : '未知'}
+                        {formatMinguoDate(customer.dateOfBirth)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">

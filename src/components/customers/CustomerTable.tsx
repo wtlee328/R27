@@ -17,7 +17,7 @@ import {
 import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
 import { FilterDropdown } from '../shared/FilterDropdown'
-import { cn } from '@/lib/utils'
+import { cn, formatMinguoDate } from '@/lib/utils'
 
 export function CustomerTable({ 
   customers,
@@ -352,12 +352,12 @@ export function CustomerTable({
                     </div>
 
                     {/* Birthday */}
-                    <div className="space-y-1 min-w-[100px]">
+                    <div className="space-y-1 min-w-[120px]">
                       <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">生日</p>
                       <div className="flex items-center gap-1.5">
                         <RiCake2Line className="w-3.5 h-3.5 text-stone-400" />
                         <p className="text-xs font-bold text-stone-700">
-                          {c.dateOfBirth ? format(c.dateOfBirth.toDate(), 'yyyy/MM/dd') : '未提供'}
+                          {formatMinguoDate(c.dateOfBirth)}
                         </p>
                       </div>
                     </div>
