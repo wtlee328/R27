@@ -23,6 +23,7 @@ import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { Progress } from '../components/ui/progress'
 import { Badge } from '../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
+import { ChannelDonutChart } from '../components/analytics/ChannelDonutChart'
 import {
   Table,
   TableHeader,
@@ -613,19 +614,8 @@ export default function AnalyticsPage() {
                   來客渠道分佈 (Channel Breakdown)
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                {Object.entries(demographics.channelCount).map(([channel, count]) => {
-                  const pct = ((count / demographics.totalCust) * 100).toFixed(1)
-                  return (
-                    <div key={channel} className="space-y-1.5">
-                      <div className="flex justify-between text-xs font-bold text-stone-800">
-                        <span>{channel}</span>
-                        <span className="font-mono text-stone-950">{count} 人 ({pct}%)</span>
-                      </div>
-                      <Progress value={Number(pct)} indicatorClassName="bg-stone-950" />
-                    </div>
-                  )
-                })}
+              <CardContent className="pt-4">
+                <ChannelDonutChart channelCount={demographics.channelCount} totalCust={demographics.totalCust} />
               </CardContent>
             </Card>
 
