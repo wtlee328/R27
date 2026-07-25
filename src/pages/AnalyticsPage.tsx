@@ -318,14 +318,21 @@ export default function AnalyticsPage() {
     ;(filteredLessons || []).forEach((l) => {
       if (l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
-        map[l.trainerId].sessions += Number(l.sessionAmount || 1)
-      }
-    })
 
-    ;(filteredCashFlowRecords || []).map(normalizeCashFlowRecord).forEach((r) => {
-      if (r.type === 'income' && r.trainerId) {
-        if (!map[r.trainerId]) map[r.trainerId] = { sessions: 0, revenue: 0 }
-        map[r.trainerId].revenue += Number(r.amount || 0)
+        const sessions = Number(l.sessionAmount || 1)
+        map[l.trainerId].sessions += sessions
+
+        // Find associated contract to calculate actual realized revenue for this lesson
+        const contract = (contracts || []).find((c) => c.id === l.contractId)
+        let pricePerSession = 0
+        if (contract) {
+          pricePerSession = Number(
+            contract.pricePerSession || 
+            (contract.totalSessions && contract.totalAmount ? contract.totalAmount / contract.totalSessions : 0)
+          )
+        }
+
+        map[l.trainerId].revenue += Math.round(sessions * pricePerSession)
       }
     })
 
@@ -341,7 +348,7 @@ export default function AnalyticsPage() {
     const maxSessions = Math.max(...list.map((t) => t.sessions), 1)
 
     return { list, maxSessions }
-  }, [filteredLessons, filteredCashFlowRecords, trainerMap])
+  }, [filteredLessons, contracts, trainerMap])
 
   // --- 5. 幽靈會員預警 ---
   const churnAnalysis = useMemo(() => {
@@ -698,7 +705,7 @@ export default function AnalyticsPage() {
                           <div className="text-right">
                             <span className="text-xs font-bold text-stone-700">完成 {tp.sessions} 堂銷課</span>
                             <span className="text-xs font-black font-mono text-stone-950 block">
-                              ${tp.revenue.toLocaleString()}
+                              NT$ {tp.revenue.toLocaleString()}
                             </span>
                           </div>
                         </div>
