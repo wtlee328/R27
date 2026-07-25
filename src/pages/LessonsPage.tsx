@@ -430,17 +430,6 @@ export default function LessonsPage() {
 
                       {/* Action & Navigation */}
                       <div className="flex items-center gap-2 pl-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeleteTrainerId(t.id)
-                          }}
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 cursor-pointer opacity-0 group-hover:opacity-100"
-                          title="刪除教練"
-                        >
-                          <RiDeleteBinLine className="w-4 h-4" />
-                        </button>
                         <RiArrowRightSLine className="w-5 h-5 text-stone-300 group-hover:text-stone-800 transition-colors" />
                       </div>
                     </div>
