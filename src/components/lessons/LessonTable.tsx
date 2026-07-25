@@ -10,7 +10,7 @@ import {
   DialogDescription
 } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { AlertCircle, Trash2 } from 'lucide-react'
+import { RiBookOpenLine, RiAlertLine, RiDeleteBinLine } from '@remixicon/react'
 
 export function LessonTable({
   records,
@@ -34,7 +34,7 @@ export function LessonTable({
     return (
       <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-stone-100 mb-3">
-          <span className="text-stone-400 text-xl">📖</span>
+          <RiBookOpenLine className="w-6 h-6 text-stone-400" />
         </div>
         <p className="text-stone-500 text-sm font-medium">目前沒有銷課紀錄</p>
         <p className="text-stone-400 text-xs mt-1">點擊上方按鈕開始記錄上課</p>
@@ -106,7 +106,7 @@ export function LessonTable({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-              <AlertCircle className="w-6 h-6 text-red-600" />
+              <RiAlertLine className="w-6 h-6 text-red-600" />
             </div>
             <DialogTitle className="text-xl font-bold text-stone-900">確認刪除銷課紀錄？</DialogTitle>
             <DialogDescription className="text-stone-500 mt-2">
@@ -118,7 +118,7 @@ export function LessonTable({
               取消
             </Button>
             <Button variant="destructive" onClick={handleDelete} className="flex-1 gap-2">
-              <Trash2 className="w-4 h-4" /> 確認刪除
+              <RiDeleteBinLine className="w-4 h-4" /> 確認刪除
             </Button>
           </DialogFooter>
         </DialogContent>
