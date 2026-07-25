@@ -329,6 +329,11 @@ export default function AnalyticsPage() {
   const trainerPerformance = useMemo(() => {
     const map: Record<string, { sessions: number; revenue: number }> = {}
 
+    // Initialize all center trainers so 0-revenue trainers are also shown
+    ;(trainers || []).forEach((t) => {
+      map[t.id] = { sessions: 0, revenue: 0 }
+    })
+
     ;(filteredLessons || []).forEach((l) => {
       if (l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
@@ -357,12 +362,12 @@ export default function AnalyticsPage() {
         sessions: data.sessions,
         revenue: data.revenue,
       }))
-      .sort((a, b) => b.sessions - a.sessions)
+      .sort((a, b) => (b.sessions !== a.sessions ? b.sessions - a.sessions : b.revenue - a.revenue))
 
     const maxSessions = Math.max(...list.map((t) => t.sessions), 1)
 
     return { list, maxSessions }
-  }, [filteredLessons, contracts, trainerMap])
+  }, [trainers, filteredLessons, contracts, trainerMap])
 
   // --- 5. 幽靈會員預警 ---
   const churnAnalysis = useMemo(() => {
@@ -720,7 +725,7 @@ export default function AnalyticsPage() {
                   trainerPerformance.list.map((tp, idx) => {
                     const sessionPct = ((tp.sessions / trainerPerformance.maxSessions) * 100).toFixed(0)
                     return (
-                      <div key={tp.trainerId} className="p-3 rounded-lg bg-stone-50/70 border border-stone-200/60 space-y-1.5">
+                      <div key={tp.trainerId} className="py-2 px-1 rounded-lg transition-colors hover:bg-stone-50 space-y-1.5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold font-mono ${
