@@ -362,20 +362,6 @@ export function CustomerTable({
                       </div>
                     </div>
 
-                    {onDelete && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onDelete(c)
-                        }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 hover:text-red-600 hover:bg-red-50 transition-all shrink-0 cursor-pointer"
-                        title="刪除客戶"
-                      >
-                        <RiDeleteBinLine className="w-4 h-4" />
-                      </button>
-                    )}
-
                     <div className="w-9 h-9 rounded-full flex items-center justify-center text-stone-300 group-hover:text-stone-800 group-hover:bg-white group-hover:shadow-sm transition-all shrink-0">
                       <RiArrowRightSLine className="w-5 h-5" />
                     </div>
