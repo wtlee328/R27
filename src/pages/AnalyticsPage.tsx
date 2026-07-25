@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
         const [trainersSnap, trialsSnap, lessonsSnap] = await Promise.all([
           getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId))),
           getDocs(query(collection(db, 'trialRecords'), where('centerId', '==', centerId))),
-          getDocs(query(collection(db, 'lessons'), where('centerId', '==', centerId))),
+          getDocs(query(collection(db, 'lessonRecords'), where('centerId', '==', centerId))),
         ])
 
         setTrainers(trainersSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Trainer)))
@@ -124,8 +124,9 @@ export default function AnalyticsPage() {
 
   const filteredLessons = useMemo(() => {
     return (lessons || []).filter((l) => {
-      if (!l.date) return false
-      const d = l.date.toDate ? l.date.toDate() : new Date(l.date)
+      const dateVal = l.sessionDate || l.date
+      if (!dateVal) return false
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
       const matchesYear = d.getFullYear() === selectedYear
       const matchesMonth = selectedMonth === 'all' || d.getMonth() + 1 === selectedMonth
       return matchesYear && matchesMonth
@@ -299,10 +300,11 @@ export default function AnalyticsPage() {
   const monthlyLessonsTrend = useMemo(() => {
     const months = Array(12).fill(0)
     ;(lessons || []).forEach((l) => {
-      if (l.status === 'completed' && l.date) {
-        const d = l.date.toDate ? l.date.toDate() : new Date(l.date)
+      const dateVal = l.sessionDate || l.date
+      if (dateVal) {
+        const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
         if (d.getFullYear() === selectedYear) {
-          months[d.getMonth()] += 1
+          months[d.getMonth()] += Number(l.sessionAmount || 1)
         }
       }
     })
@@ -315,16 +317,16 @@ export default function AnalyticsPage() {
     const map: Record<string, { sessions: number; revenue: number }> = {}
 
     ;(filteredLessons || []).forEach((l) => {
-      if (l.status === 'completed' && l.trainerId) {
+      if (l.trainerId) {
         if (!map[l.trainerId]) map[l.trainerId] = { sessions: 0, revenue: 0 }
-        map[l.trainerId].sessions += 1
+        map[l.trainerId].sessions += Number(l.sessionAmount || 1)
       }
     })
 
     ;(filteredCashFlowRecords || []).map(normalizeCashFlowRecord).forEach((r) => {
       if (r.type === 'income' && r.trainerId) {
         if (!map[r.trainerId]) map[r.trainerId] = { sessions: 0, revenue: 0 }
-        map[r.trainerId].revenue += r.amount || 0
+        map[r.trainerId].revenue += Number(r.amount || 0)
       }
     })
 
@@ -351,25 +353,26 @@ export default function AnalyticsPage() {
       trainerName: string
     }> = []
 
-    customers.forEach((cust) => {
-      const custContracts = contracts.filter((c) => c.customerId === cust.id || c.sharedWithCustomerId === cust.id)
+    ;(customers || []).forEach((cust) => {
+      const custContracts = (contracts || []).filter(
+        (c) => c.customerId === cust.id || c.primaryCustomerId === cust.id || c.sharedWithCustomerId === cust.id || (c.customerIds && c.customerIds.includes(cust.id))
+      )
       const hasActiveContract = custContracts.some((c) => c.status === 'active' || c.status === 'expiring')
 
-      const custLessons = lessons
-        .filter((l) => l.customerId === cust.id && l.status === 'completed' && l.date)
-        .map((l) => (l.date.toDate ? l.date.toDate() : new Date(l.date)))
+      const custLessonDates = (lessons || [])
+        .filter((l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date))
+        .map((l) => {
+          const d = l.sessionDate || l.date
+          return d.toDate ? d.toDate() : new Date(d)
+        })
         .sort((a, b) => b.getTime() - a.getTime())
 
-      const lastLessonDate = custLessons.length > 0 ? custLessons[0] : null
+      const lastLessonDate = custLessonDates.length > 0 ? custLessonDates[0] : null
       const daysInactive = lastLessonDate
         ? Math.floor((now.getTime() - lastLessonDate.getTime()) / (1000 * 60 * 60 * 24))
         : 999
 
-      const upcomingBookings = lessons.filter(
-        (l) => l.customerId === cust.id && l.status === 'scheduled' && l.date && (l.date.toDate ? l.date.toDate() : new Date(l.date)) > now
-      )
-
-      if (hasActiveContract && daysInactive >= 30 && upcomingBookings.length === 0) {
+      if (hasActiveContract && daysInactive >= 30) {
         const activeContract = custContracts.find((c) => c.status === 'active' || c.status === 'expiring')
         inactiveGhostMembers.push({
           customer: cust,
@@ -396,24 +399,31 @@ export default function AnalyticsPage() {
       )
       const totalMonetary = custContracts.reduce((sum, c) => sum + Number(c.totalAmount || 0), 0)
 
-      const custLessons = (lessons || [])
-        .filter((l) => l.customerId === cust.id && l.status === 'completed' && l.date)
-        .map((l) => (l.date.toDate ? l.date.toDate() : new Date(l.date)))
+      const custLessonDates = (lessons || [])
+        .filter((l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date))
+        .map((l) => {
+          const d = l.sessionDate || l.date
+          return d.toDate ? d.toDate() : new Date(d)
+        })
         .sort((a, b) => b.getTime() - a.getTime())
 
-      const lastLessonDate = custLessons.length > 0 ? custLessons[0] : null
+      const lastLessonDate = custLessonDates.length > 0 ? custLessonDates[0] : null
       const recencyDays = lastLessonDate
         ? Math.floor((now.getTime() - lastLessonDate.getTime()) / (1000 * 60 * 60 * 24))
         : 999
 
-      const frequency = (custLessons.length / 4).toFixed(1)
+      const totalLessonsCount = (lessons || [])
+        .filter((l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date))
+        .reduce((sum, l) => sum + Number(l.sessionAmount || 1), 0)
+
+      const frequency = (totalLessonsCount / 4).toFixed(1)
 
       return {
         customer: cust,
         recencyDays: recencyDays === 999 ? '未曾上課' : `${recencyDays} 天前`,
         recencyRaw: recencyDays,
         frequency: Number(frequency),
-        totalLessonsCount: custLessons.length,
+        totalLessonsCount,
         monetary: Number(totalMonetary),
       }
     })
