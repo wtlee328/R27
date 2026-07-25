@@ -25,10 +25,10 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
   const activeEntries = Object.entries(channelCount).filter(([_, count]) => count > 0)
   const validTotal = totalCust > 0 ? totalCust : 1
 
-  // Donut SVG parameters
+  // Donut SVG parameters (Slightly reduced radius to ensure stroke expansion fits without clipping)
   const size = 180
-  const strokeWidth = 22
-  const radius = (size - strokeWidth) / 2
+  const strokeWidth = 20
+  const radius = 68
   const circumference = 2 * Math.PI * radius
 
   let accumulatedPercent = 0
@@ -46,7 +46,7 @@ export function ChannelDonutChart({ channelCount, totalCust }: ChannelDonutChart
     <div className="flex flex-col md:flex-row items-center gap-6 pt-2 pb-1">
       {/* Donut Chart SVG */}
       <div className="relative shrink-0 flex items-center justify-center">
-        <svg width={size} height={size} className="transform -rotate-90">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90 overflow-visible">
           {/* Base Track */}
           <circle
             cx={size / 2}
