@@ -13,6 +13,9 @@ import {
   RiSparklingLine,
   RiCheckboxCircleLine,
   RiMedalLine,
+  RiArrowUpDownLine,
+  RiArrowUpLine,
+  RiArrowDownLine,
 } from '@remixicon/react'
 import { Calendar } from 'lucide-react'
 import { StatCard } from '../components/shared/StatCard'
@@ -802,13 +805,64 @@ export default function AnalyticsPage() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12 text-center">排名</TableHead>
-                    <TableHead>學員姓名</TableHead>
-                    <TableHead>聯絡電話</TableHead>
-                    <TableHead className="text-right">R (最近到店)</TableHead>
-                    <TableHead className="text-right">F (每週頻率)</TableHead>
-                    <TableHead className="text-right">M (累計貢獻度)</TableHead>
+                  <TableRow className="bg-stone-50/70 border-b border-stone-200">
+                    <TableHead className="w-12 text-center font-bold text-stone-700">排名</TableHead>
+                    <TableHead className="font-bold text-stone-700">學員姓名</TableHead>
+                    <TableHead className="font-bold text-stone-700">聯絡電話</TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => setRfmSortBy('recency')}
+                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                          rfmSortBy === 'recency'
+                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                        }`}
+                        title="點擊依最近到店排序 (近至遠)"
+                      >
+                        <span>R (最近到店)</span>
+                        {rfmSortBy === 'recency' ? (
+                          <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                        ) : (
+                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => setRfmSortBy('frequency')}
+                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                          rfmSortBy === 'frequency'
+                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                        }`}
+                        title="點擊依每週頻率排序 (高至低)"
+                      >
+                        <span>F (每週頻率)</span>
+                        {rfmSortBy === 'frequency' ? (
+                          <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                        ) : (
+                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
+                        onClick={() => setRfmSortBy('monetary')}
+                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                          rfmSortBy === 'monetary'
+                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                        }`}
+                        title="點擊依累計貢獻度排序 (高至低)"
+                      >
+                        <span>M (累計貢獻度)</span>
+                        {rfmSortBy === 'monetary' ? (
+                          <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                        ) : (
+                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                      </button>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
