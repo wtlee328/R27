@@ -624,9 +624,9 @@ export function CustomerFormModal({
               })}
             </nav>
             
-            {/* Progress bar */}
-            <div className="px-5 py-5 border-t border-white/5">
-              <div className="flex items-center justify-between mb-2">
+            {/* Progress bar container fixed height */}
+            <div className="h-16 px-5 border-t border-white/5 flex flex-col justify-center shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
                 <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">整體進度</p>
                 <p className="text-[10px] font-bold text-stone-400">
                   {stepStatus.filter(s => s).length}/{activeSteps.length}
@@ -663,20 +663,20 @@ export function CustomerFormModal({
                       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">姓名 *</Label>
-                          <Input {...form.register('name')} placeholder="例如：王小明" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('name')} placeholder="例如：王小明" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                           {form.formState.errors.name && <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.name.message}</p>}
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號 *</Label>
-                          <Input {...form.register('idNumber')} placeholder="A123456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('idNumber')} placeholder="A123456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電話 *</Label>
-                          <Input {...form.register('phone')} placeholder="0912-345-678" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('phone')} placeholder="0912-345-678" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">Email</Label>
-                          <Input type="email" {...form.register('email')} placeholder="example@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input type="email" {...form.register('email')} placeholder="example@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
@@ -733,7 +733,7 @@ export function CustomerFormModal({
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">歷史已上堂數</Label>
-                          <Input type="number" {...form.register('historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all" />
+                          <Input type="number" {...form.register('historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all rounded-xl" />
                         </div>
                       </div>
                       <div className="p-5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-700/50 space-y-4">
@@ -744,15 +744,15 @@ export function CustomerFormModal({
                         <div className="grid grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">姓名 *</Label>
-                            <Input {...form.register('emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">關係 *</Label>
-                            <Input {...form.register('emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">電話 *</Label>
-                            <Input {...form.register('emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                         </div>
                       </div>
@@ -1373,19 +1373,19 @@ export function CustomerFormModal({
                       <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">共享學員姓名 *</Label>
-                          <Input {...form.register('partnerCustomerData.name')} placeholder="例如：陳小美" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('partnerCustomerData.name')} placeholder="例如：陳小美" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號 *</Label>
-                          <Input {...form.register('partnerCustomerData.idNumber')} placeholder="B223456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('partnerCustomerData.idNumber')} placeholder="B223456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電話 *</Label>
-                          <Input {...form.register('partnerCustomerData.phone')} placeholder="0987-654-321" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input {...form.register('partnerCustomerData.phone')} placeholder="0987-654-321" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">Email</Label>
-                          <Input type="email" {...form.register('partnerCustomerData.email')} placeholder="partner@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
+                          <Input type="email" {...form.register('partnerCustomerData.email')} placeholder="partner@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
@@ -1396,7 +1396,7 @@ export function CustomerFormModal({
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">歷史已上堂數</Label>
-                          <Input type="number" {...form.register('partnerCustomerData.historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all" />
+                          <Input type="number" {...form.register('partnerCustomerData.historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all rounded-xl" />
                         </div>
                       </div>
                       <div className="p-5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-700/50 space-y-4">
@@ -1407,15 +1407,15 @@ export function CustomerFormModal({
                         <div className="grid grid-cols-3 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">姓名 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('partnerCustomerData.emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">關係 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('partnerCustomerData.emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-[11px] text-stone-500 dark:text-stone-400">電話 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
+                            <Input {...form.register('partnerCustomerData.emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl" />
                           </div>
                         </div>
                       </div>
@@ -2050,8 +2050,8 @@ export function CustomerFormModal({
               </AnimatePresence>
             </div>
 
-            {/* Sticky Footer Navigation */}
-            <div className="h-[77px] px-8 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between bg-white/90 dark:bg-stone-900/90 backdrop-blur-md shrink-0">
+            {/* Sticky Footer Navigation fixed height */}
+            <div className="h-16 px-8 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between bg-white/90 dark:bg-stone-900/90 backdrop-blur-md shrink-0">
               <Button 
                 type="button" 
                 variant="ghost" 
