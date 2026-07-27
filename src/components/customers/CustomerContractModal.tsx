@@ -821,7 +821,7 @@ export function CustomerContractModal({
                   </div>
 
                   {/* Sessions & Amount Fields */}
-                  <div className="col-span-12 flex items-center flex-wrap gap-1">
+                  <div className="col-span-4 flex items-center">
                     <span>購買堂數：購 </span>
                     {isEditing ? (
                       <input 
@@ -834,19 +834,16 @@ export function CustomerContractModal({
                       <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">{editTotalSessions}</span>
                     )}
                     <span> 堂。</span>
-                    <span className="text-xs text-stone-500 font-medium ml-2">
-                      (已上 {Math.max(0, (contract?.totalSessions || 0) - (contract?.remainingSessions || 0))} 堂，剩餘 {editRemainingSessions} 堂)
-                    </span>
                   </div>
 
-                  <div className="col-span-6 flex items-center">
+                  <div className="col-span-4 flex items-center">
                     <span>契約總金額：新台幣 $ </span>
                     {isEditing ? (
                       <input 
                         type="number" 
                         value={editTotalAmount} 
                         onChange={e => setEditTotalAmount(Number(e.target.value))}
-                        className="w-24 border-b border-stone-400 bg-stone-50 text-center font-mono font-bold focus:outline-none" 
+                        className="w-20 border-b border-stone-400 bg-stone-50 text-center font-mono font-bold focus:outline-none" 
                       />
                     ) : (
                       <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">{(editTotalAmount || 0).toLocaleString()}</span>
@@ -854,7 +851,7 @@ export function CustomerContractModal({
                     <span> 元</span>
                   </div>
 
-                  <div className="col-span-6 flex items-center">
+                  <div className="col-span-4 flex items-center">
                     <span>每堂單價：新台幣 $ </span>
                     <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">
                       {editTotalSessions > 0 ? Math.round(editTotalAmount / editTotalSessions).toLocaleString() : '0'}
