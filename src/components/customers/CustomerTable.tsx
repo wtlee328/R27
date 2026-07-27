@@ -241,6 +241,11 @@ export function CustomerTable({
                 : null
               const partner = partnerId ? customers.find(cust => cust.id === partnerId) : null
 
+              const isUnsigned = activeContract ? (
+                !activeContract.signatureDataUrl || 
+                ((activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)
+              ) : false
+
               return (
                 <div 
                   key={c.id}
@@ -263,6 +268,10 @@ export function CustomerTable({
                             {activeContract.status === 'expired' ? (
                               <Badge variant="secondary" className="bg-stone-100 text-stone-700 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
                                 已到期
+                              </Badge>
+                            ) : isUnsigned ? (
+                              <Badge variant="secondary" className="bg-amber-500 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold animate-pulse">
+                                待簽名
                               </Badge>
                             ) : (
                               <Badge variant="default" className={cn(
