@@ -28,6 +28,7 @@ interface CustomerFormModalProps {
   onOpenChange: (open: boolean) => void
   onSubmit: (data: CombinedCustomerContractValues) => Promise<void>
   initialData?: Partial<CombinedCustomerContractValues>
+  initialCustomer?: Customer | null
   isEditMode?: boolean
   customers?: Customer[]
   contracts?: Contract[]
@@ -40,11 +41,53 @@ const STEPS = [
   { id: 'signature', title: '簽署確認', icon: ShieldCheck, fields: [] },
 ]
 
+const formatCustomerInitialData = (cust: any): Partial<CombinedCustomerContractValues> => {
+  if (!cust) return {}
+
+  const ensureIsoString = (val: any) => {
+    if (!val) return ''
+    if (val instanceof Date) return isNaN(val.getTime()) ? '' : val.toISOString().split('T')[0]
+    if (val?.toDate && typeof val.toDate === 'function') return val.toDate().toISOString().split('T')[0]
+    if (typeof val === 'string') return val
+    return ''
+  }
+
+  const dobStr = ensureIsoString(cust.dateOfBirth)
+  const startDateStr = ensureIsoString(cust.contract?.startDate)
+  const endDateStr = ensureIsoString(cust.contract?.endDate)
+
+  return {
+    name: cust.name || '',
+    idNumber: cust.idNumber || '',
+    phone: cust.phone || '',
+    email: cust.email || '',
+    dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+    historicalSessions: cust.historicalSessions || 0,
+    emergencyContact: cust.emergencyContact || { name: '', relation: '', phone: '' },
+    medicalHistory: cust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+    gender: cust.gender || 'female',
+    exerciseHabit: cust.exerciseHabit || 'none',
+    source: cust.source || 'instagram',
+    sharedContractCustomerId: cust.sharedContractCustomerId || null,
+    partnerMode: cust.partnerMode || 'none',
+    partnerId: cust.partnerId || null,
+    partnerCustomerData: cust.partnerCustomerData || null,
+    bindExistingContractMode: cust.bindExistingContractMode || false,
+    existingContractId: cust.existingContractId || null,
+    contract: cust.contract ? {
+      ...cust.contract,
+      startDate: startDateStr || new Date().toISOString().split('T')[0],
+      endDate: endDateStr || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    } : undefined
+  }
+}
+
 export function CustomerFormModal({
   open,
   onOpenChange,
   onSubmit,
   initialData,
+  initialCustomer,
   isEditMode = false,
   customers = [],
   contracts = [],
@@ -146,26 +189,21 @@ export function CustomerFormModal({
 
   useEffect(() => {
     if (open) {
-      if (initialData) {
-        // Format dates to YYYY-MM-DD for HTML date inputs
-        const formattedData = {
-          ...initialData,
-          dateOfBirth: initialData.dateOfBirth instanceof Date 
-            ? initialData.dateOfBirth.toISOString().split('T')[0] 
-            : initialData.dateOfBirth,
-          contract: initialData.contract ? {
-            ...initialData.contract,
-            startDate: initialData.contract.startDate instanceof Date 
-              ? initialData.contract.startDate.toISOString().split('T')[0] 
-              : initialData.contract.startDate,
-            endDate: initialData.contract.endDate instanceof Date 
-              ? initialData.contract.endDate.toISOString().split('T')[0] 
-              : initialData.contract.endDate,
-            trainerId: initialData.contract.trainerId || (trainers[0]?.id || ''),
-            secondaryTrainerId: initialData.contract.secondaryTrainerId || null,
-          } : undefined
-        }
-        form.reset(formattedData as any)
+      const sourceData = initialData || initialCustomer
+      if (sourceData) {
+        const formattedData = formatCustomerInitialData(sourceData)
+        form.reset({
+          ...defaultValues,
+          ...formattedData,
+          contract: formattedData.contract ? {
+            ...defaultValues.contract,
+            ...formattedData.contract,
+            trainerId: formattedData.contract.trainerId || (trainers[0]?.id || ''),
+          } : {
+            ...defaultValues.contract,
+            trainerId: trainers[0]?.id || '',
+          }
+        } as any)
       } else {
         const resetVals = {
           ...defaultValues,
@@ -179,7 +217,7 @@ export function CustomerFormModal({
       setCurrentStep(0)
       setIsOneToTwo(true)
     }
-  }, [open, initialData, form, trainers, defaultValues])
+  }, [open, initialData, initialCustomer, form, trainers, defaultValues])
 
   const watchedValues = form.watch()
 
