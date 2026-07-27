@@ -20,7 +20,17 @@ import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { Customer, Contract } from '../types'
 import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import { generateContractNo, nextDailySequence } from '../lib/contractNo'
-import { logActivity } from '../lib/activityLogger'
+const ensureDate = (d: any): Date => {
+  if (!d) return new Date()
+  if (d instanceof Date) return isNaN(d.getTime()) ? new Date() : d
+  if (d?.toDate && typeof d.toDate === 'function') return d.toDate()
+  if (typeof d === 'number') return new Date(d)
+  if (typeof d === 'string') {
+    const parsed = new Date(d)
+    return isNaN(parsed.getTime()) ? new Date() : parsed
+  }
+  return new Date()
+}
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -194,15 +204,6 @@ export function useCustomers() {
 
   const createContract = async (customerId: string, data: ContractFormValues) => {
     if (!user) throw new Error('Not authenticated')
-
-    console.log('Creating contract for customer:', customerId, data)
-
-    const ensureDate = (d: any) => {
-      if (d instanceof Date) return d
-      if (d?.toDate && typeof d.toDate === 'function') return d.toDate()
-      if (typeof d === 'string') return new Date(d)
-      return new Date()
-    }
 
     let finalPartnerId = data.sharedWithCustomerId || null
     if (data.partnerMode === 'new' && data.partnerCustomerData) {
