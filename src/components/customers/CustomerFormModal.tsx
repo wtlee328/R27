@@ -690,7 +690,7 @@ export function CustomerFormModal({
                           <div className="relative">
                             <select
                               {...form.register('gender')}
-                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
+                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-l text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
                             >
                               <option value="female">女 (Female)</option>
                               <option value="male">男 (Male)</option>
@@ -704,7 +704,7 @@ export function CustomerFormModal({
                           <div className="relative">
                             <select
                               {...form.register('exerciseHabit')}
-                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
+                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-l text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
                             >
                               <option value="none">完全沒運動</option>
                               <option value="weekly_1_2">每週 1-2 次</option>
@@ -718,7 +718,7 @@ export function CustomerFormModal({
                           <div className="relative">
                             <select
                               {...form.register('source')}
-                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
+                              className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-l text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
                             >
                               <option value="instagram">Instagram</option>
                               <option value="facebook">Facebook</option>
@@ -950,7 +950,7 @@ export function CustomerFormModal({
                                       setSelectedExistingCustomerId(e.target.value)
                                       form.setValue('existingContractId', null)
                                     }}
-                                    className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                                    className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                                   >
                                     <option value="">-- 請選擇學員 --</option>
                                     {customers.map((c) => (
@@ -969,7 +969,7 @@ export function CustomerFormModal({
                                     value={form.watch('existingContractId') || ''}
                                     onChange={(e) => form.setValue('existingContractId', e.target.value || null)}
                                     disabled={!selectedExistingCustomerId}
-                                    className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 appearance-none cursor-pointer"
+                                    className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 appearance-none cursor-pointer"
                                   >
                                     <option value="">-- 請選擇合約 --</option>
                                     {existingCustomerContracts.map((c) => {
@@ -1018,7 +1018,7 @@ export function CustomerFormModal({
                                 <select
                                   value={form.watch('contract.secondaryTrainerId') || ''}
                                   onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value || null)}
-                                  className="w-full h-10 rounded-xl border border-blue-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                                  className="w-full h-10 rounded-l border border-blue-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                                 >
                                   <option value="">-- 請選擇教練 --</option>
                                   {trainers.map((t) => (
@@ -1061,7 +1061,7 @@ export function CustomerFormModal({
                                         form.setValue('contract.trainerId', e.target.value)
                                         form.setValue('contract.secondaryTrainerId', null)
                                       }}
-                                      className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
+                                      className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
                                     >
                                       <option value="">-- 請選擇教練 --</option>
                                       {trainers.map((t) => (
@@ -1109,7 +1109,7 @@ export function CustomerFormModal({
                                             form.setValue('contract.trainerId', val)
                                             form.setValue('contract.secondaryTrainerId', val)
                                           }}
-                                          className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
+                                          className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
                                         >
                                           <option value="">-- 請選擇教練 --</option>
                                           {trainers.map((t) => (
@@ -1135,7 +1135,7 @@ export function CustomerFormModal({
                                               const val = e.target.value
                                               form.setValue('contract.trainerId', val)
                                             }}
-                                            className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
+                                            className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
                                           >
                                             <option value="">-- 請選擇教練 --</option>
                                             {trainers.map((t) => (
@@ -1156,7 +1156,7 @@ export function CustomerFormModal({
                                           <select
                                             value={form.watch('contract.secondaryTrainerId') || ''}
                                             onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
-                                            className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
+                                            className="w-full h-10 rounded-l border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
                                           >
                                             <option value="">-- 請選擇教練 --</option>
                                             {trainers.map((t) => (

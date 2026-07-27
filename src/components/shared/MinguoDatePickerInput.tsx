@@ -60,7 +60,7 @@ export function MinguoDatePickerInput({
   }
 
   return (
-    <div className={`flex items-center h-10 gap-0 bg-stone-50 dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden hover:border-stone-300 dark:hover:border-stone-600 focus-within:border-stone-400 dark:focus-within:border-stone-500 focus-within:ring-2 focus-within:ring-stone-900/8 dark:focus-within:ring-white/8 transition-all ${className}`}>
+    <div className={`flex items-center h-10 gap-0 bg-stone-50 dark:bg-stone-800 rounded-l border border-stone-200 dark:border-stone-700 overflow-hidden hover:border-stone-300 dark:hover:border-stone-600 focus-within:border-stone-400 dark:focus-within:border-stone-500 focus-within:ring-2 focus-within:ring-stone-900/8 dark:focus-within:ring-white/8 transition-all ${className}`}>
       {/* Calendar icon */}
       <div className="pl-3 pr-2 flex items-center shrink-0">
         <RiCalendarLine className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
