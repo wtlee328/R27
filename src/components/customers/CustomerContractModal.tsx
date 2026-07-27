@@ -16,6 +16,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { useCenterStore } from '@/stores/centerStore'
 import r27Stamp from '@/assets/r27-stamp.png'
 
+import SignatureCanvasComponent from 'react-signature-canvas'
+const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
+
 interface CustomerContractModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -42,6 +45,8 @@ export function CustomerContractModal({
   onContractUpdated,
 }: CustomerContractModalProps) {
   const [partner, setPartner] = React.useState<Customer | null>(null)
+  const sigCanvas = React.useRef<any>(null)
+  const secondarySigCanvas = React.useRef<any>(null)
   
   // Admin & Editing states
   const { isAdmin, isTrainer } = useAuthStore()
@@ -290,6 +295,27 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
+      let newSigA: string | null = null
+      let newSigB: string | null = null
+
+      if (sigCanvas.current) {
+        const canvas = sigCanvas.current as any
+        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
+        if (!isEmpty) {
+          const rawCanvas: HTMLCanvasElement = typeof canvas.getCanvas === 'function' ? canvas.getCanvas() : canvas
+          newSigA = rawCanvas.toDataURL('image/png')
+        }
+      }
+
+      if (secondarySigCanvas.current) {
+        const canvas = secondarySigCanvas.current as any
+        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
+        if (!isEmpty) {
+          const rawCanvas: HTMLCanvasElement = typeof canvas.getCanvas === 'function' ? canvas.getCanvas() : canvas
+          newSigB = rawCanvas.toDataURL('image/png')
+        }
+      }
+
       const updateData = {
         totalSessions: Number(editTotalSessions),
         remainingSessions: Number(editRemainingSessions),
@@ -311,9 +337,9 @@ export function CustomerContractModal({
         monthlyDueDay: Number(editMonthlyDueDay),
         monthlyDueAmount: Number(editMonthlyDueAmount),
         
-        // 編輯合約後清空客戶簽名
-        signatureDataUrl: null,
-        secondarySignatureDataUrl: null,
+        // 若編輯期間手寫簽名則存入，否則為 null (待簽名)
+        signatureDataUrl: newSigA,
+        secondarySignatureDataUrl: newSigB,
         
         updatedAt: serverTimestamp(),
       }
@@ -321,8 +347,8 @@ export function CustomerContractModal({
       await updateDoc(contractRef, updateData)
 
       if (contract) {
-        contract.signatureDataUrl = null
-        contract.secondarySignatureDataUrl = null
+        contract.signatureDataUrl = newSigA
+        contract.secondarySignatureDataUrl = newSigB
       }
 
       // Sync Customer A's trainer and profile fields
@@ -1083,30 +1109,82 @@ export function CustomerContractModal({
                 <div className="space-y-4 text-right">
                   <div className="flex gap-6 items-end">
                     {/* Primary Signature */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">
-                        {partner ? '甲方學員 A 簽名' : '會員簽名'}
-                      </p>
-                      <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
-                        {contract?.signatureDataUrl ? (
-                          <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain mix-blend-multiply" />
-                        ) : (
-                          <span className="text-stone-300 italic text-[10px]">( 尚未簽署 )</span>
+                    <div className="space-y-1.5 text-left">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] text-stone-600 font-bold uppercase tracking-widest">
+                          {partner ? '甲方學員 A 簽名' : '會員簽名'}
+                        </p>
+                        {isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => sigCanvas.current?.clear()}
+                            className="text-[10px] text-amber-700 hover:text-amber-900 font-bold underline print:hidden"
+                          >
+                            清除重簽
+                          </button>
                         )}
                       </div>
+                      {isEditing ? (
+                        <div className="border-2 border-stone-300 border-dashed rounded-xl bg-white p-1 min-w-[220px] print:hidden">
+                          <SignatureCanvas
+                            ref={sigCanvas}
+                            canvasProps={{
+                              width: 220,
+                              height: 85,
+                              className: 'bg-white rounded-lg w-full cursor-crosshair'
+                            }}
+                          />
+                        </div>
+                      ) : (
+                        <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
+                          {contract?.signatureDataUrl ? (
+                            <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                          ) : (
+                            <span className="text-amber-600 font-bold italic text-[10px] bg-amber-50 px-2 py-1 rounded border border-amber-200 animate-pulse">
+                              ( 待簽名 - 編輯合約時即可線上簽署 )
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Secondary Signature */}
                     {partner && (
-                      <div className="space-y-1">
-                        <p className="text-[10px] text-orange-600 uppercase font-bold tracking-widest">甲方學員 B 簽名</p>
-                        <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
-                          {contract?.secondarySignatureDataUrl ? (
-                            <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain mix-blend-multiply" />
-                          ) : (
-                            <span className="text-stone-300 italic text-[10px]">( 尚未簽署 )</span>
+                      <div className="space-y-1.5 text-left">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest">甲方學員 B 簽名</p>
+                          {isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => secondarySigCanvas.current?.clear()}
+                              className="text-[10px] text-orange-700 hover:text-orange-900 font-bold underline print:hidden"
+                            >
+                              清除重簽
+                            </button>
                           )}
                         </div>
+                        {isEditing ? (
+                          <div className="border-2 border-orange-200 border-dashed rounded-xl bg-orange-50/50 p-1 min-w-[220px] print:hidden">
+                            <SignatureCanvas
+                              ref={secondarySigCanvas}
+                              canvasProps={{
+                                width: 220,
+                                height: 85,
+                                className: 'bg-white rounded-lg w-full cursor-crosshair'
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
+                            {contract?.secondarySignatureDataUrl ? (
+                              <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                            ) : (
+                              <span className="text-amber-600 font-bold italic text-[10px] bg-amber-50 px-2 py-1 rounded border border-amber-200 animate-pulse">
+                                ( 待簽名 - 編輯合約時即可線上簽署 )
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
