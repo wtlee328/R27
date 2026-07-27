@@ -287,7 +287,8 @@ html.dark .border-stone-200,
 html.dark .border-stone-200\/80,
 html.dark .border-stone-200\/60,
 html.dark .border-stone-150,
-html.dark .border-stone-100 {
+html.dark .border-stone-100,
+html.dark .border-stone-50 {
   border-color: #384959;
 }
 
@@ -409,9 +410,13 @@ html.dark .bg-stone-800 {
   background-color: #1e2832;
 }
 
-/* ── Divide colors on table rows ── */
-html.dark .divide-stone-100 > :not(:last-child) {
-  border-color: #334454;
+/* ── Divide colors on table rows & list items in dark mode ── */
+html.dark .divide-stone-50 > :not(:last-child),
+html.dark .divide-stone-100 > :not(:last-child),
+html.dark .divide-stone-200 > :not(:last-child),
+html.dark .divide-stone-300 > :not(:last-child),
+html.dark .divide-stone-150 > :not(:last-child) {
+  border-color: #384959;
 }
 
 /* ── Dialogs & Modals ── */
