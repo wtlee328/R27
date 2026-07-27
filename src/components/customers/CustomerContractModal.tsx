@@ -25,6 +25,7 @@ interface CustomerContractModalProps {
   customer: Customer | null
   contract: Contract | null
   onContractUpdated?: () => void
+  onUpdate?: () => void
 }
 
 const toDateString = (d: any) => {
@@ -43,10 +44,13 @@ export function CustomerContractModal({
   customer,
   contract,
   onContractUpdated,
+  onUpdate,
 }: CustomerContractModalProps) {
   const [partner, setPartner] = React.useState<Customer | null>(null)
   const sigCanvas = React.useRef<any>(null)
   const secondarySigCanvas = React.useRef<any>(null)
+  const [isSigACleared, setIsSigACleared] = React.useState(false)
+  const [isSigBCleared, setIsSigBCleared] = React.useState(false)
   
   // Admin & Editing states
   const { isAdmin, isTrainer } = useAuthStore()
@@ -295,25 +299,46 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
-      let newSigA: string | null = null
-      let newSigB: string | null = null
-
-      if (sigCanvas.current) {
-        const canvas = sigCanvas.current as any
-        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
-        if (!isEmpty) {
-          const rawCanvas: HTMLCanvasElement = typeof canvas.getCanvas === 'function' ? canvas.getCanvas() : canvas
-          newSigA = rawCanvas.toDataURL('image/png')
+      const extractSignatureDataUrl = (ref: any): string | null => {
+        if (!ref || !ref.current) return null
+        const canvasObj = ref.current
+        let isEmpty = true
+        if (typeof canvasObj.isEmpty === 'function') {
+          isEmpty = canvasObj.isEmpty()
         }
+        if (isEmpty) return null
+
+        try {
+          if (typeof canvasObj.toDataURL === 'function') {
+            return canvasObj.toDataURL('image/png')
+          }
+          if (typeof canvasObj.getCanvas === 'function') {
+            return canvasObj.getCanvas().toDataURL('image/png')
+          }
+          if (typeof canvasObj.getTrimmedCanvas === 'function') {
+            return canvasObj.getTrimmedCanvas().toDataURL('image/png')
+          }
+        } catch (err) {
+          console.error('Error extracting signature:', err)
+        }
+        return null
       }
 
-      if (secondarySigCanvas.current) {
-        const canvas = secondarySigCanvas.current as any
-        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
-        if (!isEmpty) {
-          const rawCanvas: HTMLCanvasElement = typeof canvas.getCanvas === 'function' ? canvas.getCanvas() : canvas
-          newSigB = rawCanvas.toDataURL('image/png')
-        }
+      const drawnSigA = extractSignatureDataUrl(sigCanvas)
+      const drawnSigB = extractSignatureDataUrl(secondarySigCanvas)
+
+      let finalSigA: string | null = null
+      if (drawnSigA) {
+        finalSigA = drawnSigA
+      } else if (!isSigACleared && contract?.signatureDataUrl) {
+        finalSigA = contract.signatureDataUrl
+      }
+
+      let finalSigB: string | null = null
+      if (drawnSigB) {
+        finalSigB = drawnSigB
+      } else if (!isSigBCleared && contract?.secondarySignatureDataUrl) {
+        finalSigB = contract.secondarySignatureDataUrl
       }
 
       const updateData = {
@@ -337,9 +362,8 @@ export function CustomerContractModal({
         monthlyDueDay: Number(editMonthlyDueDay),
         monthlyDueAmount: Number(editMonthlyDueAmount),
         
-        // 若編輯期間手寫簽名則存入，否則為 null (待簽名)
-        signatureDataUrl: newSigA,
-        secondarySignatureDataUrl: newSigB,
+        signatureDataUrl: finalSigA,
+        secondarySignatureDataUrl: finalSigB,
         
         updatedAt: serverTimestamp(),
       }
@@ -347,8 +371,8 @@ export function CustomerContractModal({
       await updateDoc(contractRef, updateData)
 
       if (contract) {
-        contract.signatureDataUrl = newSigA
-        contract.secondarySignatureDataUrl = newSigB
+        contract.signatureDataUrl = finalSigA
+        contract.secondarySignatureDataUrl = finalSigB
       }
 
       // Sync Customer A's trainer and profile fields
@@ -398,7 +422,11 @@ export function CustomerContractModal({
       }
 
       setIsEditing(false)
+      setIsSigACleared(false)
+      setIsSigBCleared(false)
+
       if (onContractUpdated) onContractUpdated()
+      if (onUpdate) onUpdate()
       alert('合約更新成功！')
     } catch (err: any) {
       console.error('Error updating contract:', err)
