@@ -74,7 +74,7 @@ export function MinguoDatePickerInput({
           placeholder="113"
           value={rocYear}
           onChange={(e) => handleUpdate(e.target.value, month, day)}
-          className="w-14 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+          className="w-14 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-md text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
         />
         <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">年</span>
       </div>
@@ -91,7 +91,7 @@ export function MinguoDatePickerInput({
           max={12}
           value={month}
           onChange={(e) => handleUpdate(rocYear, e.target.value, day)}
-          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-md text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
         />
         <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">月</span>
       </div>
@@ -108,7 +108,7 @@ export function MinguoDatePickerInput({
           max={31}
           value={day}
           onChange={(e) => handleUpdate(rocYear, month, e.target.value)}
-          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-md text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
         />
         <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">日</span>
       </div>
