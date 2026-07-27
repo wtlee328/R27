@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
-import { Database, Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp } from 'lucide-react'
+import { Database, Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp, Building2 } from 'lucide-react'
 import { RiHistoryLine } from '@remixicon/react'
 import { useActivityLogs } from '@/hooks/useActivityLogs'
 import { useTrainers } from '@/hooks/useTrainers'
@@ -14,26 +14,55 @@ export default function ActivityLogPage() {
   const { trainers } = useTrainers()
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCenter, setSelectedCenter] = useState<string>('all')
   const [selectedModule, setSelectedModule] = useState<string>('all')
   const [selectedAction, setSelectedAction] = useState<string>('all')
 
   // Filter logs
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
+      const centerLabel = log.centerId === 'coffit' ? 'coffit 考飛特' : log.centerId === 'r27' ? 'r27 健身' : '通用場館'
       const matchSearch =
         log.trainerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.recordSummary.toLowerCase().includes(searchTerm.toLowerCase())
+        log.recordSummary.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        centerLabel.toLowerCase().includes(searchTerm.toLowerCase())
       
+      const matchCenter = selectedCenter === 'all' || log.centerId === selectedCenter || (!log.centerId && selectedCenter === 'r27')
       const matchModule = selectedModule === 'all' || log.module === selectedModule
       const matchAction = selectedAction === 'all' || log.action === selectedAction
 
-      return matchSearch && matchModule && matchAction
+      return matchSearch && matchCenter && matchModule && matchAction
     })
-  }, [logs, searchTerm, selectedModule, selectedAction])
+  }, [logs, searchTerm, selectedCenter, selectedModule, selectedAction])
 
   const formatLogDate = (timestamp: any) => {
     if (!timestamp) return ''
     return format(timestamp.toDate(), 'yyyy/MM/dd HH:mm:ss')
+  }
+
+  const getCenterBadge = (cId?: string) => {
+    if (cId === 'coffit') {
+      return (
+        <span className="bg-purple-50 text-purple-700 border-purple-200/80 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+          Coffit 考飛特
+        </span>
+      )
+    }
+    if (cId === 'r27') {
+      return (
+        <span className="bg-orange-50 text-orange-700 border-orange-200/80 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+          R27 健身
+        </span>
+      )
+    }
+    return (
+      <span className="bg-stone-100 text-stone-600 border-stone-200 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-stone-400"></span>
+        通用場館
+      </span>
+    )
   }
 
   // Count stats
@@ -49,7 +78,7 @@ export default function ActivityLogPage() {
           <RiHistoryLine className="w-6 h-6 text-orange-500" />
           操作記錄
         </h1>
-        <p className="text-sm text-stone-500 mt-1">審查與追蹤教練介面的銷課、預約與表單異動記錄</p>
+        <p className="text-sm text-stone-500 mt-1">審查與追蹤全場館教練介面的銷課、預約與表單異動記錄</p>
       </div>
 
       {/* Stats */}
@@ -77,18 +106,32 @@ export default function ActivityLogPage() {
 
       {/* Filters Card */}
       <div className="bg-white border border-stone-200 shadow-sm rounded-2xl p-5 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Search Input */}
           <div className="relative">
             <Input
               type="text"
-              placeholder="搜尋教練或操作摘要..."
+              placeholder="搜尋教練、摘要或場館..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-10 pl-9 border-stone-200 text-xs rounded-xl"
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
           </div>
+
+          {/* Center Filter */}
+          <FilterDropdown
+            value={selectedCenter}
+            onChange={setSelectedCenter}
+            options={[
+              { value: 'all', label: '所有場館' },
+              { value: 'r27', label: 'R27 健身' },
+              { value: 'coffit', label: 'Coffit 考飛特' },
+            ]}
+            icon={Building2}
+            label="場館過濾"
+            className="h-10"
+          />
 
           {/* Module Filter */}
           <FilterDropdown
@@ -141,7 +184,9 @@ export default function ActivityLogPage() {
                 return (
                   <div key={log.id} className="py-3.5 flex justify-between items-start gap-4 hover:bg-stone-50/40 px-2 rounded-xl transition-colors">
                     <div className="space-y-1.5 flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getCenterBadge(log.centerId)}
+
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${actionColor}`}>
                           {ACTIVITY_ACTION_LABELS[log.action]}
                         </span>

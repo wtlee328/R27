@@ -26,14 +26,12 @@ export function useActivityLogs() {
       )
 
       const querySnapshot = await getDocs(q)
-      const data = querySnapshot.docs
-        .map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
-        .filter((log: any) => !log.centerId || log.centerId === centerId) as ActivityLog[]
+      const data = querySnapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as ActivityLog[]
 
-      setLogs(data.slice(0, 100))
+      setLogs(data)
     } catch (err: any) {
       console.error('Error fetching activity logs:', err)
       setError(err.message || '無法載入操作記錄')
