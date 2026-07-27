@@ -9,6 +9,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // ─── Date helpers ─────────────────────────────────────────────
+export function ensureDate(d: any): Date {
+  if (!d) return new Date()
+  if (d instanceof Date) return isNaN(d.getTime()) ? new Date() : d
+  if (d?.toDate && typeof d.toDate === 'function') return d.toDate()
+  if (typeof d === 'number') return new Date(d)
+  if (typeof d === 'string') {
+    const parsed = new Date(d)
+    return isNaN(parsed.getTime()) ? new Date() : parsed
+  }
+  return new Date()
+}
+
 export function tsToDate(ts: Timestamp): Date {
   return ts.toDate()
 }
