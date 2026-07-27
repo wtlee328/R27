@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { db, auth } from './firebase'
+import { useCenterStore } from '../stores/centerStore'
 import type { ActivityAction, ActivityModule } from '@/types'
 
 export async function logActivity(params: {
@@ -17,15 +18,22 @@ export async function logActivity(params: {
     const authUid = auth.currentUser?.uid || ''
     let operatorName = params.trainerName
     let operatorTrainerId = params.trainerId
-    let resolvedCenterId = params.centerId
+
+    // Priority 1: Explicitly passed params.centerId
+    // Priority 2: Active venue currently selected in user workspace (useCenterStore)
+    const activeCenterId = useCenterStore.getState().centerId
+    let resolvedCenterId = params.centerId || activeCenterId
 
     if (authUid) {
       const userSnap = await getDoc(doc(db, 'users', authUid))
       if (userSnap.exists()) {
         const userData = userSnap.data()
-        if (userData.centerId) {
+
+        // Only fallback to user profile centerId if resolvedCenterId is not set
+        if (!resolvedCenterId && userData.centerId) {
           resolvedCenterId = userData.centerId
         }
+
         if (userData.role === 'admin') {
           const adminIdentifier = userData.displayName || userData.email || auth.currentUser?.email || '管理員'
           operatorName = `${adminIdentifier} (管理員)`
@@ -33,6 +41,8 @@ export async function logActivity(params: {
         }
       }
     }
+
+    resolvedCenterId = resolvedCenterId || 'r27'
 
     const docData = {
       ...params,
