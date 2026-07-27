@@ -122,7 +122,20 @@ export function CustomerDetailsModal({
                 {customer.name.charAt(0)}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-stone-900">{customer.name}</h2>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-2xl font-bold text-stone-900">{customer.name}</h2>
+                  {activeContract ? (
+                    activeContract.status === 'expired' ? (
+                      <Badge variant="secondary" className="bg-stone-100 text-stone-700 border-stone-200 text-xs py-0.5 px-2 font-bold">已到期</Badge>
+                    ) : (!activeContract.signatureDataUrl || ((activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)) ? (
+                      <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-xs py-0.5 px-2 font-bold animate-pulse">待簽名</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-600 text-white text-xs py-0.5 px-2 font-bold">進行中</Badge>
+                    )
+                  ) : (
+                    <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-xs py-0.5 px-2 font-bold">無有效合約</Badge>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 mt-1 text-xs text-stone-500 flex-wrap">
                   <span className="flex items-center gap-1 font-mono">
                     <RiPhoneLine className="w-3.5 h-3.5 text-stone-400" />
@@ -211,6 +224,7 @@ export function CustomerDetailsModal({
                         : activeContract.sharedWithCustomerId)
                     : null
                   const activePartnerName = activePartnerId ? partnerNames[activePartnerId] : null
+                  const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
 
                   return (
                     <div className={cn(
@@ -224,9 +238,15 @@ export function CustomerDetailsModal({
                       </div>
                       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <div className="flex items-center gap-2">
-                          <Badge className={cn("text-white border-none flex items-center gap-1 text-xs", isDual ? "bg-stone-900" : "bg-stone-950")}>
-                            {isDual ? <><RiGroupLine className="w-3.5 h-3.5 text-orange-400" /> 雙人進行中合約</> : <><RiUser3Line className="w-3.5 h-3.5 text-stone-300" /> 進行中合約</>}
-                          </Badge>
+                          {isUnsigned ? (
+                            <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none flex items-center gap-1 text-xs font-bold animate-pulse">
+                              {isDual ? <><RiGroupLine className="w-3.5 h-3.5 text-amber-200" /> 雙人待簽名合約</> : <><RiUser3Line className="w-3.5 h-3.5 text-amber-200" /> 待簽名合約</>}
+                            </Badge>
+                          ) : (
+                            <Badge className={cn("text-white border-none flex items-center gap-1 text-xs", isDual ? "bg-stone-900" : "bg-stone-950")}>
+                              {isDual ? <><RiGroupLine className="w-3.5 h-3.5 text-orange-400" /> 雙人進行中合約</> : <><RiUser3Line className="w-3.5 h-3.5 text-stone-300" /> 進行中合約</>}
+                            </Badge>
+                          )}
                           {isDual && activePartnerName && (
                             <Badge variant="outline" className="bg-orange-100/60 text-orange-700 border-orange-200 text-[10px]">
                               與 {activePartnerName} 共享額度
