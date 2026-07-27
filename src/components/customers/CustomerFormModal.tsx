@@ -536,7 +536,7 @@ export function CustomerFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-white rounded-2xl border-none shadow-2xl">
+      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-white dark:bg-stone-900 rounded-2xl border border-stone-200/50 dark:border-stone-700/50 shadow-2xl shadow-stone-900/20">
         <div className="sr-only">
           <DialogTitle>{isEditMode ? '編輯客戶資料' : '建立新客戶'}</DialogTitle>
           <DialogDescription>
@@ -546,137 +546,155 @@ export function CustomerFormModal({
           </DialogDescription>
         </div>
         <div className="flex h-[80vh] min-h-[600px]">
-          {/* Sidebar Checklist */}
-          <div className="w-72 bg-stone-50 border-r border-stone-200 p-8 flex flex-col">
-            <div className="mb-10">
-              <h3 className="text-stone-900 font-bold text-lg">{isEditMode ? '編輯客戶' : '建立新客戶'}</h3>
-              <p className="text-stone-500 text-xs mt-1">{isEditMode ? '更新現有檔案' : '請完成以下步驟'}</p>
+          {/* Sidebar — dark premium */}
+          <div className="w-64 bg-stone-950 dark:bg-stone-950 flex flex-col shrink-0">
+            {/* Sidebar Header */}
+            <div className="px-7 pt-8 pb-6 border-b border-white/5">
+              <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500 mb-1">
+                {isEditMode ? 'Edit Profile' : 'New Client'}
+              </p>
+              <h3 className="text-white font-bold text-base leading-tight">
+                {isEditMode ? '編輯客戶資料' : '建立新客戶'}
+              </h3>
             </div>
 
-            <nav className="flex-1 space-y-4">
+            {/* Steps */}
+            <nav className="flex-1 px-5 py-6 space-y-1 overflow-y-auto">
               {activeSteps.map((step, idx) => {
                 const Icon = step.icon
                 const isActive = currentStep === idx
                 const isCompleted = stepStatus[idx]
                 
                 return (
-                  <div key={step.id} className="relative">
-                    <button
-                      type="button"
-                      disabled={idx > 0 && !stepStatus[idx-1] && idx > currentStep}
-                      onClick={() => setCurrentStep(idx)}
-                      className={cn(
-                        "flex items-center gap-4 w-full text-left transition-all duration-300 p-2 rounded-xl",
-                        isActive ? "bg-white shadow-sm" : "hover:bg-stone-100/50"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 shrink-0",
-                        isCompleted ? "bg-brand-500 text-white" : 
-                        isActive ? "bg-stone-950 text-white shadow-lg shadow-stone-200" : 
-                        "bg-stone-200 text-stone-500"
-                      )}>
-                        {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                      </div>
-                      <div className={cn("transition-all duration-300", !isActive && !isCompleted && "opacity-50")}>
-                        <p className={cn(
-                          "text-[10px] font-bold tracking-tight uppercase",
-                          isActive ? "text-stone-950" : "text-stone-500"
-                        )}>Step {idx + 1}</p>
-                        <p className={cn(
-                          "text-sm font-bold",
-                          isActive ? "text-stone-950" : "text-stone-400"
-                        )}>{step.title}</p>
-                      </div>
-                    </button>
-                  </div>
+                  <button
+                    key={step.id}
+                    type="button"
+                    disabled={idx > 0 && !stepStatus[idx-1] && idx > currentStep}
+                    onClick={() => setCurrentStep(idx)}
+                    className={cn(
+                      "flex items-center gap-3 w-full text-left transition-all duration-200 px-3 py-2.5 rounded-xl group",
+                      isActive
+                        ? "bg-white/10 text-white"
+                        : isCompleted
+                        ? "text-stone-300 hover:bg-white/5"
+                        : "text-stone-600 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300",
+                      isCompleted
+                        ? "bg-brand-500 text-white"
+                        : isActive
+                        ? "bg-white text-stone-900"
+                        : "bg-white/8 text-stone-500"
+                    )}>
+                      {isCompleted
+                        ? <CheckCircle2 className="w-3.5 h-3.5" />
+                        : <Icon className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn(
+                        "text-[9px] font-bold tracking-widest uppercase mb-0.5",
+                        isActive ? "text-brand-400" : "text-stone-600"
+                      )}>Step {idx + 1}</p>
+                      <p className={cn(
+                        "text-xs font-semibold leading-tight truncate",
+                        isActive ? "text-white" : isCompleted ? "text-stone-300" : "text-stone-500"
+                      )}>{step.title}</p>
+                    </div>
+                  </button>
                 )
               })}
             </nav>
             
-            <div className="pt-6 border-t border-stone-200">
-              <div className="bg-brand-50 rounded-xl p-4">
-                <p className="text-[10px] font-bold text-brand-600 uppercase mb-1">整體進度</p>
-                <div className="h-1.5 w-full bg-brand-100 rounded-full overflow-hidden">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(stepStatus.filter(s => s).length / activeSteps.length) * 100}%` }}
-                    className="h-full bg-brand-500"
-                  />
-                </div>
+            {/* Progress bar */}
+            <div className="px-5 py-5 border-t border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">整體進度</p>
+                <p className="text-[10px] font-bold text-stone-400">
+                  {stepStatus.filter(s => s).length}/{activeSteps.length}
+                </p>
+              </div>
+              <div className="h-1 w-full bg-white/8 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stepStatus.filter(s => s).length / activeSteps.length) * 100}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className="h-full bg-brand-500 rounded-full"
+                />
               </div>
             </div>
           </div>
 
           {/* Main Content Area */}
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-12">
+          <div className="flex-1 flex flex-col bg-white dark:bg-stone-900 min-w-0">
+            <div className="flex-1 overflow-y-auto px-10 py-9">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStep}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
                 >
                   {activeSteps[currentStep]?.id === 'basic' && (
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">基本資料</h2>
-                        <p className="text-stone-500 text-sm">輸入客戶的聯絡方式與緊急聯繫人資訊。</p>
+                    <div className="space-y-7">
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">基本資料</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">輸入客戶的聯絡方式與緊急聯繫人資訊。</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">姓名 *</Label>
-                          <Input {...form.register('name')} placeholder="例如：王小明" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">姓名 *</Label>
+                          <Input {...form.register('name')} placeholder="例如：王小明" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                           {form.formState.errors.name && <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.name.message}</p>}
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">身分證字號 *</Label>
-                          <Input {...form.register('idNumber')} placeholder="A123456789" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號 *</Label>
+                          <Input {...form.register('idNumber')} placeholder="A123456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">電話 *</Label>
-                          <Input {...form.register('phone')} placeholder="0912-345-678" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電話 *</Label>
+                          <Input {...form.register('phone')} placeholder="0912-345-678" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">Email</Label>
-                          <Input type="email" {...form.register('email')} placeholder="example@mail.com" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">Email</Label>
+                          <Input type="email" {...form.register('email')} placeholder="example@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white dark:focus:bg-stone-750 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">出生年月日 *</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
                           <MinguoDatePickerInput
                             value={form.watch('dateOfBirth')}
                             onChange={(d) => form.setValue('dateOfBirth', d as any, { shouldValidate: true })}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">性別</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">性別</Label>
                           <select
                             {...form.register('gender')}
-                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                            className="w-full h-10 px-3 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer"
                           >
                             <option value="female">女 (Female)</option>
                             <option value="male">男 (Male)</option>
                             <option value="other">不透露 (Other)</option>
                           </select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">運動習慣 *</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">運動習慣 *</Label>
                           <select
                             {...form.register('exerciseHabit')}
-                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                            className="w-full h-10 px-3 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer"
                           >
                             <option value="none">完全沒運動</option>
                             <option value="weekly_1_2">每週 1-2 次</option>
                             <option value="weekly_3_plus">每週 3 次以上</option>
                           </select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">來客渠道 (Source)</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">來客渠道</Label>
                           <select
                             {...form.register('source')}
-                            className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
+                            className="w-full h-10 px-3 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer"
                           >
                             <option value="instagram">Instagram</option>
                             <option value="facebook">Facebook</option>
@@ -687,28 +705,28 @@ export function CustomerFormModal({
                             <option value="other">其他管道</option>
                           </select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">歷史已上堂數</Label>
-                          <Input type="number" {...form.register('historicalSessions')} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">歷史已上堂數</Label>
+                          <Input type="number" {...form.register('historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all" />
                         </div>
                       </div>
-                      <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 space-y-4">
-                        <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      <div className="p-5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-700/50 space-y-4">
+                        <h3 className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-2 uppercase tracking-wide">
                           <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
                           緊急聯絡人資訊
                         </h3>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">姓名 *</Label>
-                            <Input {...form.register('emergencyContact.name')} className="h-9 text-sm" />
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">姓名 *</Label>
+                            <Input {...form.register('emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">關係 *</Label>
-                            <Input {...form.register('emergencyContact.relation')} className="h-9 text-sm" />
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">關係 *</Label>
+                            <Input {...form.register('emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">電話 *</Label>
-                            <Input {...form.register('emergencyContact.phone')} className="h-9 text-sm" />
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">電話 *</Label>
+                            <Input {...form.register('emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
                         </div>
                       </div>
@@ -716,21 +734,21 @@ export function CustomerFormModal({
                   )}
 
                   {activeSteps[currentStep]?.id === 'medical' && (
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">健康狀態</h2>
-                        <p className="text-stone-500 text-sm">了解客戶的身體狀況以進行更安全的課程設計。</p>
+                    <div className="space-y-7">
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">健康狀態</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">了解客戶的身體狀況以進行更安全的課程設計。</p>
                       </div>
                       <div className="space-y-6">
                         <div className="space-y-3">
-                          <Label className="text-stone-700 font-bold block mb-4">慢性病史 (可複選)</Label>
-                          <div className="grid grid-cols-3 gap-3">
+                          <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">慢性病史 (可複選)</Label>
+                          <div className="grid grid-cols-3 gap-2">
                             {['無狀況', '高血壓', '心臟病', '糖尿病', '氣喘', '癲癇', '骨質疏鬆', '自體免疫', '癌症', '其他'].map((condition) => (
                               <label key={condition} className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer",
+                                "flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer",
                                 (form.watch('medicalHistory.chronicConditions') || []).includes(condition) 
-                                  ? "bg-brand-50 border-brand-200 text-brand-700" 
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-brand-50 dark:bg-brand-500/10 border-brand-300 dark:border-brand-500/40 text-brand-700 dark:text-brand-400" 
+                                  : "bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-600"
                               )}>
                                 <input
                                   type="checkbox"
@@ -742,38 +760,36 @@ export function CustomerFormModal({
                                       const val = e.target.value
                                       const current = form.getValues('medicalHistory.chronicConditions') || []
                                       if (val === '無狀況' && checked) {
-                                        // If "無狀況" is checked, clear everything else
                                         form.setValue('medicalHistory.chronicConditions', ['無狀況'])
                                       } else if (val !== '無狀況' && checked) {
-                                        // If any other disease is checked, remove "無狀況" from the array
                                         form.setValue('medicalHistory.chronicConditions', current.filter(x => x !== '無狀況'))
                                       }
                                     }
                                   })}
                                 />
                                 <div className={cn(
-                                  "w-4 h-4 rounded border flex items-center justify-center",
+                                  "w-3.5 h-3.5 rounded border-[1.5px] flex items-center justify-center shrink-0",
                                   (form.watch('medicalHistory.chronicConditions') || []).includes(condition) 
                                     ? "bg-brand-500 border-brand-500" 
-                                    : "border-stone-300"
-                                  )}>
+                                    : "border-stone-300 dark:border-stone-600"
+                                )}>
                                   {(form.watch('medicalHistory.chronicConditions') || []).includes(condition) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                                 </div>
-                                <span className="text-sm font-medium">{condition}</span>
+                                <span className="text-xs font-semibold">{condition}</span>
                               </label>
                             ))}
                           </div>
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-stone-700 font-bold block mb-4">傷病史 (可複選)</Label>
-                          <div className="grid grid-cols-4 gap-3">
+                          <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">傷病史 (可複選)</Label>
+                          <div className="grid grid-cols-5 gap-2">
                             {['無狀況', '肩部', '手肘', '手腕', '下背', '髖關節', '膝蓋', '腳踝', '其他'].map((injury) => (
                               <label key={injury} className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-center justify-center",
+                                "flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer text-center",
                                 (form.watch('medicalHistory.injuries') || []).includes(injury) 
-                                  ? "bg-stone-900 border-stone-900 text-white" 
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-stone-900 dark:bg-white border-stone-900 dark:border-white text-white dark:text-stone-900" 
+                                  : "bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 dark:hover:border-stone-500"
                               )}>
                                 <input
                                   type="checkbox"
@@ -785,26 +801,24 @@ export function CustomerFormModal({
                                       const val = e.target.value
                                       const current = form.getValues('medicalHistory.injuries') || []
                                       if (val === '無狀況' && checked) {
-                                        // If "無狀況" is checked, clear everything else
                                         form.setValue('medicalHistory.injuries', ['無狀況'])
                                       } else if (val !== '無狀況' && checked) {
-                                        // If any other injury is checked, remove "無狀況" from the array
                                         form.setValue('medicalHistory.injuries', current.filter(x => x !== '無狀況'))
                                       }
                                     }
                                   })}
                                 />
-                                <span className="text-xs font-bold">{injury}</span>
+                                <span className="text-[11px] font-bold">{injury}</span>
                               </label>
                             ))}
                           </div>
                         </div>
 
-                        <div className="space-y-2 pt-4">
-                          <Label className="text-stone-700 font-bold">其他身體狀況說明</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">其他身體狀況說明</Label>
                           <textarea 
                             {...form.register('medicalHistory.notes')} 
-                            className="w-full h-32 p-4 rounded-2xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20 transition-all text-sm outline-none"
+                            className="w-full h-28 p-3.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white focus:bg-white dark:focus:bg-stone-750 focus:ring-2 focus:ring-brand-500/20 transition-all text-sm outline-none placeholder:text-stone-400"
                             placeholder="例如：右膝前十字韌帶曾開刀..." 
                           />
                         </div>
@@ -813,15 +827,15 @@ export function CustomerFormModal({
                   )}
 
                   {activeSteps[currentStep]?.id === 'contract' && (
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">合約設定</h2>
-                        <p className="text-stone-500 text-sm">設定合約堂數、單價以及生效日期。</p>
+                    <div className="space-y-7">
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">合約設定</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">設定合約堂數、單價以及生效日期。</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-5">
                         <div className="col-span-2 space-y-2">
-                          <Label className="text-stone-700 font-bold block">合約模式 *</Label>
-                          <div className="flex gap-4">
+                          <Label className="text-xs font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wide block">合約模式 *</Label>
+                          <div className="flex gap-2.5">
                             <button
                               type="button"
                               onClick={() => {
@@ -833,13 +847,13 @@ export function CustomerFormModal({
                                 form.setValue('existingContractId', null)
                               }}
                               className={cn(
-                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-1.5",
                                 (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') !== 'dual')
-                                  ? "bg-stone-900 border-stone-900 text-white shadow-lg shadow-stone-200"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-stone-950 dark:bg-white border-stone-950 dark:border-white text-white dark:text-stone-900 shadow-md"
+                                  : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              👤 建立新單人合約
+                              <span>👤</span> 單人合約
                             </button>
                             <button
                               type="button"
@@ -862,13 +876,13 @@ export function CustomerFormModal({
                                 form.setValue('existingContractId', null)
                               }}
                               className={cn(
-                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-1.5",
                                 (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') === 'dual')
-                                  ? "bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-100"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20"
+                                  : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              👥 建立新雙人合約
+                              <span>👥</span> 雙人合約
                             </button>
                             <button
                               type="button"
@@ -882,13 +896,13 @@ export function CustomerFormModal({
                                 setSelectedExistingCustomerId('')
                               }}
                               className={cn(
-                                "flex-1 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-1.5",
                                 form.watch('bindExistingContractMode')
-                                  ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20"
+                                  : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              🔗 連結現有合約
+                              <span>🔗</span> 連結合約
                             </button>
                           </div>
                         </div>
@@ -1109,37 +1123,37 @@ export function CustomerFormModal({
                               )}
                             </div>
 
-                            <div className="space-y-2">
-                              <Label className="text-stone-700">合約總堂數 *</Label>
-                              <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="bg-stone-50 border-stone-200" />
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約總堂數 *</Label>
+                              <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-stone-700">合約總金額 (Total Lesson Fee) *</Label>
-                              <Input type="number" {...form.register('contract.totalAmount')} onChange={handleTotalAmountChange} className="bg-stone-50 border-stone-200" />
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約總金額 *</Label>
+                              <Input type="number" {...form.register('contract.totalAmount')} onChange={handleTotalAmountChange} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-stone-700">已付金額</Label>
-                              <Input type="number" {...form.register('contract.paidAmount')} className="bg-stone-50 border-stone-200" readOnly={form.watch('contract.paymentType') === 'installments'} />
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">已付金額</Label>
+                              <Input type="number" {...form.register('contract.paidAmount')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" readOnly={form.watch('contract.paymentType') === 'installments'} />
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-stone-700">合約開始日 *</Label>
-                              <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約開始日 *</Label>
+                              <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
                               {form.formState.errors.contract?.startDate && (
                                 <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.startDate.message}</p>
                               )}
                             </div>
-                            <div className="space-y-2">
-                              <Label className="text-stone-700">合約結束日 *</Label>
-                              <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="bg-stone-50 border-stone-200" />
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約結束日 *</Label>
+                              <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
                               {form.formState.errors.contract?.endDate && (
                                 <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.endDate.message}</p>
                               )}
                             </div>
 
                             {/* 付款方式與分期設定 */}
-                            <div className="space-y-4 border-t border-stone-100 pt-6 col-span-2">
-                              <Label className="text-stone-700 font-bold block text-xs">付款狀態 / 方式 *</Label>
-                              <div className="flex gap-4">
+                            <div className="space-y-3 border-t border-stone-100 dark:border-stone-800 pt-5 col-span-2">
+                              <Label className="text-xs font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wide block">付款方式 *</Label>
+                              <div className="flex gap-2.5">
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1147,13 +1161,13 @@ export function CustomerFormModal({
                                     syncInstallments('single', 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
                                   }}
                                   className={cn(
-                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-2",
                                     form.watch('contract.paymentType') !== 'installments'
-                                      ? "bg-stone-900 border-stone-900 text-white shadow-lg"
-                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                      ? "bg-stone-950 dark:bg-white border-stone-950 dark:border-white text-white dark:text-stone-900 shadow-md"
+                                      : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300"
                                   )}
                                 >
-                                  💵 一次付清 (直接付清)
+                                  💵 一次付清
                                 </button>
                                 <button
                                   type="button"
@@ -1162,13 +1176,13 @@ export function CustomerFormModal({
                                     syncInstallments('installments', form.getValues('contract.installmentCount') || 2, form.getValues('contract.totalAmount') || 0, form.getValues('contract.startDate') || new Date());
                                   }}
                                   className={cn(
-                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                    "flex-1 py-2.5 px-4 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-2",
                                     form.watch('contract.paymentType') === 'installments'
-                                      ? "bg-brand-500 border-brand-500 text-white shadow-lg"
-                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                      ? "bg-brand-500 border-brand-500 text-white shadow-md shadow-brand-500/20"
+                                      : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300"
                                   )}
                                 >
-                                  💳 分期付款 (二到十六期)
+                                  💳 分期付款
                                 </button>
                               </div>
 
@@ -1271,14 +1285,14 @@ export function CustomerFormModal({
                       </div>
                       
                       {!form.watch('bindExistingContractMode') && (
-                        <div className="mt-6 p-6 bg-brand-50 rounded-2xl border border-brand-100 flex items-center justify-between">
+                        <div className="mt-2 p-4 bg-stone-950 dark:bg-white/5 rounded-xl flex items-center justify-between">
                           <div>
-                            <Label className="text-brand-600 text-xs font-bold uppercase mb-1">單堂平均價格</Label>
-                            <div className="text-2xl font-black text-brand-950">
+                            <p className="text-stone-400 text-[10px] font-bold uppercase tracking-widest mb-1">單堂平均價格</p>
+                            <div className="text-xl font-black text-brand-400">
                               NT$ {(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                             </div>
                           </div>
-                          <div className="text-right text-stone-400 text-xs">
+                          <div className="text-right text-stone-600 text-[10px]">
                             根據總金額與堂數自動計算
                           </div>
                         </div>
@@ -1287,57 +1301,57 @@ export function CustomerFormModal({
                   )}
 
                   {activeSteps[currentStep]?.id === 'partner_basic' && (
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">共享學員基本資料</h2>
-                        <p className="text-stone-500 text-sm">輸入第二位共享學員的聯絡方式與緊急聯繫人資訊。</p>
+                    <div className="space-y-7">
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">共享學員基本資料</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">輸入第二位共享學員的聯絡方式與緊急聯繫人資訊。</p>
                       </div>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">共享學員姓名 *</Label>
-                          <Input {...form.register('partnerCustomerData.name')} placeholder="例如：陳小美" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                      <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">共享學員姓名 *</Label>
+                          <Input {...form.register('partnerCustomerData.name')} placeholder="例如：陳小美" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">身分證字號 *</Label>
-                          <Input {...form.register('partnerCustomerData.idNumber')} placeholder="B223456789" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號 *</Label>
+                          <Input {...form.register('partnerCustomerData.idNumber')} placeholder="B223456789" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">電話 *</Label>
-                          <Input {...form.register('partnerCustomerData.phone')} placeholder="0987-654-321" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電話 *</Label>
+                          <Input {...form.register('partnerCustomerData.phone')} placeholder="0987-654-321" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">Email</Label>
-                          <Input type="email" {...form.register('partnerCustomerData.email')} placeholder="partner@mail.com" className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">Email</Label>
+                          <Input type="email" {...form.register('partnerCustomerData.email')} placeholder="partner@mail.com" className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white placeholder:text-stone-400 transition-all" />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">出生年月日 *</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
                           <MinguoDatePickerInput
                             value={form.watch('partnerCustomerData.dateOfBirth')}
                             onChange={(d) => form.setValue('partnerCustomerData.dateOfBirth', d as any, { shouldValidate: true })}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-stone-700">歷史已上堂數</Label>
-                          <Input type="number" {...form.register('partnerCustomerData.historicalSessions')} className="bg-stone-50 border-stone-200 focus:bg-white transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">歷史已上堂數</Label>
+                          <Input type="number" {...form.register('partnerCustomerData.historicalSessions')} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white transition-all" />
                         </div>
                       </div>
-                      <div className="p-6 bg-stone-50 rounded-2xl border border-stone-100 space-y-4">
-                        <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
-                          緊急聯絡人資訊 (共享學員) *
+                      <div className="p-5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-700/50 space-y-4">
+                        <h3 className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-2 uppercase tracking-wide">
+                          <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                          緊急聯絡人資訊（共享學員）
                         </h3>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">姓名 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.name')} className="h-9 text-sm" />
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">姓名 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.name')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">關係 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.relation')} className="h-9 text-sm" />
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">關係 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.relation')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs text-stone-500">電話 *</Label>
-                            <Input {...form.register('partnerCustomerData.emergencyContact.phone')} className="h-9 text-sm" />
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] text-stone-500 dark:text-stone-400">電話 *</Label>
+                            <Input {...form.register('partnerCustomerData.emergencyContact.phone')} className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white" />
                           </div>
                         </div>
                       </div>
@@ -1345,21 +1359,21 @@ export function CustomerFormModal({
                   )}
 
                   {activeSteps[currentStep]?.id === 'partner_medical' && (
-                    <div className="space-y-8">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">共享學員健康狀態</h2>
-                        <p className="text-stone-500 text-sm">了解第二位學員的身體狀況以進行更安全的課程設計。</p>
+                    <div className="space-y-7">
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">共享學員健康狀態</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">了解第二位學員的身體狀況以進行更安全的課程設計。</p>
                       </div>
                       <div className="space-y-6">
                         <div className="space-y-3">
-                          <Label className="text-stone-700 font-bold block mb-4">慢性病史 (可複選)</Label>
-                          <div className="grid grid-cols-3 gap-3">
+                          <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">慢性病史 (可複選)</Label>
+                          <div className="grid grid-cols-3 gap-2">
                             {['無狀況', '高血壓', '心臟病', '糖尿病', '氣喘', '癲癇', '骨質疏鬆', '自體免疫', '癌症', '其他'].map((condition) => (
                               <label key={condition} className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer",
+                                "flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer",
                                 (form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) 
-                                  ? "bg-brand-50 border-brand-200 text-brand-700" 
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-brand-50 dark:bg-brand-500/10 border-brand-300 dark:border-brand-500/40 text-brand-700 dark:text-brand-400" 
+                                  : "bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-600"
                               )}>
                                 <input
                                   type="checkbox"
@@ -1379,28 +1393,28 @@ export function CustomerFormModal({
                                   })}
                                 />
                                 <div className={cn(
-                                  "w-4 h-4 rounded border flex items-center justify-center",
+                                  "w-3.5 h-3.5 rounded border-[1.5px] flex items-center justify-center shrink-0",
                                   (form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) 
                                     ? "bg-brand-500 border-brand-500" 
-                                    : "border-stone-300"
-                                  )}>
+                                    : "border-stone-300 dark:border-stone-600"
+                                )}>
                                   {(form.watch('partnerCustomerData.medicalHistory.chronicConditions') || []).includes(condition) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                                 </div>
-                                <span className="text-sm font-medium">{condition}</span>
+                                <span className="text-xs font-semibold">{condition}</span>
                               </label>
                             ))}
                           </div>
                         </div>
 
                         <div className="space-y-3">
-                          <Label className="text-stone-700 font-bold block mb-4">傷病史 (可複選)</Label>
-                          <div className="grid grid-cols-4 gap-3">
+                          <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">傷病史 (可複選)</Label>
+                          <div className="grid grid-cols-5 gap-2">
                             {['無狀況', '肩部', '手肘', '手腕', '下背', '髖關節', '膝蓋', '腳踝', '其他'].map((injury) => (
                               <label key={injury} className={cn(
-                                "flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-center justify-center",
+                                "flex items-center justify-center p-2.5 rounded-xl border transition-all cursor-pointer text-center",
                                 (form.watch('partnerCustomerData.medicalHistory.injuries') || []).includes(injury) 
-                                  ? "bg-stone-900 border-stone-900 text-white" 
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-stone-900 dark:bg-white border-stone-900 dark:border-white text-white dark:text-stone-900" 
+                                  : "bg-stone-50 dark:bg-stone-800/60 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-400 dark:hover:border-stone-500"
                               )}>
                                 <input
                                   type="checkbox"
@@ -1419,17 +1433,17 @@ export function CustomerFormModal({
                                     }
                                   })}
                                 />
-                                <span className="text-xs font-bold">{injury}</span>
+                                <span className="text-[11px] font-bold">{injury}</span>
                               </label>
                             ))}
                           </div>
                         </div>
 
-                        <div className="space-y-2 pt-4">
-                          <Label className="text-stone-700 font-bold">其他身體狀況說明</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">其他身體狀況說明</Label>
                           <textarea 
                             {...form.register('partnerCustomerData.medicalHistory.notes')} 
-                            className="w-full h-32 p-4 rounded-2xl border border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-brand-500/20 transition-all text-sm outline-none"
+                            className="w-full h-28 p-3.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white focus:bg-white dark:focus:bg-stone-750 focus:ring-2 focus:ring-brand-500/20 transition-all text-sm outline-none placeholder:text-stone-400"
                             placeholder="例如：右膝前十字韌帶曾開刀..." 
                           />
                         </div>
@@ -1439,9 +1453,9 @@ export function CustomerFormModal({
 
                   {activeSteps[currentStep]?.id === 'signature' && (
                     <div className="space-y-6">
-                      <div className="space-y-1">
-                        <h2 className="text-2xl font-bold text-stone-900">簽署確認</h2>
-                        <p className="text-stone-500 text-sm">請閱讀條款並簽名確認。</p>
+                      <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                        <h2 className="text-xl font-bold text-stone-900 dark:text-white">簽署確認</h2>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">請閱讀條款並簽名確認。</p>
                       </div>
 
                       <div className="space-y-4">
@@ -1973,23 +1987,24 @@ export function CustomerFormModal({
             </div>
 
             {/* Sticky Footer Navigation */}
-            <div className="p-8 border-t border-stone-100 flex items-center justify-between bg-white/80 backdrop-blur-md">
+            <div className="px-8 py-5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between bg-white/90 dark:bg-stone-900/90 backdrop-blur-md">
               <Button 
                 type="button" 
                 variant="ghost" 
                 onClick={handlePrev}
                 disabled={currentStep === 0}
-                className={cn("gap-2", currentStep === 0 && "opacity-0")}
+                className={cn("gap-2 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white h-9", currentStep === 0 && "opacity-0 pointer-events-none")}
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
                 上一步
               </Button>
 
-              <div className="flex gap-3">
+              <div className="flex gap-2.5">
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => onOpenChange(false)}
+                  className="h-9 text-xs dark:bg-transparent dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white"
                 >
                   取消
                 </Button>
@@ -1999,19 +2014,19 @@ export function CustomerFormModal({
                     type="button" 
                     onClick={handleNext}
                     disabled={!canGoNext}
-                    className="gap-2 bg-stone-950 hover:bg-stone-800 transition-all px-8"
+                    className="gap-2 h-9 text-xs bg-stone-950 dark:bg-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 transition-all px-6"
                   >
                     下一步
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 ) : (
                   <Button 
                     type="button" 
                     onClick={() => handleFinalSubmit(form.getValues())}
                     disabled={loading || !canGoNext}
-                    className="gap-2 bg-brand-500 hover:bg-brand-600 transition-all px-8 shadow-lg shadow-brand-500/20"
+                    className="gap-2 h-9 text-xs bg-brand-500 hover:bg-brand-600 transition-all px-6 shadow-md shadow-brand-500/20"
                   >
-                    {loading ? '儲存中...' : isEditMode ? '儲存修改' : '完成並建立客戶'}
+                    {loading ? '儲存中...' : isEditMode ? '儲存修改' : '完成並建立'}
                   </Button>
                 )}
               </div>
