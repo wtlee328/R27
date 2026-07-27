@@ -51,6 +51,8 @@ export function CustomerContractModal({
   const secondarySigCanvas = React.useRef<any>(null)
   const [isSigACleared, setIsSigACleared] = React.useState(false)
   const [isSigBCleared, setIsSigBCleared] = React.useState(false)
+  const [hasDrawnA, setHasDrawnA] = React.useState(false)
+  const [hasDrawnB, setHasDrawnB] = React.useState(false)
   
   // Admin & Editing states
   const { isAdmin, isTrainer } = useAuthStore()
@@ -62,6 +64,15 @@ export function CustomerContractModal({
 
   const [isEditing, setIsEditing] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setHasDrawnA(false)
+      setHasDrawnB(false)
+      setIsSigACleared(false)
+      setIsSigBCleared(false)
+    }
+  }, [isEditing])
   
   // Local edit states
   const [editTotalSessions, setEditTotalSessions] = React.useState<number>(0)
@@ -299,44 +310,32 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
-      const extractSignatureDataUrl = (ref: any): string | null => {
-        if (!ref || !ref.current) return null
-        const canvasObj = ref.current
-        let isEmpty = true
-        if (typeof canvasObj.isEmpty === 'function') {
-          isEmpty = canvasObj.isEmpty()
-        }
-        if (isEmpty) return null
-
+      let finalSigA: string | null = null
+      if (hasDrawnA && sigCanvas.current) {
         try {
-          if (typeof canvasObj.toDataURL === 'function') {
-            return canvasObj.toDataURL('image/png')
-          }
-          if (typeof canvasObj.getCanvas === 'function') {
-            return canvasObj.getCanvas().toDataURL('image/png')
-          }
-          if (typeof canvasObj.getTrimmedCanvas === 'function') {
-            return canvasObj.getTrimmedCanvas().toDataURL('image/png')
+          const canvasObj = sigCanvas.current as any
+          const rawCanvas: HTMLCanvasElement = typeof canvasObj.getCanvas === 'function' ? canvasObj.getCanvas() : (canvasObj.canvas || canvasObj)
+          if (rawCanvas && typeof rawCanvas.toDataURL === 'function') {
+            finalSigA = rawCanvas.toDataURL('image/png')
           }
         } catch (err) {
-          console.error('Error extracting signature:', err)
+          console.error('Error getting sigCanvas A:', err)
         }
-        return null
-      }
-
-      const drawnSigA = extractSignatureDataUrl(sigCanvas)
-      const drawnSigB = extractSignatureDataUrl(secondarySigCanvas)
-
-      let finalSigA: string | null = null
-      if (drawnSigA) {
-        finalSigA = drawnSigA
       } else if (!isSigACleared && contract?.signatureDataUrl) {
         finalSigA = contract.signatureDataUrl
       }
 
       let finalSigB: string | null = null
-      if (drawnSigB) {
-        finalSigB = drawnSigB
+      if (hasDrawnB && secondarySigCanvas.current) {
+        try {
+          const canvasObj = secondarySigCanvas.current as any
+          const rawCanvas: HTMLCanvasElement = typeof canvasObj.getCanvas === 'function' ? canvasObj.getCanvas() : (canvasObj.canvas || canvasObj)
+          if (rawCanvas && typeof rawCanvas.toDataURL === 'function') {
+            finalSigB = rawCanvas.toDataURL('image/png')
+          }
+        } catch (err) {
+          console.error('Error getting sigCanvas B:', err)
+        }
       } else if (!isSigBCleared && contract?.secondarySignatureDataUrl) {
         finalSigB = contract.secondarySignatureDataUrl
       }
@@ -1137,7 +1136,7 @@ export function CustomerContractModal({
                 <div className="space-y-4 text-right">
                   <div className="flex gap-6 items-end">
                     {/* Primary Signature */}
-                    <div className="space-y-1.5 text-left">
+                    <div className="space-y-1.5 text-left min-w-[240px]">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] text-stone-600 font-bold uppercase tracking-widest">
                           {partner ? '甲方學員 A 簽名' : '會員簽名'}
@@ -1145,21 +1144,31 @@ export function CustomerContractModal({
                         {isEditing && (
                           <button
                             type="button"
-                            onClick={() => sigCanvas.current?.clear()}
-                            className="text-[10px] text-amber-700 hover:text-amber-900 font-bold underline print:hidden"
+                            onClick={() => {
+                              try {
+                                sigCanvas.current?.clear()
+                              } catch (e) {
+                                console.error('Clear sig error:', e)
+                              }
+                              setHasDrawnA(false)
+                              setIsSigACleared(true)
+                            }}
+                            className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer"
                           >
                             清除重簽
                           </button>
                         )}
                       </div>
                       {isEditing ? (
-                        <div className="border-2 border-stone-300 border-dashed rounded-xl bg-white p-1 min-w-[220px] print:hidden">
+                        <div className="border-2 border-stone-300 border-dashed rounded-xl bg-white p-1 print:hidden">
                           <SignatureCanvas
                             ref={sigCanvas}
+                            onEnd={() => {
+                              setHasDrawnA(true)
+                              setIsSigACleared(false)
+                            }}
                             canvasProps={{
-                              width: 220,
-                              height: 85,
-                              className: 'bg-white rounded-lg w-full cursor-crosshair'
+                              className: 'w-full h-24 bg-white rounded-lg cursor-crosshair'
                             }}
                           />
                         </div>
@@ -1178,27 +1187,37 @@ export function CustomerContractModal({
 
                     {/* Secondary Signature */}
                     {partner && (
-                      <div className="space-y-1.5 text-left">
+                      <div className="space-y-1.5 text-left min-w-[240px]">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest">甲方學員 B 簽名</p>
                           {isEditing && (
                             <button
                               type="button"
-                              onClick={() => secondarySigCanvas.current?.clear()}
-                              className="text-[10px] text-orange-700 hover:text-orange-900 font-bold underline print:hidden"
+                              onClick={() => {
+                                try {
+                                  secondarySigCanvas.current?.clear()
+                                } catch (e) {
+                                  console.error('Clear secondary sig error:', e)
+                                }
+                                setHasDrawnB(false)
+                                setIsSigBCleared(true)
+                              }}
+                              className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer"
                             >
                               清除重簽
                             </button>
                           )}
                         </div>
                         {isEditing ? (
-                          <div className="border-2 border-orange-200 border-dashed rounded-xl bg-orange-50/50 p-1 min-w-[220px] print:hidden">
+                          <div className="border-2 border-orange-200 border-dashed rounded-xl bg-orange-50/50 p-1 print:hidden">
                             <SignatureCanvas
                               ref={secondarySigCanvas}
+                              onEnd={() => {
+                                setHasDrawnB(true)
+                                setIsSigBCleared(false)
+                              }}
                               canvasProps={{
-                                width: 220,
-                                height: 85,
-                                className: 'bg-white rounded-lg w-full cursor-crosshair'
+                                className: 'w-full h-24 bg-white rounded-lg cursor-crosshair'
                               }}
                             />
                           </div>
