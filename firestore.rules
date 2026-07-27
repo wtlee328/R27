@@ -103,7 +103,7 @@ service cloud.firestore {
     match /activityLogs/{logId} {
       allow read: if isAdmin();
       allow create: if isAuthenticated();
-      allow update, delete: if false;
+      allow update, delete: if isAdmin();
     }
   }
 }
