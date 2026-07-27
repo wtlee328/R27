@@ -243,6 +243,15 @@ export function CustomerContractModal({
     setEditInstallments(newInsts)
   }
 
+  const handleTotalSessionsChange = (newTotal: number) => {
+    setEditTotalSessions(newTotal)
+    const origTotal = contract?.totalSessions || 0
+    const origRemaining = contract?.remainingSessions || 0
+    const usedSessions = Math.max(0, origTotal - origRemaining)
+    const newRemaining = Math.max(0, newTotal - usedSessions)
+    setEditRemainingSessions(newRemaining)
+  }
+
   const getValidationErrors = () => {
     const errors: string[] = []
     if (editTotalSessions <= 0) {
@@ -334,9 +343,17 @@ export function CustomerContractModal({
         }
       }
 
+      const origTotal = contract?.totalSessions || 0
+      const origRemaining = contract?.remainingSessions || 0
+      const usedSessions = Math.max(0, origTotal - origRemaining)
+      const calculatedRemaining = Math.max(0, Number(editTotalSessions) - usedSessions)
+      const finalRemainingSessions = (origTotal !== Number(editTotalSessions) && Number(editRemainingSessions) === origRemaining)
+        ? calculatedRemaining
+        : Number(editRemainingSessions)
+
       const updateData = {
         totalSessions: Number(editTotalSessions),
-        remainingSessions: Number(editRemainingSessions),
+        remainingSessions: finalRemainingSessions,
         totalAmount: Number(editTotalAmount),
         paidAmount: finalPaidAmount,
         startDate: Timestamp.fromDate(ensureDate(editStartDate)),
@@ -365,7 +382,7 @@ export function CustomerContractModal({
 
       if (contract) {
         contract.totalSessions = Number(editTotalSessions)
-        contract.remainingSessions = Number(editRemainingSessions)
+        contract.remainingSessions = finalRemainingSessions
         contract.totalAmount = Number(editTotalAmount)
         contract.paidAmount = finalPaidAmount
         contract.startDate = ensureDate(editStartDate)
@@ -810,13 +827,16 @@ export function CustomerContractModal({
                       <input 
                         type="number" 
                         value={editTotalSessions} 
-                        onChange={e => setEditTotalSessions(Number(e.target.value))}
+                        onChange={e => handleTotalSessionsChange(Number(e.target.value))}
                         className="w-14 border-b border-stone-400 bg-stone-50 text-center font-mono font-bold focus:outline-none" 
                       />
                     ) : (
                       <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-2 underline">{editTotalSessions}</span>
                     )}
                     <span> 買堂。</span>
+                    <span className="text-xs text-stone-500 font-medium ml-2">
+                      (已上 {Math.max(0, (contract?.totalSessions || 0) - (contract?.remainingSessions || 0))} 堂，剩餘 {editRemainingSessions} 堂)
+                    </span>
                   </div>
 
                   <div className="col-span-4 flex items-center">
