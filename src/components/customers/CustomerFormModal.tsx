@@ -2051,7 +2051,7 @@ export function CustomerFormModal({
             </div>
 
             {/* Sticky Footer Navigation */}
-            <div className="px-8 py-5 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between bg-white/90 dark:bg-stone-900/90 backdrop-blur-md">
+            <div className="h-[77px] px-8 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between bg-white/90 dark:bg-stone-900/90 backdrop-blur-md shrink-0">
               <Button 
                 type="button" 
                 variant="ghost" 
