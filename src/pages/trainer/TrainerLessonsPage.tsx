@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight, RefreshCw } from 'lucide-react'
+import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight, RefreshCw, X } from 'lucide-react'
 import { RiCalendarCheckLine } from '@remixicon/react'
+import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useContracts } from '@/hooks/useContracts'
@@ -15,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
 import type { Customer, Contract } from '@/types'
+// LessonRecord already imported above
 
 export default function TrainerLessonsPage() {
   const { user } = useAuthStore()
@@ -26,6 +28,10 @@ export default function TrainerLessonsPage() {
   const { trainers, loading: trainersLoading } = useTrainers()
 
   const [isRecording, setIsRecording] = useState(false)
+  // Selected record for slide-in detail panel
+  const [selectedRecord, setSelectedRecord] = useState<LessonRecord | null>(null)
+  const [isPanelVisible, setIsPanelVisible] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(1) // 1: Select Customer, 2: Select Contract & Trainer & Details
 
   // Filter records for current trainer
@@ -651,14 +657,13 @@ export default function TrainerLessonsPage() {
             </div>
           </div>
 
-          {/* Desktop Table */}
+          {/* Lesson Records List */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
+            <div className="grid grid-cols-[2fr_1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
               <span>學員</span>
               <span>教練</span>
               <span>日期</span>
-              <span>備註</span>
               <span className="text-right">扣堂數</span>
             </div>
 
@@ -672,10 +677,34 @@ export default function TrainerLessonsPage() {
                     ? record.attendingCustomerNames.join('、')
                     : record.customerName
                   const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
+                  const isSelected = selectedRecord?.id === record.id
 
                   return (
-                    <div key={record.id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr_80px] gap-4 px-6 py-4 hover:bg-stone-50 transition-colors items-center">
-                      <span className="font-semibold text-stone-800 text-sm truncate">{attendingNames}</span>
+                    <div
+                      key={record.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setIsPanelVisible(false)
+                          setTimeout(() => setSelectedRecord(null), 300)
+                        } else {
+                          setSelectedRecord(record)
+                          setIsPanelVisible(false)
+                          requestAnimationFrame(() => {
+                            requestAnimationFrame(() => setIsPanelVisible(true))
+                          })
+                        }
+                      }}
+                      className={cn(
+                        "grid grid-cols-[2fr_1.2fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
+                        isSelected
+                          ? "bg-brand-50/60 border-l-2 border-brand-500"
+                          : "hover:bg-stone-50 border-l-2 border-transparent"
+                      )}
+                    >
+                      <span className={cn(
+                        "font-semibold text-sm truncate transition-colors",
+                        isSelected ? "text-brand-700" : "text-stone-800 group-hover:text-stone-900"
+                      )}>{attendingNames}</span>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
                         {isSubstituteRecord && (
@@ -688,8 +717,16 @@ export default function TrainerLessonsPage() {
                         <Calendar className="h-3.5 w-3.5 text-stone-400" />
                         {formatRecordDate(record.sessionDate)}
                       </span>
-                      <span className="text-xs text-stone-400 italic truncate">{record.notes || '—'}</span>
-                      <span className="text-right font-black text-brand-600 text-base">-{record.sessionAmount}<span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span></span>
+                      <div className="flex items-center justify-end gap-2">
+                        <span className={cn(
+                          "font-black text-base transition-colors",
+                          isSelected ? "text-brand-600" : "text-brand-600"
+                        )}>-{record.sessionAmount}<span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span></span>
+                        <ChevronRight className={cn(
+                          "h-4 w-4 text-stone-300 transition-all duration-200",
+                          isSelected ? "rotate-90 text-brand-500" : "group-hover:translate-x-0.5"
+                        )} />
+                      </div>
                     </div>
                   )
                 })}
@@ -700,6 +737,139 @@ export default function TrainerLessonsPage() {
               </div>
             )}
           </div>
+
+          {/* Slide-in Detail Panel */}
+          {selectedRecord && (() => {
+            const r = selectedRecord
+            const trainerName = trainers.find(t => t.id === r.trainerId)?.name || '未指定教練'
+            const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
+              ? r.attendingCustomerNames.join('、')
+              : r.customerName
+            const isSubstituteRecord = r.contractTrainerId && r.contractTrainerId !== r.trainerId
+            const contractTrainerName = r.contractTrainerId
+              ? trainers.find(t => t.id === r.contractTrainerId)?.name
+              : null
+
+            return (
+              <div
+                ref={panelRef}
+                style={{
+                  transform: isPanelVisible ? 'translateX(0)' : 'translateX(100%)',
+                  opacity: isPanelVisible ? 1 : 0,
+                  transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease',
+                }}
+                className="fixed top-0 right-0 h-full w-full sm:w-[380px] bg-white border-l border-stone-200 shadow-2xl z-50 flex flex-col"
+              >
+                {/* Panel Header */}
+                <div className="px-6 py-5 border-b border-stone-100 bg-stone-50 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">銷課紀錄細項</p>
+                    <h3 className="text-lg font-bold text-stone-900 leading-tight">{attendingNames}</h3>
+                    {isSubstituteRecord && (
+                      <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
+                        代課紀錄
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPanelVisible(false)
+                      setTimeout(() => setSelectedRecord(null), 300)
+                    }}
+                    className="p-2 rounded-xl text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors shrink-0 mt-0.5"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Panel Content */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                  {/* Sessions Badge */}
+                  <div className="flex items-center justify-center">
+                    <div className="bg-brand-50 border border-brand-100 rounded-2xl px-8 py-4 text-center">
+                      <p className="text-[10px] font-black text-brand-400 uppercase tracking-widest mb-1">扣堂數</p>
+                      <p className="text-4xl font-black text-brand-600 tabular-nums">-{r.sessionAmount}</p>
+                      <p className="text-xs text-brand-400 font-bold mt-1">堂</p>
+                    </div>
+                  </div>
+
+                  {/* Detail Rows */}
+                  <div className="bg-stone-50 rounded-2xl border border-stone-100 divide-y divide-stone-100 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="text-xs font-bold text-stone-400">上課日期</span>
+                      <span className="text-sm font-bold text-stone-800 tabular-nums">
+                        {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="text-xs font-bold text-stone-400">上課時間</span>
+                      <span className="text-sm font-bold text-stone-800 tabular-nums">
+                        {r.sessionDate ? format(r.sessionDate.toDate(), 'HH:mm') : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="text-xs font-bold text-stone-400">授課教練</span>
+                      <span className="text-sm font-bold text-stone-800">{trainerName}</span>
+                    </div>
+                    {isSubstituteRecord && contractTrainerName && (
+                      <div className="flex items-center justify-between px-4 py-3.5">
+                        <span className="text-xs font-bold text-stone-400">原合約教練</span>
+                        <span className="text-sm font-bold text-amber-700">{contractTrainerName}</span>
+                      </div>
+                    )}
+                    {r.contractId && (
+                      <div className="flex items-center justify-between px-4 py-3.5">
+                        <span className="text-xs font-bold text-stone-400">合約 ID</span>
+                        <span className="text-xs font-mono text-stone-500 max-w-[160px] truncate">{r.contractId}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  {r.notes && (
+                    <div>
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
+                      <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3.5">
+                        <p className="text-sm text-stone-700 leading-relaxed">{r.notes}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attending Customers (for dual contracts) */}
+                  {r.attendingCustomerNames && r.attendingCustomerNames.length > 1 && (
+                    <div>
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">出席學員</p>
+                      <div className="flex flex-wrap gap-2">
+                        {r.attendingCustomerNames.map((name, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-700 font-bold text-xs px-3 py-1.5 rounded-full">
+                            <User className="h-3 w-3" />
+                            {name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* Backdrop for detail panel */}
+          {selectedRecord && (
+            <div
+              onClick={() => {
+                setIsPanelVisible(false)
+                setTimeout(() => setSelectedRecord(null), 300)
+              }}
+              style={{
+                opacity: isPanelVisible ? 1 : 0,
+                transition: 'opacity 0.3s ease',
+                pointerEvents: isPanelVisible ? 'auto' : 'none',
+              }}
+              className="fixed inset-0 bg-black/20 z-40"
+            />
+          )}
         </div>
       )}
     </div>
