@@ -446,7 +446,14 @@ export function CustomerFormModal({
     const sessions = Number(e.target.value)
     const totalAmount = form.getValues('contract.totalAmount') || 0
     form.setValue('contract.totalSessions', sessions)
-    form.setValue('contract.remainingSessions', sessions)
+    
+    const initialCont = initialCustomer?.contract || initialData?.contract
+    const usedSessions = initialCont
+      ? Math.max(0, (initialCont.totalSessions || 0) - (initialCont.remainingSessions || 0))
+      : 0
+    const newRemaining = Math.max(0, sessions - usedSessions)
+    form.setValue('contract.remainingSessions', newRemaining)
+
     if (sessions > 0) {
       form.setValue('contract.pricePerSession', Math.round((totalAmount / sessions) * 100) / 100)
     } else {
