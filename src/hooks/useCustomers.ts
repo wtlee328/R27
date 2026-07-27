@@ -18,19 +18,9 @@ import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
 import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { Customer, Contract } from '../types'
-import type { CustomerFormValues, CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import { generateContractNo, nextDailySequence } from '../lib/contractNo'
-const ensureDate = (d: any): Date => {
-  if (!d) return new Date()
-  if (d instanceof Date) return isNaN(d.getTime()) ? new Date() : d
-  if (d?.toDate && typeof d.toDate === 'function') return d.toDate()
-  if (typeof d === 'number') return new Date(d)
-  if (typeof d === 'string') {
-    const parsed = new Date(d)
-    return isNaN(parsed.getTime()) ? new Date() : parsed
-  }
-  return new Date()
-}
+import { logActivity } from '../lib/activityLogger'
+import { ensureDate } from '../lib/utils'
 
 export function useCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([])

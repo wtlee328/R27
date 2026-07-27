@@ -4,7 +4,7 @@ import {
   Dialog,
   DialogContent,
 } from '../ui/dialog'
-import { cn, formatMinguoDate } from '@/lib/utils'
+import { cn, formatMinguoDate, ensureDate } from '@/lib/utils'
 import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
 import { doc, getDoc, updateDoc, deleteDoc, Timestamp, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
