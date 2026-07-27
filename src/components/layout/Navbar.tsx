@@ -94,8 +94,8 @@ export function Navbar() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2.5 outline-none group cursor-pointer p-1 rounded-xl hover:bg-stone-100/80 transition-all">
-                <Avatar className="h-8 w-8 ring-2 ring-stone-200 group-hover:ring-orange-500/50 transition-all">
+              <button className="flex items-center gap-2.5 outline-none group cursor-pointer p-1 rounded-xl hover:bg-stone-100/80 dark:hover:bg-stone-800/80 transition-all">
+                <Avatar className="h-8 w-8 ring-2 ring-stone-200 dark:ring-stone-700/80 group-hover:ring-orange-500/50 transition-all">
                   <AvatarImage src="" />
                   <AvatarFallback className="bg-stone-900 text-white text-xs font-black">
                     {user?.displayName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}

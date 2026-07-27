@@ -292,6 +292,10 @@ html.dark .border-stone-50 {
   border-color: #384959;
 }
 
+html.dark .ring-stone-200 {
+  --tw-ring-color: #384959;
+}
+
 /* ── Inputs, Selects & Textareas ── */
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark select,
