@@ -564,7 +564,7 @@ export function CustomerFormModal({
         </div>
         <div className="flex h-[80vh] min-h-[600px]">
           {/* Sidebar — dark premium */}
-          <div className="w-64 bg-stone-950 dark:bg-stone-950 flex flex-col shrink-0">
+          <div className="w-64 bg-stone-900 dark:bg-black border-r border-stone-200/50 dark:border-stone-800/80 flex flex-col shrink-0">
             {/* Sidebar Header */}
             <div className="px-7 pt-8 pb-6 border-b border-white/5">
               <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500 mb-1">
