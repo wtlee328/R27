@@ -21,7 +21,7 @@ export default function ActivityLogPage() {
   // Filter logs
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
-      const centerLabel = log.centerId === 'coffit' ? 'coffit 考飛特' : log.centerId === 'r27' ? 'r27 健身' : '通用場館'
+      const centerLabel = log.centerId === 'coffit' ? 'coffit' : log.centerId === 'r27' ? 'r27 健身' : '通用場館'
       const matchSearch =
         log.trainerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.recordSummary.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -45,7 +45,7 @@ export default function ActivityLogPage() {
       return (
         <span className="bg-purple-50 text-purple-700 border-purple-200/80 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-          Coffit 考飛特
+          Coffit
         </span>
       )
     }
@@ -126,7 +126,7 @@ export default function ActivityLogPage() {
             options={[
               { value: 'all', label: '所有場館' },
               { value: 'r27', label: 'R27 健身' },
-              { value: 'coffit', label: 'Coffit 考飛特' },
+              { value: 'coffit', label: 'Coffit' },
             ]}
             icon={Building2}
             label="場館過濾"
