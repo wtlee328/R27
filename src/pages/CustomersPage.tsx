@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { format } from 'date-fns'
+import { Timestamp } from 'firebase/firestore'
 import { 
   RiGroupLine, 
   RiFileTextLine, 
@@ -317,7 +319,15 @@ export default function CustomersPage() {
                         </div>
                         <p className="text-xs text-stone-500 mt-0.5">
                           合約建立日期：
-                          {contract.createdAt ? format(contract.createdAt.toDate(), 'yyyy/MM/dd') : '未知'}
+                          {contract.createdAt ? (
+                            contract.createdAt instanceof Timestamp
+                              ? format(contract.createdAt.toDate(), 'yyyy/MM/dd')
+                              : (contract.createdAt as any)?.seconds
+                                ? format(new Date((contract.createdAt as any).seconds * 1000), 'yyyy/MM/dd')
+                                : typeof contract.createdAt === 'string' || contract.createdAt instanceof Date
+                                  ? format(new Date(contract.createdAt), 'yyyy/MM/dd')
+                                  : '未知'
+                          ) : '未知'}
                         </p>
                       </div>
                     </div>
