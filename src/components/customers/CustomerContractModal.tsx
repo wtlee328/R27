@@ -319,9 +319,6 @@ export function CustomerContractModal({
           console.error('Error getting sigCanvas A:', err)
         }
       }
-      if (!finalSigA && !isSigAClearedRef.current && contract?.signatureDataUrl) {
-        finalSigA = contract.signatureDataUrl
-      }
 
       let finalSigB: string | null = null
       if (secondarySigCanvas.current) {
@@ -335,9 +332,6 @@ export function CustomerContractModal({
         } catch (err) {
           console.error('Error getting sigCanvas B:', err)
         }
-      }
-      if (!finalSigB && !isSigBClearedRef.current && contract?.secondarySignatureDataUrl) {
-        finalSigB = contract.secondarySignatureDataUrl
       }
 
       const updateData = {
@@ -370,6 +364,24 @@ export function CustomerContractModal({
       await updateDoc(contractRef, updateData)
 
       if (contract) {
+        contract.totalSessions = Number(editTotalSessions)
+        contract.remainingSessions = Number(editRemainingSessions)
+        contract.totalAmount = Number(editTotalAmount)
+        contract.paidAmount = finalPaidAmount
+        contract.startDate = ensureDate(editStartDate)
+        contract.endDate = ensureDate(editEndDate)
+        contract.paymentType = editPaymentType
+        contract.installmentCount = editPaymentType === 'installments' ? editInstallments.length : 1
+        contract.installments = finalInstallments
+        contract.trainerId = editTrainerId
+        contract.secondaryTrainerId = editSecondaryTrainerId
+        contract.contractNo = editContractNo
+        contract.reviewYear = Number(editReviewYear)
+        contract.reviewMonth = Number(editReviewMonth)
+        contract.reviewDay = Number(editReviewDay)
+        contract.coachRatio = Number(editCoachRatio)
+        contract.monthlyDueDay = Number(editMonthlyDueDay)
+        contract.monthlyDueAmount = Number(editMonthlyDueAmount)
         contract.signatureDataUrl = finalSigA
         contract.secondarySignatureDataUrl = finalSigB
       }
