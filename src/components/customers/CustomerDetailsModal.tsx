@@ -369,6 +369,11 @@ export function CustomerDetailsModal({
                               >
                                 {contract.status === 'active' ? '進行中' : '已結束'}
                               </Badge>
+                              {!contract.signatureDataUrl && (
+                                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300 text-[10px] py-0 px-2 h-5 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> 待簽名
+                                </Badge>
+                              )}
                               {isContractDual && (
                                 <Badge variant="outline" className="bg-stone-100 text-stone-800 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center gap-1">
                                   <RiGroupLine className="w-3 h-3 text-orange-500" /> 雙人合約

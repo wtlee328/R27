@@ -311,10 +311,19 @@ export function CustomerContractModal({
         monthlyDueDay: Number(editMonthlyDueDay),
         monthlyDueAmount: Number(editMonthlyDueAmount),
         
+        // 編輯合約後清空客戶簽名
+        signatureDataUrl: null,
+        secondarySignatureDataUrl: null,
+        
         updatedAt: serverTimestamp(),
       }
       
       await updateDoc(contractRef, updateData)
+
+      if (contract) {
+        contract.signatureDataUrl = null
+        contract.secondarySignatureDataUrl = null
+      }
 
       // Sync Customer A's trainer and profile fields
       const customerUpdate: any = {
@@ -485,13 +494,28 @@ export function CustomerContractModal({
                 
                 {/* 甲方: 主學員 */}
                 <div className="space-y-2.5">
-                  <div className="font-bold text-stone-850 bg-stone-100 px-2 py-0.5 rounded text-[11px] flex justify-between">
+                  <div className="font-bold text-stone-850 bg-stone-100 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
                     <span>會員姓名（簡稱甲方）{partner && ' - 學員 A'}</span>
+                    {!contract?.signatureDataUrl ? (
+                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        待簽名
+                      </span>
+                    ) : (
+                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
+                        已簽名
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
-                    <div className="col-span-2">
+                    <div className="col-span-2 flex items-center gap-1.5">
                       <span>姓名：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{customer.name}</span>
+                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{customer.name}</span>
+                      {!contract?.signatureDataUrl && (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
+                          待簽名
+                        </span>
+                      )}
                     </div>
                     <div className="col-span-2">
                       <span>身分證字號：</span>
@@ -565,13 +589,28 @@ export function CustomerContractModal({
                 {/* 甲方: 學員 B (Partner) if dual */}
                 {partner && (
                   <div className="space-y-2.5 pt-2 border-t border-dashed border-stone-200">
-                    <div className="font-bold text-orange-900 bg-orange-50 px-2 py-0.5 rounded text-[11px]">
+                    <div className="font-bold text-orange-900 bg-orange-50 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
                       <span>會員姓名（簡稱甲方） - 學員 B</span>
+                      {!contract?.secondarySignatureDataUrl ? (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                          待簽名
+                        </span>
+                      ) : (
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
+                          已簽名
+                        </span>
+                      )}
                     </div>
                     <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
-                      <div className="col-span-2">
+                      <div className="col-span-2 flex items-center gap-1.5">
                         <span>姓名：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partner.name}</span>
+                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{partner.name}</span>
+                        {!contract?.secondarySignatureDataUrl && (
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
+                            待簽名
+                          </span>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <span>身分證字號：</span>
