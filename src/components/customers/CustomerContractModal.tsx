@@ -1491,7 +1491,7 @@ export function CustomerContractModal({
           </div>
         </DialogContent>
       </Dialog>
-      {open && createPortal(
+      {open && !isEditing && createPortal(
         <div className="print-only-contract">
           {renderContractSheet()}
         </div>,
