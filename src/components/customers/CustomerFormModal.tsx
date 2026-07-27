@@ -5,7 +5,23 @@ import SignatureCanvasComponent from 'react-signature-canvas'
 // Handle default export mismatch in some build environments (Vite/ESM)
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, ChevronRight, ChevronLeft, User, FileText, Activity, ShieldCheck } from 'lucide-react'
+import {
+  RiUserLine,
+  RiFileTextLine,
+  RiHeartPulseLine,
+  RiShieldCheckLine,
+  RiCheckboxCircleFill,
+  RiArrowRightSLine,
+  RiArrowLeftSLine,
+  RiUser3Line,
+  RiGroupLine,
+  RiLink,
+  RiCurrencyLine,
+  RiBankCardLine,
+  RiInformationLine,
+  RiAlertLine,
+  RiUserAddLine,
+} from '@remixicon/react'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
@@ -35,10 +51,10 @@ interface CustomerFormModalProps {
 }
 
 const STEPS = [
-  { id: 'basic', title: '基本資料', icon: User, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
-  { id: 'medical', title: '健康狀態', icon: Activity, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] },
-  { id: 'contract', title: '合約設定', icon: FileText, fields: ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate'] },
-  { id: 'signature', title: '簽署確認', icon: ShieldCheck, fields: [] },
+  { id: 'basic', title: '基本資料', icon: RiUserLine, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
+  { id: 'medical', title: '健康狀態', icon: RiHeartPulseLine, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] },
+  { id: 'contract', title: '合約設定', icon: RiFileTextLine, fields: ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate'] },
+  { id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] },
 ]
 
 const formatCustomerInitialData = (cust: any): Partial<CombinedCustomerContractValues> => {
@@ -589,7 +605,7 @@ export function CustomerFormModal({
                         : "bg-white/8 text-stone-500"
                     )}>
                       {isCompleted
-                        ? <CheckCircle2 className="w-3.5 h-3.5" />
+                        ? <RiCheckboxCircleFill className="w-3.5 h-3.5" />
                         : <Icon className="w-3.5 h-3.5" />}
                     </div>
                     <div className="min-w-0">
@@ -853,7 +869,8 @@ export function CustomerFormModal({
                                   : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              <span>👤</span> 單人合約
+                              <RiUser3Line className="w-3.5 h-3.5" />
+                              單人合約
                             </button>
                             <button
                               type="button"
@@ -882,7 +899,8 @@ export function CustomerFormModal({
                                   : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              <span>👥</span> 雙人合約
+                              <RiGroupLine className="w-3.5 h-3.5" />
+                              雙人合約
                             </button>
                             <button
                               type="button"
@@ -902,7 +920,8 @@ export function CustomerFormModal({
                                   : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
                               )}
                             >
-                              <span>🔗</span> 連結合約
+                              <RiLink className="w-3.5 h-3.5" />
+                              連結合約
                             </button>
                           </div>
                         </div>
@@ -999,9 +1018,10 @@ export function CustomerFormModal({
                         {!form.watch('bindExistingContractMode') && (
                           <>
                             {form.watch('contract.contractType') === 'dual' && (
-                              <div className="col-span-2 p-6 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="p-3 bg-orange-100/50 text-orange-800 rounded-lg text-xs font-bold">
-                                  ✨ 此合約模式為雙人合約。下一步我們將會引導您填寫第二位全新學員的基本資料與健康狀態。
+                              <div className="col-span-2 p-4 bg-orange-50/60 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-800/30 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-start gap-2.5 text-orange-800 dark:text-orange-400 text-xs font-medium">
+                                  <RiInformationLine className="w-4 h-4 shrink-0 mt-0.5" />
+                                  <span>此合約模式為雙人合約。下一步我們將會引導您填寫第二位全新學員的基本資料與健康狀態。</span>
                                 </div>
                               </div>
                             )}
@@ -1050,8 +1070,9 @@ export function CustomerFormModal({
                                       }}
                                       className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
                                     />
-                                    <label htmlFor="isOneToTwoForm" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
-                                      👥 1對2 同時間上課（共用同一位教練）
+                                    <label htmlFor="isOneToTwoForm" className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 select-none cursor-pointer">
+                                      <RiGroupLine className="w-3.5 h-3.5 text-stone-500" />
+                                      1×2 同時間上課（共用同一位教練）
                                     </label>
                                   </div>
 
@@ -1167,7 +1188,8 @@ export function CustomerFormModal({
                                       : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300"
                                   )}
                                 >
-                                  💵 一次付清
+                                  <RiCurrencyLine className="w-3.5 h-3.5" />
+                                  一次付清
                                 </button>
                                 <button
                                   type="button"
@@ -1182,7 +1204,8 @@ export function CustomerFormModal({
                                       : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300"
                                   )}
                                 >
-                                  💳 分期付款
+                                  <RiBankCardLine className="w-3.5 h-3.5" />
+                                  分期付款
                                 </button>
                               </div>
 
@@ -1269,9 +1292,14 @@ export function CustomerFormModal({
 
                                     if (isDiff || isDateError) {
                                       return (
-                                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[11px] font-bold space-y-1 border border-red-100 col-span-12">
-                                          {isDiff && <div>⚠️ 分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
-                                          {isDateError && <div>⚠️ 繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
+                                        <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/30 rounded-xl col-span-12">
+                                          <div className="flex items-start gap-2 text-red-600 dark:text-red-400">
+                                            <RiAlertLine className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                            <div className="space-y-0.5">
+                                              {isDiff && <div className="text-[11px] font-semibold">分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
+                                              {isDateError && <div className="text-[11px] font-semibold">繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
+                                            </div>
+                                          </div>
                                         </div>
                                       );
                                     }
@@ -1288,12 +1316,14 @@ export function CustomerFormModal({
                         <div className="mt-2 p-4 bg-stone-950 dark:bg-white/5 rounded-xl flex items-center justify-between">
                           <div>
                             <p className="text-stone-400 text-[10px] font-bold uppercase tracking-widest mb-1">單堂平均價格</p>
-                            <div className="text-xl font-black text-brand-400">
-                              NT$ {(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                            <div className="text-xl font-black text-brand-400 flex items-baseline gap-1.5">
+                              <span className="text-sm font-medium text-stone-500">NT$</span>
+                              <span>{(form.watch('contract.pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</span>
                             </div>
                           </div>
-                          <div className="text-right text-stone-600 text-[10px]">
-                            根據總金額與堂數自動計算
+                          <div className="text-right">
+                            <p className="text-stone-600 text-[10px] mb-1">根據總金額與堂數自動計算</p>
+                            <RiCurrencyLine className="w-5 h-5 text-stone-700 ml-auto" />
                           </div>
                         </div>
                       )}
@@ -1455,7 +1485,7 @@ export function CustomerFormModal({
                     <div className="space-y-6">
                       <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
                         <h2 className="text-xl font-bold text-stone-900 dark:text-white">簽署確認</h2>
-                        <p className="text-stone-400 dark:text-stone-500 text-sm">請閱讀條款並簽名確認。</p>
+                        <p className="text-stone-400 dark:text-stone-500 text-sm">請閱讀合約條款並在下方簽名。</p>
                       </div>
 
                       <div className="space-y-4">
@@ -1995,7 +2025,7 @@ export function CustomerFormModal({
                 disabled={currentStep === 0}
                 className={cn("gap-2 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-white h-9", currentStep === 0 && "opacity-0 pointer-events-none")}
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <RiArrowLeftSLine className="w-4 h-4" />
                 上一步
               </Button>
 
@@ -2017,7 +2047,7 @@ export function CustomerFormModal({
                     className="gap-2 h-9 text-xs bg-stone-950 dark:bg-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 transition-all px-6"
                   >
                     下一步
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <RiArrowRightSLine className="w-4 h-4" />
                   </Button>
                 ) : (
                   <Button 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { RiCalendarLine } from '@remixicon/react'
 
 interface MinguoDatePickerInputProps {
   value?: Date | string | null
@@ -59,38 +60,58 @@ export function MinguoDatePickerInput({
   }
 
   return (
-    <div className={`inline-flex items-center gap-1 bg-stone-50 p-1.5 rounded-xl border border-stone-200 ${className}`}>
-      <span className="text-xs font-bold text-stone-500 pl-1">民國</span>
-      <input
-        type="number"
-        placeholder="例: 87"
-        value={rocYear}
-        onChange={(e) => handleUpdate(e.target.value, month, day)}
-        className="w-16 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-      />
-      <span className="text-xs font-bold text-stone-500 pr-1">年</span>
+    <div className={`flex items-center h-10 gap-0 bg-stone-50 dark:bg-stone-800 rounded-xl border border-stone-200 dark:border-stone-700 overflow-hidden hover:border-stone-300 dark:hover:border-stone-600 focus-within:border-stone-400 dark:focus-within:border-stone-500 focus-within:ring-2 focus-within:ring-stone-900/8 dark:focus-within:ring-white/8 transition-all ${className}`}>
+      {/* Calendar icon */}
+      <div className="pl-3 pr-2 flex items-center shrink-0">
+        <RiCalendarLine className="w-3.5 h-3.5 text-stone-400 dark:text-stone-500" />
+      </div>
 
-      <input
-        type="number"
-        placeholder="5"
-        min={1}
-        max={12}
-        value={month}
-        onChange={(e) => handleUpdate(rocYear, e.target.value, day)}
-        className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-      />
-      <span className="text-xs font-bold text-stone-500 pr-1">月</span>
+      {/* 民國年 */}
+      <div className="flex items-center gap-1 shrink-0">
+        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500 whitespace-nowrap">民國</span>
+        <input
+          type="number"
+          placeholder="113"
+          value={rocYear}
+          onChange={(e) => handleUpdate(e.target.value, month, day)}
+          className="w-14 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+        />
+        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">年</span>
+      </div>
 
-      <input
-        type="number"
-        placeholder="12"
-        min={1}
-        max={31}
-        value={day}
-        onChange={(e) => handleUpdate(rocYear, month, e.target.value)}
-        className="w-12 h-8 text-center text-xs font-black bg-white border border-stone-200 rounded-lg text-stone-900 focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-      />
-      <span className="text-xs font-bold text-stone-500 pr-1">日</span>
+      {/* Divider */}
+      <div className="w-px h-5 bg-stone-200 dark:bg-stone-700 mx-2 shrink-0" />
+
+      {/* 月 */}
+      <div className="flex items-center gap-1 shrink-0">
+        <input
+          type="number"
+          placeholder="01"
+          min={1}
+          max={12}
+          value={month}
+          onChange={(e) => handleUpdate(rocYear, e.target.value, day)}
+          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+        />
+        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">月</span>
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-5 bg-stone-200 dark:bg-stone-700 mx-2 shrink-0" />
+
+      {/* 日 */}
+      <div className="flex items-center gap-1 pr-3 shrink-0">
+        <input
+          type="number"
+          placeholder="15"
+          min={1}
+          max={31}
+          value={day}
+          onChange={(e) => handleUpdate(rocYear, month, e.target.value)}
+          className="w-10 h-7 text-center text-xs font-bold bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded-lg text-stone-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-stone-400 dark:focus:ring-stone-400"
+        />
+        <span className="text-[11px] font-medium text-stone-400 dark:text-stone-500">日</span>
+      </div>
     </div>
   )
 }
