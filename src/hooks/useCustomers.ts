@@ -158,7 +158,7 @@ export function useCustomers() {
 
     const newCustomer = {
       ...data,
-      dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+      dateOfBirth: Timestamp.fromDate(ensureDate(data.dateOfBirth)),
       trainerId: selectedTrainerId || user.uid,
       centerId,
       createdAt: serverTimestamp(),
@@ -182,7 +182,7 @@ export function useCustomers() {
     void contract; void partnerMode; void partnerId; void partnerCustomerData
     const updateData = {
       ...profileData,
-      dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+      dateOfBirth: Timestamp.fromDate(ensureDate(data.dateOfBirth)),
       updatedAt: serverTimestamp(),
     }
     await updateDoc(customerRef, updateData)
@@ -209,7 +209,7 @@ export function useCustomers() {
       console.log('Contract Renewal: Creating partner customer B profile...')
       const partnerCustomer = {
         ...data.partnerCustomerData,
-        dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
+        dateOfBirth: Timestamp.fromDate(ensureDate(data.partnerCustomerData.dateOfBirth)),
         trainerId: selectedTrainerId || user.uid,
         centerId,
         createdAt: serverTimestamp(),
@@ -344,7 +344,7 @@ export function useCustomers() {
         console.log('Onboarding: Creating partner customer B profile...')
         const partnerCustomer = {
           ...data.partnerCustomerData,
-          dateOfBirth: Timestamp.fromDate(new Date(data.partnerCustomerData.dateOfBirth)),
+          dateOfBirth: Timestamp.fromDate(ensureDate(data.partnerCustomerData.dateOfBirth)),
           trainerId: data.contract?.secondaryTrainerId || data.contract?.trainerId || selectedTrainerId || user.uid,
           centerId,
           createdAt: serverTimestamp(),
@@ -384,7 +384,7 @@ export function useCustomers() {
 
       const newCustomer = {
         ...customerData,
-        dateOfBirth: Timestamp.fromDate(data.dateOfBirth),
+        dateOfBirth: Timestamp.fromDate(ensureDate(data.dateOfBirth)),
         trainerId: finalTrainerId,
         centerId,
         createdAt: serverTimestamp(),

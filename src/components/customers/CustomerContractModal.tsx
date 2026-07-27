@@ -286,8 +286,8 @@ export function CustomerContractModal({
           id: inst.id,
           amount: Number(inst.amount),
           status: inst.status,
-          dueDate: Timestamp.fromDate(new Date(inst.dueDate)),
-          paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(new Date(inst.paidDate)) : null,
+          dueDate: Timestamp.fromDate(ensureDate(inst.dueDate)),
+          paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
       const updateData = {
@@ -295,8 +295,8 @@ export function CustomerContractModal({
         remainingSessions: Number(editRemainingSessions),
         totalAmount: Number(editTotalAmount),
         paidAmount: finalPaidAmount,
-        startDate: Timestamp.fromDate(new Date(editStartDate)),
-        endDate: Timestamp.fromDate(new Date(editEndDate)),
+        startDate: Timestamp.fromDate(ensureDate(editStartDate)),
+        endDate: Timestamp.fromDate(ensureDate(editEndDate)),
         paymentType: editPaymentType,
         installmentCount: editPaymentType === 'installments' ? editInstallments.length : 1,
         installments: finalInstallments,
@@ -330,7 +330,7 @@ export function CustomerContractModal({
         updatedAt: serverTimestamp()
       }
       if (editTrainerId) customerUpdate.trainerId = editTrainerId
-      if (editBirthDate) customerUpdate.dateOfBirth = Timestamp.fromDate(new Date(editBirthDate))
+      if (editBirthDate) customerUpdate.dateOfBirth = Timestamp.fromDate(ensureDate(editBirthDate))
       if (editEmergencyName || editEmergencyRelation || editEmergencyPhone) {
         customerUpdate.emergencyContact = {
           name: editEmergencyName,
@@ -356,7 +356,7 @@ export function CustomerContractModal({
           updatedAt: serverTimestamp()
         }
         if (syncTrainerId) partnerUpdate.trainerId = syncTrainerId
-        if (editPartnerBirthDate) partnerUpdate.dateOfBirth = Timestamp.fromDate(new Date(editPartnerBirthDate))
+        if (editPartnerBirthDate) partnerUpdate.dateOfBirth = Timestamp.fromDate(ensureDate(editPartnerBirthDate))
         if (editPartnerEmergencyName || editPartnerEmergencyRelation || editPartnerEmergencyPhone) {
           partnerUpdate.emergencyContact = {
             name: editPartnerEmergencyName,
