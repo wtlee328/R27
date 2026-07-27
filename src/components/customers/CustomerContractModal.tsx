@@ -386,26 +386,20 @@ export function CustomerContractModal({
         contract.secondarySignatureDataUrl = finalSigB
       }
 
-      // Sync Customer A's trainer and profile fields
-      const customerUpdate: any = {
-        updatedAt: serverTimestamp()
-      }
-      if (editTrainerId) customerUpdate.trainerId = editTrainerId
-      if (editBirthDate) customerUpdate.dateOfBirth = Timestamp.fromDate(ensureDate(editBirthDate))
-      if (editEmergencyName || editEmergencyRelation || editEmergencyPhone) {
-        customerUpdate.emergencyContact = {
-          name: editEmergencyName,
-          relation: editEmergencyRelation,
-          phone: editEmergencyPhone,
+      // Sync Customer A's trainer if updated
+      if (editTrainerId) {
+        try {
+          await updateDoc(doc(db, 'customers', customer.id), {
+            trainerId: editTrainerId,
+            updatedAt: serverTimestamp(),
+          })
+          customer.trainerId = editTrainerId
+        } catch (err) {
+          console.error('Failed to sync Customer A trainer:', err)
         }
       }
-      try {
-        await updateDoc(doc(db, 'customers', customer.id), customerUpdate)
-      } catch (err) {
-        console.error('Failed to sync Customer A profile:', err)
-      }
 
-      // Sync Customer B's trainer and profile fields if dual
+      // Sync Customer B's trainer if dual contract
       const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
       const partnerId = contract.customerIds && contract.customerIds.length > 1
         ? contract.customerIds.find(id => id !== customer.id)
@@ -413,22 +407,16 @@ export function CustomerContractModal({
 
       if (isDual && partnerId) {
         const syncTrainerId = editSecondaryTrainerId || editTrainerId
-        const partnerUpdate: any = {
-          updatedAt: serverTimestamp()
-        }
-        if (syncTrainerId) partnerUpdate.trainerId = syncTrainerId
-        if (editPartnerBirthDate) partnerUpdate.dateOfBirth = Timestamp.fromDate(ensureDate(editPartnerBirthDate))
-        if (editPartnerEmergencyName || editPartnerEmergencyRelation || editPartnerEmergencyPhone) {
-          partnerUpdate.emergencyContact = {
-            name: editPartnerEmergencyName,
-            relation: editPartnerEmergencyRelation,
-            phone: editPartnerEmergencyPhone,
+        if (syncTrainerId) {
+          try {
+            await updateDoc(doc(db, 'customers', partnerId), {
+              trainerId: syncTrainerId,
+              updatedAt: serverTimestamp(),
+            })
+            if (partner) partner.trainerId = syncTrainerId
+          } catch (err) {
+            console.error('Failed to sync Customer B trainer:', err)
           }
-        }
-        try {
-          await updateDoc(doc(db, 'customers', partnerId), partnerUpdate)
-        } catch (err) {
-          console.error('Failed to sync Customer B profile:', err)
         }
       }
 
@@ -588,16 +576,9 @@ export function CustomerContractModal({
                     </div>
                     <div className="col-span-3">
                       <span>生日：</span>
-                      {isEditing ? (
-                        <MinguoDatePickerInput
-                          value={editBirthDate ? new Date(editBirthDate) : null}
-                          onChange={(d) => setEditBirthDate(d ? d.toISOString().split('T')[0] : '')}
-                        />
-                      ) : (
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
-                          {customer.dateOfBirth ? formatMinguoDate(customer.dateOfBirth) : (editBirthDate ? formatMinguoDate(editBirthDate) : '──────')}
-                        </span>
-                      )}
+                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
+                        {customer.dateOfBirth ? formatMinguoDate(customer.dateOfBirth) : '──────'}
+                      </span>
                     </div>
 
                     <div className="col-span-3">
@@ -611,42 +592,21 @@ export function CustomerContractModal({
 
                     <div className="col-span-2">
                       <span>緊急聯絡人：</span>
-                      {isEditing ? (
-                        <input 
-                          type="text" 
-                          value={editEmergencyName} 
-                          onChange={e => setEditEmergencyName(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 w-20 focus:outline-none" 
-                        />
-                      ) : (
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">{editEmergencyName || '──────'}</span>
-                      )}
+                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">
+                        {customer.emergencyContact?.name || '──────'}
+                      </span>
                     </div>
                     <div className="col-span-2">
                       <span>關係：</span>
-                      {isEditing ? (
-                        <input 
-                          type="text" 
-                          value={editEmergencyRelation} 
-                          onChange={e => setEditEmergencyRelation(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 w-16 focus:outline-none" 
-                        />
-                      ) : (
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">{editEmergencyRelation || '──────'}</span>
-                      )}
+                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">
+                        {customer.emergencyContact?.relation || '──────'}
+                      </span>
                     </div>
                     <div className="col-span-2">
                       <span>電話：</span>
-                      {isEditing ? (
-                        <input 
-                          type="text" 
-                          value={editEmergencyPhone} 
-                          onChange={e => setEditEmergencyPhone(e.target.value)}
-                          className="border-b border-stone-400 bg-stone-50 font-mono w-28 focus:outline-none" 
-                        />
-                      ) : (
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editEmergencyPhone || '──────'}</span>
-                      )}
+                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">
+                        {customer.emergencyContact?.phone || '──────'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -683,16 +643,9 @@ export function CustomerContractModal({
                       </div>
                       <div className="col-span-3">
                         <span>生日：</span>
-                        {isEditing ? (
-                          <MinguoDatePickerInput
-                            value={editPartnerBirthDate ? new Date(editPartnerBirthDate) : null}
-                            onChange={(d) => setEditPartnerBirthDate(d ? d.toISOString().split('T')[0] : '')}
-                          />
-                        ) : (
-                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
-                            {partner?.dateOfBirth ? formatMinguoDate(partner.dateOfBirth) : (editPartnerBirthDate ? formatMinguoDate(editPartnerBirthDate) : '──────')}
-                          </span>
-                        )}
+                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
+                          {partner.dateOfBirth ? formatMinguoDate(partner.dateOfBirth) : '──────'}
+                        </span>
                       </div>
 
                       <div className="col-span-3">
@@ -706,42 +659,21 @@ export function CustomerContractModal({
 
                       <div className="col-span-2">
                         <span>緊急聯絡人：</span>
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editPartnerEmergencyName} 
-                            onChange={e => setEditPartnerEmergencyName(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 w-20 focus:outline-none" 
-                          />
-                        ) : (
-                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">{editPartnerEmergencyName || '──────'}</span>
-                        )}
+                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">
+                          {partner.emergencyContact?.name || '──────'}
+                        </span>
                       </div>
                       <div className="col-span-2">
                         <span>關係：</span>
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editPartnerEmergencyRelation} 
-                            onChange={e => setEditPartnerEmergencyRelation(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 w-16 focus:outline-none" 
-                          />
-                        ) : (
-                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">{editPartnerEmergencyRelation || '──────'}</span>
-                        )}
+                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">
+                          {partner.emergencyContact?.relation || '──────'}
+                        </span>
                       </div>
                       <div className="col-span-2">
                         <span>電話：</span>
-                        {isEditing ? (
-                          <input 
-                            type="text" 
-                            value={editPartnerEmergencyPhone} 
-                            onChange={e => setEditPartnerEmergencyPhone(e.target.value)}
-                            className="border-b border-stone-400 bg-stone-50 font-mono w-28 focus:outline-none" 
-                          />
-                        ) : (
-                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">{editPartnerEmergencyPhone || '──────'}</span>
-                        )}
+                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">
+                          {partner.emergencyContact?.phone || '──────'}
+                        </span>
                       </div>
                     </div>
                   </div>
