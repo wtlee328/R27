@@ -19,7 +19,12 @@ import {
   RiEditLine, 
   RiAddLine,
   RiTimeLine,
-  RiMoneyDollarCircleLine
+  RiMoneyDollarCircleLine,
+  RiCloseLine,
+  RiCalendarLine,
+  RiUserLine,
+  RiFileTextLine,
+  RiArrowRightSLine
 } from '@remixicon/react'
 import { Button } from '../ui/button'
 import { cn } from '@/lib/utils'
@@ -59,6 +64,8 @@ export function TrainerDetailsModal({
   onDeleteLesson,
 }: TrainerDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'history' | 'students'>('history')
+  const [selectedRecord, setSelectedRecord] = useState<LessonRecord | null>(null)
+  const [isPanelVisible, setIsPanelVisible] = useState(false)
 
   if (!trainer) return null
 
@@ -215,9 +222,30 @@ export function TrainerDetailsModal({
                       const fee = contract ? r.sessionAmount * contract.pricePerSession : 0
                       const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
                       const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
+                      const isSelected = selectedRecord?.id === r.id
 
                       return (
-                        <tr key={r.id} className="hover:bg-stone-50/60 transition-colors group">
+                        <tr 
+                          key={r.id} 
+                          onClick={() => {
+                            if (isSelected) {
+                              setIsPanelVisible(false)
+                              setTimeout(() => setSelectedRecord(null), 300)
+                            } else {
+                              setSelectedRecord(r)
+                              setIsPanelVisible(false)
+                              requestAnimationFrame(() => {
+                                requestAnimationFrame(() => setIsPanelVisible(true))
+                              })
+                            }
+                          }}
+                          className={cn(
+                            "transition-all cursor-pointer group",
+                            isSelected 
+                              ? "bg-amber-50/80 font-medium" 
+                              : "hover:bg-stone-50/80"
+                          )}
+                        >
                           <td className="px-4 py-3 text-stone-500 tabular-nums font-mono whitespace-nowrap">
                             {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy-MM-dd') : '-'}
                           </td>
@@ -266,29 +294,11 @@ export function TrainerDetailsModal({
                             {r.notes || '-'}
                           </td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <div className="flex justify-end gap-2.5">
-                              <button
-                                type="button"
-                                className="p-1 text-stone-400 hover:text-stone-800 transition-colors"
-                                title="編輯"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onEditLesson(r)
-                                }}
-                              >
-                                <RiEditLine className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                className="p-1 text-stone-400 hover:text-red-600 transition-colors"
-                                title="刪除"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onDeleteLesson(r.id)
-                                }}
-                              >
-                                <RiDeleteBinLine className="w-4 h-4" />
-                              </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <RiArrowRightSLine className={cn(
+                                "w-4 h-4 text-stone-400 transition-transform duration-200",
+                                isSelected ? "rotate-90 text-stone-800" : "group-hover:translate-x-0.5"
+                              )} />
                             </div>
                           </td>
                         </tr>
@@ -386,6 +396,159 @@ export function TrainerDetailsModal({
             </TabsContent>
           </div>
         </Tabs>
+
+        {/* Right Slide-in Detail Panel for selected lesson */}
+        {selectedRecord && (() => {
+          const r = selectedRecord
+          const contract = contracts.find(c => c.id === r.contractId)
+          const fee = contract ? r.sessionAmount * contract.pricePerSession : 0
+          const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
+          const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
+          const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
+            ? r.attendingCustomerNames.join(' & ')
+            : r.customerName
+
+          return (
+            <>
+              {/* Backdrop */}
+              <div
+                onClick={() => {
+                  setIsPanelVisible(false)
+                  setTimeout(() => setSelectedRecord(null), 300)
+                }}
+                style={{
+                  opacity: isPanelVisible ? 1 : 0,
+                  transition: 'opacity 0.3s ease',
+                  pointerEvents: isPanelVisible ? 'auto' : 'none',
+                }}
+                className="absolute inset-0 bg-stone-900/30 backdrop-blur-xs z-40"
+              />
+
+              {/* Panel */}
+              <div
+                style={{
+                  transform: isPanelVisible ? 'translateX(0)' : 'translateX(100%)',
+                  opacity: isPanelVisible ? 1 : 0,
+                  transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease',
+                }}
+                className="absolute top-0 right-0 h-full w-full sm:w-[380px] bg-white border-l border-stone-200 shadow-2xl z-50 flex flex-col"
+              >
+                {/* Panel Header */}
+                <div className="px-6 py-5 border-b border-stone-100 bg-stone-50 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">銷課明細紀錄</p>
+                    <h3 className="text-lg font-bold text-stone-900 leading-tight">{attendingNames}</h3>
+                    {isSubstitute && (
+                      <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
+                        代課紀錄
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPanelVisible(false)
+                      setTimeout(() => setSelectedRecord(null), 300)
+                    }}
+                    className="p-2 rounded-xl text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors shrink-0"
+                  >
+                    <RiCloseLine className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Panel Body */}
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                  {/* Sessions & Amount Card */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center">
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">消耗堂數</p>
+                      <p className="text-2xl font-black text-stone-900 tabular-nums">-{r.sessionAmount} <span className="text-xs font-semibold text-stone-400">堂</span></p>
+                    </div>
+                    <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center">
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">認列金額</p>
+                      <p className="text-2xl font-black text-stone-900 tabular-nums">{contract ? `NT$ ${(fee).toLocaleString()}` : '-'}</p>
+                    </div>
+                  </div>
+
+                  {/* Details List */}
+                  <div className="bg-stone-50 rounded-2xl border border-stone-100 divide-y divide-stone-100 overflow-hidden text-xs">
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="font-bold text-stone-400 flex items-center gap-1.5">
+                        <RiCalendarLine className="w-4 h-4 text-stone-400" /> 上課日期
+                      </span>
+                      <span className="font-bold text-stone-900 font-mono">
+                        {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd HH:mm') : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="font-bold text-stone-400 flex items-center gap-1.5">
+                        <RiUserLine className="w-4 h-4 text-stone-400" /> 授課教練
+                      </span>
+                      <span className="font-bold text-stone-900">{teachingTrainerName}</span>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-3.5">
+                      <span className="font-bold text-stone-400 flex items-center gap-1.5">
+                        <RiFileTextLine className="w-4 h-4 text-stone-400" /> 合約類型
+                      </span>
+                      <span>
+                        {contract ? (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold",
+                            contract.contractType === 'dual' ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                          )}>
+                            {contract.contractType === 'dual' ? '雙人合約' : '單人合約'}
+                          </span>
+                        ) : '無合約資訊'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {r.notes && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">備註事項</p>
+                      <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs text-stone-700 leading-relaxed">
+                        {r.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-4 border-t border-stone-100 flex gap-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsPanelVisible(false)
+                        setTimeout(() => {
+                          setSelectedRecord(null)
+                          onEditLesson(r)
+                        }, 300)
+                      }}
+                      className="flex-1 gap-1.5 text-xs font-bold rounded-xl border-stone-200 text-stone-700 hover:bg-stone-100"
+                    >
+                      <RiEditLine className="w-4 h-4" /> 編輯紀錄
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setIsPanelVisible(false)
+                        setTimeout(() => {
+                          setSelectedRecord(null)
+                          onDeleteLesson(r.id)
+                        }, 300)
+                      }}
+                      className="flex-1 gap-1.5 text-xs font-bold rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+                    >
+                      <RiDeleteBinLine className="w-4 h-4" /> 刪除紀錄
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )
+        })()}
       </SheetContent>
     </Sheet>
   )
