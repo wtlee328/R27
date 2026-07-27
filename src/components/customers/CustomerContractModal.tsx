@@ -65,10 +65,8 @@ export function CustomerContractModal({
 
   React.useEffect(() => {
     if (!isEditing) {
-      setHasDrawnA(false)
-      setHasDrawnB(false)
-      setIsSigACleared(false)
-      setIsSigBCleared(false)
+      isSigAClearedRef.current = false
+      isSigBClearedRef.current = false
     }
   }, [isEditing])
   
@@ -423,8 +421,8 @@ export function CustomerContractModal({
       }
 
       setIsEditing(false)
-      setIsSigACleared(false)
-      setIsSigBCleared(false)
+      isSigAClearedRef.current = false
+      isSigBClearedRef.current = false
 
       if (onContractUpdated) onContractUpdated()
       if (onUpdate) onUpdate()
