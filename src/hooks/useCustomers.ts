@@ -491,34 +491,66 @@ export function useCustomers() {
       const oldData = oldSnap.exists() ? (oldSnap.data() as Customer) : null
       const clientName = oldData?.name || '未知學員'
 
-      // 1. Find all contracts linked to this customer
+      // 1. Find all contracts linked to this customer (including group contracts via customerIds)
       const contractsRef = collection(db, 'contracts')
-      const [snap1, snap2, snap3] = await Promise.all([
+      const [snap1, snap2, snap3, snap4] = await Promise.all([
         getDocs(query(contractsRef, where('customerId', '==', id))),
         getDocs(query(contractsRef, where('sharedWithCustomerId', '==', id))),
         getDocs(query(contractsRef, where('partnerId', '==', id))),
+        getDocs(query(contractsRef, where('customerIds', 'array-contains', id))),
       ])
 
       const linkedContractDocsMap = new Map<string, any>()
       snap1.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
       snap2.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
       snap3.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
+      snap4.docs.forEach((d) => linkedContractDocsMap.set(d.id, d))
 
       let deletedContractsCount = 0
       let convertedDualContractsCount = 0
+      let updatedGroupContractsCount = 0
 
       // 2. Process each linked contract
       for (const [contractId, docSnap] of linkedContractDocsMap.entries()) {
         const cData = docSnap.data() as Contract
-        const isDual =
-          cData.contractType === 'dual' ||
-          Boolean(cData.sharedWithCustomerId) ||
-          Boolean(cData.partnerId) ||
-          (cData.customerIds && cData.customerIds.length > 1)
+        const contractRef = doc(db, 'contracts', contractId)
 
-        // Find remaining partner ID if dual
-        let partnerCustomerId: string | null = null
-        if (isDual) {
+        // Case A: Group Contract
+        if (cData.contractType === 'group') {
+          const currentCustomerIds = cData.customerIds || []
+          const remainingMemberIds = currentCustomerIds.filter((cid) => cid !== id)
+
+          if (remainingMemberIds.length > 0) {
+            // Unbind target customer from group contract while preserving remaining members
+            const updatedQuotas = { ...(cData.groupMemberQuotas || {}) }
+            const removedQuota = updatedQuotas[id]
+            delete updatedQuotas[id]
+
+            // Calculate new total and remaining sessions for the contract
+            const newTotalSessions = Math.max(0, (cData.totalSessions || 0) - (removedQuota?.totalSessions || 0))
+            const newRemainingSessions = Math.max(0, (cData.remainingSessions || 0) - (removedQuota?.remainingSessions || 0))
+
+            // If deleted customer was primary customerId, transfer primary role to first remaining member
+            const newPrimaryId = cData.customerId === id ? remainingMemberIds[0] : cData.customerId
+
+            await updateDoc(contractRef, {
+              customerId: newPrimaryId,
+              customerIds: remainingMemberIds,
+              groupMemberQuotas: updatedQuotas,
+              totalSessions: newTotalSessions,
+              remainingSessions: newRemainingSessions,
+              updatedAt: serverTimestamp(),
+            })
+            updatedGroupContractsCount++
+          } else {
+            // No remaining members left: Delete contract
+            await deleteDoc(contractRef)
+            deletedContractsCount++
+          }
+        }
+        // Case B: Dual Contract
+        else if (cData.contractType === 'dual' || Boolean(cData.sharedWithCustomerId) || Boolean(cData.partnerId)) {
+          let partnerCustomerId: string | null = null
           if (cData.customerId !== id && cData.customerId) {
             partnerCustomerId = cData.customerId
           } else if (cData.sharedWithCustomerId && cData.sharedWithCustomerId !== id) {
@@ -528,28 +560,30 @@ export function useCustomers() {
           } else if (cData.customerIds && Array.isArray(cData.customerIds)) {
             partnerCustomerId = cData.customerIds.find((cid) => cid !== id) || null
           }
-        }
 
-        if (isDual && partnerCustomerId) {
-          // Convert Dual contract to Single contract for remaining partner
-          const contractRef = doc(db, 'contracts', contractId)
-          await updateDoc(contractRef, {
-            customerId: partnerCustomerId,
-            primaryCustomerId: partnerCustomerId,
-            contractType: 'single',
-            partnerMode: 'none',
-            partnerId: null,
-            sharedWithCustomerId: null,
-            partnerCustomerData: null,
-            secondaryTrainerId: null,
-            secondarySignatureDataUrl: null,
-            customerIds: [partnerCustomerId],
-            updatedAt: serverTimestamp(),
-          })
-          convertedDualContractsCount++
-        } else {
-          // Single contract or dual contract with no valid partner: Delete contract
-          await deleteDoc(doc(db, 'contracts', contractId))
+          if (partnerCustomerId) {
+            await updateDoc(contractRef, {
+              customerId: partnerCustomerId,
+              primaryCustomerId: partnerCustomerId,
+              contractType: 'single',
+              partnerMode: 'none',
+              partnerId: null,
+              sharedWithCustomerId: null,
+              partnerCustomerData: null,
+              secondaryTrainerId: null,
+              secondarySignatureDataUrl: null,
+              customerIds: [partnerCustomerId],
+              updatedAt: serverTimestamp(),
+            })
+            convertedDualContractsCount++
+          } else {
+            await deleteDoc(contractRef)
+            deletedContractsCount++
+          }
+        }
+        // Case C: Single Contract
+        else {
+          await deleteDoc(contractRef)
           deletedContractsCount++
         }
       }
