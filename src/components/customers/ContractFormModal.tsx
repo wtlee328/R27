@@ -573,26 +573,26 @@ export function ContractFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-white rounded-2xl border-none shadow-2xl">
+      <DialogContent className="max-w-5xl p-0 overflow-hidden bg-white rounded-3xl border-none shadow-2xl">
         <div className="sr-only">
           <DialogTitle>合約續約/新增</DialogTitle>
           <DialogDescription>為現有客戶 {customer.name} 建立新合約。</DialogDescription>
         </div>
-        <div className="flex h-[80vh] min-h-[600px]">
+        <div className="flex h-[82vh] min-h-[640px]">
           {/* Sidebar */}
-          <div className="w-64 bg-stone-50 border-r border-stone-200 p-8 flex flex-col justify-between">
+          <div className="w-72 bg-stone-50/90 border-r border-stone-200/80 p-8 flex flex-col justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-10">
-                <div className="w-10 h-10 rounded-xl bg-brand-500 flex items-center justify-center text-white font-bold">
+              <div className="flex items-center gap-3.5 mb-8 bg-white p-3.5 rounded-2xl border border-stone-200/60 shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-stone-900 flex items-center justify-center text-white font-black text-base shadow-sm">
                   {customer.name.charAt(0)}
                 </div>
                 <div>
-                  <h3 className="text-stone-900 font-bold text-sm">合約續約</h3>
-                  <p className="text-stone-500 text-[10px]">{customer.name}</p>
+                  <h3 className="text-stone-900 font-bold text-sm">{customer.name}</h3>
+                  <p className="text-stone-400 text-xs font-medium">新增 / 續約合約</p>
                 </div>
               </div>
 
-              <nav className="space-y-4">
+              <nav className="space-y-3">
                 {activeSteps.map((step, idx) => {
                   const isActive = currentStep === idx
                   const isCompleted = stepStatus[idx]
@@ -602,17 +602,25 @@ export function ContractFormModal({
                       disabled={idx > currentStep && !stepStatus[currentStep]}
                       onClick={() => setCurrentStep(idx)}
                       className={cn(
-                        "flex items-center gap-3 w-full text-left p-2 rounded-xl transition-all",
-                        isActive ? "bg-white shadow-sm" : "opacity-50"
+                        "flex items-center gap-3.5 w-full text-left p-3 rounded-2xl transition-all duration-200",
+                        isActive
+                          ? "bg-white shadow-sm ring-1 ring-stone-900/5 text-stone-900 font-bold"
+                          : isCompleted
+                            ? "hover:bg-white/60 text-stone-700 font-medium"
+                            : "opacity-40 text-stone-400 font-medium cursor-not-allowed"
                       )}
                     >
                       <div className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center",
-                        isCompleted ? "bg-brand-500 text-white" : isActive ? "bg-stone-900 text-white" : "bg-stone-200"
+                        "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 font-bold text-xs",
+                        isCompleted
+                          ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20"
+                          : isActive
+                            ? "bg-stone-950 text-white shadow-md shadow-stone-950/20"
+                            : "bg-stone-200/70 text-stone-500"
                       )}>
-                        {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <step.icon className="w-4 h-4" />}
+                        {isCompleted ? <CheckCircle2 className="w-4.5 h-4.5" /> : <step.icon className="w-4.5 h-4.5" />}
                       </div>
-                      <span className="text-xs font-bold text-stone-900">{step.title}</span>
+                      <span className="text-xs tracking-tight">{step.title}</span>
                     </button>
                   )
                 })}
@@ -622,7 +630,7 @@ export function ContractFormModal({
 
           {/* Content */}
           <div className="flex-1 flex flex-col overflow-hidden bg-white">
-            <div className="flex-1 overflow-y-auto p-12">
+            <div className="flex-1 overflow-y-auto p-10 lg:p-12">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeSteps[currentStep]?.id || currentStep}
@@ -1994,14 +2002,41 @@ export function ContractFormModal({
               </AnimatePresence>
             </div>
 
-            <div className="p-8 border-t border-stone-100 flex justify-between bg-white/80 backdrop-blur-md">
-              <Button variant="ghost" onClick={handlePrev} disabled={currentStep === 0} className={cn(currentStep === 0 && "opacity-0")}>上一步</Button>
+            <div className="p-6 px-10 border-t border-stone-100 flex justify-between items-center bg-white/90 backdrop-blur-md">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handlePrev}
+                disabled={currentStep === 0}
+                className={cn("rounded-xl font-bold text-stone-600 hover:text-stone-900", currentStep === 0 && "opacity-0 invisible")}
+              >
+                ← 上一步
+              </Button>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="rounded-xl font-bold text-stone-600 border-stone-200 hover:bg-stone-50"
+                >
+                  取消
+                </Button>
                 {currentStep < activeSteps.length - 1 ? (
-                  <Button onClick={handleNext} disabled={!stepStatus[currentStep]} className="bg-stone-950">下一步</Button>
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={!stepStatus[currentStep]}
+                    className="bg-stone-950 hover:bg-stone-800 text-white font-bold rounded-xl px-6 shadow-md shadow-stone-950/10"
+                  >
+                    下一步 →
+                  </Button>
                 ) : (
-                  <Button onClick={() => handleFinalSubmit(form.getValues())} disabled={loading || !stepStatus[currentStep]} className="bg-brand-500">
+                  <Button
+                    type="button"
+                    onClick={() => handleFinalSubmit(form.getValues())}
+                    disabled={loading || !stepStatus[currentStep]}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl px-8 shadow-md shadow-emerald-600/20"
+                  >
                     {loading ? '儲存中...' : '確認建立合約'}
                   </Button>
                 )}
