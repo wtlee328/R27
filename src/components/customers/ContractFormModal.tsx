@@ -85,6 +85,36 @@ export function ContractFormModal({
     }
   ])
 
+  const form = useForm<ContractFormValues>({
+    resolver: zodResolver(contractFormSchema),
+    defaultValues: {
+      customerId: customer?.id || '',
+      sharedWithCustomerId: null,
+      trainerId: '',
+      secondaryTrainerId: null,
+      totalSessions: 0,
+      remainingSessions: 0,
+      pricePerSession: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      installments: [],
+      startDate: new Date().toISOString().split('T')[0] as any,
+      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] as any,
+      status: 'active',
+      signatureDataUrl: null,
+      secondarySignatureDataUrl: null,
+      isAgreed: false,
+      contractType: 'single',
+      partnerMode: 'none',
+      partnerId: null,
+      partnerCustomerData: null,
+      paymentType: 'single',
+      installmentCount: 2,
+    },
+  })
+
+  const watchedValues = form.watch()
+
   const groupQuotaSum = useMemo(() => {
     const sumAdditional = additionalGroupMembers.reduce((acc, curr) => acc + (Number(curr.allocatedSessions) || 0), 0)
     return primaryMemberQuota + sumAdditional
@@ -128,34 +158,6 @@ export function ContractFormModal({
     setPrimaryMemberQuota(baseQuota)
     setAdditionalGroupMembers(prev => prev.map(m => ({ ...m, allocatedSessions: baseQuota })))
   }
-
-  const form = useForm<ContractFormValues>({
-    resolver: zodResolver(contractFormSchema),
-    defaultValues: {
-      customerId: customer?.id || '',
-      sharedWithCustomerId: null,
-      trainerId: '',
-      secondaryTrainerId: null,
-      totalSessions: 0,
-      remainingSessions: 0,
-      pricePerSession: 0,
-      totalAmount: 0,
-      paidAmount: 0,
-      installments: [],
-      startDate: new Date().toISOString().split('T')[0] as any,
-      endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] as any,
-      status: 'active',
-      signatureDataUrl: null,
-      secondarySignatureDataUrl: null,
-      isAgreed: false,
-      contractType: 'single',
-      partnerMode: 'none',
-      partnerId: null,
-      partnerCustomerData: null,
-      paymentType: 'single',
-      installmentCount: 2,
-    },
-  })
 
   useEffect(() => {
     const fetchTrainers = async () => {
@@ -244,8 +246,6 @@ export function ContractFormModal({
       fetchLastContract()
     }
   }, [open, customer, form, trainers])
-
-  const watchedValues = form.watch()
 
   const activeSteps = useMemo(() => {
     const steps = [...STEPS]
