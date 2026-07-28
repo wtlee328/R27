@@ -1384,9 +1384,9 @@ export function ContractFormModal({
                             <div className="space-y-2">
                               <Label className="text-stone-700 font-bold">出生日期 *</Label>
                               <MinguoDatePickerInput
-                                value={memberData.dateOfBirth ? new Date(memberData.dateOfBirth) : null}
+                                value={memberData.dateOfBirth}
                                 onChange={(d) => {
-                                  const str = d ? d.toISOString().split('T')[0] : ''
+                                  const str = d ? (d instanceof Date ? d.toISOString().split('T')[0] : String(d)) : ''
                                   updateMember({ dateOfBirth: str })
                                 }}
                               />
