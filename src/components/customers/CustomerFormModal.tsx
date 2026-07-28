@@ -134,6 +134,9 @@ export function CustomerFormModal({
     phone: string
     email: string
     dateOfBirth: string
+    gender: 'female' | 'male' | 'other'
+    exerciseHabit: 'none' | 'weekly_1_2' | 'weekly_3_plus'
+    source: string
     emergencyContact: { name: string; relation: string; phone: string }
     medicalHistory: { chronicConditions: string[]; injuries: string[]; notes: string }
     allocatedSessions: number
@@ -144,6 +147,9 @@ export function CustomerFormModal({
       phone: '',
       email: '',
       dateOfBirth: new Date().toISOString().split('T')[0],
+      gender: 'female',
+      exerciseHabit: 'none',
+      source: 'instagram',
       emergencyContact: { name: '', relation: '', phone: '' },
       medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
       allocatedSessions: 0,
@@ -162,6 +168,9 @@ export function CustomerFormModal({
             phone: '',
             email: '',
             dateOfBirth: new Date().toISOString().split('T')[0],
+            gender: 'female',
+            exerciseHabit: 'none',
+            source: 'instagram',
             emergencyContact: { name: '', relation: '', phone: '' },
             medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
             allocatedSessions: 0,
@@ -669,6 +678,9 @@ export function CustomerFormModal({
             phone: m.phone,
             email: m.email || '',
             dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+            gender: m.gender || 'female',
+            exerciseHabit: m.exerciseHabit || 'none',
+            source: m.source || 'instagram',
             emergencyContact: m.emergencyContact,
             medicalHistory: m.medicalHistory,
             historicalSessions: 0,
@@ -1085,8 +1097,20 @@ export function CustomerFormModal({
                                   const val = e.target.value
                                   setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, name: val } : m))
                                 }}
-                                placeholder="請輸入學員姓名"
-                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                placeholder="例如：王小明"
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 focus:bg-white text-stone-900 dark:text-white rounded-xl"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號 *</Label>
+                              <Input
+                                value={memberData.idNumber}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, idNumber: val } : m))
+                                }}
+                                placeholder="A123456789"
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
@@ -1097,35 +1121,24 @@ export function CustomerFormModal({
                                   const val = e.target.value
                                   setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, phone: val } : m))
                                 }}
-                                placeholder="0912345678"
-                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                placeholder="0912-345-678"
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white rounded-xl"
                               />
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號</Label>
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">Email</Label>
                               <Input
-                                value={memberData.idNumber}
-                                onChange={(e) => {
-                                  const val = e.target.value
-                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, idNumber: val } : m))
-                                }}
-                                placeholder="A123456789"
-                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電子郵件</Label>
-                              <Input
+                                type="email"
                                 value={memberData.email}
                                 onChange={(e) => {
                                   const val = e.target.value
                                   setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, email: val } : m))
                                 }}
                                 placeholder="example@email.com"
-                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white rounded-xl"
                               />
                             </div>
-                            <div className="col-span-2 space-y-1.5">
+                            <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
                               <MinguoDatePickerInput
                                 value={memberData.dateOfBirth ? new Date(memberData.dateOfBirth) : new Date()}
@@ -1136,6 +1149,107 @@ export function CustomerFormModal({
                                   }
                                 }}
                               />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">性別</Label>
+                              <div className="relative">
+                                <select
+                                  value={memberData.gender}
+                                  onChange={(e) => {
+                                    const val = e.target.value as any
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, gender: val } : m))
+                                  }}
+                                  className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold cursor-pointer appearance-none"
+                                >
+                                  <option value="female">女 (Female)</option>
+                                  <option value="male">男 (Male)</option>
+                                  <option value="other">不透露 (Other)</option>
+                                </select>
+                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">運動習慣 *</Label>
+                              <div className="relative">
+                                <select
+                                  value={memberData.exerciseHabit}
+                                  onChange={(e) => {
+                                    const val = e.target.value as any
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, exerciseHabit: val } : m))
+                                  }}
+                                  className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold cursor-pointer appearance-none"
+                                >
+                                  <option value="none">完全沒運動</option>
+                                  <option value="weekly_1_2">每週 1-2 次</option>
+                                  <option value="weekly_3_plus">每週 3 次以上</option>
+                                </select>
+                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">來客渠道</Label>
+                              <div className="relative">
+                                <select
+                                  value={memberData.source}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, source: val } : m))
+                                  }}
+                                  className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold cursor-pointer appearance-none"
+                                >
+                                  <option value="instagram">Instagram</option>
+                                  <option value="facebook">Facebook</option>
+                                  <option value="google">Google 搜尋/地圖</option>
+                                  <option value="referral">親友/會員介紹</option>
+                                  <option value="walk_in">過路/現場親洽</option>
+                                  <option value="existing">舊客戶</option>
+                                  <option value="other">其他管道</option>
+                                </select>
+                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 緊急聯絡人資訊 */}
+                          <div className="p-5 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-stone-100 dark:border-stone-700/50 space-y-4">
+                            <h3 className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-2 uppercase tracking-wide">
+                              <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                              學員 {memberNum} 緊急聯絡人資訊
+                            </h3>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-[11px] text-stone-500 dark:text-stone-400">姓名 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.name}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, emergencyContact: { ...m.emergencyContact, name: val } } : m))
+                                  }}
+                                  className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[11px] text-stone-500 dark:text-stone-400">關係 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.relation}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, emergencyContact: { ...m.emergencyContact, relation: val } } : m))
+                                  }}
+                                  className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label className="text-[11px] text-stone-500 dark:text-stone-400">電話 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.phone}
+                                  onChange={(e) => {
+                                    const val = e.target.value
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, emergencyContact: { ...m.emergencyContact, phone: val } } : m))
+                                  }}
+                                  className="h-9 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1182,8 +1296,39 @@ export function CustomerFormModal({
                               </div>
                             </div>
 
+                            <div className="space-y-3">
+                              <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">傷病史 (可複選)</Label>
+                              <div className="grid grid-cols-5 gap-2">
+                                {['無狀況', '肩部', '手肘', '手腕', '下背', '髖關節', '膝蓋', '腳踝', '其他'].map((injury) => {
+                                  const isChecked = memberData.medicalHistory.injuries.includes(injury)
+                                  return (
+                                    <button
+                                      key={injury}
+                                      type="button"
+                                      onClick={() => {
+                                        let updated: string[]
+                                        if (injury === '無狀況') {
+                                          updated = ['無狀況']
+                                        } else {
+                                          const current = memberData.medicalHistory.injuries.filter(x => x !== '無狀況')
+                                          updated = isChecked ? current.filter(x => x !== injury) : [...current, injury]
+                                        }
+                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, medicalHistory: { ...m.medicalHistory, injuries: updated } } : m))
+                                      }}
+                                      className={cn(
+                                        "flex items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all",
+                                        isChecked ? "bg-stone-900 dark:bg-white border-stone-900 text-white dark:text-stone-900" : "bg-stone-50 border-stone-200 text-stone-600"
+                                      )}
+                                    >
+                                      <span>{injury}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
                             <div className="space-y-1.5">
-                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身體狀況說明</Label>
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">其他身體狀況說明</Label>
                               <textarea
                                 value={memberData.medicalHistory.notes}
                                 onChange={(e) => {
