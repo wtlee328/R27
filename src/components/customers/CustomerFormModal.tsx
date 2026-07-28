@@ -130,17 +130,6 @@ export function CustomerFormModal({
     }))
   }
 
-  const groupQuotaRemainder = useMemo(() => {
-    const totalSess = Number(watchedValues.contract?.totalSessions) || 0
-    const count = groupMembers.length
-    if (count === 0 || totalSess === 0) return 0
-    return totalSess % count
-  }, [watchedValues.contract?.totalSessions, groupMembers.length])
-
-  const groupQuotaSum = useMemo(() => {
-    return groupMembers.reduce((acc, m) => acc + (Number(m.allocatedSessions) || 0), 0)
-  }, [groupMembers])
-
   const defaultValues = useMemo(() => ({
     name: '',
     idNumber: '',
@@ -267,6 +256,17 @@ export function CustomerFormModal({
   }, [open, initialData, initialCustomer, form, trainers, defaultValues])
 
   const watchedValues = form.watch()
+
+  const groupQuotaRemainder = useMemo(() => {
+    const totalSess = Number(watchedValues.contract?.totalSessions) || 0
+    const count = groupMembers.length
+    if (count === 0 || totalSess === 0) return 0
+    return totalSess % count
+  }, [watchedValues.contract?.totalSessions, groupMembers.length])
+
+  const groupQuotaSum = useMemo(() => {
+    return groupMembers.reduce((acc, m) => acc + (Number(m.allocatedSessions) || 0), 0)
+  }, [groupMembers])
 
   const partnerNameStr = useMemo(() => {
     const isBindMode = watchedValues.bindExistingContractMode
