@@ -414,6 +414,7 @@ export default function CustomersPage() {
           if (!open) setSelectedCustomer(null)
         }}
         customer={selectedCustomer}
+        customers={customers}
         onSubmit={handleRenewalSubmit}
       />
 

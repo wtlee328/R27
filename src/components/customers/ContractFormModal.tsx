@@ -70,6 +70,8 @@ export function ContractFormModal({
   const secondarySigCanvas = useRef<SignatureCanvas>(null)
   const [trainers, setTrainers] = useState<any[]>([])
   const [isOneToTwo, setIsOneToTwo] = useState(true)
+  const [fetchedCustomers, setFetchedCustomers] = useState<Customer[]>([])
+  const activeCustomers = useMemo(() => (customers && customers.length > 0 ? customers : fetchedCustomers), [customers, fetchedCustomers])
 
   // Group contract states
   const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
@@ -183,7 +185,7 @@ export function ContractFormModal({
   }
 
   useEffect(() => {
-    const fetchTrainers = async () => {
+    const fetchTrainersAndCustomers = async () => {
       try {
         const snap = await getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId)))
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -191,14 +193,18 @@ export function ContractFormModal({
         if (list.length > 0 && !form.getValues('trainerId')) {
           form.setValue('trainerId', list[0].id)
         }
+        if (!customers || customers.length === 0) {
+          const custSnap = await getDocs(query(collection(db, 'customers'), where('centerId', '==', centerId)))
+          setFetchedCustomers(custSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer)))
+        }
       } catch (err) {
-        console.error('Error fetching trainers:', err)
+        console.error('Error fetching trainers/customers:', err)
       }
     }
     if (open) {
-      fetchTrainers()
+      fetchTrainersAndCustomers()
     }
-  }, [open, form, centerId])
+  }, [open, form, centerId, customers])
 
   useEffect(() => {
     if (open && customer) {
@@ -937,7 +943,7 @@ export function ContractFormModal({
                                         onChange={(e) => {
                                           const selectedId = e.target.value
                                           if (selectedId) {
-                                            const selectedCust = customers.find(c => c.id === selectedId)
+                                            const selectedCust = activeCustomers.find(c => c.id === selectedId)
                                             if (selectedCust) {
                                               let dobStr = ''
                                               if (selectedCust.dateOfBirth) {
@@ -977,7 +983,7 @@ export function ContractFormModal({
                                         className="w-full h-9 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
                                       >
                                         <option value="">— 請選擇現有學員 —</option>
-                                        {(customers || [])
+                                        {(activeCustomers || [])
                                           .filter(c => c.id !== customer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== idx && other.existingCustomerId === c.id))
                                           .map((c) => (
                                             <option key={c.id} value={c.id}>
@@ -1122,7 +1128,7 @@ export function ContractFormModal({
                                   className="w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 pr-8 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:bg-white appearance-none"
                                 >
                                   <option value="">— 請選擇學員 —</option>
-                                  {(customers || []).filter(c => c.id !== customer.id).map((c) => (
+                                  {(activeCustomers || []).filter(c => c.id !== customer.id).map((c) => (
                                     <option key={c.id} value={c.id}>
                                       {c.name} ({c.phone})
                                     </option>
@@ -1133,7 +1139,7 @@ export function ContractFormModal({
                               {form.watch('sharedWithCustomerId') && (
                                 <p className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
                                   <RiUserSharedLine className="w-3 h-3 shrink-0" />
-                                  此合約將由 {customer.name} 與 {(customers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有。
+                                  此合約將由 {customer.name} 與 {(activeCustomers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有。
                                 </p>
                               )}
                             </div>
@@ -1244,7 +1250,7 @@ export function ContractFormModal({
                                 </div>
                                 <div className="space-y-2">
                                   <Label className="text-xs text-stone-500 font-medium">
-                                    學員 B ({watchedValues.partnerMode === 'existing' ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
+                                    學員 B ({watchedValues.partnerMode === 'existing' ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
                                   </Label>
                                   <select
                                     value={form.watch('secondaryTrainerId') || ''}
@@ -2042,7 +2048,7 @@ export function ContractFormModal({
                             let partnerInfo = null
                             if (isDual) {
                               if (partnerMode === 'existing') {
-                                const partnerObj = customers.find(c => c.id === form.watch('partnerId'))
+                                const partnerObj = activeCustomers.find(c => c.id === form.watch('partnerId'))
                                 if (partnerObj) {
                                   partnerInfo = {
                                     name: partnerObj.name,
