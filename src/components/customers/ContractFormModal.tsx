@@ -41,7 +41,7 @@ export function ContractFormModal({
   onOpenChange,
   onSubmit,
   customer,
-  customers,
+  customers = [],
 }: ContractFormModalProps) {
   const { centerId } = useCenterStore()
   const isCoffit = centerId === 'coffit'
@@ -844,7 +844,7 @@ export function ContractFormModal({
                                 className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                               >
                                 <option value="">-- 請選擇學員 --</option>
-                                {customers.filter(c => c.id !== customer.id).map((c) => (
+                                {(customers || []).filter(c => c.id !== customer.id).map((c) => (
                                   <option key={c.id} value={c.id}>
                                     {c.name} ({c.phone})
                                   </option>
@@ -852,7 +852,7 @@ export function ContractFormModal({
                               </select>
                               {form.watch('sharedWithCustomerId') && (
                                 <p className="text-[10px] text-orange-600 font-bold">
-                                  提示：此續約將會由當前學員與 {customers.find(c => c.id === form.watch('sharedWithCustomerId'))?.name} 共同持有一份合約。
+                                  提示：此續約將會由當前學員與 {(customers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有一份合約。
                                 </p>
                               )}
                             </div>
