@@ -23,7 +23,7 @@ import {
   RiUserAddLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
   Dialog,
@@ -126,17 +126,52 @@ export function CustomerFormModal({
   const activeCustomers = useMemo(() => customers.length > 0 ? customers : fetchedCustomers, [customers, fetchedCustomers])
   const activeContracts = useMemo(() => contracts.length > 0 ? contracts : fetchedContracts, [contracts, fetchedContracts])
 
-  // Group Contract Members State (2 to 6 students)
-  const [groupMembers, setGroupMembers] = useState<{ customerId: string; name: string; allocatedSessions: number }[]>([])
+  // Group Contract State (2 to 6 students)
+  const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
+  const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
+    name: string
+    idNumber: string
+    phone: string
+    email: string
+    dateOfBirth: string
+    emergencyContact: { name: string; relation: string; phone: string }
+    medicalHistory: { chronicConditions: string[]; injuries: string[]; notes: string }
+    allocatedSessions: number
+  }>>([
+    {
+      name: '',
+      idNumber: '',
+      phone: '',
+      email: '',
+      dateOfBirth: new Date().toISOString().split('T')[0],
+      emergencyContact: { name: '', relation: '', phone: '' },
+      medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+      allocatedSessions: 0,
+    }
+  ])
 
-  // Auto calculate default per-member quota when totalSessions or member count changes
-  const updateGroupMemberQuotasDefault = (sessions: number, members: typeof groupMembers) => {
-    if (members.length === 0) return members
-    const baseQuota = Math.floor(sessions / members.length)
-    return members.map(m => ({
-      ...m,
-      allocatedSessions: baseQuota
-    }))
+  // Helper to sync additionalGroupMembers array length to target new student count
+  const syncAdditionalMembersCount = (targetNewCount: number, totalSessions: number) => {
+    setAdditionalGroupMembers(prev => {
+      const current = [...prev]
+      if (current.length < targetNewCount) {
+        for (let i = current.length; i < targetNewCount; i++) {
+          current.push({
+            name: '',
+            idNumber: '',
+            phone: '',
+            email: '',
+            dateOfBirth: new Date().toISOString().split('T')[0],
+            emergencyContact: { name: '', relation: '', phone: '' },
+            medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+            allocatedSessions: 0,
+          })
+        }
+      } else if (current.length > targetNewCount) {
+        current.splice(targetNewCount)
+      }
+      return current
+    })
   }
 
   const defaultValues = useMemo(() => ({
@@ -266,16 +301,18 @@ export function CustomerFormModal({
 
   const watchedValues = form.watch()
 
+  const [primaryMemberQuota, setPrimaryMemberQuota] = useState<number>(0)
+
   const groupQuotaRemainder = useMemo(() => {
     const totalSess = Number(watchedValues.contract?.totalSessions) || 0
-    const count = groupMembers.length
-    if (count === 0 || totalSess === 0) return 0
-    return totalSess % count
-  }, [watchedValues.contract?.totalSessions, groupMembers.length])
+    if (groupMemberCount === 0 || totalSess === 0) return 0
+    return totalSess % groupMemberCount
+  }, [watchedValues.contract?.totalSessions, groupMemberCount])
 
   const groupQuotaSum = useMemo(() => {
-    return groupMembers.reduce((acc, m) => acc + (Number(m.allocatedSessions) || 0), 0)
-  }, [groupMembers])
+    const additionalSum = additionalGroupMembers.reduce((acc, m) => acc + (Number(m.allocatedSessions) || 0), 0)
+    return primaryMemberQuota + additionalSum
+  }, [primaryMemberQuota, additionalGroupMembers])
 
   const partnerNameStr = useMemo(() => {
     const isBindMode = watchedValues.bindExistingContractMode
@@ -301,7 +338,50 @@ export function CustomerFormModal({
 
   const activeSteps = useMemo(() => {
     if (isEditMode) return STEPS.slice(0, 2)
-    
+
+    const isGroupContract = watchedValues.contract?.contractType === 'group' && !watchedValues.bindExistingContractMode
+
+    if (isGroupContract) {
+      const dynamicSteps: Array<{ id: string; title: string; icon: any; fields: string[] }> = []
+
+      // If created from global "New Customer" (no initialCustomer), include Member 1 basic/medical
+      const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
+      if (!isFromExistingCustomer) {
+        dynamicSteps.push(
+          { id: 'basic', title: '學員 1 基本資料', icon: RiUserLine, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
+          { id: 'medical', title: '學員 1 健康狀態', icon: RiHeartPulseLine, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] }
+        )
+      }
+
+      // Add steps for Member 2 to N
+      const startMemberIdx = isFromExistingCustomer ? 2 : 2
+      const endMemberIdx = isFromExistingCustomer ? groupMemberCount : groupMemberCount
+
+      for (let i = startMemberIdx; i <= endMemberIdx; i++) {
+        dynamicSteps.push(
+          {
+            id: `group_member_${i}_basic`,
+            title: `學員 ${i} 基本資料`,
+            icon: RiUserLine,
+            fields: [] // Custom validated in UI/handleNext
+          },
+          {
+            id: `group_member_${i}_medical`,
+            title: `學員 ${i} 健康狀態`,
+            icon: RiHeartPulseLine,
+            fields: []
+          }
+        )
+      }
+
+      dynamicSteps.push(
+        { id: 'contract', title: '團體合約設定', icon: RiFileTextLine, fields: ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate'] },
+        { id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] }
+      )
+
+      return dynamicSteps
+    }
+
     const steps = STEPS.map(step => {
       if (step.id === 'contract') {
         const fields = [...step.fields]
@@ -341,7 +421,7 @@ export function CustomerFormModal({
       )
     }
     return steps
-  }, [isEditMode, watchedValues.partnerMode])
+  }, [isEditMode, watchedValues.contract?.contractType, watchedValues.bindExistingContractMode, watchedValues.partnerMode, groupMemberCount, initialCustomer, initialData?.name])
 
   const formatROCDate = (dateVal: any) => {
     if (!dateVal) return { y: '   ', m: '  ', d: '  ' }
@@ -498,11 +578,22 @@ export function CustomerFormModal({
     if (currentStep > 0) setCurrentStep(prev => prev - 1)
   }
 
+  const recalculateGroupQuotas = (totalSess: number, count: number) => {
+    if (count <= 0) return
+    const baseQuota = Math.floor(totalSess / count)
+    setPrimaryMemberQuota(baseQuota)
+    setAdditionalGroupMembers(prev => prev.map(m => ({ ...m, allocatedSessions: baseQuota })))
+  }
+
   const handleSessionsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const sessions = Number(e.target.value)
     const totalAmount = form.getValues('contract.totalAmount') || 0
     form.setValue('contract.totalSessions', sessions)
     
+    if (form.getValues('contract.contractType') === 'group') {
+      recalculateGroupQuotas(sessions, groupMemberCount)
+    }
+
     const initialCont = initialCustomer?.contract || initialData?.contract
     const usedSessions = initialCont
       ? Math.max(0, (initialCont.totalSessions || 0) - (initialCont.remainingSessions || 0))
@@ -554,29 +645,84 @@ export function CustomerFormModal({
       return
     }
 
-    // Group contract quota validation
-    if (data.contract?.contractType === 'group') {
-      if (groupMembers.length < 2) {
-        alert('團體合約至少需要選取 2 位成員！')
-        return
-      }
+    // Group contract quota validation & additional member creation
+    if (data.contract?.contractType === 'group' && !data.bindExistingContractMode) {
       const totalSess = Number(data.contract.totalSessions) || 0
       if (groupQuotaSum !== totalSess) {
-        alert(`團體合約成員配額總合 (${groupQuotaSum} 堂) 必須等於合約總堂數 (${totalSess} 堂)，請手動微調每位成員的分配堂數！`)
+        alert(`團體合約成員配額總和 (${groupQuotaSum} 堂) 必須等於合約總堂數 (${totalSess} 堂)，請手動微調每位成員的分配堂數！`)
         return
       }
 
-      const memberQuotas: Record<string, any> = {}
-      groupMembers.forEach(m => {
-        memberQuotas[m.customerId] = {
-          customerId: m.customerId,
-          customerName: m.name,
-          totalSessions: m.allocatedSessions,
-          remainingSessions: m.allocatedSessions
+      setLoading(true)
+      try {
+        // Batch create additional new members in Firestore customers collection
+        const createdMemberIds: string[] = []
+        const createdMemberNames: string[] = []
+        const createdMemberQuotas: number[] = []
+
+        for (let i = 0; i < additionalGroupMembers.length; i++) {
+          const m = additionalGroupMembers[i]
+          if (!m.name || !m.phone) {
+            alert(`請填寫學員 ${i + 2} 的姓名與電話！`)
+            setLoading(false)
+            return
+          }
+          const docRef = await addDoc(collection(db, 'customers'), {
+            centerId,
+            name: m.name,
+            idNumber: m.idNumber || '',
+            phone: m.phone,
+            email: m.email || '',
+            dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+            emergencyContact: m.emergencyContact,
+            medicalHistory: m.medicalHistory,
+            historicalSessions: 0,
+            status: 'active',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          })
+          createdMemberIds.push(docRef.id)
+          createdMemberNames.push(m.name)
+          createdMemberQuotas.push(m.allocatedSessions)
         }
-      })
-      ;(data.contract as any).groupMemberQuotas = memberQuotas
-      ;(data.contract as any).customerIds = groupMembers.map(m => m.customerId)
+
+        const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
+        const primaryCustId = initialCustomer?.id || (initialData as any)?.id
+        const primaryCustName = data.name || initialCustomer?.name || '主學員'
+
+        const allMemberQuotas: Record<string, any> = {}
+        const allCustomerIds: string[] = []
+
+        if (isFromExistingCustomer && primaryCustId) {
+          allCustomerIds.push(primaryCustId)
+          allMemberQuotas[primaryCustId] = {
+            customerId: primaryCustId,
+            customerName: primaryCustName,
+            totalSessions: primaryMemberQuota,
+            remainingSessions: primaryMemberQuota,
+          }
+        } else {
+          (data as any)._primaryMemberQuota = primaryMemberQuota
+        }
+
+        createdMemberIds.forEach((id, idx) => {
+          allCustomerIds.push(id)
+          allMemberQuotas[id] = {
+            customerId: id,
+            customerName: createdMemberNames[idx],
+            totalSessions: createdMemberQuotas[idx],
+            remainingSessions: createdMemberQuotas[idx],
+          }
+        })
+
+        ;(data.contract as any).groupMemberQuotas = allMemberQuotas
+        ;(data.contract as any).customerIds = allCustomerIds
+      } catch (err: any) {
+        console.error('Error creating additional group members:', err)
+        alert('建立團體課成員失敗：' + err.message)
+        setLoading(false)
+        return
+      }
     }
 
     setLoading(true)
@@ -916,6 +1062,151 @@ export function CustomerFormModal({
                     </div>
                   )}
 
+                  {/* Dynamic Group Members Steps (Member 2..N) */}
+                  {activeSteps[currentStep]?.id.startsWith('group_member_') && (() => {
+                    const stepId = activeSteps[currentStep].id
+                    const match = stepId.match(/group_member_(\d+)_(basic|medical)/)
+                    if (!match) return null
+                    const memberNum = parseInt(match[1], 10)
+                    const memberArrIdx = memberNum - 2
+                    const memberData = additionalGroupMembers[memberArrIdx]
+                    if (!memberData) return null
+
+                    const type = match[2]
+
+                    if (type === 'basic') {
+                      return (
+                        <div className="space-y-7">
+                          <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                            <h2 className="text-xl font-bold text-stone-900 dark:text-white">學員 {memberNum} 基本資料</h2>
+                            <p className="text-stone-400 dark:text-stone-500 text-sm">請填寫團體合約第 {memberNum} 位學員的基本資訊。</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">姓名 *</Label>
+                              <Input
+                                value={memberData.name}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, name: val } : m))
+                                }}
+                                placeholder="請輸入學員姓名"
+                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電話 *</Label>
+                              <Input
+                                value={memberData.phone}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, phone: val } : m))
+                                }}
+                                placeholder="0912345678"
+                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身分證字號</Label>
+                              <Input
+                                value={memberData.idNumber}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, idNumber: val } : m))
+                                }}
+                                placeholder="A123456789"
+                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">電子郵件</Label>
+                              <Input
+                                value={memberData.email}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, email: val } : m))
+                                }}
+                                placeholder="example@email.com"
+                                className="h-10 text-sm dark:bg-stone-800 dark:border-stone-700 dark:text-white rounded-xl"
+                              />
+                            </div>
+                            <div className="col-span-2 space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
+                              <MinguoDatePickerInput
+                                value={memberData.dateOfBirth ? new Date(memberData.dateOfBirth) : new Date()}
+                                onChange={(d) => {
+                                  if (d) {
+                                    const str = d.toISOString().split('T')[0]
+                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, dateOfBirth: str } : m))
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (type === 'medical') {
+                      return (
+                        <div className="space-y-7">
+                          <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
+                            <h2 className="text-xl font-bold text-stone-900 dark:text-white">學員 {memberNum} 健康狀態</h2>
+                            <p className="text-stone-400 dark:text-stone-500 text-sm">了解學員 {memberNum} 的身體狀況以進行課程設計。</p>
+                          </div>
+                          <div className="space-y-6">
+                            <div className="space-y-3">
+                              <Label className="text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wide block">慢性病史 (可複選)</Label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {['無狀況', '高血壓', '心臟病', '糖尿病', '氣喘', '癲癇', '骨質疏鬆', '自體免疫', '癌症', '其他'].map((cond) => {
+                                  const isChecked = memberData.medicalHistory.chronicConditions.includes(cond)
+                                  return (
+                                    <button
+                                      key={cond}
+                                      type="button"
+                                      onClick={() => {
+                                        let updated: string[]
+                                        if (cond === '無狀況') {
+                                          updated = ['無狀況']
+                                        } else {
+                                          const current = memberData.medicalHistory.chronicConditions.filter(x => x !== '無狀況')
+                                          updated = isChecked ? current.filter(x => x !== cond) : [...current, cond]
+                                        }
+                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, medicalHistory: { ...m.medicalHistory, chronicConditions: updated } } : m))
+                                      }}
+                                      className={cn(
+                                        "flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all",
+                                        isChecked ? "bg-brand-50 border-brand-300 text-brand-700" : "bg-stone-50 border-stone-200 text-stone-600"
+                                      )}
+                                    >
+                                      <span>{isChecked ? '☑' : '☐'}</span>
+                                      <span>{cond}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">身體狀況說明</Label>
+                              <textarea
+                                value={memberData.medicalHistory.notes}
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, medicalHistory: { ...m.medicalHistory, notes: val } } : m))
+                                }}
+                                className="w-full h-24 p-3 rounded-xl border border-stone-200 dark:border-stone-700 text-sm outline-none bg-stone-50 dark:bg-stone-800 dark:text-white"
+                                placeholder="例如：開過刀或右膝韌帶傷..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return null
+                  })()}
+
                   {activeSteps[currentStep]?.id === 'contract' && (
                     <div className="space-y-7">
                       <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
@@ -1020,28 +1311,78 @@ export function CustomerFormModal({
                           </div>
                         </div>
 
-                        {/* 團體課合約學員與配額微調區塊 */}
+                        {/* 團體課合約人數與配額微調區塊 */}
                         {form.watch('contract.contractType') === 'group' && !form.watch('bindExistingContractMode') && (
                           <div className="col-span-2 p-5 bg-emerald-50/50 border border-emerald-200/80 rounded-2xl space-y-4 animate-in fade-in duration-300">
                             <div className="flex items-center justify-between">
-                              <Label className="text-emerald-950 font-bold block text-sm">👥 團體課合約學員與獨立配額設定 (最少2位，最多6位)</Label>
-                              <span className="text-xs text-emerald-700 font-medium">現有成員：{groupMembers.length} 位</span>
+                              <Label className="text-emerald-950 font-bold block text-sm">👥 團體課合約人數選擇與個人配額設定</Label>
+                              <span className="text-xs text-emerald-700 font-bold">總人數：{groupMemberCount} 人</span>
+                            </div>
+
+                            {/* 人數選擇膠囊按鈕 */}
+                            <div className="space-y-1.5">
+                              <span className="text-xs font-semibold text-emerald-900 block">請選擇團體課總人數 (2~6 人)：</span>
+                              <div className="flex gap-2">
+                                {[2, 3, 4, 5, 6].map((count) => {
+                                  const isSelected = groupMemberCount === count
+                                  return (
+                                    <button
+                                      key={count}
+                                      type="button"
+                                      onClick={() => {
+                                        setGroupMemberCount(count)
+                                        const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
+                                        const targetNewCount = isFromExistingCustomer ? count - 1 : count - 1
+                                        syncAdditionalMembersCount(targetNewCount, Number(watchedValues.contract?.totalSessions) || 0)
+                                        recalculateGroupQuotas(Number(watchedValues.contract?.totalSessions) || 0, count)
+                                      }}
+                                      className={cn(
+                                        "flex-1 py-2 rounded-xl text-xs font-bold transition-all border",
+                                        isSelected
+                                          ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/20"
+                                          : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
+                                      )}
+                                    >
+                                      {count} 人團體課
+                                    </button>
+                                  )
+                                })}
+                              </div>
                             </div>
 
                             {/* 堂數無法整除餘數提醒 */}
-                            {groupQuotaRemainder > 0 && (
-                              <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs space-y-1 font-semibold animate-bounce">
-                                ⚠️ 提示：合約總堂數 {watchedValues.contract?.totalSessions} 堂由 {groupMembers.length} 位學員平分時產生 {groupQuotaRemainder} 堂餘數。
-                                請在下方手動輸入微調每位成員分配的堂數（目前配額總合：{groupQuotaSum} 堂）。
+                            {groupQuotaRemainder > 0 && groupQuotaSum !== (Number(watchedValues.contract?.totalSessions) || 0) && (
+                              <div className="p-3 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-semibold space-y-1 animate-bounce">
+                                ⚠️ 提示：合約總堂數 {watchedValues.contract?.totalSessions} 堂由 {groupMemberCount} 位學員平分時產生 {groupQuotaRemainder} 堂餘數。
+                                請在下方手動微調每位成員分配的堂數（目前配額總合：{groupQuotaSum} 堂）。
                               </div>
                             )}
 
-                            {/* 成員清單與配額調整 */}
-                            <div className="space-y-2">
-                              {groupMembers.map((m, idx) => (
-                                <div key={m.customerId || idx} className="flex items-center justify-between gap-3 p-3 bg-white border border-stone-200 rounded-xl">
-                                  <span className="text-xs font-bold text-stone-800 shrink-0">
-                                    學員 {idx + 1}: {m.name || '未填寫'}
+                            {/* 每位成員配額微調列表 */}
+                            <div className="space-y-2 pt-1">
+                              <span className="text-xs font-semibold text-emerald-900 block">每位成員分配堂數微調：</span>
+                              
+                              {/* 學員 1 */}
+                              <div className="flex items-center justify-between gap-3 p-2.5 bg-white border border-stone-200 rounded-xl">
+                                <span className="text-xs font-bold text-stone-800">
+                                  👤 學員 1 (主學員): {watchedValues.name || initialCustomer?.name || '請於基本資料填寫'}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-stone-500 font-medium">個人分配堂數:</span>
+                                  <Input
+                                    type="number"
+                                    value={primaryMemberQuota}
+                                    onChange={(e) => setPrimaryMemberQuota(Number(e.target.value) || 0)}
+                                    className="w-20 h-8 text-xs font-bold font-mono text-center rounded-lg border-stone-300"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* 學員 2 至 N */}
+                              {additionalGroupMembers.map((m, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-3 p-2.5 bg-white border border-stone-200 rounded-xl">
+                                  <span className="text-xs font-bold text-stone-800">
+                                    👤 學員 {idx + 2}: {m.name || `請於「學員 ${idx + 2} 基本資料」填寫`}
                                   </span>
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs text-stone-500 font-medium">個人分配堂數:</span>
@@ -1050,48 +1391,14 @@ export function CustomerFormModal({
                                       value={m.allocatedSessions}
                                       onChange={(e) => {
                                         const val = Number(e.target.value) || 0
-                                        setGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, allocatedSessions: val } : item))
+                                        setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, allocatedSessions: val } : item))
                                       }}
                                       className="w-20 h-8 text-xs font-bold font-mono text-center rounded-lg border-stone-300"
                                     />
-                                    <button
-                                      type="button"
-                                      onClick={() => setGroupMembers(prev => prev.filter((_, i) => i !== idx))}
-                                      className="text-xs text-red-600 hover:text-red-700 font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100"
-                                    >
-                                      移除
-                                    </button>
                                   </div>
                                 </div>
                               ))}
                             </div>
-
-                            {/* 新增團體成員下拉選單 */}
-                            {groupMembers.length < 6 && (
-                              <div className="flex gap-2">
-                                <select
-                                  id="add-group-member-select"
-                                  className="flex-1 h-9 px-3 border border-stone-300 rounded-xl text-xs bg-white text-stone-800"
-                                  defaultValue=""
-                                  onChange={(e) => {
-                                    const custId = e.target.value
-                                    if (!custId) return
-                                    const cust = activeCustomers.find(c => c.id === custId)
-                                    if (cust && !groupMembers.some(m => m.customerId === cust.id)) {
-                                      const newMembers = [...groupMembers, { customerId: cust.id, name: cust.name, allocatedSessions: 0 }]
-                                      const updated = updateGroupMemberQuotasDefault(Number(watchedValues.contract?.totalSessions) || 0, newMembers)
-                                      setGroupMembers(updated)
-                                    }
-                                    e.target.value = ""
-                                  }}
-                                >
-                                  <option value="">+ 新增現有學員至團體合約...</option>
-                                  {activeCustomers.filter(c => !groupMembers.some(m => m.customerId === c.id)).map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
                           </div>
                         )}
 

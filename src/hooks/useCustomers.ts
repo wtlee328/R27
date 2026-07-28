@@ -391,6 +391,7 @@ export function useCustomers() {
         console.log('Onboarding: Linking new customer to existing contract...')
         const existingContractRef = doc(db, 'contracts', data.existingContractId)
         
+        const isGroup = existingContractData.contractType === 'group'
         const currentCustomerIds = existingContractData.customerIds || []
         const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
         
@@ -398,15 +399,28 @@ export function useCustomers() {
         const secondaryTrainerId = data.contract?.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid
 
         const contractUpdate: any = {
-          contractType: 'dual',
           customerIds: updatedCustomerIds,
-          sharedWithCustomerId: customerId,
-          secondaryTrainerId,
           updatedAt: serverTimestamp(),
         }
 
-        if (data.contract?.secondarySignatureDataUrl) {
-          contractUpdate.secondarySignatureDataUrl = data.contract.secondarySignatureDataUrl
+        if (isGroup) {
+          contractUpdate.contractType = 'group'
+          const existingQuotas = { ...(existingContractData.groupMemberQuotas || {}) }
+          const defaultSessions = existingContractData.remainingSessions || existingContractData.totalSessions || 0
+          existingQuotas[customerId] = {
+            customerId,
+            customerName: data.name,
+            totalSessions: defaultSessions,
+            remainingSessions: defaultSessions,
+          }
+          contractUpdate.groupMemberQuotas = existingQuotas
+        } else {
+          contractUpdate.contractType = 'dual'
+          contractUpdate.sharedWithCustomerId = customerId
+          contractUpdate.secondaryTrainerId = secondaryTrainerId
+          if (data.contract?.secondarySignatureDataUrl) {
+            contractUpdate.secondarySignatureDataUrl = data.contract.secondarySignatureDataUrl
+          }
         }
         
         await updateDoc(existingContractRef, contractUpdate)
