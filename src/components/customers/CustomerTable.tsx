@@ -354,7 +354,17 @@ export function CustomerTable({
                                 <RiFileTextLine className="w-3 h-3 mr-1" /> (複數合約)
                               </Badge>
                             )}
-                            {(statusBadgeType === 'group' || statusBadgeType === 'dual' || statusBadgeType === 'single') && (
+                            {statusBadgeType === 'group' && (
+                              <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
+                                <RiTeamLine className="w-3 h-3 mr-1" /> 進行中
+                              </Badge>
+                            )}
+                            {statusBadgeType === 'dual' && (
+                              <Badge className="bg-stone-800 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
+                                <RiGroupLine className="w-3 h-3 mr-1 text-orange-400" /> 進行中
+                              </Badge>
+                            )}
+                            {statusBadgeType === 'single' && (
                               <Badge className="bg-stone-900 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
                                 <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 進行中
                               </Badge>
