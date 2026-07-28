@@ -279,7 +279,7 @@ export function CustomerFormModal({
         { 
           id: 'partner_basic', 
           title: '共享學員基本資料', 
-          icon: User, 
+          icon: RiUserLine, 
           fields: [
             'partnerCustomerData.name', 
             'partnerCustomerData.phone', 
@@ -293,7 +293,7 @@ export function CustomerFormModal({
         { 
           id: 'partner_medical', 
           title: '共享學員健康狀態', 
-          icon: Activity, 
+          icon: RiHeartPulseLine, 
           fields: [
             'partnerCustomerData.medicalHistory.chronicConditions', 
             'partnerCustomerData.medicalHistory.injuries'
