@@ -117,6 +117,15 @@ export function CustomerFormModal({
   const [loading, setLoading] = useState(false)
   const sigCanvas = useRef<SignatureCanvas>(null)
   const secondarySigCanvas = useRef<SignatureCanvas>(null)
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [isOneToTwo, setIsOneToTwo] = useState(true)
+  const [selectedExistingCustomerId, setSelectedExistingCustomerId] = useState<string>('')
+  const [fetchedCustomers, setFetchedCustomers] = useState<Customer[]>([])
+  const [fetchedContracts, setFetchedContracts] = useState<Contract[]>([])
+
+  const activeCustomers = useMemo(() => customers.length > 0 ? customers : fetchedCustomers, [customers, fetchedCustomers])
+  const activeContracts = useMemo(() => contracts.length > 0 ? contracts : fetchedContracts, [contracts, fetchedContracts])
+
   // Group Contract Members State (2 to 6 students)
   const [groupMembers, setGroupMembers] = useState<{ customerId: string; name: string; allocatedSessions: number }[]>([])
 
