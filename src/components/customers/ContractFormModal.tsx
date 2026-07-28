@@ -4,15 +4,19 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, FileText, ShieldCheck, User, Activity } from 'lucide-react'
 import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
 import {
   RiGroupLine,
   RiTeamLine,
   RiArrowDownSLine,
   RiUser3Line,
+  RiUserLine,
   RiUserAddLine,
   RiUserSharedLine,
+  RiHeartPulseLine,
+  RiFileTextLine,
+  RiShieldCheckLine,
+  RiCheckboxCircleFill,
   RiLinkM,
   RiBankCardLine,
   RiMoneyDollarCircleLine,
@@ -45,8 +49,8 @@ interface ContractFormModalProps {
 }
 
 const STEPS = [
-  { id: 'contract', title: '合約設定', icon: FileText, fields: ['totalSessions', 'totalAmount', 'startDate', 'endDate'] },
-  { id: 'signature', title: '簽署確認', icon: ShieldCheck, fields: [] },
+  { id: 'contract', title: '合約設定', icon: RiFileTextLine, fields: ['totalSessions', 'totalAmount', 'startDate', 'endDate'] },
+  { id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] },
 ]
 
 export function ContractFormModal({
@@ -279,7 +283,7 @@ export function ContractFormModal({
         { 
           id: 'partner_basic', 
           title: '共享學員基本資料', 
-          icon: User, 
+          icon: RiUserLine, 
           fields: [
             'partnerCustomerData.name', 
             'partnerCustomerData.phone', 
@@ -293,7 +297,7 @@ export function ContractFormModal({
         { 
           id: 'partner_medical', 
           title: '共享學員健康狀態', 
-          icon: Activity, 
+          icon: RiHeartPulseLine, 
           fields: [
             'partnerCustomerData.medicalHistory.chronicConditions', 
             'partnerCustomerData.medicalHistory.injuries'
@@ -304,8 +308,8 @@ export function ContractFormModal({
       const groupSteps: any[] = []
       for (let i = 2; i <= groupMemberCount; i++) {
         groupSteps.push(
-          { id: `group_member_${i}_basic`, title: `學員 ${i} 基本資料`, icon: User, fields: [] },
-          { id: `group_member_${i}_medical`, title: `學員 ${i} 健康狀態`, icon: Activity, fields: [] }
+          { id: `group_member_${i}_basic`, title: `學員 ${i} 基本資料`, icon: RiUserLine, fields: [] },
+          { id: `group_member_${i}_medical`, title: `學員 ${i} 健康狀態`, icon: RiHeartPulseLine, fields: [] }
         )
       }
       steps.splice(1, 0, ...groupSteps)
@@ -643,52 +647,84 @@ export function ContractFormModal({
           <DialogDescription>為現有客戶 {customer.name} 建立新合約。</DialogDescription>
         </div>
         <div className="flex h-[82vh] min-h-[640px]">
-          {/* Sidebar */}
-          <div className="w-72 bg-stone-50/90 border-r border-stone-200/80 p-8 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-3.5 mb-8 bg-white p-3.5 rounded-2xl border border-stone-200/60 shadow-sm">
-                <div className="w-11 h-11 rounded-xl bg-stone-900 flex items-center justify-center text-white font-black text-base shadow-sm">
-                  {customer.name.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-stone-900 font-bold text-sm">{customer.name}</h3>
-                  <p className="text-stone-400 text-xs font-medium">新增 / 續約合約</p>
-                </div>
-              </div>
+          {/* Sidebar — dark premium (unified with CustomerFormModal) */}
+          <div className="w-64 bg-stone-900 border-r border-stone-800 flex flex-col shrink-0">
+            {/* Sidebar Header */}
+            <div className="px-7 pt-8 pb-6 border-b border-white/5">
+              <p className="text-[10px] font-bold tracking-widest uppercase text-stone-500 mb-1">
+                Contract Renewal
+              </p>
+              <h3 className="text-white font-bold text-base leading-tight truncate">
+                {customer.name}
+              </h3>
+              <p className="text-stone-400 text-xs mt-1 font-medium">新增 / 續約合約</p>
+            </div>
 
-              <nav className="space-y-3">
-                {activeSteps.map((step, idx) => {
-                  const isActive = currentStep === idx
-                  const isCompleted = stepStatus[idx]
-                  return (
-                    <button
-                      key={step.id}
-                      disabled={idx > currentStep && !stepStatus[currentStep]}
-                      onClick={() => setCurrentStep(idx)}
-                      className={cn(
-                        "flex items-center gap-3.5 w-full text-left p-3 rounded-2xl transition-all duration-200",
-                        isActive
-                          ? "bg-white shadow-sm ring-1 ring-stone-900/5 text-stone-900 font-bold"
-                          : isCompleted
-                            ? "hover:bg-white/60 text-stone-700 font-medium"
-                            : "opacity-40 text-stone-400 font-medium cursor-not-allowed"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-9 h-9 rounded-xl flex items-center justify-center transition-all shrink-0 font-bold text-xs",
-                        isCompleted
-                          ? "bg-emerald-600 text-white shadow-sm shadow-emerald-600/20"
-                          : isActive
-                            ? "bg-stone-950 text-white shadow-md shadow-stone-950/20"
-                            : "bg-stone-200/70 text-stone-500"
-                      )}>
-                        {isCompleted ? <CheckCircle2 className="w-4.5 h-4.5" /> : <step.icon className="w-4.5 h-4.5" />}
-                      </div>
-                      <span className="text-xs tracking-tight">{step.title}</span>
-                    </button>
-                  )
-                })}
-              </nav>
+            {/* Steps */}
+            <nav className="flex-1 px-5 py-6 space-y-1 overflow-y-auto">
+              {activeSteps.map((step, idx) => {
+                const Icon = step.icon
+                const isActive = currentStep === idx
+                const isCompleted = stepStatus[idx]
+                
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    disabled={idx > 0 && !stepStatus[idx-1] && idx > currentStep}
+                    onClick={() => setCurrentStep(idx)}
+                    className={cn(
+                      "flex items-center gap-3 w-full text-left transition-all duration-200 px-3 py-2.5 rounded-xl group",
+                      isActive
+                        ? "bg-white/10 text-white"
+                        : isCompleted
+                        ? "text-stone-300 hover:bg-white/5"
+                        : "text-stone-600 hover:bg-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300",
+                      isCompleted
+                        ? "bg-brand-500 text-white"
+                        : isActive
+                        ? "bg-white text-stone-900"
+                        : "bg-white/8 text-stone-500"
+                    )}>
+                      {isCompleted
+                        ? <RiCheckboxCircleFill className="w-3.5 h-3.5" />
+                        : <Icon className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className={cn(
+                        "text-[9px] font-bold tracking-widest uppercase mb-0.5",
+                        isActive ? "text-brand-400" : "text-stone-600"
+                      )}>Step {idx + 1}</p>
+                      <p className={cn(
+                        "text-xs font-semibold leading-tight truncate",
+                        isActive ? "text-white" : isCompleted ? "text-stone-300" : "text-stone-500"
+                      )}>{step.title}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* Progress bar container fixed height */}
+            <div className="h-16 px-5 border-t border-white/5 flex flex-col justify-center shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10px] font-bold text-stone-500 uppercase tracking-widest">整體進度</p>
+                <p className="text-[10px] font-bold text-stone-400">
+                  {stepStatus.filter(s => s).length}/{activeSteps.length}
+                </p>
+              </div>
+              <div className="h-1 w-full bg-white/8 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(stepStatus.filter(s => s).length / activeSteps.length) * 100}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className="h-full bg-brand-500 rounded-full"
+                />
+              </div>
             </div>
           </div>
 

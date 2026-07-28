@@ -557,6 +557,29 @@ export function CustomerFormModal({
         return true;
       }
       
+      if (step.id === 'partner_basic') {
+        if (watchedValues.partnerMode === 'existing') {
+          return !!watchedValues.partnerId
+        }
+        const pData = watchedValues.partnerCustomerData
+        return !!pData?.name?.trim() &&
+               !!pData?.phone?.trim() &&
+               !!pData?.idNumber?.trim() &&
+               !!pData?.dateOfBirth &&
+               !!pData?.emergencyContact?.name?.trim() &&
+               !!pData?.emergencyContact?.relation?.trim() &&
+               !!pData?.emergencyContact?.phone?.trim()
+      }
+      if (step.id === 'partner_medical') {
+        if (watchedValues.partnerMode === 'existing') {
+          return !!watchedValues.partnerId
+        }
+        const pData = watchedValues.partnerCustomerData
+        const chronicOk = (pData?.medicalHistory?.chronicConditions?.length ?? 0) > 0
+        const injuriesOk = (pData?.medicalHistory?.injuries?.length ?? 0) > 0
+        return chronicOk && injuriesOk
+      }
+      
       if (step.id.startsWith('group_member_')) {
         const match = step.id.match(/^group_member_(\d+)_(basic|medical)$/)
         if (!match) return false
@@ -578,7 +601,12 @@ export function CustomerFormModal({
                  !!mData.emergencyContact?.phone?.trim()
         }
         if (match[2] === 'medical') {
-          return true
+          if (mData.memberMode === 'existing') {
+            return !!mData.existingCustomerId && !!mData.name?.trim()
+          }
+          const chronicOk = (mData.medicalHistory?.chronicConditions?.length ?? 0) > 0
+          const injuriesOk = (mData.medicalHistory?.injuries?.length ?? 0) > 0
+          return chronicOk && injuriesOk
         }
       }
       
