@@ -71,6 +71,14 @@ export interface Installment {
   status: InstallmentStatus
 }
 
+export interface GroupMemberQuota {
+  customerId: string
+  customerName: string
+  totalSessions: number
+  remainingSessions: number
+  signatureDataUrl?: string | null
+}
+
 export interface Contract {
   id: string
   centerId?: string
@@ -80,10 +88,11 @@ export interface Contract {
   customerId: string
   sharedWithCustomerId: string | null
   customerIds: string[]
-  contractType: 'single' | 'dual'
+  contractType: 'single' | 'dual' | 'group'
   primaryCustomerId: string
   totalSessions: number
   remainingSessions: number
+  groupMemberQuotas?: Record<string, GroupMemberQuota>
   pricePerSession: number
   totalAmount: number
   paidAmount: number
@@ -93,6 +102,7 @@ export interface Contract {
   status: ContractStatus
   signatureDataUrl: string | null
   secondarySignatureDataUrl: string | null
+  signatures?: Record<string, string | null>
   isAgreed: boolean
   paymentType?: 'single' | 'installments'
   installmentCount?: number
@@ -101,6 +111,13 @@ export interface Contract {
 }
 
 // ─── Lesson Record ────────────────────────────────────────────
+export interface StudentDeduction {
+  customerId: string
+  customerName: string
+  contractId: string
+  sessionAmount: number
+}
+
 export interface LessonRecord {
   id: string
   centerId?: string
@@ -114,6 +131,7 @@ export interface LessonRecord {
   notes: string
   attendingCustomerIds?: string[]
   attendingCustomerNames?: string[]
+  deductions?: StudentDeduction[]
   createdAt: Timestamp
   updatedAt: Timestamp
 }

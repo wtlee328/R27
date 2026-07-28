@@ -559,8 +559,29 @@ export function CustomerContractModal({
               <div className="space-y-3">
                 <h3 className="font-black text-stone-900 text-xs border-b-2 border-stone-800 pb-1 flex items-center justify-between">
                   <span>立契約書人</span>
-                  {partner && <span className="text-[10px] text-orange-600 font-bold">雙人共享合約模式</span>}
+                  {contract?.contractType === 'group' ? (
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">👥 團體課合約模式 ({Object.keys(contract.groupMemberQuotas || {}).length || contract.customerIds?.length || 1} 人)</span>
+                  ) : partner ? (
+                    <span className="text-[10px] text-orange-600 font-bold">雙人共享合約模式</span>
+                  ) : null}
                 </h3>
+                
+                {/* 團體課成員配額表 */}
+                {contract?.contractType === 'group' && contract.groupMemberQuotas && (
+                  <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-2 text-xs">
+                    <div className="font-bold text-emerald-900 text-[11px]">👥 團體合約成員與獨立剩餘堂數明細：</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.values(contract.groupMemberQuotas).map((gm, i) => (
+                        <div key={gm.customerId || i} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
+                          <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
+                          <span className="font-mono font-bold text-emerald-800">
+                            個人剩額：{gm.remainingSessions} / {gm.totalSessions} 堂
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 {/* 甲方: 主學員 */}
                 <div className="space-y-2.5">

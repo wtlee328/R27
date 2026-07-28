@@ -58,7 +58,7 @@ export const baseContractFormSchema = z.object({
   customerId: z.string().min(1, '請選擇客戶'),
   sharedWithCustomerId: z.string().nullable().default(null),
   customerIds: z.array(z.string()).default([]),
-  contractType: z.enum(['single', 'dual']).default('single'),
+  contractType: z.enum(['single', 'dual', 'group']).default('single'),
   primaryCustomerId: z.string().default(''),
   trainerId: z.string().min(1, '請選擇教練'),
   secondaryTrainerId: z.string().nullable().optional().default(null),

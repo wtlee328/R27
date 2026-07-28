@@ -226,6 +226,7 @@ export function CustomerDetailsModal({
 
               {/* Active Contract Card */}
               {activeContract ? (() => {
+                const isGroup = activeContract.contractType === 'group'
                 const isDual = activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
                 const activePartnerId = isDual
                   ? (activeContract.customerIds && activeContract.customerIds.length > 1
@@ -234,9 +235,14 @@ export function CustomerDetailsModal({
                   : null
                 const activePartnerName = activePartnerId ? partnerNames[activePartnerId] : null
                 const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
-                const remainingPct = activeContract.totalSessions
-                  ? Math.round((activeContract.remainingSessions / activeContract.totalSessions) * 100)
-                  : 0
+                
+                let myRemaining = activeContract.remainingSessions
+                let myTotal = activeContract.totalSessions
+                if (isGroup && activeContract.groupMemberQuotas && activeContract.groupMemberQuotas[customer.id]) {
+                  myRemaining = activeContract.groupMemberQuotas[customer.id].remainingSessions
+                  myTotal = activeContract.groupMemberQuotas[customer.id].totalSessions
+                }
+                const remainingPct = myTotal ? Math.round((myRemaining / myTotal) * 100) : 0
 
                 return (
                   <div
@@ -245,15 +251,17 @@ export function CustomerDetailsModal({
                       'rounded-2xl border p-5 cursor-pointer group transition-all hover:shadow-md relative overflow-hidden',
                       isUnsigned
                         ? 'bg-amber-50/70 border-amber-200/70 hover:border-amber-300'
-                        : isDual
-                          ? 'bg-orange-50/50 border-orange-100 hover:border-orange-200'
-                          : 'bg-stone-900 border-stone-800'
+                        : isGroup
+                          ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200'
+                          : isDual
+                            ? 'bg-orange-50/50 border-orange-100 hover:border-orange-200'
+                            : 'bg-stone-900 border-stone-800'
                     )}
                   >
                     {/* Background icon */}
                     <RiShieldCheckLine className={cn(
                       'absolute right-3 bottom-3 w-20 h-20 opacity-5 group-hover:opacity-10 transition-opacity',
-                      isUnsigned || isDual ? 'text-stone-800' : 'text-white'
+                      isUnsigned || isDual || isGroup ? 'text-stone-800' : 'text-white'
                     )} />
 
                     <div className="relative">
@@ -268,10 +276,14 @@ export function CustomerDetailsModal({
                           ) : (
                             <span className={cn(
                               'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full',
-                              isDual ? 'bg-orange-500/20 text-orange-700' : 'bg-white/15 text-white'
+                              isGroup
+                                ? 'bg-emerald-600 text-white'
+                                : isDual
+                                  ? 'bg-orange-500 text-white'
+                                  : 'bg-stone-800 text-stone-200 border border-stone-700'
                             )}>
-                              {isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
-                              {isDual ? '雙人進行中' : '進行中'}
+                              {isGroup ? <RiGroupLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
+                              {isGroup ? '團體合約' : isDual ? '雙人共享合約' : '一般合約'}
                             </span>
                           )}
                           {activePartnerName && (

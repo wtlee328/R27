@@ -118,15 +118,21 @@ export function PrepaidLessonsTable({
     let totalSessionsUsed = 0
 
     ;(periodLessonRecords || []).forEach((r) => {
-      const c = contractMap.get(r.contractId)
-      const sessions = Number(r.sessionAmount || 1)
-      totalSessionsUsed += sessions
-      if (c && Number(c.totalSessions) > 0) {
-        const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
-        realizedRevenueTotal += sessions * avgPrice
-      } else {
-        realizedRevenueTotal += sessions * 1500
-      }
+      const deductions = (r.deductions && r.deductions.length > 0)
+        ? r.deductions
+        : [{ customerId: r.customerId, customerName: r.customerName, contractId: r.contractId, sessionAmount: r.sessionAmount || 1 }]
+
+      deductions.forEach(d => {
+        const c = contractMap.get(d.contractId)
+        const sessions = Number(d.sessionAmount || 1)
+        totalSessionsUsed += sessions
+        if (c && Number(c.totalSessions) > 0) {
+          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
+          realizedRevenueTotal += sessions * avgPrice
+        } else {
+          realizedRevenueTotal += sessions * 1500
+        }
+      })
     })
 
     let unearnedLiabilityBalance = 0

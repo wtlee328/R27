@@ -127,6 +127,65 @@ export function LessonRecordWizard({
   const selectedContractId = form.watch('contractId')
   const selectedContract = contracts.find(c => c.id === selectedContractId)
 
+  // Per-student contract selection map for multi/group contracts
+  // [customerId]: selectedContractId
+  const [studentContractSelections, setStudentContractSelections] = useState<Record<string, string>>({})
+
+  // All customers associated with the primary selected contract
+  const groupCustomers = useMemo(() => {
+    if (!selectedContract) return []
+    const ids = selectedContract.customerIds && selectedContract.customerIds.length > 0
+      ? selectedContract.customerIds
+      : [selectedCustomerId, selectedContract.sharedWithCustomerId, selectedContract.partnerId].filter((id): id is string => !!id)
+    const uniqueIds = Array.from(new Set(ids))
+    return uniqueIds.map(id => customers.find(c => c.id === id)).filter(Boolean) as typeof customers
+  }, [selectedContract, selectedCustomerId, customers])
+
+  // Automatically select initial attendees and FIFO contracts when primary contract changes
+  useEffect(() => {
+    if (selectedContract) {
+      const isMulti = selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || (selectedContract.customerIds && selectedContract.customerIds.length > 1)
+      if (isMulti && groupCustomers.length > 0) {
+        // Default check all group members as attending
+        const allMemberIds = groupCustomers.map(c => c.id)
+        form.setValue('attendingCustomerIds', allMemberIds)
+
+        // FIFO contract auto selection for each member
+        const initialSelections: Record<string, string> = {}
+        groupCustomers.forEach(m => {
+          // Find all active contracts for this member
+          const memberContracts = contracts.filter(c => {
+            const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(m.id)
+            const isCust = c.customerId === m.id || c.primaryCustomerId === m.id || c.sharedWithCustomerId === m.id || c.partnerId === m.id
+            if (!isInIds && !isCust) return false
+
+            if (c.contractType === 'group' && c.groupMemberQuotas) {
+              return (c.groupMemberQuotas[m.id]?.remainingSessions || 0) > 0
+            }
+            return c.remainingSessions > 0
+          }).sort((a, b) => {
+            const tA = a.createdAt?.seconds || 0
+            const tB = b.createdAt?.seconds || 0
+            return tA - tB // FIFO: oldest first
+          })
+
+          // Prefer the primary selected contract if valid, otherwise FIFO oldest valid contract
+          if (memberContracts.some(c => c.id === selectedContract.id)) {
+            initialSelections[m.id] = selectedContract.id
+          } else if (memberContracts.length > 0) {
+            initialSelections[m.id] = memberContracts[0].id
+          } else {
+            initialSelections[m.id] = selectedContract.id
+          }
+        })
+        setStudentContractSelections(initialSelections)
+      } else {
+        form.setValue('attendingCustomerIds', [selectedCustomerId])
+        setStudentContractSelections({ [selectedCustomerId]: selectedContract.id })
+      }
+    }
+  }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form])
+
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
     if (!initialData && selectedContract) {
@@ -138,31 +197,33 @@ export function LessonRecordWizard({
     }
   }, [selectedContract, initialData, form, trainerId])
 
-  const partnerId = selectedContract?.customerIds && selectedContract.customerIds.length > 1
-    ? selectedContract.customerIds.find(id => id !== selectedCustomerId)
-    : selectedContract?.sharedWithCustomerId
-  const partner = partnerId ? customers.find(c => c.id === partnerId) : null
-
-  const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const custId = e.target.value
-    const cust = customers.find((c) => c.id === custId)
-    form.setValue('customerId', custId)
-    form.setValue('customerName', cust?.name || '')
-    form.setValue('contractId', '') // reset contract
-    form.setValue('attendingCustomerIds', [custId])
-  }
-
   const handleSubmit = async (data: LessonRecordFormValues) => {
-    // If it's a dual contract, make sure attendingCustomerIds has at least one item
-    if (selectedContract && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId)) {
-      const attendees = data.attendingCustomerIds || []
+    const isMulti = selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || (selectedContract.customerIds && selectedContract.customerIds.length > 1))
+    
+    let attendees = data.attendingCustomerIds || []
+    if (isMulti) {
       if (attendees.length === 0) {
-        form.setError('attendingCustomerIds', { type: 'manual', message: '請至少選擇一位上課學員' })
+        form.setError('attendingCustomerIds', { type: 'manual', message: '請至少選擇一位實際出席學員' })
         return
       }
     } else {
-      data.attendingCustomerIds = [data.customerId]
+      attendees = [data.customerId]
+      data.attendingCustomerIds = attendees
     }
+
+    // Build per-student deductions
+    const deductions = attendees.map(studentId => {
+      const cust = customers.find(c => c.id === studentId)
+      const chosenContractId = studentContractSelections[studentId] || data.contractId
+      return {
+        customerId: studentId,
+        customerName: cust?.name || '',
+        contractId: chosenContractId,
+        sessionAmount: Number(data.sessionAmount) || 1,
+      }
+    })
+
+    data.deductions = deductions
 
     setLoading(true)
     try {
@@ -181,7 +242,7 @@ export function LessonRecordWizard({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{initialData ? '編輯銷課紀錄' : '新增銷課紀錄'}</DialogTitle>
-          <DialogDescription>請選擇客戶、合約，並輸入銷課堂數。</DialogDescription>
+          <DialogDescription>請選擇客戶、合約，並選取實際出席學員與扣抵合約。</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -272,20 +333,18 @@ export function LessonRecordWizard({
           </div>
 
           <div className="space-y-2">
-            <Label>合約 *</Label>
+            <Label>主要合約 *</Label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
               {...form.register('contractId', {
                 onChange: (e) => {
                   const conId = e.target.value
                   const con = contracts.find(c => c.id === conId)
-                  if (con && (con.contractType === 'dual' || !!con.sharedWithCustomerId)) {
-                    const pId = con.customerIds && con.customerIds.length > 1
-                      ? con.customerIds.find(id => id !== selectedCustomerId)
-                      : con.sharedWithCustomerId
-                    form.setValue('attendingCustomerIds', [selectedCustomerId, pId].filter((id): id is string => !!id))
-                  } else {
-                    form.setValue('attendingCustomerIds', [selectedCustomerId])
+                  if (con) {
+                    const ids = con.customerIds && con.customerIds.length > 0
+                      ? con.customerIds
+                      : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
+                    form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
                   }
                 }
               })}
@@ -297,7 +356,7 @@ export function LessonRecordWizard({
               )}
               {contracts.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
+                  {c.contractType === 'group' ? '👥 團體合約' : c.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'} - {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
                 </option>
               ))}
             </select>
@@ -347,61 +406,87 @@ export function LessonRecordWizard({
             )}
           </div>
 
-          {selectedContract && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId) && (
-            <div className="space-y-2 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
-              <Label className="text-stone-900 font-bold block text-xs">雙人合約上課學員 (可多選) *</Label>
-              <div className="flex gap-4">
-                <label className={cn(
-                  "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
-                  (form.watch('attendingCustomerIds') || []).includes(selectedCustomerId)
-                    ? "bg-orange-500 border-orange-500 text-white"
-                    : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
-                )}>
-                  <input
-                    type="checkbox"
-                    checked={(form.watch('attendingCustomerIds') || []).includes(selectedCustomerId)}
-                    className="hidden"
-                    onChange={(e) => {
-                      const current = form.getValues('attendingCustomerIds') || []
-                      if (e.target.checked) {
-                        form.setValue('attendingCustomerIds', [...current, selectedCustomerId])
-                      } else {
-                        form.setValue('attendingCustomerIds', current.filter(id => id !== selectedCustomerId))
-                      }
-                    }}
-                  />
-                  <span>
-                    {(form.watch('attendingCustomerIds') || []).includes(selectedCustomerId) ? '☑' : '☐'}{' '}
-                    👤 {customers.find(c => c.id === selectedCustomerId)?.name || '學員 A'}
-                  </span>
-                </label>
+          {/* Attendance & Multi-contract selection area */}
+          {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || groupCustomers.length > 1) && (
+            <div className="space-y-3 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
+              <div className="flex items-center justify-between">
+                <Label className="text-stone-900 font-bold block text-xs">
+                  {selectedContract.contractType === 'group' ? '👥 團體合約成員出席與扣抵設定 (可勾選出席學員)' : '👥 雙人合約出席學員 (可多選)'}
+                </Label>
+                <span className="text-[10px] text-stone-400 font-medium">未勾選代表缺席（不扣堂）</span>
+              </div>
+              
+              <div className="space-y-2">
+                {groupCustomers.map((member) => {
+                  const isAttending = (form.watch('attendingCustomerIds') || []).includes(member.id)
+                  
+                  // Find all active contracts for this specific member
+                  const memberContracts = contracts.filter(c => {
+                    const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
+                    const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id
+                    return isInIds || isCust
+                  })
 
-                {partner && (
-                  <label className={cn(
-                    "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer",
-                    (form.watch('attendingCustomerIds') || []).includes(partner.id)
-                      ? "bg-orange-500 border-orange-500 text-white"
-                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
-                  )}>
-                    <input
-                      type="checkbox"
-                      checked={(form.watch('attendingCustomerIds') || []).includes(partner.id)}
-                      className="hidden"
-                      onChange={(e) => {
-                        const current = form.getValues('attendingCustomerIds') || []
-                        if (e.target.checked) {
-                          form.setValue('attendingCustomerIds', [...current, partner.id])
-                        } else {
-                          form.setValue('attendingCustomerIds', current.filter(id => id !== partner.id))
-                        }
-                      }}
-                    />
-                    <span>
-                      {(form.watch('attendingCustomerIds') || []).includes(partner.id) ? '☑' : '☐'}{' '}
-                      👤 {partner.name || '學員 B'}
-                    </span>
-                  </label>
-                )}
+                  const currentSelectedContractId = studentContractSelections[member.id] || selectedContract.id
+
+                  return (
+                    <div key={member.id} className="p-2.5 bg-white border border-stone-200 rounded-xl space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isAttending}
+                            className="w-4 h-4 rounded border-stone-300 text-orange-500 focus:ring-orange-400 accent-orange-500"
+                            onChange={(e) => {
+                              const current = form.getValues('attendingCustomerIds') || []
+                              if (e.target.checked) {
+                                form.setValue('attendingCustomerIds', [...current, member.id])
+                              } else {
+                                form.setValue('attendingCustomerIds', current.filter(id => id !== member.id))
+                              }
+                            }}
+                          />
+                          <span className="text-xs font-bold text-stone-800">
+                            👤 {member.name}
+                          </span>
+                        </label>
+                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isAttending ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-400")}>
+                          {isAttending ? '實際出席' : '未出席'}
+                        </span>
+                      </div>
+
+                      {isAttending && (
+                        <div className="pl-6 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-stone-500 font-medium shrink-0">扣除合約:</span>
+                            <select
+                              className="w-full border border-stone-200 rounded px-2 py-1 text-[11px] bg-stone-50 text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                              value={currentSelectedContractId}
+                              onChange={(e) => {
+                                setStudentContractSelections(prev => ({
+                                  ...prev,
+                                  [member.id]: e.target.value
+                                }))
+                              }}
+                            >
+                              {memberContracts.map(mc => {
+                                let remText = `${mc.remainingSessions} 堂`
+                                if (mc.contractType === 'group' && mc.groupMemberQuotas && mc.groupMemberQuotas[member.id]) {
+                                  remText = `個人剩 ${mc.groupMemberQuotas[member.id].remainingSessions} 堂 / 團體總剩 ${mc.remainingSessions} 堂`
+                                }
+                                return (
+                                  <option key={mc.id} value={mc.id}>
+                                    {mc.contractType === 'group' ? '[團體]' : mc.contractType === 'dual' ? '[雙人]' : '[單人]'} {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               {form.formState.errors.attendingCustomerIds && (
                 <p className="text-red-500 text-xs">{form.formState.errors.attendingCustomerIds.message}</p>

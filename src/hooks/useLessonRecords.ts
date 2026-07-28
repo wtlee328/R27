@@ -99,9 +99,19 @@ export function useLessonRecords() {
       ? data.attendingCustomerIds
       : [data.customerId]
 
+    const rawDeductions: StudentDeduction[] = (data.deductions && data.deductions.length > 0)
+      ? data.deductions
+      : attendeeIds.map(id => ({
+          customerId: id,
+          customerName: '',
+          contractId: data.contractId,
+          sessionAmount: data.sessionAmount || 1,
+        }))
+
     const newRecordData = {
       ...data,
       attendingCustomerIds: attendeeIds,
+      deductions: rawDeductions,
       sessionDate: Timestamp.fromDate(data.sessionDate),
       centerId,
       createdAt: serverTimestamp(),
@@ -110,42 +120,101 @@ export function useLessonRecords() {
 
     try {
       const result = await runTransaction(db, async (transaction) => {
-        const contractRef = doc(db, 'contracts', data.contractId)
-        const attendeeRefs = attendeeIds.map(id => doc(db, 'customers', id))
+        const uniqueContractIds = Array.from(new Set(rawDeductions.map(d => d.contractId).concat(data.contractId ? [data.contractId] : [])))
+        const uniqueCustomerIds = Array.from(new Set(attendeeIds.concat(rawDeductions.map(d => d.customerId))))
 
-        // READS FIRST
-        const contractSnap = await transaction.get(contractRef)
-        const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
+        const contractRefsMap = new Map<string, any>()
+        uniqueContractIds.forEach(cid => contractRefsMap.set(cid, doc(db, 'contracts', cid)))
 
-        const attendeeNames = attendeeSnaps.map(snap => snap.exists() ? snap.data().name : '')
-        
-        // Fallback trainerId to contract's trainerId if not specified in form data
-        const contractTrainerId = contractSnap.exists() ? contractSnap.data().trainerId : null
+        const customerRefsMap = new Map<string, any>()
+        uniqueCustomerIds.forEach(uid => customerRefsMap.set(uid, doc(db, 'customers', uid)))
+
+        // 1. ALL READS FIRST
+        const contractSnapsMap = new Map<string, any>()
+        for (const [cid, pref] of contractRefsMap.entries()) {
+          const snap = await transaction.get(pref)
+          contractSnapsMap.set(cid, snap)
+        }
+
+        const customerSnapsMap = new Map<string, any>()
+        for (const [uid, uref] of customerRefsMap.entries()) {
+          const snap = await transaction.get(uref)
+          customerSnapsMap.set(uid, snap)
+        }
+
+        const attendeeNames = attendeeIds.map(uid => customerSnapsMap.get(uid)?.exists() ? customerSnapsMap.get(uid).data().name : '')
+        const finalDeductions: StudentDeduction[] = rawDeductions.map(d => ({
+          ...d,
+          customerName: d.customerName || (customerSnapsMap.get(d.customerId)?.exists() ? customerSnapsMap.get(d.customerId).data().name : '')
+        }))
+
+        const primaryContractSnap = contractSnapsMap.get(data.contractId)
+        const contractTrainerId = primaryContractSnap?.exists() ? primaryContractSnap.data().trainerId : null
         const finalTrainerId = data.trainerId || contractTrainerId || user.uid
 
-        // Read trainer info
         const trainerRef = doc(db, 'trainers', finalTrainerId)
         const trainerSnap = await transaction.get(trainerRef)
         const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
 
-        // WRITES LATER
+        // 2. ALL WRITES LATER
         const recordRef = doc(collection(db, 'lessonRecords'))
         transaction.set(recordRef, {
           ...newRecordData,
+          deductions: finalDeductions,
           trainerId: finalTrainerId,
           contractTrainerId: contractTrainerId || finalTrainerId,
           attendingCustomerNames: attendeeNames
         })
 
-        transaction.update(contractRef, {
-          remainingSessions: increment(-data.sessionAmount),
-          updatedAt: serverTimestamp()
+        const deductionsByContract = new Map<string, StudentDeduction[]>()
+        finalDeductions.forEach(d => {
+          const list = deductionsByContract.get(d.contractId) || []
+          list.push(d)
+          deductionsByContract.set(d.contractId, list)
         })
 
-        attendeeRefs.forEach((ref, index) => {
-          if (attendeeSnaps[index].exists()) {
-            transaction.update(ref, {
-              historicalSessions: increment(data.sessionAmount),
+        for (const [cid, deds] of deductionsByContract.entries()) {
+          const cSnap = contractSnapsMap.get(cid)
+          if (!cSnap || !cSnap.exists()) continue
+          const cData = cSnap.data() as Contract
+          const totalDeductedAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+
+          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+            const updatedQuotas = { ...cData.groupMemberQuotas }
+            deds.forEach(d => {
+              const currentQuota = updatedQuotas[d.customerId]
+              if (currentQuota) {
+                updatedQuotas[d.customerId] = {
+                  ...currentQuota,
+                  remainingSessions: Math.max(0, currentQuota.remainingSessions - d.sessionAmount)
+                }
+              }
+            })
+
+            const newTotalRemaining = Math.max(0, cData.remainingSessions - totalDeductedAmount)
+            const isCompleted = newTotalRemaining === 0
+            transaction.update(contractRefsMap.get(cid), {
+              remainingSessions: newTotalRemaining,
+              groupMemberQuotas: updatedQuotas,
+              status: isCompleted ? 'completed' : cData.status,
+              updatedAt: serverTimestamp()
+            })
+          } else {
+            const newTotalRemaining = Math.max(0, cData.remainingSessions - totalDeductedAmount)
+            const isCompleted = newTotalRemaining === 0
+            transaction.update(contractRefsMap.get(cid), {
+              remainingSessions: newTotalRemaining,
+              status: isCompleted ? 'completed' : cData.status,
+              updatedAt: serverTimestamp()
+            })
+          }
+        }
+
+        finalDeductions.forEach(d => {
+          const uref = customerRefsMap.get(d.customerId)
+          if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
+            transaction.update(uref, {
+              historicalSessions: increment(d.sessionAmount),
               updatedAt: serverTimestamp()
             })
           }
@@ -184,40 +253,95 @@ export function useLessonRecords() {
       const recordRef = doc(db, 'lessonRecords', id)
       
       const result = await runTransaction(db, async (transaction) => {
-        // 1. Read Lesson Record
         const recordSnap = await transaction.get(recordRef)
         if (!recordSnap.exists()) return null
         
         const recordData = recordSnap.data() as LessonRecord
-        
-        // 2. Read related docs (ALL READS)
-        const contractRef = recordData.contractId ? doc(db, 'contracts', recordData.contractId) : null
-        
-        const attendeeIds = recordData.attendingCustomerIds && recordData.attendingCustomerIds.length > 0
-          ? recordData.attendingCustomerIds
-          : [recordData.customerId]
-        const attendeeRefs = attendeeIds.map(id => doc(db, 'customers', id))
+        const deductions: StudentDeduction[] = (recordData.deductions && recordData.deductions.length > 0)
+          ? recordData.deductions
+          : [{
+              customerId: recordData.customerId,
+              customerName: recordData.customerName,
+              contractId: recordData.contractId,
+              sessionAmount: recordData.sessionAmount
+            }]
 
-        const contractSnap = contractRef ? await transaction.get(contractRef) : null
-        const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
+        const uniqueContractIds = Array.from(new Set(deductions.map(d => d.contractId).concat(recordData.contractId ? [recordData.contractId] : [])))
+        const uniqueCustomerIds = Array.from(new Set(deductions.map(d => d.customerId)))
 
-        // Read trainer info
+        const contractRefsMap = new Map<string, any>()
+        uniqueContractIds.forEach(cid => contractRefsMap.set(cid, doc(db, 'contracts', cid)))
+
+        const customerRefsMap = new Map<string, any>()
+        uniqueCustomerIds.forEach(uid => customerRefsMap.set(uid, doc(db, 'customers', uid)))
+
+        // 1. ALL READS FIRST
+        const contractSnapsMap = new Map<string, any>()
+        for (const [cid, pref] of contractRefsMap.entries()) {
+          const snap = await transaction.get(pref)
+          contractSnapsMap.set(cid, snap)
+        }
+
+        const customerSnapsMap = new Map<string, any>()
+        for (const [uid, uref] of customerRefsMap.entries()) {
+          const snap = await transaction.get(uref)
+          customerSnapsMap.set(uid, snap)
+        }
+
         const trainerRef = doc(db, 'trainers', recordData.trainerId)
         const trainerSnap = await transaction.get(trainerRef)
         const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
 
-        // 3. Perform all WRITES
-        if (contractRef && contractSnap?.exists()) {
-          transaction.update(contractRef, {
-            remainingSessions: increment(recordData.sessionAmount),
-            updatedAt: serverTimestamp()
-          })
+        // 2. ALL WRITES LATER
+        const deductionsByContract = new Map<string, StudentDeduction[]>()
+        deductions.forEach(d => {
+          const list = deductionsByContract.get(d.contractId) || []
+          list.push(d)
+          deductionsByContract.set(d.contractId, list)
+        })
+
+        for (const [cid, deds] of deductionsByContract.entries()) {
+          const cSnap = contractSnapsMap.get(cid)
+          if (!cSnap || !cSnap.exists()) continue
+          const cData = cSnap.data() as Contract
+          const totalRestoredAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+
+          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+            const updatedQuotas = { ...cData.groupMemberQuotas }
+            deds.forEach(d => {
+              const currentQuota = updatedQuotas[d.customerId]
+              if (currentQuota) {
+                updatedQuotas[d.customerId] = {
+                  ...currentQuota,
+                  remainingSessions: Math.min(currentQuota.totalSessions, currentQuota.remainingSessions + d.sessionAmount)
+                }
+              }
+            })
+
+            const newTotalRemaining = Math.min(cData.totalSessions, cData.remainingSessions + totalRestoredAmount)
+            const newStatus = cData.status === 'completed' && newTotalRemaining > 0 ? 'active' : cData.status
+            transaction.update(contractRefsMap.get(cid), {
+              remainingSessions: newTotalRemaining,
+              groupMemberQuotas: updatedQuotas,
+              status: newStatus,
+              updatedAt: serverTimestamp()
+            })
+          } else {
+            const newTotalRemaining = Math.min(cData.totalSessions, cData.remainingSessions + totalRestoredAmount)
+            const newStatus = cData.status === 'completed' && newTotalRemaining > 0 ? 'active' : cData.status
+            transaction.update(contractRefsMap.get(cid), {
+              remainingSessions: newTotalRemaining,
+              status: newStatus,
+              updatedAt: serverTimestamp()
+            })
+          }
         }
 
-        attendeeRefs.forEach((ref, index) => {
-          if (attendeeSnaps[index].exists()) {
-            transaction.update(ref, {
-              historicalSessions: increment(-recordData.sessionAmount),
+        deductions.forEach(d => {
+          const uref = customerRefsMap.get(d.customerId)
+          if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
+            transaction.update(uref, {
+              historicalSessions: increment(-d.sessionAmount),
               updatedAt: serverTimestamp()
             })
           }
