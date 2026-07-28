@@ -340,61 +340,32 @@ export function CustomerFormModal({
     if (isEditMode) return STEPS.slice(0, 2)
 
     const isGroupContract = watchedValues.contract?.contractType === 'group' && !watchedValues.bindExistingContractMode
+    const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
+    const dynamicSteps: Array<{ id: string; title: string; icon: any; fields: string[] }> = []
 
-    if (isGroupContract) {
-      const dynamicSteps: Array<{ id: string; title: string; icon: any; fields: string[] }> = []
-
-      // If created from global "New Customer" (no initialCustomer), include Member 1 basic/medical
-      const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
-      if (!isFromExistingCustomer) {
-        dynamicSteps.push(
-          { id: 'basic', title: '學員 1 基本資料', icon: RiUserLine, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
-          { id: 'medical', title: '學員 1 健康狀態', icon: RiHeartPulseLine, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] }
-        )
-      }
-
-      // Add steps for Member 2 to N
-      const startMemberIdx = isFromExistingCustomer ? 2 : 2
-      const endMemberIdx = isFromExistingCustomer ? groupMemberCount : groupMemberCount
-
-      for (let i = startMemberIdx; i <= endMemberIdx; i++) {
-        dynamicSteps.push(
-          {
-            id: `group_member_${i}_basic`,
-            title: `學員 ${i} 基本資料`,
-            icon: RiUserLine,
-            fields: [] // Custom validated in UI/handleNext
-          },
-          {
-            id: `group_member_${i}_medical`,
-            title: `學員 ${i} 健康狀態`,
-            icon: RiHeartPulseLine,
-            fields: []
-          }
-        )
-      }
-
+    // 1. Primary Member Steps (Only for Global New Customer entry)
+    if (!isFromExistingCustomer) {
       dynamicSteps.push(
-        { id: 'contract', title: '團體合約設定', icon: RiFileTextLine, fields: ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate'] },
-        { id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] }
+        { id: 'basic', title: '基本資料', icon: RiUserLine, fields: ['name', 'phone', 'idNumber', 'dateOfBirth', 'emergencyContact.name', 'emergencyContact.relation', 'emergencyContact.phone'] },
+        { id: 'medical', title: '健康狀態', icon: RiHeartPulseLine, fields: ['medicalHistory.chronicConditions', 'medicalHistory.injuries'] }
       )
-
-      return dynamicSteps
     }
 
-    const steps = STEPS.map(step => {
-      if (step.id === 'contract') {
-        const fields = [...step.fields]
-        if (watchedValues.partnerMode === 'existing') {
-          fields.push('partnerId')
-        }
-        return { ...step, fields }
-      }
-      return step
+    // 2. Contract Settings Step (User chooses single/dual/group & member count N here)
+    const contractFields = ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate']
+    if (watchedValues.partnerMode === 'existing') {
+      contractFields.push('partnerId')
+    }
+    dynamicSteps.push({
+      id: 'contract',
+      title: watchedValues.contract?.contractType === 'group' ? '團體合約設定' : '合約設定',
+      icon: RiFileTextLine,
+      fields: contractFields
     })
 
+    // 3. Dual Contract Partner Step (If 1-on-2 dual contract)
     if (watchedValues.partnerMode === 'new') {
-      steps.splice(3, 0, 
+      dynamicSteps.push(
         { 
           id: 'partner_basic', 
           title: '共享學員基本資料', 
@@ -420,7 +391,31 @@ export function CustomerFormModal({
         }
       )
     }
-    return steps
+
+    // 4. Group Contract Additional Members Steps (If group contract with N >= 2, filled AFTER contract step)
+    if (isGroupContract) {
+      for (let i = 2; i <= groupMemberCount; i++) {
+        dynamicSteps.push(
+          {
+            id: `group_member_${i}_basic`,
+            title: `學員 ${i} 基本資料`,
+            icon: RiUserLine,
+            fields: []
+          },
+          {
+            id: `group_member_${i}_medical`,
+            title: `學員 ${i} 健康狀態`,
+            icon: RiHeartPulseLine,
+            fields: []
+          }
+        )
+      }
+    }
+
+    // 5. Final Step: Signature
+    dynamicSteps.push({ id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] })
+
+    return dynamicSteps
   }, [isEditMode, watchedValues.contract?.contractType, watchedValues.bindExistingContractMode, watchedValues.partnerMode, groupMemberCount, initialCustomer, initialData?.name])
 
   const formatROCDate = (dateVal: any) => {
