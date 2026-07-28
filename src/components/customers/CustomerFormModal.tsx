@@ -120,6 +120,11 @@ export function CustomerFormModal({
   const [trainers, setTrainers] = useState<any[]>([])
   const [isOneToTwo, setIsOneToTwo] = useState(true)
   const [selectedExistingCustomerId, setSelectedExistingCustomerId] = useState<string>('')
+  const [fetchedCustomers, setFetchedCustomers] = useState<Customer[]>([])
+  const [fetchedContracts, setFetchedContracts] = useState<Contract[]>([])
+
+  const activeCustomers = useMemo(() => customers.length > 0 ? customers : fetchedCustomers, [customers, fetchedCustomers])
+  const activeContracts = useMemo(() => contracts.length > 0 ? contracts : fetchedContracts, [contracts, fetchedContracts])
 
   const defaultValues = useMemo(() => ({
     name: '',
@@ -174,20 +179,20 @@ export function CustomerFormModal({
 
   const existingCustomerContracts = useMemo(() => {
     if (!selectedExistingCustomerId) return []
-    return contracts.filter(c => 
+    return activeContracts.filter(c => 
       c.customerId === selectedExistingCustomerId || 
       c.customerIds?.includes(selectedExistingCustomerId)
     )
-  }, [selectedExistingCustomerId, contracts])
+  }, [selectedExistingCustomerId, activeContracts])
 
   const selectedContract = useMemo(() => {
     const cid = form.watch('existingContractId')
     if (!cid) return null
-    return contracts.find(c => c.id === cid) || null
-  }, [form.watch('existingContractId'), contracts])
+    return activeContracts.find(c => c.id === cid) || null
+  }, [form.watch('existingContractId'), activeContracts])
 
   useEffect(() => {
-    const fetchTrainers = async () => {
+    const fetchTrainersAndData = async () => {
       try {
         const snap = await getDocs(query(collection(db, 'trainers'), where('centerId', '==', centerId)))
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -195,14 +200,24 @@ export function CustomerFormModal({
         if (list.length > 0 && !form.getValues('contract.trainerId')) {
           form.setValue('contract.trainerId', list[0].id)
         }
+
+        if (customers.length === 0) {
+          const custSnap = await getDocs(query(collection(db, 'customers'), where('centerId', '==', centerId)))
+          setFetchedCustomers(custSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Customer)))
+        }
+
+        if (contracts.length === 0) {
+          const contractSnap = await getDocs(query(collection(db, 'contracts'), where('centerId', '==', centerId)))
+          setFetchedContracts(contractSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contract)))
+        }
       } catch (err) {
-        console.error('Error fetching trainers:', err)
+        console.error('Error fetching trainers/customers/contracts data:', err)
       }
     }
     if (open) {
-      fetchTrainers()
+      fetchTrainersAndData()
     }
-  }, [open, form, centerId])
+  }, [open, form, centerId, customers.length, contracts.length])
 
   useEffect(() => {
     if (open) {
@@ -241,12 +256,12 @@ export function CustomerFormModal({
   const partnerNameStr = useMemo(() => {
     const isBindMode = watchedValues.bindExistingContractMode
     if (isBindMode) {
-      return customers.find(c => c.id === selectedExistingCustomerId)?.name || '原合約成員'
+      return activeCustomers.find(c => c.id === selectedExistingCustomerId)?.name || '原合約成員'
     }
     return watchedValues.partnerMode === 'existing'
-      ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '已選學員')
+      ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '已選學員')
       : (watchedValues.partnerCustomerData?.name || '新學員')
-  }, [watchedValues.bindExistingContractMode, watchedValues.partnerMode, watchedValues.partnerId, watchedValues.partnerCustomerData, selectedExistingCustomerId, customers])
+  }, [watchedValues.bindExistingContractMode, watchedValues.partnerMode, watchedValues.partnerId, watchedValues.partnerCustomerData, selectedExistingCustomerId, activeCustomers])
 
   const displayAmount = useMemo(() => {
     return watchedValues.bindExistingContractMode
@@ -953,7 +968,7 @@ export function CustomerFormModal({
                                     className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
                                   >
                                     <option value="">-- 請選擇學員 --</option>
-                                    {customers.map((c) => (
+                                    {activeCustomers.map((c) => (
                                       <option key={c.id} value={c.id}>
                                         {c.name} ({c.phone})
                                       </option>
@@ -1150,7 +1165,7 @@ export function CustomerFormModal({
                                       </div>
                                       <div className="space-y-2">
                                         <Label className="text-xs text-stone-500 font-medium">
-                                          學員 B ({watchedValues.partnerMode === 'existing' ? (customers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
+                                          學員 B ({watchedValues.partnerMode === 'existing' ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
                                         </Label>
                                         <div className="relative">
                                           <select
@@ -1585,7 +1600,7 @@ export function CustomerFormModal({
                             let partnerInfo = null
                             if (isDual) {
                               if (partnerMode === 'existing') {
-                                const partnerObj = customers.find(c => c.id === form.watch('partnerId'))
+                                const partnerObj = activeCustomers.find(c => c.id === form.watch('partnerId'))
                                 if (partnerObj) {
                                   partnerInfo = {
                                     name: partnerObj.name,

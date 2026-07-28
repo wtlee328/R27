@@ -403,6 +403,8 @@ export default function CustomersPage() {
         onSubmit={handleOnboardingSubmit}
         initialCustomer={isEditingProfile ? selectedCustomer : null}
         isEditMode={isEditingProfile}
+        customers={customers}
+        contracts={contracts}
       />
 
       <ContractFormModal
