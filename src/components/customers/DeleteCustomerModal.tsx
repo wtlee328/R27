@@ -9,18 +9,20 @@ interface DeleteCustomerModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   customer: Customer | null
-  contracts: Contract[]
-  customers: Customer[]
-  onConfirmDelete: (customerId: string) => Promise<void>
+  contracts?: Contract[]
+  customers?: Customer[]
+  onConfirmDelete?: (customerId: string) => Promise<void>
+  onConfirm?: (customerId: string) => Promise<void>
 }
 
 export function DeleteCustomerModal({
   open,
   onOpenChange,
   customer,
-  contracts,
-  customers,
+  contracts = [],
+  customers = [],
   onConfirmDelete,
+  onConfirm,
 }: DeleteCustomerModalProps) {
   const [loading, setLoading] = useState(false)
 
@@ -78,7 +80,10 @@ export function DeleteCustomerModal({
     if (!customer) return
     setLoading(true)
     try {
-      await onConfirmDelete(customer.id)
+      const deleteFn = onConfirmDelete || onConfirm
+      if (deleteFn) {
+        await deleteFn(customer.id)
+      }
       onOpenChange(false)
     } catch (err) {
       console.error('Delete customer error:', err)

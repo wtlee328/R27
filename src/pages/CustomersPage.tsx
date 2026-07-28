@@ -440,6 +440,8 @@ export default function CustomersPage() {
         open={isDeleteModalOpen}
         onOpenChange={setIsDeleteModalOpen}
         customer={customerToDelete}
+        contracts={contracts}
+        customers={customers}
         onConfirm={handleConfirmDeleteCustomer}
       />
     </div>
