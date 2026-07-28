@@ -48,6 +48,75 @@ export function CustomerTable({
     return customerContracts.find(con => con.status === 'expired')
   }, [contracts])
 
+  const getCustomerSessionsAndStatus = useCallback((c: Customer) => {
+    const customerActiveContracts = contracts.filter(con => 
+      (con.status === 'active' || con.status === 'expiring') &&
+      (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id)))
+    )
+
+    const hasMultiple = customerActiveContracts.length > 1
+    const activeContract = customerActiveContracts[0] || getCustomerActiveContract(c.id)
+
+    if (!activeContract) {
+      return {
+        activeContract: null,
+        hasMultiple: false,
+        displayRemaining: 0,
+        displayTotal: 0,
+        statusBadgeType: 'none' as const,
+        noteText: '',
+      }
+    }
+
+    const isUnsigned = !activeContract.signatureDataUrl || 
+      ((activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)
+
+    let remaining = activeContract.remainingSessions
+    let total = activeContract.totalSessions
+    let noteText = ''
+
+    if (activeContract.contractType === 'group') {
+      const quota = activeContract.groupMemberQuotas?.[c.id]
+      if (quota) {
+        remaining = quota.remainingSessions
+        total = quota.totalSessions
+      } else {
+        const count = activeContract.customerIds?.length || 1
+        remaining = Math.floor(activeContract.remainingSessions / count)
+        total = Math.floor(activeContract.totalSessions / count)
+      }
+      noteText = '(團體課)'
+    } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
+      noteText = '(雙人共享)'
+    }
+
+    if (hasMultiple) {
+      noteText = '(複數合約)'
+    }
+
+    let statusBadgeType: 'expired' | 'unsigned' | 'multiple' | 'group' | 'dual' | 'single' = 'single'
+    if (activeContract.status === 'expired') {
+      statusBadgeType = 'expired'
+    } else if (isUnsigned) {
+      statusBadgeType = 'unsigned'
+    } else if (hasMultiple) {
+      statusBadgeType = 'multiple'
+    } else if (activeContract.contractType === 'group') {
+      statusBadgeType = 'group'
+    } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
+      statusBadgeType = 'dual'
+    }
+
+    return {
+      activeContract,
+      hasMultiple,
+      displayRemaining: remaining,
+      displayTotal: total,
+      statusBadgeType,
+      noteText,
+    }
+  }, [contracts, getCustomerActiveContract])
+
   const getCustomerLatestContract = useCallback((customerId: string) => {
     const customerContracts = contracts.filter(con => 
       con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))
@@ -233,18 +302,21 @@ export function CustomerTable({
         ) : (
           <div className="divide-y divide-stone-50">
             {processedCustomers.map((c) => {
-              const activeContract = getCustomerActiveContract(c.id)
+              const {
+                activeContract,
+                hasMultiple,
+                displayRemaining,
+                displayTotal,
+                statusBadgeType,
+                noteText,
+              } = getCustomerSessionsAndStatus(c)
+
               const partnerId = activeContract 
                 ? (activeContract.customerIds && activeContract.customerIds.length > 1
                     ? activeContract.customerIds.find(id => id !== c.id)
                     : activeContract.sharedWithCustomerId)
                 : null
               const partner = partnerId ? customers.find(cust => cust.id === partnerId) : null
-
-              const isUnsigned = activeContract ? (
-                !activeContract.signatureDataUrl || 
-                ((activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)
-              ) : false
 
               return (
                 <div 
@@ -265,26 +337,34 @@ export function CustomerTable({
                         <h3 className="font-bold text-stone-900 group-hover:text-stone-950 transition-colors">{c.name}</h3>
                         {activeContract ? (
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {activeContract.status === 'expired' ? (
+                            {statusBadgeType === 'expired' && (
                               <Badge variant="secondary" className="bg-stone-100 text-stone-700 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
                                 已到期
                               </Badge>
-                            ) : isUnsigned ? (
+                            )}
+                            {statusBadgeType === 'unsigned' && (
                               <Badge variant="secondary" className="bg-amber-500 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold animate-pulse">
                                 待簽名
                               </Badge>
-                            ) : (
-                              <Badge variant="default" className={cn(
-                                activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
-                                  ? "bg-stone-800 text-white" 
-                                  : "bg-stone-900 text-white",
-                                "text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold"
-                              )}>
-                                {activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId ? (
-                                  <span className="flex items-center gap-1"><RiGroupLine className="w-3 h-3 text-orange-400" /> 進行中</span>
-                                ) : (
-                                  <span className="flex items-center gap-1"><RiUser3Line className="w-3 h-3 text-stone-300" /> 進行中</span>
-                                )}
+                            )}
+                            {statusBadgeType === 'multiple' && (
+                              <Badge className="bg-purple-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-purple-500/20">
+                                <RiFileTextLine className="w-3 h-3 mr-1" /> (複數合約)
+                              </Badge>
+                            )}
+                            {statusBadgeType === 'group' && (
+                              <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
+                                <RiGroupLine className="w-3 h-3 mr-1" /> (團體課)
+                              </Badge>
+                            )}
+                            {statusBadgeType === 'dual' && (
+                              <Badge className="bg-stone-800 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
+                                <RiGroupLine className="w-3 h-3 mr-1 text-orange-400" /> (雙人共享)
+                              </Badge>
+                            )}
+                            {statusBadgeType === 'single' && (
+                              <Badge className="bg-stone-900 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
+                                <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 進行中
                               </Badge>
                             )}
                             {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
@@ -316,13 +396,13 @@ export function CustomerTable({
                               "text-xs font-bold tabular-nums",
                               activeContract.status === 'expired' ? "text-red-500" : "text-stone-700"
                             )}>
-                              {activeContract.remainingSessions} / {activeContract.totalSessions}
+                              {displayRemaining} / {displayTotal}
                             </span>
                             <span className="text-[9px] text-stone-400">堂</span>
                           </div>
                           {/* Progress bar */}
-                          {activeContract.status !== 'expired' && activeContract.totalSessions > 0 && (() => {
-                            const pct = Math.round((activeContract.remainingSessions / activeContract.totalSessions) * 100)
+                          {activeContract.status !== 'expired' && displayTotal > 0 && (() => {
+                            const pct = Math.round((displayRemaining / displayTotal) * 100)
                             return (
                               <div className="w-full h-1 bg-stone-100 rounded-full overflow-hidden">
                                 <div
@@ -335,8 +415,14 @@ export function CustomerTable({
                               </div>
                             )
                           })()}
-                          {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && (
-                            <span className="text-[8px] text-orange-500 font-bold">(雙人共享)</span>
+                          {noteText && (
+                            <span className={cn(
+                              "text-[9px] font-bold block",
+                              noteText === '(複數合約)' ? "text-purple-600" :
+                              noteText === '(團體課)' ? "text-emerald-600" : "text-orange-500"
+                            )}>
+                              {noteText}
+                            </span>
                           )}
                         </div>
                       ) : (
