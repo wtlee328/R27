@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { RiCalendarLine } from '@remixicon/react'
 
 interface MinguoDatePickerInputProps {
@@ -15,11 +15,17 @@ export function MinguoDatePickerInput({
   const [rocYear, setRocYear] = useState('')
   const [month, setMonth] = useState('')
   const [day, setDay] = useState('')
+  const isSelfUpdatedRef = useRef(false)
 
   // Extract primitive string/timestamp value to avoid object reference re-renders
   const valueKey = value ? (value instanceof Date ? value.getTime() : String(value)) : ''
 
   useEffect(() => {
+    if (isSelfUpdatedRef.current) {
+      isSelfUpdatedRef.current = false
+      return
+    }
+
     if (!valueKey) {
       setRocYear('')
       setMonth('')
@@ -39,15 +45,6 @@ export function MinguoDatePickerInput({
     const extDay = d.getDate()
     const extRocYear = extFullYear - 1911
 
-    // Check if internal state matches external date to prevent overriding user's typing
-    const intY = parseInt(rocYear, 10)
-    const intM = parseInt(month, 10)
-    const intD = parseInt(day, 10)
-
-    if (intY === extRocYear && intM === extMonth && intD === extDay) {
-      return
-    }
-
     setRocYear(extRocYear.toString())
     setMonth(extMonth.toString())
     setDay(extDay.toString())
@@ -57,22 +54,27 @@ export function MinguoDatePickerInput({
     setRocYear(yStr)
     setMonth(mStr)
     setDay(dStr)
+    isSelfUpdatedRef.current = true
 
     const y = parseInt(yStr, 10)
     const m = parseInt(mStr, 10)
     const d = parseInt(dStr, 10)
 
-    if (!yStr && !mStr && !dStr) {
+    if (!yStr || !mStr || !dStr || isNaN(y) || isNaN(m) || isNaN(d)) {
       onChange(null)
       return
     }
 
-    if (!isNaN(y) && !isNaN(m) && !isNaN(d) && y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+    if (y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
       const fullYear = 1911 + y
       const newD = new Date(fullYear, m - 1, d)
       if (!isNaN(newD.getTime())) {
         onChange(newD)
+      } else {
+        onChange(null)
       }
+    } else {
+      onChange(null)
     }
   }
 
