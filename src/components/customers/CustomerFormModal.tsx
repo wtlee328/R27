@@ -129,6 +129,8 @@ export function CustomerFormModal({
   // Group Contract State (2 to 6 students)
   const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
   const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
+    memberMode?: 'existing' | 'new'
+    existingCustomerId?: string
     name: string
     idNumber: string
     phone: string
@@ -142,6 +144,8 @@ export function CustomerFormModal({
     allocatedSessions: number
   }>>([
     {
+      memberMode: 'existing',
+      existingCustomerId: '',
       name: '',
       idNumber: '',
       phone: '',
@@ -149,7 +153,7 @@ export function CustomerFormModal({
       dateOfBirth: new Date().toISOString().split('T')[0],
       gender: 'female',
       exerciseHabit: 'none',
-      source: 'instagram',
+      source: 'existing',
       emergencyContact: { name: '', relation: '', phone: '' },
       medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
       allocatedSessions: 0,
@@ -163,6 +167,8 @@ export function CustomerFormModal({
       if (current.length < targetNewCount) {
         for (let i = current.length; i < targetNewCount; i++) {
           current.push({
+            memberMode: 'existing',
+            existingCustomerId: '',
             name: '',
             idNumber: '',
             phone: '',
@@ -170,7 +176,7 @@ export function CustomerFormModal({
             dateOfBirth: new Date().toISOString().split('T')[0],
             gender: 'female',
             exerciseHabit: 'none',
-            source: 'instagram',
+            source: 'existing',
             emergencyContact: { name: '', relation: '', phone: '' },
             medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
             allocatedSessions: 0,
@@ -560,6 +566,9 @@ export function CustomerFormModal({
         if (!mData) return false
 
         if (match[2] === 'basic') {
+          if (mData.memberMode === 'existing') {
+            return !!mData.existingCustomerId && !!mData.name?.trim()
+          }
           return !!mData.name?.trim() &&
                  !!mData.idNumber?.trim() &&
                  !!mData.phone?.trim() &&
@@ -695,31 +704,37 @@ export function CustomerFormModal({
 
         for (let i = 0; i < additionalGroupMembers.length; i++) {
           const m = additionalGroupMembers[i]
-          if (!m.name || !m.phone) {
-            alert(`請填寫學員 ${i + 2} 的姓名與電話！`)
-            setLoading(false)
-            return
+          if (m.memberMode === 'existing' && m.existingCustomerId) {
+            createdMemberIds.push(m.existingCustomerId)
+            createdMemberNames.push(m.name || `團員${i + 2}`)
+            createdMemberQuotas.push(m.allocatedSessions)
+          } else {
+            if (!m.name || !m.phone) {
+              alert(`請填寫學員 ${i + 2} 的姓名與電話！`)
+              setLoading(false)
+              return
+            }
+            const docRef = await addDoc(collection(db, 'customers'), {
+              centerId,
+              name: m.name,
+              idNumber: m.idNumber || '',
+              phone: m.phone,
+              email: m.email || '',
+              dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+              gender: m.gender || 'female',
+              exerciseHabit: m.exerciseHabit || 'none',
+              source: m.source || 'existing',
+              emergencyContact: m.emergencyContact,
+              medicalHistory: m.medicalHistory,
+              historicalSessions: 0,
+              status: 'active',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+            createdMemberIds.push(docRef.id)
+            createdMemberNames.push(m.name)
+            createdMemberQuotas.push(m.allocatedSessions)
           }
-          const docRef = await addDoc(collection(db, 'customers'), {
-            centerId,
-            name: m.name,
-            idNumber: m.idNumber || '',
-            phone: m.phone,
-            email: m.email || '',
-            dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
-            gender: m.gender || 'female',
-            exerciseHabit: m.exerciseHabit || 'none',
-            source: m.source || 'instagram',
-            emergencyContact: m.emergencyContact,
-            medicalHistory: m.medicalHistory,
-            historicalSessions: 0,
-            status: 'active',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          })
-          createdMemberIds.push(docRef.id)
-          createdMemberNames.push(m.name)
-          createdMemberQuotas.push(m.allocatedSessions)
         }
 
         const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
@@ -1111,13 +1126,140 @@ export function CustomerFormModal({
                     const type = match[2]
 
                     if (type === 'basic') {
+                      const isExistingMode = (memberData.memberMode || 'existing') === 'existing'
+
                       return (
-                        <div className="space-y-7">
-                          <div className="space-y-1 pb-5 border-b border-stone-100 dark:border-stone-800">
-                            <h2 className="text-xl font-bold text-stone-900 dark:text-white">學員 {memberNum} 基本資料</h2>
-                            <p className="text-stone-400 dark:text-stone-500 text-sm">請填寫團體合約第 {memberNum} 位學員的基本資訊。</p>
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                          <div className="space-y-1 pb-4 border-b border-stone-100 dark:border-stone-800">
+                            <h2 className="text-xl font-bold text-stone-900 dark:text-white">學員 {memberNum} 資料與綁定</h2>
+                            <p className="text-stone-400 dark:text-stone-500 text-sm">請設定團體合約第 {memberNum} 位學員的綁定方式與基本資訊。</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-x-5 gap-y-4">
+
+                          {/* Member Mode Switcher */}
+                          <div className="space-y-2 p-4 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
+                            <Label className="text-stone-700 dark:text-stone-300 font-semibold block text-xs">學員 {memberNum} 綁定方式 *</Label>
+                            <div className="flex gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, memberMode: 'existing', existingCustomerId: '' } : m))
+                                }}
+                                className={cn(
+                                  "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
+                                  isExistingMode
+                                    ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
+                                    : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-300"
+                                )}
+                              >
+                                <RiLinkM className="w-4 h-4" />
+                                連結系統現有學員
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? {
+                                    ...m,
+                                    memberMode: 'new',
+                                    existingCustomerId: undefined,
+                                    name: '',
+                                    idNumber: '',
+                                    phone: '',
+                                    email: '',
+                                    dateOfBirth: new Date().toISOString().split('T')[0],
+                                    emergencyContact: { name: '', relation: '', phone: '' },
+                                    medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                  } : m))
+                                }}
+                                className={cn(
+                                  "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
+                                  !isExistingMode
+                                    ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
+                                    : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-300"
+                                )}
+                              >
+                                <RiUserAddLine className="w-4 h-4" />
+                                新增全新學員
+                              </button>
+                            </div>
+                          </div>
+
+                          {isExistingMode ? (
+                            <div className="p-5 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl space-y-4 animate-in fade-in duration-300">
+                              <div className="space-y-2">
+                                <Label className="text-xs text-stone-700 dark:text-stone-300 font-semibold">選擇現有學員 *</Label>
+                                <div className="relative">
+                                  <select
+                                    value={memberData.existingCustomerId || ''}
+                                    onChange={(e) => {
+                                      const selectedId = e.target.value
+                                      const selectedCust = activeCustomers.find(c => c.id === selectedId)
+                                      if (selectedCust) {
+                                        let dobStr = ''
+                                        if (selectedCust.dateOfBirth) {
+                                          const d = (selectedCust.dateOfBirth as any).seconds 
+                                            ? new Date((selectedCust.dateOfBirth as any).seconds * 1000) 
+                                            : new Date(selectedCust.dateOfBirth)
+                                          if (!isNaN(d.getTime())) {
+                                            dobStr = d.toISOString().split('T')[0]
+                                          }
+                                        }
+                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? {
+                                          ...m,
+                                          memberMode: 'existing',
+                                          existingCustomerId: selectedCust.id,
+                                          name: selectedCust.name,
+                                          idNumber: selectedCust.idNumber || '',
+                                          phone: selectedCust.phone || '',
+                                          email: selectedCust.email || '',
+                                          dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+                                          gender: (selectedCust.gender as any) || 'female',
+                                          exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
+                                          source: selectedCust.source || 'existing',
+                                          emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
+                                          medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                        } : m))
+                                      } else {
+                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, memberMode: 'existing', existingCustomerId: '', name: '' } : m))
+                                      }
+                                    }}
+                                    className="w-full h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 pr-8 text-sm font-semibold text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none"
+                                  >
+                                    <option value="">— 請選擇現有學員 —</option>
+                                    {(activeCustomers || [])
+                                      .filter(c => c.id !== initialCustomer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== memberArrIdx && other.existingCustomerId === c.id))
+                                      .map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                          {c.name} ({c.phone || '無電話'})
+                                        </option>
+                                      ))}
+                                  </select>
+                                  <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              {memberData.existingCustomerId && (
+                                <div className="p-4 bg-white dark:bg-stone-800 rounded-xl border border-emerald-200 dark:border-emerald-800 space-y-2 text-xs">
+                                  <div className="flex items-center justify-between text-emerald-900 dark:text-emerald-300 font-bold border-b border-stone-100 dark:border-stone-700 pb-2">
+                                    <span className="flex items-center gap-1.5">
+                                      <RiUserSharedLine className="w-4 h-4 text-emerald-600" />
+                                      已連結現有學員：{memberData.name}
+                                    </span>
+                                    <span className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full font-bold border border-emerald-200 dark:border-emerald-800">
+                                      連動成功
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-stone-600 dark:text-stone-300 text-[11px] pt-1">
+                                    <div>行動電話：<span className="font-semibold text-stone-900 dark:text-white">{memberData.phone || '無'}</span></div>
+                                    <div>身分證字號：<span className="font-semibold text-stone-900 dark:text-white">{memberData.idNumber || '無'}</span></div>
+                                    <div>緊急聯絡人：<span className="font-semibold text-stone-900 dark:text-white">{memberData.emergencyContact?.name || '無'} ({memberData.emergencyContact?.relation || '無'})</span></div>
+                                    <div>緊急電話：<span className="font-semibold text-stone-900 dark:text-white">{memberData.emergencyContact?.phone || '無'}</span></div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-6 animate-in fade-in duration-300">
+                              <div className="grid grid-cols-2 gap-x-5 gap-y-4">
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">姓名 *</Label>
                               <Input
@@ -1280,7 +1422,9 @@ export function CustomerFormModal({
                             </div>
                           </div>
                         </div>
-                      )
+                      )}
+                    </div>
+                  )
                     }
 
                     if (type === 'medical') {
@@ -1547,21 +1691,75 @@ export function CustomerFormModal({
 
                               {/* 學員 2 至 N */}
                               {additionalGroupMembers.map((m, idx) => (
-                                <div key={idx} className="flex items-center justify-between gap-3 p-2.5 bg-white border border-stone-200 rounded-xl">
-                                  <span className="text-xs font-bold text-stone-800">
-                                    👤 學員 {idx + 2}: {m.name || `請於「學員 ${idx + 2} 基本資料」填寫`}
-                                  </span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs text-stone-500 font-medium">個人分配堂數:</span>
-                                    <Input
-                                      type="number"
-                                      value={m.allocatedSessions}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value) || 0
-                                        setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, allocatedSessions: val } : item))
-                                      }}
-                                      className="w-20 h-8 text-xs font-bold font-mono text-center rounded-lg border-stone-300"
-                                    />
+                                <div key={idx} className="space-y-2 p-3 bg-white border border-stone-200 rounded-xl">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-stone-800">
+                                      👤 學員 {idx + 2}: {m.name || `(待選擇/填寫)`}
+                                    </span>
+                                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                      {m.memberMode === 'existing' && m.existingCustomerId ? '現有學員' : '可選現有/全新'}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 pt-1">
+                                    <div>
+                                      <select
+                                        value={m.existingCustomerId || ''}
+                                        onChange={(e) => {
+                                          const selectedId = e.target.value
+                                          if (selectedId) {
+                                            const selectedCust = activeCustomers.find(c => c.id === selectedId)
+                                            if (selectedCust) {
+                                              let dobStr = ''
+                                              if (selectedCust.dateOfBirth) {
+                                                const d = (selectedCust.dateOfBirth as any).seconds 
+                                                  ? new Date((selectedCust.dateOfBirth as any).seconds * 1000) 
+                                                  : new Date(selectedCust.dateOfBirth)
+                                                if (!isNaN(d.getTime())) dobStr = d.toISOString().split('T')[0]
+                                              }
+                                              setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
+                                                ...item,
+                                                memberMode: 'existing',
+                                                existingCustomerId: selectedCust.id,
+                                                name: selectedCust.name,
+                                                idNumber: selectedCust.idNumber || '',
+                                                phone: selectedCust.phone || '',
+                                                email: selectedCust.email || '',
+                                                dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+                                                gender: (selectedCust.gender as any) || 'female',
+                                                exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
+                                                source: selectedCust.source || 'existing',
+                                                emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
+                                                medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                              } : item))
+                                            }
+                                          } else {
+                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'new', existingCustomerId: '', name: '' } : item))
+                                          }
+                                        }}
+                                        className="w-full h-8 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs font-semibold text-stone-800"
+                                      >
+                                        <option value="">— 快速選擇現有學員 —</option>
+                                        {(activeCustomers || [])
+                                          .filter(c => c.id !== initialCustomer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== idx && other.existingCustomerId === c.id))
+                                          .map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                              {c.name} ({c.phone || '無電話'})
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center justify-end gap-2">
+                                      <span className="text-xs text-stone-500 font-medium">個人分配堂數:</span>
+                                      <Input
+                                        type="number"
+                                        value={m.allocatedSessions}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value) || 0
+                                          setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, allocatedSessions: val } : item))
+                                        }}
+                                        className="w-20 h-8 text-xs font-bold font-mono text-center rounded-lg border-stone-300"
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               ))}
