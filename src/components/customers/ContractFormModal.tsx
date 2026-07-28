@@ -1478,12 +1478,12 @@ export function ContractFormModal({
                                 onChange={(e) => updateMember({ source: e.target.value })}
                                 className="w-full h-12 rounded-2xl bg-stone-50 border border-stone-200 px-4 text-sm font-bold"
                               >
-                                <option value="existing">舊客戶 / 續約學員</option>
-                                <option value="instagram">Instagram 官方帳號</option>
-                                <option value="facebook">Facebook 粉絲專頁</option>
-                                <option value="google">Google 商家搜尋</option>
-                                <option value="friend">親友/學員推薦</option>
-                                <option value="passby">路過門市</option>
+                                <option value="existing">舊客戶</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="facebook">Facebook</option>
+                                <option value="google">Google 搜尋/地圖</option>
+                                <option value="friend">親友/會員介紹</option>
+                                <option value="passby">過路/現場親洽</option>
                                 <option value="other">其他管道</option>
                               </select>
                             </div>

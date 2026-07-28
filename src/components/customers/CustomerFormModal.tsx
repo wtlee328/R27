@@ -966,12 +966,12 @@ export function CustomerFormModal({
                               {...form.register('source')}
                               className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold focus:outline-none focus:ring-2 focus:ring-stone-900/10 dark:focus:ring-white/10 cursor-pointer appearance-none"
                             >
+                              <option value="existing">舊客戶</option>
                               <option value="instagram">Instagram</option>
                               <option value="facebook">Facebook</option>
                               <option value="google">Google 搜尋/地圖</option>
                               <option value="referral">親友/會員介紹</option>
                               <option value="walk_in">過路/現場親洽</option>
-                              <option value="existing">舊客戶</option>
                               <option value="other">其他管道</option>
                             </select>
                             <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1224,12 +1224,12 @@ export function CustomerFormModal({
                                   }}
                                   className="w-full h-10 px-3 pr-8 border border-stone-200 dark:border-stone-700 rounded-xl text-xs bg-stone-50 dark:bg-stone-800 text-stone-800 dark:text-stone-200 font-semibold cursor-pointer appearance-none"
                                 >
+                                  <option value="existing">舊客戶</option>
                                   <option value="instagram">Instagram</option>
                                   <option value="facebook">Facebook</option>
                                   <option value="google">Google 搜尋/地圖</option>
                                   <option value="referral">親友/會員介紹</option>
                                   <option value="walk_in">過路/現場親洽</option>
-                                  <option value="existing">舊客戶</option>
                                   <option value="other">其他管道</option>
                                 </select>
                                 <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
