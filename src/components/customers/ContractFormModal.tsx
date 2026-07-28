@@ -5,7 +5,8 @@ import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, FileText, ShieldCheck, User, Activity } from 'lucide-react'
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
+import { RiGroupLine, RiTeamLine, RiArrowDownSLine } from '@remixicon/react'
 import { db } from '@/lib/firebase'
 import {
   Dialog,
@@ -52,6 +53,81 @@ export function ContractFormModal({
   const secondarySigCanvas = useRef<SignatureCanvas>(null)
   const [trainers, setTrainers] = useState<any[]>([])
   const [isOneToTwo, setIsOneToTwo] = useState(true)
+
+  // Group contract states
+  const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
+  const [primaryMemberQuota, setPrimaryMemberQuota] = useState<number>(0)
+  const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
+    name: string
+    idNumber: string
+    phone: string
+    email: string
+    dateOfBirth: string
+    gender: 'female' | 'male' | 'other'
+    exerciseHabit: 'none' | 'weekly_1_2' | 'weekly_3_plus'
+    source: string
+    emergencyContact: { name: string; relation: string; phone: string }
+    medicalHistory: { chronicConditions: string[]; injuries: string[]; notes: string }
+    allocatedSessions: number
+  }>>([
+    {
+      name: '',
+      idNumber: '',
+      phone: '',
+      email: '',
+      dateOfBirth: new Date().toISOString().split('T')[0],
+      gender: 'female',
+      exerciseHabit: 'none',
+      source: 'instagram',
+      emergencyContact: { name: '', relation: '', phone: '' },
+      medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+      allocatedSessions: 0,
+    }
+  ])
+
+  const groupQuotaSum = useMemo(() => {
+    const sumAdditional = additionalGroupMembers.reduce((acc, curr) => acc + (Number(curr.allocatedSessions) || 0), 0)
+    return primaryMemberQuota + sumAdditional
+  }, [primaryMemberQuota, additionalGroupMembers])
+
+  const groupQuotaRemainder = useMemo(() => {
+    const totalSess = Number(form.watch('totalSessions')) || 0
+    if (groupMemberCount <= 0) return 0
+    return totalSess % groupMemberCount
+  }, [form.watch('totalSessions'), groupMemberCount])
+
+  const syncAdditionalMembersCount = (targetNewCount: number) => {
+    setAdditionalGroupMembers(prev => {
+      const current = [...prev]
+      if (current.length < targetNewCount) {
+        for (let i = current.length; i < targetNewCount; i++) {
+          current.push({
+            name: '',
+            idNumber: '',
+            phone: '',
+            email: '',
+            dateOfBirth: new Date().toISOString().split('T')[0],
+            gender: 'female',
+            exerciseHabit: 'none',
+            source: 'instagram',
+            emergencyContact: { name: '', relation: '', phone: '' },
+            medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+            allocatedSessions: 0,
+          })
+        }
+      } else if (current.length > targetNewCount) {
+        current.splice(targetNewCount)
+      }
+      return current
+    })
+  }
+
+  const recalculateGroupQuotas = (totalSess: number, count: number) => {
+    if (count <= 0) return
+    const baseQuota = Math.floor(totalSess / count)
+    setPrimaryMemberQuota(baseQuota)
+    setAdditionalGroupMembers(prev => prev.map(m => ({ ...m, allocatedSessions: baseQuota })))
+  }
 
   const form = useForm<ContractFormValues>({
     resolver: zodResolver(contractFormSchema),
@@ -205,9 +281,18 @@ export function ContractFormModal({
           ] 
         }
       )
+    } else if (watchedValues.contractType === 'group') {
+      const groupSteps: any[] = []
+      for (let i = 2; i <= groupMemberCount; i++) {
+        groupSteps.push(
+          { id: `group_member_${i}_basic`, title: `學員 ${i} 基本資料`, icon: User, fields: [] },
+          { id: `group_member_${i}_medical`, title: `學員 ${i} 健康狀態`, icon: Activity, fields: [] }
+        )
+      }
+      steps.splice(1, 0, ...groupSteps)
     }
     return steps
-  }, [watchedValues.partnerMode])
+  }, [watchedValues.partnerMode, watchedValues.contractType, groupMemberCount])
 
   const formatROCDate = (dateVal: any) => {
     if (!dateVal) return { y: '   ', m: '  ', d: '  ' }
@@ -405,6 +490,75 @@ export function ContractFormModal({
           data.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
         }
       }
+
+      if (data.contractType === 'group') {
+        if (groupQuotaSum !== Number(data.totalSessions)) {
+          alert(`目前學員個人配額小計 (${groupQuotaSum} 堂) 與合約總堂數 (${data.totalSessions} 堂) 不一致，請修正配額。`)
+          setLoading(false)
+          return
+        }
+
+        // Validate required basic info for dynamic members 2..N
+        for (let i = 0; i < additionalGroupMembers.length; i++) {
+          const m = additionalGroupMembers[i]
+          if (!m.name || !m.phone || !m.idNumber) {
+            alert(`請完整填寫學員 ${i + 2} 的真實姓名、電話與身分證字號。`)
+            setLoading(false)
+            return
+          }
+        }
+
+        // Batch create additional members 2..N in Firestore customers collection
+        const createdMemberIds: string[] = []
+        const createdMemberNames: string[] = []
+        const createdMemberQuotas: number[] = []
+
+        for (let i = 0; i < additionalGroupMembers.length; i++) {
+          const m = additionalGroupMembers[i]
+          const mCustomer = {
+            name: m.name || `團員${i + 2}`,
+            idNumber: m.idNumber || '',
+            phone: m.phone || '',
+            email: m.email || '',
+            dateOfBirth: Timestamp.fromDate(new Date(m.dateOfBirth)),
+            gender: m.gender,
+            exerciseHabit: m.exerciseHabit,
+            source: m.source,
+            emergencyContact: m.emergencyContact,
+            medicalHistory: m.medicalHistory,
+            trainerId: data.trainerId || customer?.trainerId,
+            centerId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }
+          const newDocRef = await addDoc(collection(db, 'customers'), mCustomer)
+          createdMemberIds.push(newDocRef.id)
+          createdMemberNames.push(mCustomer.name)
+          createdMemberQuotas.push(m.allocatedSessions)
+        }
+
+        const allCustomerIds = [customer!.id, ...createdMemberIds]
+        const allMemberQuotas: Record<string, any> = {
+          [customer!.id]: {
+            customerId: customer!.id,
+            customerName: customer!.name,
+            totalSessions: primaryMemberQuota,
+            remainingSessions: primaryMemberQuota,
+          }
+        }
+        createdMemberIds.forEach((id, idx) => {
+          allMemberQuotas[id] = {
+            customerId: id,
+            customerName: createdMemberNames[idx],
+            totalSessions: createdMemberQuotas[idx],
+            remainingSessions: createdMemberQuotas[idx],
+          }
+        })
+
+        ;(data as any).groupMemberQuotas = allMemberQuotas
+        ;(data as any).customerIds = allCustomerIds
+      }
+
       await onSubmit(data)
       onOpenChange(false)
     } catch (error) {
@@ -497,8 +651,8 @@ export function ContractFormModal({
                               form.setValue('partnerCustomerData', null)
                             }}
                             className={cn(
-                              "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
-                              form.watch('contractType') !== 'dual'
+                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                              form.watch('contractType') === 'single'
                                 ? "bg-stone-900 border-stone-900 text-white shadow-lg"
                                 : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                             )}
@@ -512,7 +666,7 @@ export function ContractFormModal({
                               form.setValue('partnerMode', 'existing')
                             }}
                             className={cn(
-                              "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
                               form.watch('contractType') === 'dual'
                                 ? "bg-orange-500 border-orange-500 text-white shadow-lg"
                                 : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
@@ -520,8 +674,114 @@ export function ContractFormModal({
                           >
                             👥 雙人共享合約
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue('contractType', 'group')
+                              form.setValue('sharedWithCustomerId', null)
+                              form.setValue('partnerMode', 'none')
+                              form.setValue('partnerId', null)
+                              form.setValue('partnerCustomerData', null)
+                              recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, groupMemberCount)
+                            }}
+                            className={cn(
+                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                              form.watch('contractType') === 'group'
+                                ? "bg-emerald-600 border-emerald-600 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                            )}
+                          >
+                            <RiTeamLine className="w-4 h-4" /> 團體課合約 (2~6人)
+                          </button>
                         </div>
                       </div>
+
+                      {form.watch('contractType') === 'group' && (
+                        <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-2">
+                            <Label className="text-stone-900 font-bold block text-xs">選擇團體課總人數 (2~6 人) *</Label>
+                            <div className="flex gap-2">
+                              {[2, 3, 4, 5, 6].map(count => (
+                                <button
+                                  key={count}
+                                  type="button"
+                                  onClick={() => {
+                                    setGroupMemberCount(count)
+                                    syncAdditionalMembersCount(count - 1)
+                                    recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, count)
+                                  }}
+                                  className={cn(
+                                    "flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1",
+                                    groupMemberCount === count
+                                      ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  )}
+                                >
+                                  {count} 人團課
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-white rounded-xl border border-emerald-200/60 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-stone-800">堂數分配設定（全體總堂數: {form.watch('totalSessions') || 0} 堂）</span>
+                              {groupQuotaRemainder > 0 && (
+                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                  餘 {groupQuotaRemainder} 堂可微調分配
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 pt-1">
+                              <div className="space-y-1 bg-emerald-50/40 p-2.5 rounded-lg border border-emerald-100">
+                                <span className="text-[11px] font-bold text-stone-700 block">學員 1 (主學員: {customer.name})</span>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={primaryMemberQuota}
+                                    onChange={(e) => setPrimaryMemberQuota(Number(e.target.value))}
+                                    className="w-full h-8 rounded-lg border border-stone-200 px-2 text-xs font-bold bg-white"
+                                  />
+                                  <span className="text-[10px] text-stone-500 font-bold shrink-0">堂</span>
+                                </div>
+                              </div>
+
+                              {additionalGroupMembers.map((m, idx) => (
+                                <div key={idx} className="space-y-1 bg-stone-50 p-2.5 rounded-lg border border-stone-200/60">
+                                  <span className="text-[11px] font-bold text-stone-700 block">
+                                    學員 {idx + 2} {m.name ? `(${m.name})` : '(待建立)'}
+                                  </span>
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={m.allocatedSessions}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value)
+                                        setAdditionalGroupMembers(prev => {
+                                          const next = [...prev]
+                                          next[idx] = { ...next[idx], allocatedSessions: val }
+                                          return next
+                                        })
+                                      }}
+                                      className="w-full h-8 rounded-lg border border-stone-200 px-2 text-xs font-bold bg-white"
+                                    />
+                                    <span className="text-[10px] text-stone-500 font-bold shrink-0">堂</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {groupQuotaSum !== Number(form.watch('totalSessions')) && (
+                              <p className="text-[10px] font-bold text-red-500">
+                                ⚠️ 目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({form.watch('totalSessions') || 0} 堂) 不一致，請微調個人堂數。
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {form.watch('contractType') === 'dual' && (
                         <div className="p-5 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -1049,6 +1309,295 @@ export function ContractFormModal({
                       </div>
                     </div>
                   )}
+
+                  {activeSteps[currentStep]?.id.startsWith('group_member_') && (() => {
+                    const stepId = activeSteps[currentStep].id
+                    const match = stepId.match(/^group_member_(\d+)_(basic|medical)$/)
+                    if (!match) return null
+                    const memberNum = parseInt(match[1], 10)
+                    const memberIdx = memberNum - 2
+                    const isBasic = match[2] === 'basic'
+                    const memberData = additionalGroupMembers[memberIdx]
+                    if (!memberData) return null
+
+                    const updateMember = (fields: Partial<typeof memberData>) => {
+                      setAdditionalGroupMembers(prev => {
+                        const next = [...prev]
+                        next[memberIdx] = { ...next[memberIdx], ...fields }
+                        return next
+                      })
+                    }
+
+                    if (isBasic) {
+                      return (
+                        <div className="space-y-8 animate-in fade-in duration-300">
+                          <div className="space-y-1">
+                            <h2 className="text-2xl font-bold text-stone-900">學員 {memberNum} 基本資料</h2>
+                            <p className="text-stone-500 text-sm">請輸入團體課第 {memberNum} 位學員的基本資訊與緊急聯絡人卡片。</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">真實姓名 *</Label>
+                              <Input
+                                value={memberData.name}
+                                onChange={(e) => updateMember({ name: e.target.value })}
+                                placeholder="例如：王小明"
+                                className="h-12 rounded-2xl bg-stone-50 border-stone-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">身分證字號 / 護照號碼 *</Label>
+                              <Input
+                                value={memberData.idNumber}
+                                onChange={(e) => updateMember({ idNumber: e.target.value.toUpperCase() })}
+                                placeholder="例如：A123456789"
+                                className="h-12 rounded-2xl bg-stone-50 border-stone-200 uppercase"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">行動電話 *</Label>
+                              <Input
+                                value={memberData.phone}
+                                onChange={(e) => updateMember({ phone: e.target.value })}
+                                placeholder="例如：0912345678"
+                                className="h-12 rounded-2xl bg-stone-50 border-stone-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">電子郵件 (選填)</Label>
+                              <Input
+                                value={memberData.email}
+                                onChange={(e) => updateMember({ email: e.target.value })}
+                                placeholder="example@email.com"
+                                className="h-12 rounded-2xl bg-stone-50 border-stone-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">出生日期 *</Label>
+                              <Input
+                                type="date"
+                                value={memberData.dateOfBirth}
+                                onChange={(e) => updateMember({ dateOfBirth: e.target.value })}
+                                className="h-12 rounded-2xl bg-stone-50 border-stone-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">生理性別 *</Label>
+                              <div className="flex gap-3">
+                                {[
+                                  { label: '女性 (Female)', val: 'female' },
+                                  { label: '男性 (Male)', val: 'male' },
+                                  { label: '其他 (Other)', val: 'other' },
+                                ].map(g => (
+                                  <button
+                                    key={g.val}
+                                    type="button"
+                                    onClick={() => updateMember({ gender: g.val as any })}
+                                    className={cn(
+                                      "flex-1 py-2.5 px-3 rounded-xl border text-xs font-bold transition-all",
+                                      memberData.gender === g.val
+                                        ? "bg-stone-900 text-white border-stone-900 shadow-sm"
+                                        : "bg-white text-stone-600 border-stone-200"
+                                    )}
+                                  >
+                                    {g.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 運動習慣與客戶來源 */}
+                          <div className="grid grid-cols-2 gap-6 pt-4 border-t border-stone-100">
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">規律運動習慣 *</Label>
+                              <div className="flex gap-3">
+                                {[
+                                  { label: '無運動習慣', val: 'none' },
+                                  { label: '每週 1-2 次', val: 'weekly_1_2' },
+                                  { label: '每週 3 次以上', val: 'weekly_3_plus' },
+                                ].map(item => (
+                                  <button
+                                    key={item.val}
+                                    type="button"
+                                    onClick={() => updateMember({ exerciseHabit: item.val as any })}
+                                    className={cn(
+                                      "flex-1 py-2.5 px-2 rounded-xl border text-[11px] font-bold transition-all",
+                                      memberData.exerciseHabit === item.val
+                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                                        : "bg-white text-stone-600 border-stone-200"
+                                    )}
+                                  >
+                                    {item.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-stone-700 font-bold">客戶來源渠道 *</Label>
+                              <select
+                                value={memberData.source}
+                                onChange={(e) => updateMember({ source: e.target.value })}
+                                className="w-full h-12 rounded-2xl bg-stone-50 border border-stone-200 px-4 text-sm font-bold"
+                              >
+                                <option value="instagram">Instagram 官方帳號</option>
+                                <option value="facebook">Facebook 粉絲專頁</option>
+                                <option value="google">Google 商家搜尋</option>
+                                <option value="friend">親友/學員推薦</option>
+                                <option value="passby">路過門市</option>
+                                <option value="other">其他管道</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* 緊急聯絡人卡片 */}
+                          <div className="p-5 bg-stone-50 border border-stone-200/80 rounded-2xl space-y-4">
+                            <Label className="text-stone-900 font-bold text-sm block">🆘 緊急聯絡人資訊 *</Label>
+                            <div className="grid grid-cols-3 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-stone-600 font-medium">姓名 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.name}
+                                  onChange={(e) => updateMember({
+                                    emergencyContact: { ...memberData.emergencyContact, name: e.target.value }
+                                  })}
+                                  placeholder="緊急聯絡人姓名"
+                                  className="h-10 text-xs rounded-xl bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-stone-600 font-medium">關係 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.relation}
+                                  onChange={(e) => updateMember({
+                                    emergencyContact: { ...memberData.emergencyContact, relation: e.target.value }
+                                  })}
+                                  placeholder="例如：父母、配偶"
+                                  className="h-10 text-xs rounded-xl bg-white"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-stone-600 font-medium">電話 *</Label>
+                                <Input
+                                  value={memberData.emergencyContact.phone}
+                                  onChange={(e) => updateMember({
+                                    emergencyContact: { ...memberData.emergencyContact, phone: e.target.value }
+                                  })}
+                                  placeholder="聯絡電話"
+                                  className="h-10 text-xs rounded-xl bg-white"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // 健康狀態
+                    return (
+                      <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="space-y-1">
+                          <h2 className="text-2xl font-bold text-stone-900">學員 {memberNum} 健康狀態</h2>
+                          <p className="text-stone-500 text-sm">請勾選第 {memberNum} 位學員的特殊病史與過去傷病史。</p>
+                        </div>
+
+                        <div className="space-y-6">
+                          <div>
+                            <Label className="text-stone-700 font-bold block mb-3">特殊病史 (可複選)</Label>
+                            <div className="grid grid-cols-4 gap-3">
+                              {['無狀況', '高血壓', '心臟病', '糖尿病', '氣喘', '癲癇', '懷孕', '其他'].map(cond => {
+                                const checked = memberData.medicalHistory.chronicConditions.includes(cond)
+                                return (
+                                  <label
+                                    key={cond}
+                                    className={cn(
+                                      "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer justify-center text-xs font-bold",
+                                      checked ? "bg-emerald-600 border-emerald-600 text-white" : "bg-white border-stone-200 text-stone-600"
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const isChecked = e.target.checked
+                                        let current = [...memberData.medicalHistory.chronicConditions]
+                                        if (cond === '無狀況' && isChecked) {
+                                          current = ['無狀況']
+                                        } else if (cond !== '無狀況' && isChecked) {
+                                          current = current.filter(x => x !== '無狀況')
+                                          current.push(cond)
+                                        } else {
+                                          current = current.filter(x => x !== cond)
+                                        }
+                                        updateMember({
+                                          medicalHistory: { ...memberData.medicalHistory, chronicConditions: current }
+                                        })
+                                      }}
+                                    />
+                                    {cond}
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-stone-700 font-bold block mb-3">傷病史 (可複選)</Label>
+                            <div className="grid grid-cols-4 gap-3">
+                              {['無狀況', '肩部', '手肘', '手腕', '下背', '髖關節', '膝蓋', '腳踝', '其他'].map(injury => {
+                                const checked = memberData.medicalHistory.injuries.includes(injury)
+                                return (
+                                  <label
+                                    key={injury}
+                                    className={cn(
+                                      "flex items-center gap-2 p-3 rounded-xl border transition-all cursor-pointer justify-center text-xs font-bold",
+                                      checked ? "bg-stone-900 border-stone-900 text-white" : "bg-white border-stone-200 text-stone-600"
+                                    )}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const isChecked = e.target.checked
+                                        let current = [...memberData.medicalHistory.injuries]
+                                        if (injury === '無狀況' && isChecked) {
+                                          current = ['無狀況']
+                                        } else if (injury !== '無狀況' && isChecked) {
+                                          current = current.filter(x => x !== '無狀況')
+                                          current.push(injury)
+                                        } else {
+                                          current = current.filter(x => x !== injury)
+                                        }
+                                        updateMember({
+                                          medicalHistory: { ...memberData.medicalHistory, injuries: current }
+                                        })
+                                      }}
+                                    />
+                                    {injury}
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-stone-700 font-bold">其他身體狀況說明</Label>
+                            <textarea
+                              value={memberData.medicalHistory.notes}
+                              onChange={(e) => updateMember({
+                                medicalHistory: { ...memberData.medicalHistory, notes: e.target.value }
+                              })}
+                              className="w-full h-28 p-3 rounded-2xl border border-stone-200 bg-stone-50 text-xs"
+                              placeholder="請輸入說明..."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {activeSteps[currentStep]?.id === 'signature' && (
                     <div className="space-y-6">
