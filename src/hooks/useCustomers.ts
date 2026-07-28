@@ -63,24 +63,47 @@ export function useCustomers() {
         ...doc.data(),
       })) as Contract[]
 
-      // Data integrity check: for each contract, remain classes number should not exceed total classes number
+      // Data integrity check & auto-repair for group contracts and session caps
       const fixedContData = await Promise.all(
         contData.map(async (c) => {
-          if (c.remainingSessions > c.totalSessions) {
+          let isRepaired = false
+          const updates: any = {}
+
+          // Auto repair 1: Group contract type and customerIds restoration
+          const quotaKeys = c.groupMemberQuotas ? Object.keys(c.groupMemberQuotas) : []
+          if (quotaKeys.length > 1 || c.contractType === 'group') {
+            if (c.contractType !== 'group') {
+              updates.contractType = 'group'
+              c.contractType = 'group'
+              isRepaired = true
+            }
+            const fullCustomerIds = Array.from(new Set([...(c.customerIds || []), ...quotaKeys, c.customerId].filter(Boolean)))
+            const currentSorted = [...(c.customerIds || [])].sort().join(',')
+            const fullSorted = [...fullCustomerIds].sort().join(',')
+            if (currentSorted !== fullSorted) {
+              updates.customerIds = fullCustomerIds
+              c.customerIds = fullCustomerIds
+              isRepaired = true
+            }
+          }
+
+          // Auto repair 2: remainingSessions cap check (skip for group contracts)
+          if (c.contractType !== 'group' && c.remainingSessions > c.totalSessions) {
             console.warn(`Contract ${c.id} has remainingSessions (${c.remainingSessions}) > totalSessions (${c.totalSessions}). Fixing...`)
+            updates.remainingSessions = c.totalSessions
+            c.remainingSessions = c.totalSessions
+            isRepaired = true
+          }
+
+          if (isRepaired) {
             try {
               const contractDocRef = doc(db, 'contracts', c.id)
               await updateDoc(contractDocRef, {
-                remainingSessions: c.totalSessions,
+                ...updates,
                 updatedAt: serverTimestamp(),
               })
-              return {
-                ...c,
-                remainingSessions: c.totalSessions,
-              }
             } catch (err) {
               console.error(`Failed to automatically repair contract ${c.id}:`, err)
-              return c
             }
           }
           return c
@@ -212,11 +235,21 @@ export function useCustomers() {
       finalPartnerId = data.partnerId
     }
 
-    const isDual = data.contractType === 'dual' || !!finalPartnerId
+    const isGroup = data.contractType === 'group'
+    const isDual = !isGroup && (data.contractType === 'dual' || !!finalPartnerId)
     const partnerId = finalPartnerId
-    const customerIds = isDual 
-      ? [customerId, partnerId].filter((id): id is string => !!id)
-      : [customerId]
+
+    let customerIds: string[]
+    if (isGroup) {
+      customerIds = Array.from(new Set([customerId, ...(data.customerIds || [])]))
+    } else if (isDual) {
+      customerIds = Array.from(new Set([customerId, partnerId].filter((id): id is string => !!id)))
+    } else {
+      customerIds = [customerId]
+    }
+
+    const contractType = isGroup ? 'group' : (isDual ? 'dual' : 'single')
+    const status = data.status || 'active'
 
     const cleanData = { ...data }
     delete (cleanData as any).partnerMode
@@ -240,7 +273,8 @@ export function useCustomers() {
       customerId,
       sharedWithCustomerId: partnerId,
       customerIds,
-      contractType: isDual ? 'dual' : 'single',
+      contractType,
+      status,
       primaryCustomerId: customerId,
       startDate: Timestamp.fromDate(ensureDate(data.startDate)),
       endDate: Timestamp.fromDate(ensureDate(data.endDate)),
