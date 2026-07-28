@@ -447,7 +447,13 @@ export function ContractFormModal({
                !!pData?.emergencyContact?.phone
       }
       if (step.id === 'partner_medical') {
-        return true
+        if (watchedValues.partnerMode === 'existing') {
+          return !!watchedValues.sharedWithCustomerId
+        }
+        const pData = watchedValues.partnerCustomerData
+        const chronicOk = (pData?.medicalHistory?.chronicConditions?.length ?? 0) > 0
+        const injuriesOk = (pData?.medicalHistory?.injuries?.length ?? 0) > 0
+        return chronicOk && injuriesOk
       }
       if (step.id.startsWith('group_member_')) {
         const match = step.id.match(/^group_member_(\d+)_(basic|medical)$/)
@@ -470,7 +476,12 @@ export function ContractFormModal({
                  !!mData.emergencyContact?.phone?.trim()
         }
         if (match[2] === 'medical') {
-          return true
+          if (mData.memberMode === 'existing') {
+            return !!mData.existingCustomerId && !!mData.name?.trim()
+          }
+          const chronicOk = (mData.medicalHistory?.chronicConditions?.length ?? 0) > 0
+          const injuriesOk = (mData.medicalHistory?.injuries?.length ?? 0) > 0
+          return chronicOk && injuriesOk
         }
       }
       if (step.id === 'signature') {
@@ -1183,7 +1194,7 @@ export function ContractFormModal({
                               />
                               <label htmlFor="isOneToTwo" className="text-xs font-semibold text-stone-700 select-none cursor-pointer flex items-center gap-1.5">
                                 <RiTeamFill className="w-3.5 h-3.5 text-stone-500" />
-                                1 對 2 同時間上課（共用同一位教練）
+                                1 對 {form.watch('contractType') === 'group' ? groupMemberCount : 2} 同時間上課（共用同一位教練）
                               </label>
                             </div>
 

@@ -782,7 +782,7 @@ export function CustomerContractModal({
                                 className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4" 
                               />
                               <label htmlFor="isOneToTwoEditDoc" className="text-xs font-bold text-stone-700 cursor-pointer">
-                                👥 1對2 同時間上課（共用同一位教練）
+                                1對{contract?.contractType === 'group' ? (contract?.groupMemberQuotas?.length || 2) : 2} 同時間上課（共用同一位教練）
                               </label>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
