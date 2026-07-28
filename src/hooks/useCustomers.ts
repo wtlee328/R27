@@ -440,11 +440,35 @@ export function useCustomers() {
         const totalSessions = Number(data.contract?.totalSessions || 0)
         if (data.contract && totalSessions > 0) {
           console.log('Onboarding: Creating initial contract...')
+          const isGroup = data.contract.contractType === 'group'
+          const isDual = !isGroup && !!finalPartnerId
+          
+          let customerIds: string[]
+          if (isGroup) {
+            customerIds = data.contract.customerIds || [customerId]
+            if (!customerIds.includes(customerId)) {
+              customerIds.unshift(customerId)
+            }
+            if (data.contract.groupMemberQuotas) {
+              const primaryQuota = (data as any)._primaryMemberQuota || Math.floor(totalSessions / customerIds.length)
+              data.contract.groupMemberQuotas[customerId] = {
+                customerId,
+                customerName: data.name,
+                totalSessions: primaryQuota,
+                remainingSessions: primaryQuota,
+              }
+            }
+          } else if (isDual) {
+            customerIds = [customerId, finalPartnerId!]
+          } else {
+            customerIds = [customerId]
+          }
+
           const contractData = {
             ...data.contract,
             sharedWithCustomerId: finalPartnerId,
-            contractType: finalPartnerId ? 'dual' as const : 'single' as const,
-            customerIds: finalPartnerId ? [customerId, finalPartnerId] : [customerId],
+            contractType: isGroup ? ('group' as const) : (isDual ? ('dual' as const) : ('single' as const)),
+            customerIds,
           }
           await createContract(customerId, contractData as any)
         } else {
