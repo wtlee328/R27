@@ -13,6 +13,7 @@ import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
 import { 
   RiGroupLine, 
+  RiTeamLine,
   RiUser3Line, 
   RiDeleteBinLine, 
   RiEditLine, 
@@ -244,6 +245,8 @@ export function CustomerDetailsModal({
                 }
                 const remainingPct = myTotal ? Math.round((myRemaining / myTotal) * 100) : 0
 
+                const isLightBg = isUnsigned || isDual || isGroup
+
                 return (
                   <div
                     onClick={() => onViewContract(customer, activeContract)}
@@ -252,7 +255,7 @@ export function CustomerDetailsModal({
                       isUnsigned
                         ? 'bg-amber-50/70 border-amber-200/70 hover:border-amber-300'
                         : isGroup
-                          ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200'
+                          ? 'bg-emerald-50/70 border-emerald-200/80 hover:border-emerald-300'
                           : isDual
                             ? 'bg-orange-50/50 border-orange-100 hover:border-orange-200'
                             : 'bg-stone-900 border-stone-800'
@@ -260,8 +263,8 @@ export function CustomerDetailsModal({
                   >
                     {/* Background icon */}
                     <RiShieldCheckLine className={cn(
-                      'absolute right-3 bottom-3 w-20 h-20 opacity-5 group-hover:opacity-10 transition-opacity',
-                      isUnsigned || isDual || isGroup ? 'text-stone-800' : 'text-white'
+                      'absolute right-3 bottom-3 w-20 h-20 opacity-10 group-hover:opacity-15 transition-opacity',
+                      isLightBg ? 'text-emerald-900' : 'text-white'
                     )} />
 
                     <div className="relative">
@@ -270,19 +273,19 @@ export function CustomerDetailsModal({
                         <div className="flex items-center gap-2 flex-wrap">
                           {isUnsigned ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white px-2.5 py-1 rounded-full animate-pulse">
-                              {isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
-                              {isDual ? '雙人待簽名' : '待簽名'}
+                              {isGroup ? <RiTeamLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
+                              {isGroup ? '團體課待簽名' : isDual ? '雙人待簽名' : '待簽名'}
                             </span>
                           ) : (
                             <span className={cn(
-                              'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full',
+                              'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm',
                               isGroup
                                 ? 'bg-emerald-600 text-white'
                                 : isDual
                                   ? 'bg-orange-500 text-white'
                                   : 'bg-stone-800 text-stone-200 border border-stone-700'
                             )}>
-                              {isGroup ? <RiGroupLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
+                              {isGroup ? <RiTeamLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
                               {isGroup ? '團體合約' : isDual ? '雙人共享合約' : '一般合約'}
                             </span>
                           )}
@@ -294,7 +297,7 @@ export function CustomerDetailsModal({
                         </div>
                         <span className={cn(
                           'text-[10px] font-bold',
-                          isUnsigned || isDual ? 'text-stone-400' : 'text-white/50'
+                          isLightBg ? 'text-stone-700' : 'text-white/70'
                         )}>
                           建立 {activeContract.createdAt instanceof Timestamp
                             ? format(activeContract.createdAt.toDate(), 'yyyy/MM/dd')
@@ -305,27 +308,27 @@ export function CustomerDetailsModal({
                       {/* Stats grid */}
                       <div className="grid grid-cols-3 gap-4">
                         <div>
-                          <p className={cn('text-[9px] font-black uppercase tracking-widest mb-0.5', isUnsigned || isDual ? 'text-stone-400' : 'text-white/50')}>剩餘堂數</p>
-                          <p className={cn('text-2xl font-black tabular-nums', isUnsigned ? 'text-amber-600' : isDual ? 'text-orange-600' : 'text-white')}>
-                            {activeContract.remainingSessions}
-                            <span className={cn('text-xs font-normal ml-1', isUnsigned || isDual ? 'text-stone-400' : 'text-white/60')}>
-                              / {activeContract.totalSessions} 堂
+                          <p className={cn('text-[9px] font-black uppercase tracking-widest mb-0.5', isLightBg ? 'text-stone-700' : 'text-white/60')}>剩餘堂數</p>
+                          <p className={cn('text-2xl font-black tabular-nums', isUnsigned ? 'text-amber-600' : isGroup ? 'text-emerald-950' : isDual ? 'text-orange-600' : 'text-white')}>
+                            {myRemaining}
+                            <span className={cn('text-xs font-bold ml-1', isLightBg ? 'text-stone-700' : 'text-white/70')}>
+                              / {myTotal} 堂
                             </span>
                           </p>
                           {/* Progress bar */}
-                          <div className={cn('mt-2 h-1 rounded-full overflow-hidden', isUnsigned || isDual ? 'bg-stone-200' : 'bg-white/20')}>
+                          <div className={cn('mt-2 h-1.5 rounded-full overflow-hidden', isLightBg ? 'bg-emerald-200/60' : 'bg-white/20')}>
                             <div
                               className={cn(
                                 'h-full rounded-full transition-all',
-                                remainingPct <= 20 ? 'bg-red-500' : remainingPct <= 50 ? 'bg-amber-500' : isUnsigned || isDual ? 'bg-stone-800' : 'bg-white'
+                                remainingPct <= 20 ? 'bg-red-500' : remainingPct <= 50 ? 'bg-amber-500' : isGroup ? 'bg-emerald-600' : isDual ? 'bg-orange-500' : 'bg-white'
                               )}
                               style={{ width: `${remainingPct}%` }}
                             />
                           </div>
                         </div>
                         <div>
-                          <p className={cn('text-[9px] font-black uppercase tracking-widest mb-0.5', isUnsigned || isDual ? 'text-stone-400' : 'text-white/50')}>合約到期</p>
-                          <p className={cn('text-sm font-bold tabular-nums', isUnsigned || isDual ? 'text-stone-700' : 'text-white')}>
+                          <p className={cn('text-[9px] font-black uppercase tracking-widest mb-0.5', isLightBg ? 'text-stone-700' : 'text-white/60')}>合約到期</p>
+                          <p className={cn('text-sm font-bold tabular-nums', isLightBg ? 'text-stone-900' : 'text-white')}>
                             {activeContract.endDate instanceof Timestamp
                               ? format(activeContract.endDate.toDate(), 'yyyy/MM/dd')
                               : '未知'}
@@ -334,7 +337,7 @@ export function CustomerDetailsModal({
                         <div className="flex justify-end items-end">
                           <span className={cn(
                             'text-xs font-bold flex items-center gap-0.5 transition-all group-hover:gap-1.5',
-                            isUnsigned || isDual ? 'text-stone-400 group-hover:text-stone-700' : 'text-white/60 group-hover:text-white'
+                            isLightBg ? 'text-stone-700 group-hover:text-stone-950' : 'text-white/70 group-hover:text-white'
                           )}>
                             檢視合約 <RiArrowRightSLine className="w-4 h-4" />
                           </span>

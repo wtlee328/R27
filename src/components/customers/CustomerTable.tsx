@@ -3,6 +3,7 @@ import type { Customer, Contract } from '../../types'
 import { format } from 'date-fns'
 import { 
   RiGroupLine, 
+  RiTeamLine,
   RiUser3Line, 
   RiSearchLine, 
   RiPhoneLine, 
@@ -12,7 +13,8 @@ import {
   RiCake2Line, 
   RiFilterLine, 
   RiArrowUpDownLine, 
-  RiDeleteBinLine 
+  RiDeleteBinLine,
+  RiFileTextLine
 } from '@remixicon/react'
 import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
@@ -352,17 +354,7 @@ export function CustomerTable({
                                 <RiFileTextLine className="w-3 h-3 mr-1" /> (複數合約)
                               </Badge>
                             )}
-                            {statusBadgeType === 'group' && (
-                              <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
-                                <RiGroupLine className="w-3 h-3 mr-1" /> (團體課)
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'dual' && (
-                              <Badge className="bg-stone-800 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
-                                <RiGroupLine className="w-3 h-3 mr-1 text-orange-400" /> (雙人共享)
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'single' && (
+                            {(statusBadgeType === 'group' || statusBadgeType === 'dual' || statusBadgeType === 'single') && (
                               <Badge className="bg-stone-900 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
                                 <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 進行中
                               </Badge>
