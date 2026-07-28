@@ -551,6 +551,28 @@ export function CustomerFormModal({
         return true;
       }
       
+      if (step.id.startsWith('group_member_')) {
+        const match = step.id.match(/^group_member_(\d+)_(basic|medical)$/)
+        if (!match) return false
+        const memberNum = parseInt(match[1], 10)
+        const memberArrIdx = memberNum - 2
+        const mData = additionalGroupMembers[memberArrIdx]
+        if (!mData) return false
+
+        if (match[2] === 'basic') {
+          return !!mData.name?.trim() &&
+                 !!mData.idNumber?.trim() &&
+                 !!mData.phone?.trim() &&
+                 !!mData.dateOfBirth &&
+                 !!mData.emergencyContact?.name?.trim() &&
+                 !!mData.emergencyContact?.relation?.trim() &&
+                 !!mData.emergencyContact?.phone?.trim()
+        }
+        if (match[2] === 'medical') {
+          return true
+        }
+      }
+      
       const stepFields = step.fields as any[]
       const isComplete = stepFields.every(field => {
         const value = field.split('.').reduce((obj: any, key: any) => obj?.[key], watchedValues)
@@ -560,13 +582,20 @@ export function CustomerFormModal({
       })
       return isComplete
     })
-  }, [watchedValues, activeSteps])
+  }, [watchedValues, activeSteps, additionalGroupMembers])
 
   const canGoNext = stepStatus[currentStep]
 
   const handleNext = async () => {
-    const fieldsToValidate = activeSteps[currentStep].fields as any[]
-    const isContractStep = activeSteps[currentStep].id === 'contract'
+    const currentStepObj = activeSteps[currentStep]
+    if (currentStepObj.id.startsWith('group_member_')) {
+      if (stepStatus[currentStep] && currentStep < activeSteps.length - 1) {
+        setCurrentStep(prev => prev + 1)
+      }
+      return
+    }
+    const fieldsToValidate = currentStepObj.fields as any[]
+    const isContractStep = currentStepObj.id === 'contract'
     const isBindMode = form.getValues('bindExistingContractMode')
     
     const isValid = (isContractStep && isBindMode)
