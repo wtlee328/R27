@@ -6,7 +6,20 @@ const SignatureCanvas: any = (SignatureCanvasComponent as any).default || Signat
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, FileText, ShieldCheck, User, Activity } from 'lucide-react'
 import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
-import { RiGroupLine, RiTeamLine, RiArrowDownSLine } from '@remixicon/react'
+import {
+  RiGroupLine,
+  RiTeamLine,
+  RiArrowDownSLine,
+  RiUser3Line,
+  RiUserAddLine,
+  RiUserSharedLine,
+  RiLinkM,
+  RiBankCardLine,
+  RiMoneyDollarCircleLine,
+  RiAlertLine,
+  RiCheckLine,
+  RiTeamFill,
+} from '@remixicon/react'
 import { db } from '@/lib/firebase'
 import {
   Dialog,
@@ -687,13 +700,14 @@ export function ContractFormModal({
                               form.setValue('partnerCustomerData', null)
                             }}
                             className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                              "flex-1 py-3 px-3 rounded-2xl border-2 font-bold text-xs transition-all duration-200 flex flex-col items-center justify-center gap-1.5",
                               form.watch('contractType') === 'single'
-                                ? "bg-stone-900 border-stone-900 text-white shadow-lg"
-                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                ? "bg-stone-950 border-stone-950 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-500 hover:border-stone-300 hover:bg-stone-50"
                             )}
                           >
-                            👤 單人合約
+                            <RiUser3Line className="w-4.5 h-4.5" />
+                            單人合約
                           </button>
                           <button
                             type="button"
@@ -702,13 +716,14 @@ export function ContractFormModal({
                               form.setValue('partnerMode', 'existing')
                             }}
                             className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                              "flex-1 py-3 px-3 rounded-2xl border-2 font-bold text-xs transition-all duration-200 flex flex-col items-center justify-center gap-1.5",
                               form.watch('contractType') === 'dual'
-                                ? "bg-orange-500 border-orange-500 text-white shadow-lg"
-                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                ? "bg-amber-500 border-amber-500 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-500 hover:border-stone-300 hover:bg-stone-50"
                             )}
                           >
-                            👥 雙人共享合約
+                            <RiGroupLine className="w-4.5 h-4.5" />
+                            雙人共享合約
                           </button>
                           <button
                             type="button"
@@ -721,13 +736,14 @@ export function ContractFormModal({
                               recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, groupMemberCount)
                             }}
                             className={cn(
-                              "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-1.5",
+                              "flex-1 py-3 px-3 rounded-2xl border-2 font-bold text-xs transition-all duration-200 flex flex-col items-center justify-center gap-1.5",
                               form.watch('contractType') === 'group'
                                 ? "bg-emerald-600 border-emerald-600 text-white shadow-lg"
-                                : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                : "bg-white border-stone-200 text-stone-500 hover:border-stone-300 hover:bg-stone-50"
                             )}
                           >
-                            <RiTeamLine className="w-4 h-4" /> 團體課合約 (2~6人)
+                            <RiTeamLine className="w-4.5 h-4.5" />
+                            團體課合約 (2~6人)
                           </button>
                         </div>
                       </div>
@@ -811,8 +827,9 @@ export function ContractFormModal({
                             </div>
 
                             {groupQuotaSum !== Number(form.watch('totalSessions')) && (
-                              <p className="text-[10px] font-bold text-red-500">
-                                ⚠️ 目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({form.watch('totalSessions') || 0} 堂) 不一致，請微調個人堂數。
+                              <p className="text-[10px] font-bold text-red-500 flex items-center gap-1">
+                                <RiAlertLine className="w-3 h-3 shrink-0" />
+                                目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({form.watch('totalSessions') || 0} 堂) 不一致，請微調個人堂數。
                               </p>
                             )}
                           </div>
@@ -820,9 +837,9 @@ export function ContractFormModal({
                       )}
 
                       {form.watch('contractType') === 'dual' && (
-                        <div className="p-5 bg-orange-50/50 border border-orange-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                          <Label className="text-stone-900 font-bold block text-xs">共享學員綁定方式 *</Label>
-                          <div className="flex gap-4">
+                        <div className="p-5 bg-amber-50/50 border border-amber-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label className="text-stone-700 font-semibold block text-xs">共享學員綁定方式 *</Label>
+                          <div className="flex gap-3">
                             <button
                               type="button"
                               onClick={() => {
@@ -830,13 +847,14 @@ export function ContractFormModal({
                                 form.setValue('partnerCustomerData', null)
                               }}
                               className={cn(
-                                "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
                                 form.watch('partnerMode') === 'existing'
-                                  ? "bg-orange-500 border-orange-500 text-white"
-                                  : "bg-white border-stone-200 text-stone-600"
+                                  ? "bg-amber-500 border-amber-500 text-white shadow-md"
+                                  : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
                               )}
                             >
-                              🔗 連結系統現有客戶
+                              <RiLinkM className="w-4 h-4" />
+                              連結現有學員
                             </button>
                             <button
                               type="button"
@@ -857,48 +875,52 @@ export function ContractFormModal({
                                 })
                               }}
                               className={cn(
-                                "flex-1 py-2 px-3 rounded-lg border font-bold text-xs transition-all",
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
                                 form.watch('partnerMode') === 'new'
-                                  ? "bg-orange-500 border-orange-500 text-white"
-                                  : "bg-white border-stone-200 text-stone-600"
+                                  ? "bg-amber-500 border-amber-500 text-white shadow-md"
+                                  : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
                               )}
                             >
-                              ➕ 新增全新客戶
+                              <RiUserAddLine className="w-4 h-4" />
+                              新增全新學員
                             </button>
                           </div>
 
                           {form.watch('partnerMode') === 'existing' && (
-                            <div className="space-y-2 pt-2">
-                              <Label className="text-xs text-stone-700 font-medium">選擇現有學員 *</Label>
-                              <select
-                                value={form.watch('sharedWithCustomerId') || ''}
-                                onChange={(e) => {
-                                  const val = e.target.value || null
-                                  form.setValue('sharedWithCustomerId', val)
-                                  form.setValue('partnerId', val)
-                                }}
-                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                              >
-                                <option value="">-- 請選擇學員 --</option>
-                                {(customers || []).filter(c => c.id !== customer.id).map((c) => (
-                                  <option key={c.id} value={c.id}>
-                                    {c.name} ({c.phone})
-                                  </option>
-                                ))}
-                              </select>
+                            <div className="space-y-2 pt-1">
+                              <Label className="text-xs text-stone-500 font-medium">選擇現有學員 *</Label>
+                              <div className="relative">
+                                <select
+                                  value={form.watch('sharedWithCustomerId') || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value || null
+                                    form.setValue('sharedWithCustomerId', val)
+                                    form.setValue('partnerId', val)
+                                  }}
+                                  className="w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 pr-8 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:bg-white appearance-none"
+                                >
+                                  <option value="">— 請選擇學員 —</option>
+                                  {(customers || []).filter(c => c.id !== customer.id).map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name} ({c.phone})
+                                    </option>
+                                  ))}
+                                </select>
+                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
                               {form.watch('sharedWithCustomerId') && (
-                                <p className="text-[10px] text-orange-600 font-bold">
-                                  提示：此續約將會由當前學員與 {(customers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有一份合約。
+                                <p className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
+                                  <RiUserSharedLine className="w-3 h-3 shrink-0" />
+                                  此合約將由 {customer.name} 與 {(customers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有。
                                 </p>
                               )}
                             </div>
                           )}
 
                           {form.watch('partnerMode') === 'new' && (
-                            <div className="pt-2">
-                              <div className="p-3 bg-orange-100/50 text-orange-800 rounded-lg text-xs font-bold">
-                                ✨ 您已選擇為此合約新增全新客戶。下一步我們將會引導您填寫第二位學員的基本資料與健康狀態。
-                              </div>
+                            <div className="flex items-start gap-2.5 p-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100">
+                              <RiUserAddLine className="w-4 h-4 shrink-0 mt-0.5" />
+                              <span>已選擇新增全新學員。下一步將引導您填寫第二位學員的基本資料。</span>
                             </div>
                           )}
                         </div>
@@ -948,8 +970,9 @@ export function ContractFormModal({
                                 }}
                                 className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
                               />
-                              <label htmlFor="isOneToTwo" className="text-xs font-bold text-stone-700 select-none cursor-pointer">
-                                👥 1對2 同時間上課（共用同一位教練）
+                              <label htmlFor="isOneToTwo" className="text-xs font-semibold text-stone-700 select-none cursor-pointer flex items-center gap-1.5">
+                                <RiTeamFill className="w-3.5 h-3.5 text-stone-500" />
+                                1 對 2 同時間上課（共用同一位教練）
                               </label>
                             </div>
 
@@ -1021,27 +1044,27 @@ export function ContractFormModal({
                         )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label>合約總堂數 *</Label>
-                          <Input type="number" {...form.register('totalSessions')} onChange={handleSessionsChange} />
+                      <div className="grid grid-cols-2 gap-5">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600">合約總堂數 *</Label>
+                          <Input type="number" {...form.register('totalSessions')} onChange={handleSessionsChange} className="h-10 rounded-xl bg-stone-50 border-stone-200 focus:bg-white" />
                         </div>
-                        <div className="space-y-2">
-                          <Label>合約總金額 (Total Lesson Fee) *</Label>
-                          <Input type="number" {...form.register('totalAmount')} onChange={handleTotalAmountChange} />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600">合約總金額 (NT$) *</Label>
+                          <Input type="number" {...form.register('totalAmount')} onChange={handleTotalAmountChange} className="h-10 rounded-xl bg-stone-50 border-stone-200 focus:bg-white" />
                         </div>
-                        <div className="space-y-2">
-                          <Label>合約開始日 *</Label>
-                          <Input type="date" {...form.register('startDate', { valueAsDate: true })} />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600">合約開始日 *</Label>
+                          <Input type="date" {...form.register('startDate', { valueAsDate: true })} className="h-10 rounded-xl bg-stone-50 border-stone-200 focus:bg-white" />
                           {form.formState.errors.startDate && (
-                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.startDate.message}</p>
+                            <p className="text-red-500 text-[10px] font-medium flex items-center gap-1"><RiAlertLine className="w-3 h-3" />{form.formState.errors.startDate.message}</p>
                           )}
                         </div>
-                        <div className="space-y-2">
-                          <Label>合約結束日 *</Label>
-                          <Input type="date" {...form.register('endDate', { valueAsDate: true })} />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-stone-600">合約結束日 *</Label>
+                          <Input type="date" {...form.register('endDate', { valueAsDate: true })} className="h-10 rounded-xl bg-stone-50 border-stone-200 focus:bg-white" />
                           {form.formState.errors.endDate && (
-                            <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.endDate.message}</p>
+                            <p className="text-red-500 text-[10px] font-medium flex items-center gap-1"><RiAlertLine className="w-3 h-3" />{form.formState.errors.endDate.message}</p>
                           )}
                         </div>
                       </div>
@@ -1049,8 +1072,8 @@ export function ContractFormModal({
                       {/* 付款方式與分期設定 */}
                       <div className="space-y-4 border-t border-stone-100 pt-6">
                         <div className="space-y-2">
-                          <Label className="text-stone-700 font-bold block text-xs">付款狀態 / 方式 *</Label>
-                          <div className="flex gap-4">
+                          <Label className="text-xs font-semibold text-stone-600">付款方式 *</Label>
+                          <div className="flex gap-3">
                             <button
                               type="button"
                               onClick={() => {
@@ -1058,13 +1081,14 @@ export function ContractFormModal({
                                 syncInstallments('single', 2, form.getValues('totalAmount') || 0, form.getValues('startDate') || new Date());
                               }}
                               className={cn(
-                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2",
                                 form.watch('paymentType') !== 'installments'
-                                  ? "bg-stone-900 border-stone-900 text-white shadow-lg"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-stone-950 border-stone-950 text-white shadow-lg"
+                                  : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
                               )}
                             >
-                              💵 一次付清 (直接付清)
+                              <RiMoneyDollarCircleLine className="w-4 h-4" />
+                              一次付清
                             </button>
                             <button
                               type="button"
@@ -1073,13 +1097,14 @@ export function ContractFormModal({
                                 syncInstallments('installments', form.getValues('installmentCount') || 2, form.getValues('totalAmount') || 0, form.getValues('startDate') || new Date());
                               }}
                               className={cn(
-                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all flex items-center justify-center gap-2",
+                                "flex-1 py-2.5 px-4 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-2",
                                 form.watch('paymentType') === 'installments'
-                                  ? "bg-brand-500 border-brand-500 text-white shadow-lg"
-                                  : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                  ? "bg-stone-950 border-stone-950 text-white shadow-lg"
+                                  : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
                               )}
                             >
-                              💳 分期付款 (二到十六期)
+                              <RiBankCardLine className="w-4 h-4" />
+                              分期付款
                             </button>
                           </div>
                         </div>
@@ -1170,8 +1195,8 @@ export function ContractFormModal({
                               if (isDiff || isDateError) {
                                 return (
                                   <div className="p-3 bg-red-50 text-red-600 rounded-xl text-[11px] font-bold space-y-1 border border-red-100">
-                                    {isDiff && <div>⚠️ 分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
-                                    {isDateError && <div>⚠️ 繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
+                                    {isDiff && <div className="flex items-center gap-1"><RiAlertLine className="w-3.5 h-3.5 shrink-0" />分期繳款總額 (NT$ {sum.toLocaleString()}) 與合約總金額 (NT$ {total.toLocaleString()}) 不符！</div>}
+                                    {isDateError && <div className="flex items-center gap-1"><RiAlertLine className="w-3.5 h-3.5 shrink-0" />繳款日期防呆：前一期繳款日期不能晚於下一期！</div>}
                                   </div>
                                 );
                               }
@@ -1181,15 +1206,15 @@ export function ContractFormModal({
                         )}
                       </div>
 
-                      <div className="bg-brand-50 p-6 rounded-2xl flex justify-between items-center">
+                      <div className="bg-stone-50 border border-stone-200/80 p-5 rounded-2xl flex justify-between items-center">
                         <div>
-                          <p className="text-[10px] font-bold text-brand-600 uppercase">單堂平均價格</p>
-                          <p className="text-2xl font-black text-brand-950">
+                          <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">單堂平均價格</p>
+                          <p className="text-2xl font-black text-stone-900 mt-0.5">
                             NT$ {(form.watch('pricePerSession') || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                           </p>
                         </div>
                         <div className="text-right text-stone-400 text-xs">
-                          根據總金額與堂數自動計算
+                          依總金額與堂數自動計算
                         </div>
                       </div>
                     </div>
