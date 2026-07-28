@@ -16,7 +16,7 @@ export function MinguoDatePickerInput({
   const [month, setMonth] = useState('')
   const [day, setDay] = useState('')
 
-  // Sync internal input fields whenever value changes externally
+  // Sync internal input fields only when external value is genuinely different from internal state
   useEffect(() => {
     if (!value) {
       setRocYear('')
@@ -31,9 +31,24 @@ export function MinguoDatePickerInput({
       setDay('')
       return
     }
-    setRocYear((d.getFullYear() - 1911).toString())
-    setMonth((d.getMonth() + 1).toString())
-    setDay(d.getDate().toString())
+
+    const extFullYear = d.getFullYear()
+    const extMonth = d.getMonth() + 1
+    const extDay = d.getDate()
+    const extRocYear = extFullYear - 1911
+
+    // Check if internal state matches external date to prevent overriding user's typing
+    const intY = parseInt(rocYear, 10)
+    const intM = parseInt(month, 10)
+    const intD = parseInt(day, 10)
+
+    if (intY === extRocYear && intM === extMonth && intD === extDay) {
+      return
+    }
+
+    setRocYear(extRocYear.toString())
+    setMonth(extMonth.toString())
+    setDay(extDay.toString())
   }, [value])
 
   const handleUpdate = (yStr: string, mStr: string, dStr: string) => {

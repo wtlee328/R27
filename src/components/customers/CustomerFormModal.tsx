@@ -1141,12 +1141,10 @@ export function CustomerFormModal({
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">出生年月日 *</Label>
                               <MinguoDatePickerInput
-                                value={memberData.dateOfBirth ? new Date(memberData.dateOfBirth) : new Date()}
+                                value={memberData.dateOfBirth ? new Date(memberData.dateOfBirth) : null}
                                 onChange={(d) => {
-                                  if (d) {
-                                    const str = d.toISOString().split('T')[0]
-                                    setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, dateOfBirth: str } : m))
-                                  }
+                                  const str = d ? d.toISOString().split('T')[0] : ''
+                                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, dateOfBirth: str } : m))
                                 }}
                               />
                             </div>
