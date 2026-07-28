@@ -1671,6 +1671,7 @@ export function ContractFormModal({
                           <Label className="text-stone-700 font-bold text-sm">合約預覽與條款</Label>
                           {(() => {
                             const isDual = form.watch('contractType') === 'dual'
+                            const isGroup = form.watch('contractType') === 'group'
                             const partnerMode = form.watch('partnerMode')
                             const reviewDate = formatROCDate(form.watch('startDate') || new Date())
                             
@@ -1748,7 +1749,9 @@ export function ContractFormModal({
                                 <div className="printable-contract-sheet bg-white text-stone-900 border border-stone-150 rounded-2xl p-6 space-y-5 leading-relaxed text-xs shadow-sm">
                                   {/* Header */}
                                   <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
-                                    <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
+                                    <h1 className="text-base font-black text-stone-900 tracking-tight">
+                                      {brandName} {isGroup ? '團體健身教練課程契約書' : isDual ? '雙人共享健身教練課程契約書' : '健身教練課程契約書'}
+                                    </h1>
                                     <div className="flex justify-between text-[9px] font-bold text-stone-500">
                                       <span>紅二七健身有限公司</span>
                                       <span>合約編號：(系統自動產生)</span>
@@ -1778,13 +1781,44 @@ export function ContractFormModal({
                                   <div className="space-y-3">
                                     <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1 flex justify-between">
                                       <span>立契約書人</span>
-                                      {isDual && <span className="text-[9px] text-orange-700 font-bold bg-orange-50 px-1.5 py-0.2 rounded border border-orange-100">雙人共享合約模式</span>}
+                                      {isGroup ? (
+                                        <span className="text-[9px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                                          <RiTeamLine className="w-3 h-3" /> 團體課合約模式 ({groupMemberCount} 人團課)
+                                        </span>
+                                      ) : isDual ? (
+                                        <span className="text-[9px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                          雙人共享合約模式
+                                        </span>
+                                      ) : null}
                                     </h3>
+
+                                    {/* 團體課成員堂數配額總覽 */}
+                                    {isGroup && (
+                                      <div className="p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl space-y-2 text-xs">
+                                        <div className="font-bold text-emerald-900 text-[11px] flex items-center gap-1.5">
+                                          <RiTeamLine className="w-3.5 h-3.5" />
+                                          團體合約成員與獨立個人堂數配額明細 (全體總堂數: {totalSessions} 堂)：
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <div className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
+                                            <span className="font-bold text-stone-800">學員 1 (主學員: {primaryInfo.name || '待定'})</span>
+                                            <span className="font-mono font-bold text-emerald-700">{primaryMemberQuota} 堂</span>
+                                          </div>
+                                          {additionalGroupMembers.map((m, idx) => (
+                                            <div key={idx} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
+                                              <span className="font-bold text-stone-800">學員 {idx + 2} ({m.name || '待填寫'})</span>
+                                              <span className="font-mono font-bold text-emerald-700">{m.allocatedSessions} 堂</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
 
                                     {/* Primary Customer */}
                                     <div className="space-y-1.5 bg-stone-50/60 p-2.5 rounded-xl border border-stone-150">
-                                      <div className="font-bold text-stone-800 border-b border-stone-200 pb-0.5 text-[9px]">
-                                        <span>會員姓名（簡稱甲方）{isDual && ' - 學員 A'}</span>
+                                      <div className="font-bold text-stone-800 border-b border-stone-200 pb-0.5 text-[9px] flex justify-between">
+                                        <span>會員姓名（簡稱甲方）{isGroup ? ' - 學員 1 (主學員)' : isDual ? ' - 學員 A' : ''}</span>
+                                        {isGroup && <span className="text-emerald-700 font-mono">分配: {primaryMemberQuota} 堂</span>}
                                       </div>
                                       <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
                                         <div className="col-span-2">姓名：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[50px]">{primaryInfo.name || '──────'}</span></div>
@@ -1798,10 +1832,34 @@ export function ContractFormModal({
                                       </div>
                                     </div>
 
-                                    {/* Partner Customer */}
+                                    {/* Additional Group Members */}
+                                    {isGroup && additionalGroupMembers.map((m, idx) => {
+                                      const mDob = formatROCDate(m.dateOfBirth)
+                                      const mDobStr = mDob.y ? `${mDob.y}/${mDob.m}/${mDob.d}` : ''
+                                      return (
+                                        <div key={idx} className="space-y-1.5 bg-emerald-50/30 p-2.5 rounded-xl border border-emerald-100/60">
+                                          <div className="font-bold text-emerald-900 border-b border-emerald-200 pb-0.5 text-[9px] flex justify-between">
+                                            <span>會員姓名（簡稱甲方） - 學員 {idx + 2}</span>
+                                            <span className="text-emerald-700 font-mono">分配: {m.allocatedSessions} 堂</span>
+                                          </div>
+                                          <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
+                                            <div className="col-span-2">姓名：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[50px]">{m.name || '──────'}</span></div>
+                                            <div className="col-span-2">身分證字號：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{m.idNumber || '──────'}</span></div>
+                                            <div className="col-span-2">生日：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{mDobStr || '──────'}</span></div>
+                                            <div className="col-span-3">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{m.phone || '──────'}</span></div>
+                                            <div className="col-span-3">Email：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[120px] break-all">{m.email || '──────'}</span></div>
+                                            <div className="col-span-2">緊急聯絡人：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">{m.emergencyContact?.name || '──────'}</span></div>
+                                            <div className="col-span-2">關係：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[30px]">{m.emergencyContact?.relation || '──────'}</span></div>
+                                            <div className="col-span-2">電話：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[70px]">{m.emergencyContact?.phone || '──────'}</span></div>
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+
+                                    {/* Partner Customer (Dual) */}
                                     {isDual && partnerInfo && (
-                                      <div className="space-y-1.5 bg-orange-50/30 p-2.5 rounded-xl border border-orange-100/60">
-                                        <div className="font-bold text-orange-900 border-b border-orange-200 pb-0.5 text-[9px]">
+                                      <div className="space-y-1.5 bg-amber-50/30 p-2.5 rounded-xl border border-amber-100/60">
+                                        <div className="font-bold text-amber-900 border-b border-amber-200 pb-0.5 text-[9px]">
                                           <span>會員姓名（簡稱甲方） - 學員 B</span>
                                         </div>
                                         <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
@@ -1837,12 +1895,31 @@ export function ContractFormModal({
                                   <div className="space-y-3">
                                     <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1">課程內容與費用明細</h3>
                                     <div className="grid grid-cols-12 gap-y-1.5 gap-x-3 text-stone-600 text-[10px]">
-                                      <div className="col-span-6">課程名稱：<span className="font-bold text-stone-900">一對一私人教練</span></div>
-                                      <div className="col-span-6">教練比例：<span className="font-bold text-stone-900">1位教練對 {isDual ? '2' : '1'} 位學員</span></div>
+                                      <div className="col-span-6">
+                                        課程名稱：<span className="font-bold text-stone-900">
+                                          {isGroup ? `團體私人教練課程 (${groupMemberCount}人團課)` : isDual ? '雙人共享教練課程' : '一對一私人教練課程'}
+                                        </span>
+                                      </div>
+                                      <div className="col-span-6">
+                                        教練比例：<span className="font-bold text-stone-900">
+                                          1位教練對 {isGroup ? groupMemberCount : isDual ? '2' : '1'} 位學員
+                                        </span>
+                                      </div>
                                       <div className="col-span-12">指定教練：<span className="font-bold text-stone-900 bg-stone-50 px-2 py-0.5 rounded border border-stone-200">{coachNames}</span></div>
                                       <div className="col-span-4">購買堂數：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">{totalSessions}</span> 堂</div>
                                       <div className="col-span-4">契約總金額：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">NT$ {totalAmount.toLocaleString()}</span> 元</div>
                                       <div className="col-span-4">每堂單價：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 underline">NT$ {pricePerSession.toLocaleString()}</span> 元</div>
+                                      
+                                      {isGroup && (
+                                        <div className="col-span-12 p-2 bg-emerald-50/50 rounded-lg border border-emerald-100 text-[10px]">
+                                          <span className="font-bold text-emerald-900">個人堂數配額劃分：</span>
+                                          <span className="text-stone-700 font-medium ml-1">
+                                            學員 1 ({primaryInfo.name || '主學員'}): {primaryMemberQuota} 堂
+                                            {additionalGroupMembers.map((m, i) => `；學員 ${i+2} (${m.name || '未填'}): ${m.allocatedSessions} 堂`)}
+                                          </span>
+                                        </div>
+                                      )}
+
                                       <div className="col-span-12 text-[9px] text-stone-400 font-bold italic mt-[-2px]">
                                         （註：此單價為日後若發生「退費」時的計算基準）
                                       </div>
@@ -1862,7 +1939,9 @@ export function ContractFormModal({
 
                                   {/* Articles 1-12 */}
                                   <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
-                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-brand-500 underline-offset-4">{brandName} 健身教練服務定型化契約條款</h4>
+                                    <h4 className="font-bold text-stone-900 text-center text-sm underline decoration-stone-400 underline-offset-4">
+                                      {brandName} {isGroup ? '團體健身教練服務定型化契約條款' : '健身教練服務定型化契約條款'}
+                                    </h4>
                                     
                                     <div>
                                       <p className="font-bold text-stone-900">第一條（服務內容與異動通知）</p>
@@ -2006,7 +2085,9 @@ export function ContractFormModal({
                             onChange={e => form.setValue('isAgreed', e.target.checked)}
                             className="w-5 h-5 rounded accent-brand-500 cursor-pointer"
                           />
-                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700 cursor-pointer">同意並簽署上述「{brandName} 健身教練課程契約書」</label>
+                          <label htmlFor="agree-renewal" className="text-sm font-medium text-stone-700 cursor-pointer">
+                            同意並簽署上述「{brandName} {form.watch('contractType') === 'group' ? '團體健身教練課程契約書' : form.watch('contractType') === 'dual' ? '雙人共享健身教練課程契約書' : '健身教練課程契約書'}」
+                          </label>
                         </div>
 
                         <div className={cn(
@@ -2017,7 +2098,7 @@ export function ContractFormModal({
                           {/* Signature A */}
                           <div className="relative">
                             <Label className="font-bold text-stone-700 block mb-2">
-                              {form.watch('contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *'}
+                              {form.watch('contractType') === 'group' ? '主學員 (代表簽署人) 數位簽名 *' : form.watch('contractType') === 'dual' ? '甲方學員 A 簽名 *' : '學員數位簽名 *'}
                             </Label>
                             <div className="border-2 border-dashed border-stone-200 rounded-3xl bg-white p-2 relative h-48">
                               <SignatureCanvas
