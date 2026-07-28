@@ -1080,26 +1080,24 @@ export function CustomerContractModal({
               </div>
 
               {/* Signatures & Approvals */}
-              <div className="pt-6 border-t-2 border-stone-900 flex justify-between items-end shrink-0">
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
-                    <div className="w-24 h-24 flex items-center justify-center relative select-none pointer-events-none">
-                      <img 
-                        src={r27Stamp} 
-                        alt="乙方蓋印" 
-                        className="max-w-full max-h-full object-contain mix-blend-multiply" 
-                      />
-                    </div>
+              <div className="pt-6 border-t-2 border-stone-900 flex flex-wrap justify-between items-end gap-4 shrink-0">
+                <div className="space-y-1.5 shrink-0">
+                  <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
+                  <div className="w-20 h-20 flex items-center justify-center relative select-none pointer-events-none">
+                    <img 
+                      src={r27Stamp} 
+                      alt="乙方蓋印" 
+                      className="max-w-full max-h-full object-contain mix-blend-multiply" 
+                    />
                   </div>
                 </div>
                 
-                <div className="space-y-4 text-right">
-                  <div className="flex gap-6 items-end">
+                <div className="space-y-4 text-right flex-1 min-w-0">
+                  <div className="flex flex-wrap gap-3 items-end justify-end">
                     {/* Primary Signature */}
-                    <div className="space-y-1.5 text-left min-w-[260px]">
+                    <div className={cn("space-y-1.5 text-left flex-1 min-w-[160px]", partner ? "max-w-[220px]" : "max-w-[280px]")}>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] text-stone-600 font-bold uppercase tracking-widest">
+                        <p className="text-[10px] text-stone-600 font-bold uppercase tracking-widest truncate">
                           {partner ? '甲方學員 A 簽名' : '會員簽名'}
                         </p>
                         {isEditing && (
@@ -1113,7 +1111,7 @@ export function CustomerContractModal({
                               }
                               isSigAClearedRef.current = true
                             }}
-                            className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer"
+                            className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer shrink-0"
                           >
                             清除重簽
                           </button>
@@ -1124,17 +1122,17 @@ export function CustomerContractModal({
                           <SignatureCanvas
                             ref={sigCanvas}
                             canvasProps={{
-                              className: 'w-full h-32 rounded-xl bg-white cursor-crosshair'
+                              className: 'w-full h-28 rounded-xl bg-white cursor-crosshair'
                             }}
                           />
                         </div>
                       ) : (
-                        <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
+                        <div className="w-full h-14 border-b border-stone-300 flex items-center justify-end">
                           {contract?.signatureDataUrl ? (
                             <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain" />
                           ) : (
-                            <span className="text-amber-600 font-bold italic text-[10px] bg-amber-50 px-2 py-1 rounded border border-amber-200 animate-pulse">
-                              ( 待簽名 - 編輯合約時即可線上簽署 )
+                            <span className="text-amber-600 font-bold italic text-[9px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 animate-pulse truncate">
+                              ( 待線上簽署 )
                             </span>
                           )}
                         </div>
@@ -1143,9 +1141,9 @@ export function CustomerContractModal({
 
                     {/* Secondary Signature */}
                     {partner && (
-                      <div className="space-y-1.5 text-left min-w-[260px]">
+                      <div className="space-y-1.5 text-left flex-1 min-w-[160px] max-w-[220px]">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest">甲方學員 B 簽名</p>
+                          <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest truncate">甲方學員 B 簽名</p>
                           {isEditing && (
                             <button
                               type="button"
@@ -1157,7 +1155,7 @@ export function CustomerContractModal({
                                 }
                                 isSigBClearedRef.current = true
                               }}
-                              className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer"
+                              className="text-[10px] text-red-600 hover:text-red-700 font-bold underline print:hidden cursor-pointer shrink-0"
                             >
                               清除重簽
                             </button>
@@ -1168,17 +1166,17 @@ export function CustomerContractModal({
                             <SignatureCanvas
                               ref={secondarySigCanvas}
                               canvasProps={{
-                                className: 'w-full h-32 rounded-xl bg-white cursor-crosshair'
+                                className: 'w-full h-28 rounded-xl bg-white cursor-crosshair'
                               }}
                             />
                           </div>
                         ) : (
-                          <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-end">
+                          <div className="w-full h-14 border-b border-stone-300 flex items-center justify-end">
                             {contract?.secondarySignatureDataUrl ? (
                               <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain" />
                             ) : (
-                              <span className="text-amber-600 font-bold italic text-[10px] bg-amber-50 px-2 py-1 rounded border border-amber-200 animate-pulse">
-                                ( 待簽名 - 編輯合約時即可線上簽署 )
+                              <span className="text-amber-600 font-bold italic text-[9px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 animate-pulse truncate">
+                                ( 待線上簽署 )
                               </span>
                             )}
                           </div>
@@ -1187,20 +1185,20 @@ export function CustomerContractModal({
                     )}
 
                     {/* Coach Signature */}
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">教練簽名</p>
-                      <div className="min-w-[140px] h-16 border-b border-stone-300 flex items-center justify-center font-black text-xs text-stone-900 border-dashed border-stone-200">
+                    <div className="space-y-1 text-left shrink-0">
+                      <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest whitespace-nowrap">教練簽名</p>
+                      <div className="min-w-[110px] h-14 border-b border-stone-300 flex items-center justify-center font-black text-xs text-stone-900 border-dashed border-stone-200">
                         {trainers.find(t => t.id === editTrainerId)?.name || '（經手教練）'}
                       </div>
                     </div>
                   </div>
-                  <p className="text-[10px] text-stone-400">
+                  <p className="text-[10px] text-stone-400 whitespace-nowrap">
                     日期：中華民國{' '}
                     <span className="font-bold font-mono underline px-1">{editReviewYear}</span> 年{' '}
                     <span className="font-bold font-mono underline px-1">{editReviewMonth}</span> 月{' '}
                     <span className="font-bold font-mono underline px-1">{editReviewDay}</span> 日
                   </p>
-                  <p className="text-[10px] font-bold text-stone-900">雙方同意本契約內容（含後附詳細條款）</p>
+                  <p className="text-[10px] font-bold text-stone-900 whitespace-nowrap">雙方同意本契約內容（含後附詳細條款）</p>
                 </div>
               </div>
 
