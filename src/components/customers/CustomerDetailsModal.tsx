@@ -109,16 +109,37 @@ export function CustomerDetailsModal({
 
   if (!customer) return null
 
-  const activeContract = contracts.find(c => c.status === 'active') || contracts[0]
+  const getCustomerRemainingSessionsInContract = (con: Contract, customerId: string) => {
+    if (con.contractType === 'group' && con.groupMemberQuotas?.[customerId]) {
+      return con.groupMemberQuotas[customerId].remainingSessions
+    }
+    return con.remainingSessions
+  }
+
+  const ongoingContracts = contracts.filter(con => {
+    const isMember = con.customerId === customer.id || con.sharedWithCustomerId === customer.id || (Array.isArray(con.customerIds) && con.customerIds.includes(customer.id))
+    if (!isMember) return false
+    if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+    const remaining = getCustomerRemainingSessionsInContract(con, customer.id)
+    return remaining > 0
+  })
+
+  const hasMultiple = ongoingContracts.length >= 2
+  const activeContract = ongoingContracts[0] || contracts[0] || null
 
   // Derive status for header badge
   const headerBadge = (() => {
-    if (!activeContract) return { label: '無有效合約', color: 'bg-stone-100 text-stone-500 border border-stone-200' }
-    if (activeContract.status === 'expired') return { label: '已到期', color: 'bg-stone-100 text-stone-600 border border-stone-200' }
-    if (!activeContract.signatureDataUrl || ((activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)) {
-      return { label: '待簽名', color: 'bg-amber-500 text-white animate-pulse' }
+    if (ongoingContracts.length === 0) return { label: '無合約', color: 'bg-stone-100 text-stone-500 border border-stone-200 font-bold' }
+    if (hasMultiple) return { label: '複數合約', color: 'bg-purple-100 text-purple-700 border border-purple-200 font-bold' }
+    if (activeContract) {
+      const isDual = activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
+      const isGroup = activeContract.contractType === 'group'
+      const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
+      if (isUnsigned) return { label: '待簽名', color: 'bg-amber-500 text-white animate-pulse' }
+      if (isGroup) return { label: '團體課', color: 'bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold' }
+      if (isDual) return { label: '雙人共享', color: 'bg-orange-100 text-orange-800 border border-orange-200 font-bold' }
     }
-    return { label: '進行中', color: 'bg-emerald-500 text-white' }
+    return { label: '進行中', color: 'bg-emerald-500 text-white font-bold' }
   })()
 
   return (
@@ -424,7 +445,9 @@ export function CustomerDetailsModal({
                           : contract.sharedWithCustomerId)
                       : null
                     const partnerName = partnerId ? partnerNames[partnerId] : null
-                    const isActive = contract.status === 'active'
+                    const isCompleted = contract.remainingSessions <= 0 || contract.status === 'completed'
+                    const isExpired = contract.status === 'expired'
+                    const isActive = !isCompleted && !isExpired && (contract.status === 'active' || contract.status === 'expiring')
                     const isUnsigned = !contract.signatureDataUrl
 
                     return (
@@ -438,7 +461,7 @@ export function CustomerDetailsModal({
                           'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
                           isActive
                             ? isContractDual ? 'bg-orange-50 text-orange-500' : 'bg-stone-900 text-white'
-                            : 'bg-stone-100 text-stone-400'
+                            : isCompleted ? 'bg-blue-50 text-blue-600' : 'bg-stone-100 text-stone-400'
                         )}>
                           <RiFileTextLine className="w-5 h-5" />
                         </div>
@@ -447,13 +470,15 @@ export function CustomerDetailsModal({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-stone-900 text-sm">{contract.totalSessions} 堂合約</span>
-                            {isActive ? (
+                            {isCompleted ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">已完成</span>
+                            ) : isExpired ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">已到期</span>
+                            ) : (
                               <span className={cn(
                                 'text-[10px] font-black px-2 py-0.5 rounded-full',
                                 isContractDual ? 'bg-orange-100 text-orange-700' : 'bg-stone-900 text-white'
                               )}>進行中</span>
-                            ) : (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-500">已結束</span>
                             )}
                             {isUnsigned && isActive && (
                               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">

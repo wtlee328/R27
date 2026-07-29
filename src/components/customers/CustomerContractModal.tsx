@@ -351,9 +351,13 @@ export function CustomerContractModal({
         ? calculatedRemaining
         : Number(editRemainingSessions)
 
+      const isCompleted = finalRemainingSessions <= 0
+      const newStatus = isCompleted ? 'completed' : (contract?.status === 'completed' && finalRemainingSessions > 0 ? 'active' : contract?.status || 'active')
+
       const updateData = {
         totalSessions: Number(editTotalSessions),
         remainingSessions: finalRemainingSessions,
+        status: newStatus,
         totalAmount: Number(editTotalAmount),
         paidAmount: finalPaidAmount,
         startDate: Timestamp.fromDate(ensureDate(editStartDate)),

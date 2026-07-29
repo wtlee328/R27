@@ -39,27 +39,40 @@ export function CustomerTable({
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
   const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
 
+  const getCustomerRemainingSessionsInContract = useCallback((con: Contract, customerId: string) => {
+    if (con.contractType === 'group' && con.groupMemberQuotas?.[customerId]) {
+      return con.groupMemberQuotas[customerId].remainingSessions
+    }
+    return con.remainingSessions
+  }, [])
+
+  const getCustomerOngoingContracts = useCallback((c: Customer) => {
+    return contracts.filter(con => {
+      const isMember = con.customerId === c.id || con.sharedWithCustomerId === c.id || (Array.isArray(con.customerIds) && con.customerIds.includes(c.id))
+      if (!isMember) return false
+      if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+      const remaining = getCustomerRemainingSessionsInContract(con, c.id)
+      return remaining > 0
+    })
+  }, [contracts, getCustomerRemainingSessionsInContract])
+
   const getCustomerActiveContract = useCallback((customerId: string) => {
     const customerContracts = contracts.filter(con => 
       con.customerId === customerId || 
       con.sharedWithCustomerId === customerId || 
       (con.customerIds && con.customerIds.includes(customerId))
     )
-    const activeOrExpiring = customerContracts.find(con => con.status === 'active' || con.status === 'expiring')
+    const activeOrExpiring = customerContracts.find(con => (con.status === 'active' || con.status === 'expiring') && getCustomerRemainingSessionsInContract(con, customerId) > 0)
     if (activeOrExpiring) return activeOrExpiring
-    return customerContracts.find(con => con.status === 'expired')
-  }, [contracts])
+    return customerContracts.find(con => con.status === 'expired') || customerContracts[0] || null
+  }, [contracts, getCustomerRemainingSessionsInContract])
 
   const getCustomerSessionsAndStatus = useCallback((c: Customer) => {
-    const customerActiveContracts = contracts.filter(con => 
-      (con.status === 'active' || con.status === 'expiring') &&
-      (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id)))
-    )
+    const customerOngoingContracts = getCustomerOngoingContracts(c)
+    const hasMultiple = customerOngoingContracts.length >= 2
+    const activeContract = customerOngoingContracts[0] || null
 
-    const hasMultiple = customerActiveContracts.length > 1
-    const activeContract = customerActiveContracts[0] || getCustomerActiveContract(c.id)
-
-    if (!activeContract) {
+    if (!activeContract || customerOngoingContracts.length === 0) {
       return {
         activeContract: null,
         hasMultiple: false,
@@ -73,36 +86,26 @@ export function CustomerTable({
     const isUnsigned = !activeContract.signatureDataUrl || 
       ((activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)
 
-    let remaining = activeContract.remainingSessions
+    let remaining = getCustomerRemainingSessionsInContract(activeContract, c.id)
     let total = activeContract.totalSessions
-    let noteText = ''
+    if (activeContract.contractType === 'group' && activeContract.groupMemberQuotas?.[c.id]) {
+      total = activeContract.groupMemberQuotas[c.id].totalSessions
+    }
 
-    if (activeContract.contractType === 'group') {
-      const quota = activeContract.groupMemberQuotas?.[c.id]
-      if (quota) {
-        remaining = quota.remainingSessions
-        total = quota.totalSessions
-      } else {
-        const count = activeContract.customerIds?.length || 1
-        remaining = Math.floor(activeContract.remainingSessions / count)
-        total = Math.floor(activeContract.totalSessions / count)
-      }
+    let noteText = ''
+    if (hasMultiple) {
+      noteText = '(複數合約)'
+    } else if (activeContract.contractType === 'group') {
       noteText = '(團體課)'
     } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
       noteText = '(雙人共享)'
     }
 
+    let statusBadgeType: 'none' | 'expired' | 'unsigned' | 'multiple' | 'group' | 'dual' | 'single' = 'single'
     if (hasMultiple) {
-      noteText = '(複數合約)'
-    }
-
-    let statusBadgeType: 'expired' | 'unsigned' | 'multiple' | 'group' | 'dual' | 'single' = 'single'
-    if (activeContract.status === 'expired') {
-      statusBadgeType = 'expired'
+      statusBadgeType = 'multiple'
     } else if (isUnsigned) {
       statusBadgeType = 'unsigned'
-    } else if (hasMultiple) {
-      statusBadgeType = 'multiple'
     } else if (activeContract.contractType === 'group') {
       statusBadgeType = 'group'
     } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
@@ -117,7 +120,7 @@ export function CustomerTable({
       statusBadgeType,
       noteText,
     }
-  }, [contracts, getCustomerActiveContract])
+  }, [getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
 
   const getCustomerLatestContract = useCallback((customerId: string) => {
     const customerContracts = contracts.filter(con => 
@@ -145,19 +148,9 @@ export function CustomerTable({
 
     // 3. Active contract status filter
     if (filterType === 'has-active') {
-      result = result.filter(c => {
-        return contracts.some(con => 
-          (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
-          (con.status === 'active' || con.status === 'expiring')
-        )
-      })
+      result = result.filter(c => getCustomerOngoingContracts(c).length > 0)
     } else if (filterType === 'no-active') {
-      result = result.filter(c => {
-        return !contracts.some(con => 
-          (con.customerId === c.id || con.sharedWithCustomerId === c.id || (con.customerIds && con.customerIds.includes(c.id))) && 
-          (con.status === 'active' || con.status === 'expiring')
-        )
-      })
+      result = result.filter(c => getCustomerOngoingContracts(c).length === 0)
     }
 
     // 3. Sorting logic
@@ -351,7 +344,7 @@ export function CustomerTable({
                             )}
                             {statusBadgeType === 'multiple' && (
                               <Badge className="bg-purple-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-purple-500/20">
-                                <RiFileTextLine className="w-3 h-3 mr-1" /> (複數合約)
+                                <RiFileTextLine className="w-3 h-3 mr-1" /> 複數合約
                               </Badge>
                             )}
                             {statusBadgeType === 'group' && (
@@ -376,7 +369,7 @@ export function CustomerTable({
                             )}
                           </div>
                         ) : (
-                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">無有效合約</Badge>
+                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">無合約</Badge>
                         )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
