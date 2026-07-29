@@ -749,6 +749,22 @@ export function CustomerFormModal({
       return
     }
 
+    if (isBindMode && selectedContract) {
+      const isGroup = selectedContract.contractType === 'group'
+      const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+      const currentCount = isGroup
+        ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
+        : isDual ? 2 : 1
+      if (isDual) {
+        alert('此雙人共享合約成員已滿 (2/2人)，無法再進行新增綁定！')
+        return
+      }
+      if (isGroup && currentCount >= 6) {
+        alert('此團體合約成員已達人數上限 (6/6人)，無法再進行新增綁定！')
+        return
+      }
+    }
+
     // Group contract quota validation & additional member creation
     if (data.contract?.contractType === 'group' && !data.bindExistingContractMode) {
       const totalSess = Number(data.contract.totalSessions) || 0
@@ -1936,9 +1952,25 @@ export function CustomerFormModal({
                                     <option value="">-- 請選擇合約 --</option>
                                     {existingCustomerContracts.map((c) => {
                                       const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
+                                      const isGroup = c.contractType === 'group'
+                                      const isDual = c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2)
+                                      const currentMemberCount = isGroup
+                                        ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
+                                        : isDual ? 2 : 1
+                                      const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
+
+                                      const tagText = isGroup ? '[👥 團體]' : isDual ? '[👥 雙人共享]' : '[👤 個人]'
+                                      const statusSuffix = isFull
+                                        ? ` (已滿額 ${isGroup ? currentMemberCount + '/6' : '2/2'}人 - 無法綁定)`
+                                        : isDual
+                                        ? ''
+                                        : isGroup
+                                        ? ` (${currentMemberCount}/6人)`
+                                        : ' (綁定後轉雙人合約)'
+
                                       return (
-                                        <option key={c.id} value={c.id}>
-                                          合約編號: {c.contractNumber || c.id.substring(0, 8)} ({c.totalSessions} 堂, 教練: {trainerName})
+                                        <option key={c.id} value={c.id} disabled={isFull}>
+                                          {tagText} 合約編號: {c.contractNumber || c.id.substring(0, 8)} ({c.remainingSessions}/{c.totalSessions} 堂, 教練: {trainerName}){statusSuffix}
                                         </option>
                                       )
                                     })}
@@ -1948,29 +1980,114 @@ export function CustomerFormModal({
                               </div>
                             </div>
 
-                            {selectedContract && (
-                              <div className="mt-4 p-4 bg-white rounded-xl border border-blue-100 space-y-2 text-xs text-stone-600 shadow-sm">
-                                <h4 className="font-bold text-blue-950 text-sm border-b border-stone-100 pb-1.5 flex justify-between items-center">
-                                  <span>合約詳細資訊</span>
-                                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-normal text-[10px]">
-                                    {selectedContract.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'}
-                                  </span>
-                                </h4>
-                                <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-1 text-[11px]">
-                                  <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
-                                  <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
-                                  <div>總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
-                                  <div>剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
-                                  <div>合約金額: <span className="font-bold text-stone-900">NT$ {selectedContract.totalAmount.toLocaleString()}</span></div>
-                                  <div>已付金額: <span className="font-bold text-stone-900">NT$ {selectedContract.paidAmount.toLocaleString()}</span></div>
-                                  <div className="col-span-2">合約期間: <span className="font-bold text-stone-900">
-                                    {selectedContract.startDate ? new Date(selectedContract.startDate.seconds ? selectedContract.startDate.seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''} 
-                                    {' ~ '}
-                                    {selectedContract.endDate ? new Date(selectedContract.endDate.seconds ? selectedContract.endDate.seconds * 1000 : selectedContract.endDate).toLocaleDateString() : ''}
-                                  </span></div>
-                                </div>
-                              </div>
-                            )}
+                              {selectedContract && (() => {
+                                const isGroup = selectedContract.contractType === 'group'
+                                const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+                                const currentCount = isGroup
+                                  ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
+                                  : isDual ? 2 : 1
+                                const isFull = isGroup ? currentCount >= 6 : isDual ? true : false
+
+                                if (isGroup) {
+                                  return (
+                                    <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
+                                      <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                                        <h4 className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
+                                          <span>👥 團體合約綁定明細</span>
+                                        </h4>
+                                        <span className={cn(
+                                          "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                                          isFull
+                                            ? "bg-red-50 text-red-700 border-red-200"
+                                            : "bg-emerald-100 text-emerald-800 border-emerald-300"
+                                        )}>
+                                          {isFull ? `成員滿額 (${currentCount}/6人)` : `現有成員: ${currentCount}/6人 (尚有 ${6 - currentCount} 個空位)`}
+                                        </span>
+                                      </div>
+
+                                      {selectedContract.groupMemberQuotas && (
+                                        <div className="space-y-1.5 bg-white/80 p-3 rounded-xl border border-emerald-100">
+                                          <div className="text-[11px] font-bold text-emerald-900 mb-1">現有合約團員名單：</div>
+                                          <div className="grid grid-cols-2 gap-1.5">
+                                            {Object.values(selectedContract.groupMemberQuotas as Record<string, any>).map((gm: any, i: number) => (
+                                              <div key={i} className="px-2 py-1 bg-emerald-50 rounded border border-emerald-200/60 flex justify-between text-[10px]">
+                                                <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
+                                                <span className="font-mono text-emerald-700 font-bold">{gm.remainingSessions}/{gm.totalSessions}堂</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {!isFull && (
+                                        <div className="p-2.5 bg-emerald-100/70 text-emerald-900 rounded-xl text-[11px] font-bold border border-emerald-200 flex items-center gap-1.5">
+                                          <span>✨ 新學員「{form.watch('name') || '新學員'}」將新增綁定為第 {currentCount + 1} 位團體成員。</span>
+                                        </div>
+                                      )}
+
+                                      {isFull && (
+                                        <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
+                                          <RiAlertLine className="w-4 h-4 shrink-0" />
+                                          <span>此團體合約成員人數已達上限 (6人)，無法再新增綁定！</span>
+                                        </div>
+                                      )}
+
+                                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1 text-[11px] text-stone-600">
+                                        <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
+                                        <div>主授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                        <div>團體總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
+                                        <div>團體剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                if (isDual) {
+                                  return (
+                                    <div className="mt-4 p-4 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
+                                      <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                                        <h4 className="font-bold text-amber-950 text-sm">👥 雙人共享合約明細</h4>
+                                        <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-200">
+                                          已滿額 (2/2人)
+                                        </span>
+                                      </div>
+                                      <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
+                                        <RiAlertLine className="w-4 h-4 shrink-0" />
+                                        <span>此雙人共享合約成員已滿 (2/2人)，無法再新增綁定學員。</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1 text-[11px]">
+                                        <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
+                                        <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
+                                return (
+                                  <div className="mt-4 p-4 bg-white rounded-xl border border-blue-100 space-y-3 text-xs text-stone-600 shadow-sm animate-in fade-in duration-300">
+                                    <div className="flex justify-between items-center border-b border-stone-100 pb-2">
+                                      <h4 className="font-bold text-blue-950 text-sm">👤 個人合約明細</h4>
+                                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-bold text-[10px]">
+                                        個人合約 (綁定後轉雙人)
+                                      </span>
+                                    </div>
+
+                                    <div className="p-2.5 bg-blue-50 text-blue-900 rounded-xl text-[11px] font-bold border border-blue-100 flex items-center gap-1.5">
+                                      <RiInformationLine className="w-4 h-4 shrink-0 text-blue-600" />
+                                      <span>綁定此個人合約後，系統將自動升級轉換為「雙人共享合約」，由兩位學員共同持用。</span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-y-2 gap-x-4 pt-1 text-[11px]">
+                                      <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
+                                      <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                      <div>總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
+                                      <div>剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
+                                      <div>合約金額: <span className="font-bold text-stone-900">NT$ {selectedContract.totalAmount.toLocaleString()}</span></div>
+                                      <div>已付金額: <span className="font-bold text-stone-900">NT$ {selectedContract.paidAmount.toLocaleString()}</span></div>
+                                    </div>
+                                  </div>
+                                )
+                              })()}
 
                             {/* 第二位學員的授課教練選擇 */}
                             <div className="space-y-2 pt-2">
