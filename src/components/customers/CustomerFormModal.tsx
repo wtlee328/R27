@@ -287,7 +287,7 @@ export function CustomerFormModal({
   const isSingleBinding = useMemo(() => {
     if (!form.watch('bindExistingContractMode') || !selectedContract) return false
     const isGroup = selectedContract.contractType === 'group'
-    const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+    const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
     return !isGroup && !isDual
   }, [form.watch('bindExistingContractMode'), selectedContract])
 
@@ -761,7 +761,7 @@ export function CustomerFormModal({
 
     if (isBindMode && selectedContract) {
       const isGroup = selectedContract.contractType === 'group'
-      const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+      const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
       const currentCount = isGroup
         ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
         : isDual ? 2 : 1
@@ -1963,7 +1963,7 @@ export function CustomerFormModal({
                                     {existingCustomerContracts.map((c) => {
                                       const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
                                       const isGroup = c.contractType === 'group'
-                                      const isDual = c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2)
+                                      const isDual = !isGroup && (c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2))
                                       const currentMemberCount = isGroup
                                         ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                         : isDual ? 2 : 1
@@ -1992,7 +1992,7 @@ export function CustomerFormModal({
 
                               {selectedContract && (() => {
                                 const isGroup = selectedContract.contractType === 'group'
-                                const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+                                const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
                                 const currentCount = isGroup
                                   ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
                                   : isDual ? 2 : 1
