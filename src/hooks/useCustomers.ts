@@ -218,6 +218,50 @@ export function useCustomers() {
   const createContract = async (customerId: string, data: ContractFormValues) => {
     if (!user) throw new Error('Not authenticated')
 
+    if (data.bindExistingContractMode && data.existingContractId) {
+      console.log('Contract Renewal: Binding existing contract:', data.existingContractId)
+      const existingContractRef = doc(db, 'contracts', data.existingContractId)
+      const contractSnap = await getDoc(existingContractRef)
+      if (contractSnap.exists()) {
+        const existingContractData = contractSnap.data()
+        const isGroup = existingContractData.contractType === 'group'
+        const currentCustomerIds = existingContractData.customerIds || []
+        const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
+
+        const secondaryTrainerId = data.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid
+
+        const contractUpdate: any = {
+          customerIds: updatedCustomerIds,
+          updatedAt: serverTimestamp(),
+        }
+
+        if (isGroup) {
+          contractUpdate.contractType = 'group'
+          const existingQuotas = { ...(existingContractData.groupMemberQuotas || {}) }
+          const targetCust = customers.find(c => c.id === customerId)
+          existingQuotas[customerId] = {
+            customerId,
+            customerName: targetCust?.name || '學員',
+            totalSessions: 0,
+            remainingSessions: 0,
+          }
+          contractUpdate.groupMemberQuotas = existingQuotas
+          contractUpdate.status = 'pending_signature'
+        } else {
+          contractUpdate.contractType = 'dual'
+          contractUpdate.sharedWithCustomerId = customerId
+          contractUpdate.secondaryTrainerId = secondaryTrainerId
+          if (data.secondarySignatureDataUrl) {
+            contractUpdate.secondarySignatureDataUrl = data.secondarySignatureDataUrl
+          }
+        }
+
+        await updateDoc(existingContractRef, contractUpdate)
+        await fetchAllData()
+        return data.existingContractId
+      }
+    }
+
     let finalPartnerId = data.sharedWithCustomerId || null
     if (data.partnerMode === 'new' && data.partnerCustomerData) {
       console.log('Contract Renewal: Creating partner customer B profile...')

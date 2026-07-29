@@ -83,10 +83,12 @@ export const baseContractFormSchema = z.object({
   partnerCustomerData: customerFormSchema.nullable().optional().default(null),
   paymentType: z.enum(['single', 'installments']).default('single'),
   installmentCount: z.coerce.number().min(2).max(16).default(2),
+  bindExistingContractMode: z.boolean().optional().default(false),
+  existingContractId: z.string().nullable().optional().default(null),
 })
 
 export const contractFormSchema = baseContractFormSchema.superRefine((data, ctx) => {
-  if (data.remainingSessions > data.totalSessions) {
+  if (!data.bindExistingContractMode && data.remainingSessions > data.totalSessions) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['remainingSessions'],
