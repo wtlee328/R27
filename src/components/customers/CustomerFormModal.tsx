@@ -2978,7 +2978,7 @@ export function CustomerFormModal({
                                       </div>
                                       <div className="col-span-6">
                                         教練比例：<span className="font-bold text-stone-900">
-                                          1位教練對 {isGroup ? groupMemberCount : isDual ? '2' : '1'} 位學員
+                                          {(isDual && !isOneToTwo) ? '2' : '1'} 位教練對 {isGroup ? groupMemberCount : isDual ? '2' : '1'} 位學員
                                         </span>
                                       </div>
                                       <div className="col-span-12">指定教練：<span className="font-bold text-stone-900 bg-stone-50 px-2 py-0.5 rounded border border-stone-200">{coachNames}</span></div>

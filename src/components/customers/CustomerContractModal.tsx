@@ -186,7 +186,11 @@ export function CustomerContractModal({
       setEditEmergencyRelation(customer.emergencyContact?.relation || '')
       setEditEmergencyPhone(customer.emergencyContact?.phone || '')
 
-      setEditCoachRatio(contract.coachRatio || (contract.contractType === 'dual' ? 2 : 1))
+      const isDualContract = contract.contractType === 'dual' || !!contract.sharedWithCustomerId || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 2)
+      const defaultStudentCount = isDualContract ? 2 : (contract.contractType === 'group' ? (Object.keys(contract.groupMemberQuotas || {}).length || 3) : 1)
+      const initialRatio = contract.coachRatio && contract.coachRatio > 0 ? (isDualContract && contract.coachRatio === 1 ? 2 : contract.coachRatio) : defaultStudentCount
+
+      setEditCoachRatio(initialRatio)
       setEditMonthlyDueDay(contract.monthlyDueDay || 5)
       setEditMonthlyDueAmount(contract.monthlyDueAmount || 0)
     }
@@ -203,6 +207,7 @@ export function CustomerContractModal({
       setEditPartnerEmergencyName(partner.emergencyContact?.name || '')
       setEditPartnerEmergencyRelation(partner.emergencyContact?.relation || '')
       setEditPartnerEmergencyPhone(partner.emergencyContact?.phone || '')
+      setEditCoachRatio(prev => (prev === 1 ? 2 : prev))
     } else {
       setEditPartnerBirthDate('')
       setEditPartnerEmergencyName('')
@@ -750,7 +755,7 @@ export function CustomerContractModal({
                     </span>
                   </div>
                   <div className="col-span-6 flex items-center">
-                    <span>教練比例：{(!partner || isOneToTwo) ? '1' : '2'} 位教練對 </span>
+                    <span>教練比例：{isOneToTwo ? '1' : '2'} 位教練對 </span>
                     {isEditing ? (
                       <input 
                         type="number" 

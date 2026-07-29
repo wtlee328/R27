@@ -252,6 +252,7 @@ export function useCustomers() {
           contractUpdate.contractType = 'dual'
           contractUpdate.sharedWithCustomerId = customerId
           contractUpdate.secondaryTrainerId = secondaryTrainerId
+          contractUpdate.coachRatio = 2
           if (data.secondarySignatureDataUrl) {
             contractUpdate.secondarySignatureDataUrl = data.secondarySignatureDataUrl
           }
@@ -329,6 +330,7 @@ export function useCustomers() {
       sharedWithCustomerId: partnerId,
       customerIds,
       contractType,
+      coachRatio: isGroup ? (Object.keys(groupMemberQuotas || {}).length || 3) : (isDual ? 2 : 1),
       status,
       primaryCustomerId: customerId,
       startDate: Timestamp.fromDate(ensureDate(data.startDate)),
@@ -508,6 +510,7 @@ export function useCustomers() {
           contractUpdate.contractType = 'dual'
           contractUpdate.sharedWithCustomerId = customerId
           contractUpdate.secondaryTrainerId = secondaryTrainerId
+          contractUpdate.coachRatio = 2
           if (data.contract?.secondarySignatureDataUrl) {
             contractUpdate.secondarySignatureDataUrl = data.contract.secondarySignatureDataUrl
           }
