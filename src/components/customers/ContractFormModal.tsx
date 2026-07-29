@@ -189,6 +189,16 @@ export function ContractFormModal({
     return allContracts.find(c => c.id === cid) || null
   }, [form.watch('existingContractId'), allContracts])
 
+  const isCustomerAlreadyInContract = (c: any) => {
+    if (!customer?.id || !c) return false
+    return Boolean(
+      c.customerId === customer.id ||
+      (Array.isArray(c.customerIds) && c.customerIds.includes(customer.id)) ||
+      c.sharedWithCustomerId === customer.id ||
+      (c.groupMemberQuotas && Boolean(c.groupMemberQuotas[customer.id]))
+    )
+  }
+
   const isSingleBinding = useMemo(() => {
     if (!form.watch('bindExistingContractMode') || !selectedContract) return false
     const isGroup = selectedContract.contractType === 'group'
@@ -477,6 +487,7 @@ export function ContractFormModal({
       if (step.id === 'contract') {
         if (watchedValues.bindExistingContractMode) {
           if (!watchedValues.existingContractId) return false
+          if (selectedContract && isCustomerAlreadyInContract(selectedContract)) return false
           if (isSingleBinding && !watchedValues.secondaryTrainerId) return false
           return true
         }
@@ -570,13 +581,17 @@ export function ContractFormModal({
       }
       return false
     })
-  }, [activeSteps, watchedValues, additionalGroupMembers, isSingleBinding])
+  }, [activeSteps, watchedValues, additionalGroupMembers, isSingleBinding, selectedContract, customer])
 
   const handleNext = async () => {
     const currentStepObj = activeSteps[currentStep]
     if (watchedValues.bindExistingContractMode && currentStepObj.id === 'contract') {
       if (!form.getValues('existingContractId')) {
         alert('請選擇欲連結的現有合約！')
+        return
+      }
+      if (selectedContract && isCustomerAlreadyInContract(selectedContract)) {
+        alert(`防呆警告：學員 ${customer.name} 已在此合約中，無法重複綁定加入！`)
         return
       }
       if (isSingleBinding && !form.getValues('secondaryTrainerId')) {
@@ -648,6 +663,11 @@ export function ContractFormModal({
       if (data.bindExistingContractMode) {
         if (!data.existingContractId) {
           alert('請選擇欲連結的現有合約！')
+          setLoading(false)
+          return
+        }
+        if (selectedContract && isCustomerAlreadyInContract(selectedContract)) {
+          alert(`防呆警告：學員 ${customer.name} 已在此合約中，無法重複綁定加入！`)
           setLoading(false)
           return
         }
@@ -1028,9 +1048,12 @@ export function ContractFormModal({
                                       ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                       : isDual ? 2 : 1
                                     const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
+                                    const isAlreadyMember = isCustomerAlreadyInContract(c)
 
                                     const tagText = isGroup ? '[👥 團體]' : isDual ? '[👥 雙人共享]' : '[👤 個人]'
-                                    const statusSuffix = isFull
+                                    const statusSuffix = isAlreadyMember
+                                      ? ' (此學員已在此合約中 - 無法重複加入)'
+                                      : isFull
                                       ? ` (已滿額 ${isGroup ? currentMemberCount + '/6' : '2/2'}人 - 無法綁定)`
                                       : isDual
                                       ? ''
@@ -1039,7 +1062,7 @@ export function ContractFormModal({
                                       : ' (綁定後轉雙人合約)'
 
                                     return (
-                                      <option key={c.id} value={c.id} disabled={isFull}>
+                                      <option key={c.id} value={c.id} disabled={isFull || isAlreadyMember}>
                                         {tagText} 合約編號: {c.contractNumber || c.contractNo || c.id.substring(0, 8)} ({c.remainingSessions}/{c.totalSessions} 堂, 教練: {trainerName}){statusSuffix}
                                       </option>
                                     )
@@ -1057,6 +1080,21 @@ export function ContractFormModal({
                               ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
                               : isDual ? 2 : 1
                             const isFull = isGroup ? currentCount >= 6 : isDual ? true : false
+                            const isAlreadyMember = isCustomerAlreadyInContract(selectedContract)
+
+                            if (isAlreadyMember) {
+                              return (
+                                <div className="mt-4 p-4 bg-red-50/80 border border-red-200 rounded-2xl text-xs text-red-900 space-y-1.5 font-medium animate-in fade-in duration-300 shadow-xs">
+                                  <div className="flex items-center gap-1.5 font-bold text-sm text-red-950">
+                                    <RiAlertLine className="w-4 h-4 shrink-0 text-red-600" />
+                                    <span>防呆警告：無法綁定此合約</span>
+                                  </div>
+                                  <p className="text-red-700 leading-relaxed">
+                                    學員 <span className="font-bold underline">{customer?.name}</span> 目前已是此合約（編號：<span className="font-mono font-bold">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span>）的成員之一，無法重複新增或綁定至同一合約！
+                                  </p>
+                                </div>
+                              )
+                            }
 
                             if (isGroup) {
                               return (
