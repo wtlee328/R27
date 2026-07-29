@@ -891,7 +891,21 @@ export function CustomerContractModal({
                       <input 
                         type="date" 
                         value={editStartDate} 
-                        onChange={e => setEditStartDate(e.target.value)}
+                        onChange={e => {
+                          const newStart = e.target.value
+                          setEditStartDate(newStart)
+                          if (newStart) {
+                            const startD = new Date(newStart)
+                            if (!isNaN(startD.getTime())) {
+                              const oneYearLater = new Date(startD)
+                              oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
+                              const yr = oneYearLater.getFullYear()
+                              const mo = String(oneYearLater.getMonth() + 1).padStart(2, '0')
+                              const dy = String(oneYearLater.getDate()).padStart(2, '0')
+                              setEditEndDate(`${yr}-${mo}-${dy}`)
+                            }
+                          }
+                        }}
                         className="border-b border-stone-400 bg-stone-50 font-mono text-xs w-28 focus:outline-none" 
                       />
                     ) : (

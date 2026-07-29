@@ -282,6 +282,28 @@ export function CustomerFormModal({
     }
   }, [open, form, centerId, customers.length, contracts.length])
 
+  const watchedContractStartDate = form.watch('contract.startDate')
+  const prevContractStartDateRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      prevContractStartDateRef.current = null
+      return
+    }
+    if (watchedContractStartDate) {
+      const startD = new Date(watchedContractStartDate)
+      if (!isNaN(startD.getTime())) {
+        const currentStartIso = startD.toISOString().split('T')[0]
+        if (prevContractStartDateRef.current !== currentStartIso) {
+          prevContractStartDateRef.current = currentStartIso
+          const oneYearLater = new Date(startD)
+          oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
+          form.setValue('contract.endDate', oneYearLater, { shouldValidate: true })
+        }
+      }
+    }
+  }, [open, watchedContractStartDate, form])
+
   useEffect(() => {
     if (open) {
       const sourceData = initialData || initialCustomer

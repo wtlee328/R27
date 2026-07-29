@@ -276,6 +276,28 @@ export function ContractFormModal({
     }
   }, [open, customer, form, trainers])
 
+  const watchedStartDate = form.watch('startDate')
+  const prevStartDateRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!open) {
+      prevStartDateRef.current = null
+      return
+    }
+    if (watchedStartDate) {
+      const startD = new Date(watchedStartDate)
+      if (!isNaN(startD.getTime())) {
+        const currentStartIso = startD.toISOString().split('T')[0]
+        if (prevStartDateRef.current !== currentStartIso) {
+          prevStartDateRef.current = currentStartIso
+          const oneYearLater = new Date(startD)
+          oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
+          form.setValue('endDate', oneYearLater, { shouldValidate: true })
+        }
+      }
+    }
+  }, [open, watchedStartDate, form])
+
   const activeSteps = useMemo(() => {
     const steps = [...STEPS]
     
