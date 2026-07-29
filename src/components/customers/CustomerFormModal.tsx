@@ -291,6 +291,17 @@ export function CustomerFormModal({
     return !isGroup && !isDual
   }, [form.watch('bindExistingContractMode'), selectedContract])
 
+  const isCustomerAlreadyInContract = (c: any) => {
+    const custId = initialCustomer?.id || initialData?.id
+    if (!custId || !c) return false
+    return Boolean(
+      c.customerId === custId ||
+      (Array.isArray(c.customerIds) && c.customerIds.includes(custId)) ||
+      c.sharedWithCustomerId === custId ||
+      (c.groupMemberQuotas && Boolean(c.groupMemberQuotas[custId]))
+    )
+  }
+
   useEffect(() => {
     const fetchTrainersAndData = async () => {
       try {
@@ -683,6 +694,11 @@ export function CustomerFormModal({
       ? (isSingleBinding ? (!!form.getValues('existingContractId') && !!form.getValues('contract.secondaryTrainerId')) : !!form.getValues('existingContractId'))
       : await form.trigger(fieldsToValidate)
     
+    if (isContractStep && isBindMode && selectedContract && isCustomerAlreadyInContract(selectedContract)) {
+      alert(`防呆警告：學員 ${form.getValues('name') || '此學員'} 已在此合約中，無法重複綁定加入！`)
+      return
+    }
+
     if (isValid && currentStep < activeSteps.length - 1) {
       setCurrentStep(prev => prev + 1)
     }
@@ -760,6 +776,10 @@ export function CustomerFormModal({
     }
 
     if (isBindMode && selectedContract) {
+      if (isCustomerAlreadyInContract(selectedContract)) {
+        alert(`防呆警告：學員 ${form.getValues('name') || '此學員'} 已在此合約中，無法重複綁定加入！`)
+        return
+      }
       const isGroup = selectedContract.contractType === 'group'
       const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
       const currentCount = isGroup
@@ -1968,9 +1988,12 @@ export function CustomerFormModal({
                                         ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                         : isDual ? 2 : 1
                                       const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
+                                      const isAlreadyMember = isCustomerAlreadyInContract(c)
 
                                       const tagText = isGroup ? '[👥 團體]' : isDual ? '[👥 雙人共享]' : '[👤 個人]'
-                                      const statusSuffix = isFull
+                                      const statusSuffix = isAlreadyMember
+                                        ? ' (此學員已在此合約中 - 無法重複加入)'
+                                        : isFull
                                         ? ` (已滿額 ${isGroup ? currentMemberCount + '/6' : '2/2'}人 - 無法綁定)`
                                         : isDual
                                         ? ''
