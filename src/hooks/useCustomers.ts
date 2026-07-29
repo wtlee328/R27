@@ -225,8 +225,9 @@ export function useCustomers() {
       if (contractSnap.exists()) {
         const existingContractData = contractSnap.data()
         const isGroup = existingContractData.contractType === 'group'
-        const currentCustomerIds = existingContractData.customerIds || []
-        const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
+        const primaryCustId = existingContractData.customerId || existingContractData.primaryCustomerId
+        const currentCustomerIds = existingContractData.customerIds || (primaryCustId ? [primaryCustId] : [])
+        const updatedCustomerIds = Array.from(new Set([primaryCustId, ...currentCustomerIds, customerId].filter(Boolean)))
 
         const secondaryTrainerId = data.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid
 
@@ -257,6 +258,16 @@ export function useCustomers() {
         }
 
         await updateDoc(existingContractRef, contractUpdate)
+        
+        try {
+          await updateDoc(doc(db, 'customers', customerId), {
+            trainerId: secondaryTrainerId,
+            updatedAt: serverTimestamp(),
+          })
+        } catch (err) {
+          console.error('Failed to sync customer trainer:', err)
+        }
+
         await fetchAllData()
         return data.existingContractId
       }
@@ -470,8 +481,9 @@ export function useCustomers() {
         const existingContractRef = doc(db, 'contracts', data.existingContractId)
         
         const isGroup = existingContractData.contractType === 'group'
-        const currentCustomerIds = existingContractData.customerIds || []
-        const updatedCustomerIds = Array.from(new Set([...currentCustomerIds, customerId]))
+        const primaryCustId = existingContractData.customerId || existingContractData.primaryCustomerId
+        const currentCustomerIds = existingContractData.customerIds || (primaryCustId ? [primaryCustId] : [])
+        const updatedCustomerIds = Array.from(new Set([primaryCustId, ...currentCustomerIds, customerId].filter(Boolean)))
         
         // Use the selected secondaryTrainerId for the new (second) customer
         const secondaryTrainerId = data.contract?.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid

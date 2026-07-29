@@ -349,17 +349,17 @@ export function CustomerTable({
                             )}
                             {statusBadgeType === 'group' && (
                               <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
-                                <RiTeamLine className="w-3 h-3 mr-1" /> 進行中
+                                <RiTeamLine className="w-3 h-3 mr-1" /> 團體合約
                               </Badge>
                             )}
                             {statusBadgeType === 'dual' && (
-                              <Badge className="bg-stone-800 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
-                                <RiGroupLine className="w-3 h-3 mr-1 text-orange-400" /> 進行中
+                              <Badge className="bg-orange-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-orange-500/20">
+                                <RiGroupLine className="w-3 h-3 mr-1 text-white" /> 雙人共享
                               </Badge>
                             )}
                             {statusBadgeType === 'single' && (
                               <Badge className="bg-stone-900 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
-                                <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 進行中
+                                <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 個人合約
                               </Badge>
                             )}
                             {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
