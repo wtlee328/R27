@@ -458,8 +458,8 @@ export function CustomerDetailsModal({
                     const partnerName = partnerId ? partnerNames[partnerId] : null
                     const isCompleted = contract.remainingSessions <= 0 || contract.status === 'completed'
                     const isExpired = contract.status === 'expired'
-                    const isActive = !isCompleted && !isExpired && (contract.status === 'active' || contract.status === 'expiring')
-                    const isUnsigned = !contract.signatureDataUrl
+                    const isUnsigned = contract.status === 'pending_signature' || !contract.signatureDataUrl || (isContractDual && !contract.secondarySignatureDataUrl)
+                    const isActive = !isCompleted && !isExpired && !isUnsigned
 
                     return (
                       <div
@@ -470,9 +470,7 @@ export function CustomerDetailsModal({
                         {/* Icon */}
                         <div className={cn(
                           'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
-                          isActive
-                            ? isContractDual ? 'bg-orange-50 text-orange-500' : 'bg-stone-900 text-white'
-                            : isCompleted ? 'bg-blue-50 text-blue-600' : 'bg-stone-100 text-stone-400'
+                          isCompleted ? 'bg-blue-50 text-blue-600' : isUnsigned ? 'bg-amber-50 text-amber-600' : 'bg-stone-900 text-white'
                         )}>
                           <RiFileTextLine className="w-5 h-5" />
                         </div>
@@ -482,13 +480,22 @@ export function CustomerDetailsModal({
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-stone-900 text-sm">{contract.totalSessions} 堂合約</span>
                             {isCompleted ? (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">已完成</span>
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">已完成</span>
+                            ) : isUnsigned ? (
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-500 text-white shadow-sm shadow-amber-500/20 flex items-center gap-1 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> 待簽名
+                              </span>
                             ) : (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">進行中</span>
+                              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">進行中</span>
                             )}
-                            {isUnsigned && !isCompleted && (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white flex items-center gap-1 animate-pulse">
-                                待簽名
+                            {isContractDual && (
+                              <span className="text-[10px] font-bold flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                                <RiGroupLine className="w-3 h-3" /> 雙人共享
+                              </span>
+                            )}
+                            {contract.contractType === 'group' && (
+                              <span className="text-[10px] font-bold flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                <RiTeamLine className="w-3 h-3" /> 團體課
                               </span>
                             )}
                           </div>
