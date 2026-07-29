@@ -16,6 +16,7 @@ import {
   RiUser3Line,
   RiGroupLine,
   RiLink,
+  RiLinkM,
   RiCurrencyLine,
   RiBankCardLine,
   RiInformationLine,
