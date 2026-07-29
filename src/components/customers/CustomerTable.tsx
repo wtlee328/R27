@@ -37,7 +37,14 @@ export function CustomerTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTrainerId, setSelectedTrainerId] = useState('all')
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
-  const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
+  const checkIsMember = useCallback((con: Contract, customerId: string) => {
+    if (!con || !customerId) return false
+    if (con.customerId === customerId) return true
+    if (con.sharedWithCustomerId === customerId) return true
+    if (Array.isArray(con.customerIds) && con.customerIds.includes(customerId)) return true
+    if (con.groupMemberQuotas && Boolean(con.groupMemberQuotas[customerId])) return true
+    return false
+  }, [])
 
   const getCustomerRemainingSessionsInContract = useCallback((con: Contract, customerId: string) => {
     if (con.contractType === 'group' && con.groupMemberQuotas?.[customerId]) {
@@ -48,8 +55,7 @@ export function CustomerTable({
 
   const getCustomerOngoingContracts = useCallback((c: Customer) => {
     return contracts.filter(con => {
-      const isMember = con.customerId === c.id || con.sharedWithCustomerId === c.id || (Array.isArray(con.customerIds) && con.customerIds.includes(c.id))
-      if (!isMember) return false
+      if (!checkIsMember(con, c.id)) return false
       if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
       
       const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
@@ -59,23 +65,17 @@ export function CustomerTable({
       const remaining = getCustomerRemainingSessionsInContract(con, c.id)
       return remaining > 0
     })
-  }, [contracts, getCustomerRemainingSessionsInContract])
+  }, [contracts, checkIsMember, getCustomerRemainingSessionsInContract])
 
   const getCustomerActiveContract = useCallback((customerId: string) => {
-    const customerContracts = contracts.filter(con => 
-      con.customerId === customerId || 
-      con.sharedWithCustomerId === customerId || 
-      (con.customerIds && con.customerIds.includes(customerId))
-    )
+    const customerContracts = contracts.filter(con => checkIsMember(con, customerId))
     const activeOrExpiring = customerContracts.find(con => (con.status === 'active' || con.status === 'expiring' || con.status === 'pending_signature') && (getCustomerRemainingSessionsInContract(con, customerId) > 0 || con.status === 'pending_signature' || !con.signatureDataUrl))
     if (activeOrExpiring) return activeOrExpiring
     return customerContracts.find(con => con.status === 'expired') || customerContracts[0] || null
-  }, [contracts, getCustomerRemainingSessionsInContract])
+  }, [contracts, checkIsMember, getCustomerRemainingSessionsInContract])
 
   const getCustomerSessionsAndStatus = useCallback((c: Customer) => {
-    const customerContracts = contracts.filter(con => 
-      con.customerId === c.id || con.sharedWithCustomerId === c.id || (Array.isArray(con.customerIds) && con.customerIds.includes(c.id))
-    )
+    const customerContracts = contracts.filter(con => checkIsMember(con, c.id))
 
     const pendingContract = customerContracts.find(con => {
       if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
@@ -137,19 +137,17 @@ export function CustomerTable({
       customerStatus,
       contractCategoryText,
     }
-  }, [contracts, getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
+  }, [contracts, checkIsMember, getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
 
   const getCustomerLatestContract = useCallback((customerId: string) => {
-    const customerContracts = contracts.filter(con => 
-      con.customerId === customerId || con.sharedWithCustomerId === customerId || (con.customerIds && con.customerIds.includes(customerId))
-    )
+    const customerContracts = contracts.filter(con => checkIsMember(con, customerId))
     if (customerContracts.length === 0) return null
     return [...customerContracts].sort((a, b) => {
       const tA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0
       const tB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0
       return tB - tA
     })[0]
-  }, [contracts])
+  }, [contracts, checkIsMember])
 
   const processedCustomers = useMemo(() => {
     // 1. Search text filter

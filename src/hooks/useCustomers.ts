@@ -71,7 +71,7 @@ export function useCustomers() {
 
           // Auto repair 1: Group contract type and customerIds restoration
           const quotaKeys = c.groupMemberQuotas ? Object.keys(c.groupMemberQuotas) : []
-          if (quotaKeys.length > 1 || c.contractType === 'group') {
+          if (quotaKeys.length > 0 || c.contractType === 'group') {
             if (c.contractType !== 'group') {
               updates.contractType = 'group'
               c.contractType = 'group'

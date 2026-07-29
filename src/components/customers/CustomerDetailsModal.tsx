@@ -116,9 +116,17 @@ export function CustomerDetailsModal({
     return con.remainingSessions
   }
 
+  const checkIsMember = (con: Contract, customerId: string) => {
+    if (!con || !customerId) return false
+    if (con.customerId === customerId) return true
+    if (con.sharedWithCustomerId === customerId) return true
+    if (Array.isArray(con.customerIds) && con.customerIds.includes(customerId)) return true
+    if (con.groupMemberQuotas && Boolean(con.groupMemberQuotas[customerId])) return true
+    return false
+  }
+
   const ongoingContracts = contracts.filter(con => {
-    const isMember = con.customerId === customer.id || con.sharedWithCustomerId === customer.id || (Array.isArray(con.customerIds) && con.customerIds.includes(customer.id))
-    if (!isMember) return false
+    if (!checkIsMember(con, customer.id)) return false
     if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
     const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
     const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
@@ -128,8 +136,7 @@ export function CustomerDetailsModal({
   })
 
   const pendingContract = contracts.find(con => {
-    const isMember = con.customerId === customer.id || con.sharedWithCustomerId === customer.id || (Array.isArray(con.customerIds) && con.customerIds.includes(customer.id))
-    if (!isMember) return false
+    if (!checkIsMember(con, customer.id)) return false
     if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
     const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
     return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
