@@ -127,17 +127,18 @@ export function CustomerDetailsModal({
 
   const ongoingContracts = contracts.filter(con => {
     if (!checkIsMember(con, customer.id)) return false
-    if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+    if (con.status === 'cancelled') return false
     const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
     const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
     if (isUnsigned) return true
+    if (con.status === 'completed' || con.status === 'expired') return false
     const remaining = getCustomerRemainingSessionsInContract(con, customer.id)
     return remaining > 0
   })
 
   const pendingContract = contracts.find(con => {
     if (!checkIsMember(con, customer.id)) return false
-    if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+    if (con.status === 'cancelled') return false
     const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
     return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
   })

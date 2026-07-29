@@ -95,11 +95,20 @@ export function useCustomers() {
             isRepaired = true
           }
 
-          // Auto repair 3: remainingSessions <= 0 => set status = 'completed' in DB
-          if (c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
-            console.log(`Contract ${c.id} has remainingSessions <= 0. Syncing status to completed...`)
+          // Auto repair 3: remainingSessions <= 0 => set status = 'completed' in DB (ONLY if signed)
+          const isUnsigned = c.status === 'pending_signature' || !c.signatureDataUrl
+          if (!isUnsigned && c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} has remainingSessions <= 0 and is signed. Syncing status to completed...`)
             updates.status = 'completed'
             c.status = 'completed'
+            isRepaired = true
+          }
+
+          // Auto repair 4: If contract is missing primary signature, ensure status is 'pending_signature' (unless cancelled)
+          if (!c.signatureDataUrl && c.status !== 'pending_signature' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} is missing signatureDataUrl. Restoring status to pending_signature...`)
+            updates.status = 'pending_signature'
+            c.status = 'pending_signature'
             isRepaired = true
           }
 

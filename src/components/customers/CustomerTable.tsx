@@ -57,11 +57,13 @@ export function CustomerTable({
   const getCustomerOngoingContracts = useCallback((c: Customer) => {
     return contracts.filter(con => {
       if (!checkIsMember(con, c.id)) return false
-      if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+      if (con.status === 'cancelled') return false
       
       const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
       const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
       if (isUnsigned) return true
+
+      if (con.status === 'completed' || con.status === 'expired') return false
 
       const remaining = getCustomerRemainingSessionsInContract(con, c.id)
       return remaining > 0
@@ -70,7 +72,13 @@ export function CustomerTable({
 
   const getCustomerActiveContract = useCallback((customerId: string) => {
     const customerContracts = contracts.filter(con => checkIsMember(con, customerId))
-    const activeOrExpiring = customerContracts.find(con => (con.status === 'active' || con.status === 'expiring' || con.status === 'pending_signature') && (getCustomerRemainingSessionsInContract(con, customerId) > 0 || con.status === 'pending_signature' || !con.signatureDataUrl))
+    const activeOrExpiring = customerContracts.find(con => {
+      if (con.status === 'cancelled') return false
+      const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+      const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
+      if (isUnsigned) return true
+      return (con.status === 'active' || con.status === 'expiring') && getCustomerRemainingSessionsInContract(con, customerId) > 0
+    })
     if (activeOrExpiring) return activeOrExpiring
     return customerContracts.find(con => con.status === 'expired') || customerContracts[0] || null
   }, [contracts, checkIsMember, getCustomerRemainingSessionsInContract])
@@ -79,7 +87,7 @@ export function CustomerTable({
     const customerContracts = contracts.filter(con => checkIsMember(con, c.id))
 
     const pendingContract = customerContracts.find(con => {
-      if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+      if (con.status === 'cancelled') return false
       const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
       return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
     })
