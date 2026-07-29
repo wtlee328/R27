@@ -51,6 +51,11 @@ export function CustomerTable({
       const isMember = con.customerId === c.id || con.sharedWithCustomerId === c.id || (Array.isArray(con.customerIds) && con.customerIds.includes(c.id))
       if (!isMember) return false
       if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+      
+      const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+      const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
+      if (isUnsigned) return true
+
       const remaining = getCustomerRemainingSessionsInContract(con, c.id)
       return remaining > 0
     })
@@ -62,17 +67,27 @@ export function CustomerTable({
       con.sharedWithCustomerId === customerId || 
       (con.customerIds && con.customerIds.includes(customerId))
     )
-    const activeOrExpiring = customerContracts.find(con => (con.status === 'active' || con.status === 'expiring') && getCustomerRemainingSessionsInContract(con, customerId) > 0)
+    const activeOrExpiring = customerContracts.find(con => (con.status === 'active' || con.status === 'expiring' || con.status === 'pending_signature') && (getCustomerRemainingSessionsInContract(con, customerId) > 0 || con.status === 'pending_signature' || !con.signatureDataUrl))
     if (activeOrExpiring) return activeOrExpiring
     return customerContracts.find(con => con.status === 'expired') || customerContracts[0] || null
   }, [contracts, getCustomerRemainingSessionsInContract])
 
   const getCustomerSessionsAndStatus = useCallback((c: Customer) => {
+    const customerContracts = contracts.filter(con => 
+      con.customerId === c.id || con.sharedWithCustomerId === c.id || (Array.isArray(con.customerIds) && con.customerIds.includes(c.id))
+    )
+
+    const pendingContract = customerContracts.find(con => {
+      if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+      const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+      return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
+    })
+
     const customerOngoingContracts = getCustomerOngoingContracts(c)
     const hasMultiple = customerOngoingContracts.length >= 2
-    const activeContract = customerOngoingContracts[0] || null
+    const activeContract = pendingContract || customerOngoingContracts[0] || null
 
-    if (!activeContract || customerOngoingContracts.length === 0) {
+    if (!activeContract && customerOngoingContracts.length === 0) {
       return {
         activeContract: null,
         hasMultiple: false,
@@ -83,12 +98,14 @@ export function CustomerTable({
       }
     }
 
-    const isUnsigned = !activeContract.signatureDataUrl || 
-      ((activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) && !activeContract.secondarySignatureDataUrl)
+    const isDual = activeContract ? (activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) : false
+    const isUnsigned = activeContract ? (activeContract.status === 'pending_signature' || 
+      !activeContract.signatureDataUrl || 
+      (isDual && !activeContract.secondarySignatureDataUrl)) : false
 
-    let remaining = getCustomerRemainingSessionsInContract(activeContract, c.id)
-    let total = activeContract.totalSessions
-    if (activeContract.contractType === 'group' && activeContract.groupMemberQuotas?.[c.id]) {
+    let remaining = activeContract ? getCustomerRemainingSessionsInContract(activeContract, c.id) : 0
+    let total = activeContract ? activeContract.totalSessions : 0
+    if (activeContract && activeContract.contractType === 'group' && activeContract.groupMemberQuotas?.[c.id]) {
       total = activeContract.groupMemberQuotas[c.id].totalSessions
     }
 
@@ -96,7 +113,7 @@ export function CustomerTable({
     let customerStatus: '無合約' | '待簽名' | '進行中' | '複數合約' = '進行中'
     if (hasMultiple) {
       customerStatus = '複數合約'
-    } else if (isUnsigned) {
+    } else if (isUnsigned || !!pendingContract) {
       customerStatus = '待簽名'
     }
 
@@ -104,10 +121,12 @@ export function CustomerTable({
     let contractCategoryText = '個人合約'
     if (hasMultiple) {
       contractCategoryText = '複數合約'
-    } else if (activeContract.contractType === 'group') {
-      contractCategoryText = '團體合約'
-    } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
-      contractCategoryText = '雙人共享'
+    } else if (activeContract) {
+      if (activeContract.contractType === 'group') {
+        contractCategoryText = '團體合約'
+      } else if (isDual) {
+        contractCategoryText = '雙人共享'
+      }
     }
 
     return {
@@ -118,7 +137,7 @@ export function CustomerTable({
       customerStatus,
       contractCategoryText,
     }
-  }, [getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
+  }, [contracts, getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
 
   const getCustomerLatestContract = useCallback((customerId: string) => {
     const customerContracts = contracts.filter(con => 

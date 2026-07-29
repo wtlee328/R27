@@ -120,22 +120,29 @@ export function CustomerDetailsModal({
     const isMember = con.customerId === customer.id || con.sharedWithCustomerId === customer.id || (Array.isArray(con.customerIds) && con.customerIds.includes(customer.id))
     if (!isMember) return false
     if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+    const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+    const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
+    if (isUnsigned) return true
     const remaining = getCustomerRemainingSessionsInContract(con, customer.id)
     return remaining > 0
   })
 
+  const pendingContract = contracts.find(con => {
+    const isMember = con.customerId === customer.id || con.sharedWithCustomerId === customer.id || (Array.isArray(con.customerIds) && con.customerIds.includes(customer.id))
+    if (!isMember) return false
+    if (con.status === 'completed' || con.status === 'expired' || con.status === 'cancelled') return false
+    const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+    return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
+  })
+
   const hasMultiple = ongoingContracts.length >= 2
-  const activeContract = ongoingContracts[0] || contracts[0] || null
+  const activeContract = pendingContract || ongoingContracts[0] || contracts[0] || null
 
   // Derive status for header badge: 無合約 / 待簽名 / 進行中 / 複數合約
   const headerBadge = (() => {
+    if (pendingContract) return { label: '待簽名', color: 'bg-amber-500 text-white animate-pulse' }
     if (ongoingContracts.length === 0) return { label: '無合約', color: 'bg-stone-100 text-stone-500 border border-stone-200 font-bold' }
     if (hasMultiple) return { label: '複數合約', color: 'bg-purple-600 text-white font-bold' }
-    if (activeContract) {
-      const isDual = activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
-      const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
-      if (isUnsigned) return { label: '待簽名', color: 'bg-amber-500 text-white animate-pulse' }
-    }
     return { label: '進行中', color: 'bg-emerald-600 text-white font-bold' }
   })()
 
