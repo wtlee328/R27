@@ -284,6 +284,13 @@ export function CustomerFormModal({
     return activeContracts.find(c => c.id === cid) || null
   }, [form.watch('existingContractId'), activeContracts])
 
+  const isSingleBinding = useMemo(() => {
+    if (!form.watch('bindExistingContractMode') || !selectedContract) return false
+    const isGroup = selectedContract.contractType === 'group'
+    const isDual = selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2)
+    return !isGroup && !isDual
+  }, [form.watch('bindExistingContractMode'), selectedContract])
+
   useEffect(() => {
     const fetchTrainersAndData = async () => {
       try {
@@ -563,7 +570,10 @@ export function CustomerFormModal({
       if (step.id === 'contract') {
         const isBindMode = !!watchedValues.bindExistingContractMode
         if (isBindMode) {
-          return !!watchedValues.existingContractId && !!watchedValues.contract?.secondaryTrainerId
+          if (isSingleBinding) {
+            return !!watchedValues.existingContractId && !!watchedValues.contract?.secondaryTrainerId
+          }
+          return !!watchedValues.existingContractId
         }
 
         const stepFields = step.fields as any[]
@@ -670,7 +680,7 @@ export function CustomerFormModal({
     const isBindMode = form.getValues('bindExistingContractMode')
     
     const isValid = (isContractStep && isBindMode)
-      ? (!!form.getValues('existingContractId') && !!form.getValues('contract.secondaryTrainerId'))
+      ? (isSingleBinding ? (!!form.getValues('existingContractId') && !!form.getValues('contract.secondaryTrainerId')) : !!form.getValues('existingContractId'))
       : await form.trigger(fieldsToValidate)
     
     if (isValid && currentStep < activeSteps.length - 1) {
@@ -2089,27 +2099,29 @@ export function CustomerFormModal({
                                 )
                               })()}
 
-                            {/* 第二位學員的授課教練選擇 */}
-                            <div className="space-y-2 pt-2">
-                              <Label className="text-blue-950 dark:text-blue-200 font-bold block text-xs">第二位學員的授課教練 *</Label>
-                              <p className="text-[10px] text-blue-700 dark:text-blue-400">請為即將加入此合約的第二位學員選擇授課教練</p>
-                              <div className="relative">
-                                <select
-                                  value={form.watch('contract.secondaryTrainerId') || ''}
-                                  onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value || null)}
-                                  className="w-full h-10 rounded-xl border border-blue-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
-                                >
-                                  <option value="">-- 請選擇教練 --</option>
-                                  {trainers.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                  ))}
-                                </select>
-                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            {/* 第二位學員的授課教練選擇 (僅在個人合約轉雙人合約時出現) */}
+                            {isSingleBinding && (
+                              <div className="space-y-2 pt-2 border-t border-blue-100">
+                                <Label className="text-blue-950 dark:text-blue-200 font-bold block text-xs">第二位學員的授課教練 *</Label>
+                                <p className="text-[10px] text-blue-700 dark:text-blue-400">請為即將加入此合約的第二位學員選擇授課教練</p>
+                                <div className="relative">
+                                  <select
+                                    value={form.watch('contract.secondaryTrainerId') || ''}
+                                    onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value || null)}
+                                    className="w-full h-10 rounded-xl border border-blue-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
+                                  >
+                                    <option value="">-- 請選擇教練 --</option>
+                                    {trainers.map((t) => (
+                                      <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                  </select>
+                                  <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                </div>
+                                {form.formState.errors.contract?.secondaryTrainerId && (
+                                  <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
+                                )}
                               </div>
-                              {form.formState.errors.contract?.secondaryTrainerId && (
-                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
-                              )}
-                            </div>
+                            )}
                           </div>
                         )}
 
