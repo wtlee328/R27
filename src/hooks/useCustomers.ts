@@ -95,6 +95,14 @@ export function useCustomers() {
             isRepaired = true
           }
 
+          // Auto repair 3: remainingSessions <= 0 => set status = 'completed' in DB
+          if (c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} has remainingSessions <= 0. Syncing status to completed...`)
+            updates.status = 'completed'
+            c.status = 'completed'
+            isRepaired = true
+          }
+
           if (isRepaired) {
             try {
               const contractDocRef = doc(db, 'contracts', c.id)

@@ -78,8 +78,8 @@ export function CustomerTable({
         hasMultiple: false,
         displayRemaining: 0,
         displayTotal: 0,
-        statusBadgeType: 'none' as const,
-        noteText: '',
+        customerStatus: '無合約' as const,
+        contractCategoryText: '',
       }
     }
 
@@ -92,24 +92,22 @@ export function CustomerTable({
       total = activeContract.groupMemberQuotas[c.id].totalSessions
     }
 
-    let noteText = ''
+    // 1. 客戶合約狀態：無合約 / 待簽名 / 進行中 / 複數合約
+    let customerStatus: '無合約' | '待簽名' | '進行中' | '複數合約' = '進行中'
     if (hasMultiple) {
-      noteText = '(複數合約)'
-    } else if (activeContract.contractType === 'group') {
-      noteText = '(團體課)'
-    } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
-      noteText = '(雙人共享)'
+      customerStatus = '複數合約'
+    } else if (isUnsigned) {
+      customerStatus = '待簽名'
     }
 
-    let statusBadgeType: 'none' | 'expired' | 'unsigned' | 'multiple' | 'group' | 'dual' | 'single' = 'single'
+    // 2. 合約類別（顯示於剩餘堂數下方）：個人合約 / 雙人共享 / 團體合約 / 複數合約
+    let contractCategoryText = '個人合約'
     if (hasMultiple) {
-      statusBadgeType = 'multiple'
-    } else if (isUnsigned) {
-      statusBadgeType = 'unsigned'
+      contractCategoryText = '複數合約'
     } else if (activeContract.contractType === 'group') {
-      statusBadgeType = 'group'
+      contractCategoryText = '團體合約'
     } else if (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) {
-      statusBadgeType = 'dual'
+      contractCategoryText = '雙人共享'
     }
 
     return {
@@ -117,8 +115,8 @@ export function CustomerTable({
       hasMultiple,
       displayRemaining: remaining,
       displayTotal: total,
-      statusBadgeType,
-      noteText,
+      customerStatus,
+      contractCategoryText,
     }
   }, [getCustomerOngoingContracts, getCustomerRemainingSessionsInContract])
 
@@ -302,8 +300,8 @@ export function CustomerTable({
                 hasMultiple,
                 displayRemaining,
                 displayTotal,
-                statusBadgeType,
-                noteText,
+                customerStatus,
+                contractCategoryText,
               } = getCustomerSessionsAndStatus(c)
 
               const partnerId = activeContract 
@@ -330,47 +328,34 @@ export function CustomerTable({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2.5 flex-wrap">
                         <h3 className="font-bold text-stone-900 group-hover:text-stone-950 transition-colors">{c.name}</h3>
-                        {activeContract ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {statusBadgeType === 'expired' && (
-                              <Badge variant="secondary" className="bg-stone-100 text-stone-700 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
-                                已到期
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'unsigned' && (
-                              <Badge variant="secondary" className="bg-amber-500 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold animate-pulse">
-                                待簽名
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'multiple' && (
-                              <Badge className="bg-purple-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-purple-500/20">
-                                <RiFileTextLine className="w-3 h-3 mr-1" /> 複數合約
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'group' && (
-                              <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
-                                <RiTeamLine className="w-3 h-3 mr-1" /> 團體合約
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'dual' && (
-                              <Badge className="bg-orange-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-orange-500/20">
-                                <RiGroupLine className="w-3 h-3 mr-1 text-white" /> 雙人共享
-                              </Badge>
-                            )}
-                            {statusBadgeType === 'single' && (
-                              <Badge className="bg-stone-900 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
-                                <RiUser3Line className="w-3 h-3 mr-1 text-stone-300" /> 個人合約
-                              </Badge>
-                            )}
-                            {(activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
-                              <span className="text-[10px] text-stone-600 font-bold bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200 shrink-0">
-                                與 {partner.name} 共享
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">無合約</Badge>
-                        )}
+                        {/* 客戶合約狀態：無合約/待簽名/進行中/複數合約 */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {customerStatus === '無合約' && (
+                            <Badge variant="outline" className="bg-stone-50 text-stone-400 border-stone-200 text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold">
+                              無合約
+                            </Badge>
+                          )}
+                          {customerStatus === '待簽名' && (
+                            <Badge variant="secondary" className="bg-amber-500 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold animate-pulse">
+                              待簽名
+                            </Badge>
+                          )}
+                          {customerStatus === '進行中' && (
+                            <Badge className="bg-emerald-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-emerald-500/20">
+                              進行中
+                            </Badge>
+                          )}
+                          {customerStatus === '複數合約' && (
+                            <Badge className="bg-purple-600 text-white text-[10px] py-0 px-2 h-5 flex items-center shrink-0 font-bold shadow-sm shadow-purple-500/20">
+                              <RiFileTextLine className="w-3 h-3 mr-1" /> 複數合約
+                            </Badge>
+                          )}
+                          {activeContract && (activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId) && partner && (
+                            <span className="text-[10px] text-stone-600 font-bold bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200 shrink-0">
+                              與 {partner.name} 共享
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-400 font-bold">
                         <span className="flex items-center gap-1.5"><RiPhoneLine className="w-3.5 h-3.5" /> {c.phone}</span>
@@ -410,13 +395,15 @@ export function CustomerTable({
                               </div>
                             )
                           })()}
-                          {noteText && (
+                          {/* 合約類別顯示在剩餘堂數下方：個人合約/雙人共享/團體合約/複數合約 */}
+                          {contractCategoryText && (
                             <span className={cn(
-                              "text-[9px] font-bold block",
-                              noteText === '(複數合約)' ? "text-purple-600" :
-                              noteText === '(團體課)' ? "text-emerald-600" : "text-orange-500"
+                              "text-[10px] font-bold block",
+                              contractCategoryText === '複數合約' ? "text-purple-600" :
+                              contractCategoryText === '團體合約' ? "text-emerald-600" :
+                              contractCategoryText === '雙人共享' ? "text-orange-500" : "text-stone-500"
                             )}>
-                              {noteText}
+                              {contractCategoryText}
                             </span>
                           )}
                         </div>

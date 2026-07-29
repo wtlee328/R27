@@ -127,19 +127,16 @@ export function CustomerDetailsModal({
   const hasMultiple = ongoingContracts.length >= 2
   const activeContract = ongoingContracts[0] || contracts[0] || null
 
-  // Derive status for header badge
+  // Derive status for header badge: 無合約 / 待簽名 / 進行中 / 複數合約
   const headerBadge = (() => {
     if (ongoingContracts.length === 0) return { label: '無合約', color: 'bg-stone-100 text-stone-500 border border-stone-200 font-bold' }
-    if (hasMultiple) return { label: '複數合約', color: 'bg-purple-100 text-purple-700 border border-purple-200 font-bold' }
+    if (hasMultiple) return { label: '複數合約', color: 'bg-purple-600 text-white font-bold' }
     if (activeContract) {
       const isDual = activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
-      const isGroup = activeContract.contractType === 'group'
       const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
       if (isUnsigned) return { label: '待簽名', color: 'bg-amber-500 text-white animate-pulse' }
-      if (isGroup) return { label: '團體課', color: 'bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold' }
-      if (isDual) return { label: '雙人共享', color: 'bg-orange-100 text-orange-800 border border-orange-200 font-bold' }
     }
-    return { label: '進行中', color: 'bg-emerald-500 text-white font-bold' }
+    return { label: '進行中', color: 'bg-emerald-600 text-white font-bold' }
   })()
 
   return (
@@ -472,22 +469,12 @@ export function CustomerDetailsModal({
                             <span className="font-bold text-stone-900 text-sm">{contract.totalSessions} 堂合約</span>
                             {isCompleted ? (
                               <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">已完成</span>
-                            ) : isExpired ? (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 border border-stone-200">已到期</span>
                             ) : (
-                              <span className={cn(
-                                'text-[10px] font-black px-2 py-0.5 rounded-full',
-                                isContractDual ? 'bg-orange-100 text-orange-700' : 'bg-stone-900 text-white'
-                              )}>進行中</span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">進行中</span>
                             )}
-                            {isUnsigned && isActive && (
-                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> 待簽名
-                              </span>
-                            )}
-                            {isContractDual && (
-                              <span className="text-[10px] font-bold flex items-center gap-1 text-orange-600">
-                                <RiGroupLine className="w-3 h-3" /> 雙人
+                            {isUnsigned && !isCompleted && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white flex items-center gap-1 animate-pulse">
+                                待簽名
                               </span>
                             )}
                           </div>
