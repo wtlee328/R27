@@ -741,7 +741,9 @@ export function CustomerContractModal({
                 <div className="grid grid-cols-12 gap-x-3 gap-y-3.5 text-stone-700">
                   <div className="col-span-6 flex items-center">
                     <span>課程名稱：</span>
-                    <span className="font-bold text-stone-900 border-b border-stone-200 px-1">一對一私人教練課程</span>
+                    <span className="font-bold text-stone-900 border-b border-stone-200 px-1">
+                      {contract?.contractType === 'group' ? '團體教練課程' : (contract?.contractType === 'dual' || partner) ? '雙人共享教練課程' : '一對一私人教練課程'}
+                    </span>
                   </div>
                   <div className="col-span-6 flex items-center">
                     <span>教練比例：{(!partner || isOneToTwo) ? '1' : '2'} 位教練對 </span>

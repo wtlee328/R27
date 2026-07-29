@@ -2310,7 +2310,7 @@ export function ContractFormModal({
                                     <div className="grid grid-cols-12 gap-y-1.5 gap-x-3 text-stone-600 text-[10px]">
                                       <div className="col-span-6">
                                         課程名稱：<span className="font-bold text-stone-900">
-                                          {isGroup ? `團體私人教練課程 (${groupMemberCount}人團課)` : isDual ? '雙人共享教練課程' : '一對一私人教練課程'}
+                                          {isGroup ? '團體教練課程' : isDual ? '雙人共享教練課程' : '一對一私人教練課程'}
                                         </span>
                                       </div>
                                       <div className="col-span-6">
