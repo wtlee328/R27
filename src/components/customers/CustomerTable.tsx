@@ -37,6 +37,7 @@ export function CustomerTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTrainerId, setSelectedTrainerId] = useState('all')
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
+  const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
   const checkIsMember = useCallback((con: Contract, customerId: string) => {
     if (!con || !customerId) return false
     if (con.customerId === customerId) return true
