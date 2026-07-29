@@ -38,7 +38,35 @@ import { combinedCustomerContractSchema, type CombinedCustomerContractValues } f
 import { cn } from '@/lib/utils'
 import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
 import type { Customer, Contract } from '../../types'
-import { useCenterStore } from '@/stores/centerStore'
+function addOneYearToDateString(dateVal: string | Date): string {
+  if (!dateVal) return ''
+  let d: Date
+  if (dateVal instanceof Date) {
+    d = new Date(dateVal)
+  } else if (typeof dateVal === 'string') {
+    const parts = dateVal.split('-')
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10)
+      const month = parseInt(parts[1], 10)
+      const day = parseInt(parts[2], 10)
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        d = new Date(year, month - 1, day)
+      } else {
+        d = new Date(dateVal)
+      }
+    } else {
+      d = new Date(dateVal)
+    }
+  } else {
+    d = new Date(dateVal as any)
+  }
+  if (isNaN(d.getTime())) return ''
+  d.setFullYear(d.getFullYear() + 1)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
 
 interface CustomerFormModalProps {
   open: boolean
@@ -282,27 +310,6 @@ export function CustomerFormModal({
     }
   }, [open, form, centerId, customers.length, contracts.length])
 
-  const watchedContractStartDate = form.watch('contract.startDate')
-  const prevContractStartDateRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!open) {
-      prevContractStartDateRef.current = null
-      return
-    }
-    if (watchedContractStartDate) {
-      const startD = new Date(watchedContractStartDate)
-      if (!isNaN(startD.getTime())) {
-        const currentStartIso = startD.toISOString().split('T')[0]
-        if (prevContractStartDateRef.current !== currentStartIso) {
-          prevContractStartDateRef.current = currentStartIso
-          const oneYearLater = new Date(startD)
-          oneYearLater.setFullYear(oneYearLater.getFullYear() + 1)
-          form.setValue('contract.endDate', oneYearLater, { shouldValidate: true })
-        }
-      }
-    }
-  }, [open, watchedContractStartDate, form])
 
   useEffect(() => {
     if (open) {
@@ -2142,14 +2149,35 @@ export function CustomerFormModal({
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約開始日 *</Label>
-                              <Input type="date" {...form.register('contract.startDate', { valueAsDate: true })} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
+                              <Input 
+                                type="date" 
+                                {...form.register('contract.startDate')} 
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  form.setValue('contract.startDate', val as any, { shouldValidate: true })
+                                  if (val) {
+                                    const oneYearLater = addOneYearToDateString(val)
+                                    if (oneYearLater) {
+                                      form.setValue('contract.endDate', oneYearLater as any, { shouldValidate: true })
+                                    }
+                                  }
+                                }}
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" 
+                              />
                               {form.formState.errors.contract?.startDate && (
                                 <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.startDate.message}</p>
                               )}
                             </div>
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約結束日 *</Label>
-                              <Input type="date" {...form.register('contract.endDate', { valueAsDate: true })} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />
+                              <Input 
+                                type="date" 
+                                {...form.register('contract.endDate')} 
+                                onChange={(e) => {
+                                  form.setValue('contract.endDate', e.target.value as any, { shouldValidate: true })
+                                }}
+                                className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" 
+                              />
                               {form.formState.errors.contract?.endDate && (
                                 <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.endDate.message}</p>
                               )}
