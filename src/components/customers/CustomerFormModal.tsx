@@ -23,7 +23,7 @@ import {
   RiUserAddLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
-import { collection, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, getDocs, query, where, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import {
   Dialog,

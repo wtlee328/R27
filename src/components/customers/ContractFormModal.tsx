@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
 import { motion, AnimatePresence } from 'framer-motion'
-import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import {
   RiGroupLine,
   RiTeamLine,
