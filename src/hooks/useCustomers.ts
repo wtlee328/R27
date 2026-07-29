@@ -440,14 +440,14 @@ export function useCustomers() {
         if (isGroup) {
           contractUpdate.contractType = 'group'
           const existingQuotas = { ...(existingContractData.groupMemberQuotas || {}) }
-          const defaultSessions = existingContractData.remainingSessions || existingContractData.totalSessions || 0
           existingQuotas[customerId] = {
             customerId,
             customerName: data.name,
-            totalSessions: defaultSessions,
-            remainingSessions: defaultSessions,
+            totalSessions: 0,
+            remainingSessions: 0,
           }
           contractUpdate.groupMemberQuotas = existingQuotas
+          contractUpdate.status = 'pending_signature'
         } else {
           contractUpdate.contractType = 'dual'
           contractUpdate.sharedWithCustomerId = customerId

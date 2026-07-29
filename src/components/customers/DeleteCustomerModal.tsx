@@ -35,7 +35,7 @@ export function DeleteCustomerModal({
 
   // Linked Contracts Analysis
   const contractAnalysis = useMemo(() => {
-    if (!customer) return { singleContracts: [], dualContracts: [] }
+    if (!customer) return { singleContracts: [], dualContracts: [], groupContracts: [] }
 
     const linked = (contracts || []).filter((c) => {
       const isPrimary = c.customerId === customer.id || c.primaryCustomerId === customer.id
@@ -46,15 +46,22 @@ export function DeleteCustomerModal({
 
     const singleContracts: Contract[] = []
     const dualContracts: { contract: Contract; partnerName: string }[] = []
+    const groupContracts: { contract: Contract; remainingCount: number }[] = []
 
     linked.forEach((c) => {
-      const isDual =
+      const isGroup = c.contractType === 'group'
+      const isDual = !isGroup && (
         c.contractType === 'dual' ||
         Boolean(c.sharedWithCustomerId) ||
         Boolean(c.partnerId) ||
-        (c.customerIds && c.customerIds.length > 1)
+        (Array.isArray(c.customerIds) && c.customerIds.length > 1)
+      )
 
-      if (isDual) {
+      if (isGroup) {
+        const currentIds = c.customerIds || []
+        const remainingCount = Math.max(0, currentIds.filter(id => id !== customer.id).length)
+        groupContracts.push({ contract: c, remainingCount })
+      } else if (isDual) {
         let partnerId: string | null = null
         if (c.customerId !== customer.id && c.customerId) {
           partnerId = c.customerId
@@ -73,7 +80,7 @@ export function DeleteCustomerModal({
       }
     })
 
-    return { singleContracts, dualContracts }
+    return { singleContracts, dualContracts, groupContracts }
   }, [customer, contracts, customerMap])
 
   const handleDelete = async () => {
@@ -143,7 +150,7 @@ export function DeleteCustomerModal({
             </div>
             <p className="text-[11px] text-red-700">
               {contractAnalysis.singleContracts.length > 0
-                ? `包含編號 [${contractAnalysis.singleContracts.map((c) => c.contractNo || '未命名').join(', ')}] 等單人合約將被一併移除。`
+                ? `包含編號 [${contractAnalysis.singleContracts.map((c) => c.contractNumber || c.contractNo || c.id.slice(0, 8)).join(', ')}] 等單人合約將被一併移除。`
                 : '該學員目前無獨立持有的單人合約。'}
             </p>
           </div>
@@ -165,12 +172,39 @@ export function DeleteCustomerModal({
                   雙人合約將解鎖為單人合約，由合夥夥伴獨自持有：
                   <span className="block font-bold mt-1 text-amber-900">
                     {contractAnalysis.dualContracts
-                      .map((d) => `• 合約 ${d.contract.contractNo || ''} ➔ 轉為 ${d.partnerName} 獨自持有`)
+                      .map((d) => `• 合約 ${d.contract.contractNumber || d.contract.contractNo || d.contract.id.slice(0, 8)} ➔ 轉為 ${d.partnerName} 獨自持有`)
                       .join('\n')}
                   </span>
                 </span>
               ) : (
                 '該學員目前無進行中的雙人共享合約。'
+              )}
+            </p>
+          </div>
+
+          {/* Impact 3: Group Contracts Member Removal */}
+          <div className="p-3 bg-emerald-50/60 border border-emerald-200/60 rounded-xl space-y-1">
+            <div className="flex items-center justify-between font-bold text-emerald-950">
+              <span className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                團體合約成員退班 / 移除
+              </span>
+              <span className="text-emerald-800 bg-emerald-100 px-2 py-0.2 rounded text-[10px]">
+                共 {contractAnalysis.groupContracts.length} 筆
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-800">
+              {contractAnalysis.groupContracts.length > 0 ? (
+                <span>
+                  將該學員從團體名單中移除，其餘團員繼續持用：
+                  <span className="block font-bold mt-1 text-emerald-900">
+                    {contractAnalysis.groupContracts
+                      .map((g) => `• 合約 ${g.contract.contractNumber || g.contract.contractNo || g.contract.id.slice(0, 8)} ➔ 移除此成員 (${g.remainingCount > 0 ? `剩餘 ${g.remainingCount} 位團員` : '團員已全數移除，合約將一併刪除'})`)
+                      .join('\n')}
+                  </span>
+                </span>
+              ) : (
+                '該學員目前無參與任何團體課合約。'
               )}
             </p>
           </div>
