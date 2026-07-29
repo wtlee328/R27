@@ -239,282 +239,284 @@ export function LessonRecordWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{initialData ? '編輯銷課紀錄' : '新增銷課紀錄'}</DialogTitle>
-          <DialogDescription>請選擇客戶、合約，並選取實際出席學員與扣抵合約。</DialogDescription>
+      <DialogContent className="max-w-lg max-h-[85vh] p-0 flex flex-col overflow-hidden rounded-2xl border-none shadow-2xl bg-white">
+        <DialogHeader className="px-6 py-4 border-b border-stone-100 shrink-0">
+          <DialogTitle className="text-lg font-bold text-stone-900">{initialData ? '編輯銷課紀錄' : '新增銷課紀錄'}</DialogTitle>
+          <DialogDescription className="text-xs text-stone-500">請選擇客戶、合約，並選取實際出席學員與扣抵合約。</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <div className="space-y-2 relative" ref={containerRef}>
-            <Label>客戶 *</Label>
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="請輸入客戶名稱或電話搜尋..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value)
-                  setIsOpen(true)
-                  if (!e.target.value) {
-                    form.setValue('customerId', '')
-                    form.setValue('customerName', '')
-                    form.setValue('contractId', '')
-                    form.setValue('attendingCustomerIds', [])
-                  }
-                }}
-                onFocus={() => setIsOpen(true)}
-                className="w-full text-sm pr-12 animate-in fade-in duration-300"
-              />
-              {selectedCustomerId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchTerm('')
-                    form.setValue('customerId', '')
-                    form.setValue('customerName', '')
-                    form.setValue('contractId', '')
-                    form.setValue('attendingCustomerIds', [])
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="space-y-2 relative" ref={containerRef}>
+              <Label>客戶 *</Label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="請輸入客戶名稱或電話搜尋..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
                     setIsOpen(true)
+                    if (!e.target.value) {
+                      form.setValue('customerId', '')
+                      form.setValue('customerName', '')
+                      form.setValue('contractId', '')
+                      form.setValue('attendingCustomerIds', [])
+                    }
                   }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
-                >
-                  清除
-                </button>
+                  onFocus={() => setIsOpen(true)}
+                  className="w-full text-sm pr-12 animate-in fade-in duration-300"
+                />
+                {selectedCustomerId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('')
+                      form.setValue('customerId', '')
+                      form.setValue('customerName', '')
+                      form.setValue('contractId', '')
+                      form.setValue('attendingCustomerIds', [])
+                      setIsOpen(true)
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+
+              {isOpen && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-stone-100 animate-in fade-in duration-200">
+                  {orderedMatchingCustomers.length === 0 ? (
+                    <div className="p-3 text-xs text-stone-500 text-center">
+                      找不到符合的客戶
+                    </div>
+                  ) : (
+                    orderedMatchingCustomers.map((c) => {
+                      const isSelected = c.id === selectedCustomerId
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            form.setValue('customerId', c.id)
+                            form.setValue('customerName', c.name)
+                            form.setValue('contractId', '') // reset contract
+                            form.setValue('attendingCustomerIds', [c.id])
+                            setSearchTerm(c.name)
+                            setIsOpen(false)
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-stone-50 flex flex-col gap-0.5",
+                            isSelected ? "bg-brand-50 hover:bg-brand-100" : ""
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-stone-900">
+                              {c.name}
+                              {c.isSubstitute && (
+                                <span className="ml-2 text-[9px] font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded">
+                                  代課
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                          <span className="text-stone-500 text-[10px]">{c.phone || '無電話資訊'}</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              )}
+              {form.formState.errors.customerId && (
+                <p className="text-red-500 text-xs">{form.formState.errors.customerId.message}</p>
               )}
             </div>
 
-            {isOpen && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-stone-100 animate-in fade-in duration-200">
-                {orderedMatchingCustomers.length === 0 ? (
-                  <div className="p-3 text-xs text-stone-500 text-center">
-                    找不到符合的客戶
-                  </div>
-                ) : (
-                  orderedMatchingCustomers.map((c) => {
-                    const isSelected = c.id === selectedCustomerId
+            <div className="space-y-2">
+              <Label>主要合約 *</Label>
+              <select
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                {...form.register('contractId', {
+                  onChange: (e) => {
+                    const conId = e.target.value
+                    const con = contracts.find(c => c.id === conId)
+                    if (con) {
+                      const ids = con.customerIds && con.customerIds.length > 0
+                        ? con.customerIds
+                        : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
+                      form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
+                    }
+                  }
+                })}
+                disabled={!selectedCustomerId}
+              >
+                <option value="" disabled>請選擇合約</option>
+                {contracts.length === 0 && selectedCustomerId && (
+                   <option value="temp_contract_01">預設合約 (開發中佔位)</option>
+                )}
+                {contracts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.contractType === 'group' ? '👥 團體合約' : c.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'} - {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
+                  </option>
+                ))}
+              </select>
+              {form.formState.errors.contractId && (
+                <p className="text-red-500 text-xs">{form.formState.errors.contractId.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>授課教練 *</Label>
+              {trainerId ? (
+                <>
+                  <select
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-stone-50 text-stone-550 border-stone-200 cursor-not-allowed select-none"
+                    value={trainerId}
+                    disabled
+                  >
+                    {trainers.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <input type="hidden" {...form.register('trainerId')} value={trainerId} />
+                </>
+              ) : (
+                <select
+                  className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
+                  {...form.register('trainerId')}
+                  disabled={!selectedCustomerId}
+                >
+                  <option value="" disabled>請選擇授課教練</option>
+                  {trainers.map((t) => {
+                    const isContractTrainer = selectedContract && (
+                      selectedContract.trainerId === t.id ||
+                      (selectedContract as any).secondaryTrainerId === t.id
+                    )
+                    const isSubstitute = selectedContract && !isContractTrainer
                     return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          form.setValue('customerId', c.id)
-                          form.setValue('customerName', c.name)
-                          form.setValue('contractId', '') // reset contract
-                          form.setValue('attendingCustomerIds', [c.id])
-                          setSearchTerm(c.name)
-                          setIsOpen(false)
-                        }}
-                        className={cn(
-                          "w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-stone-50 flex flex-col gap-0.5",
-                          isSelected ? "bg-brand-50 hover:bg-brand-100" : ""
-                        )}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-bold text-stone-900">
-                            {c.name}
-                            {c.isSubstitute && (
-                              <span className="ml-2 text-[9px] font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded">
-                                代課
-                              </span>
-                            )}
+                      <option key={t.id} value={t.id}>
+                        {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
+                      </option>
+                    )
+                  })}
+                </select>
+              )}
+              {form.formState.errors.trainerId && (
+                <p className="text-red-500 text-xs">{form.formState.errors.trainerId.message}</p>
+              )}
+            </div>
+
+            {/* Attendance & Multi-contract selection area */}
+            {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || groupCustomers.length > 1) && (
+              <div className="space-y-3 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
+                <div className="flex items-center justify-between">
+                  <Label className="text-stone-900 font-bold block text-xs">
+                    {selectedContract.contractType === 'group' ? '👥 團體合約成員出席與扣抵設定 (可勾選出席學員)' : '👥 雙人合約出席學員 (可多選)'}
+                  </Label>
+                  <span className="text-[10px] text-stone-400 font-medium">未勾選代表缺席（不扣堂）</span>
+                </div>
+                
+                <div className="space-y-2">
+                  {groupCustomers.map((member) => {
+                    const isAttending = (form.watch('attendingCustomerIds') || []).includes(member.id)
+                    
+                    // Find all active contracts for this specific member
+                    const memberContracts = contracts.filter(c => {
+                      const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
+                      const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id
+                      return isInIds || isCust
+                    })
+
+                    const currentSelectedContractId = studentContractSelections[member.id] || selectedContract.id
+
+                    return (
+                      <div key={member.id} className="p-2.5 bg-white border border-stone-200 rounded-xl space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={isAttending}
+                              className="w-4 h-4 rounded border-stone-300 text-orange-500 focus:ring-orange-400 accent-orange-500"
+                              onChange={(e) => {
+                                const current = form.getValues('attendingCustomerIds') || []
+                                if (e.target.checked) {
+                                  form.setValue('attendingCustomerIds', [...current, member.id])
+                                } else {
+                                  form.setValue('attendingCustomerIds', current.filter(id => id !== member.id))
+                                }
+                              }}
+                            />
+                            <span className="text-xs font-bold text-stone-800">
+                              👤 {member.name}
+                            </span>
+                          </label>
+                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isAttending ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-400")}>
+                            {isAttending ? '實際出席' : '未出席'}
                           </span>
                         </div>
-                        <span className="text-stone-500 text-[10px]">{c.phone || '無電話資訊'}</span>
-                      </button>
+
+                        {isAttending && (
+                          <div className="pl-6 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-stone-500 font-medium shrink-0">扣除合約:</span>
+                              <select
+                                className="w-full border border-stone-200 rounded px-2 py-1 text-[11px] bg-stone-50 text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-400"
+                                value={currentSelectedContractId}
+                                onChange={(e) => {
+                                  setStudentContractSelections(prev => ({
+                                    ...prev,
+                                    [member.id]: e.target.value
+                                  }))
+                                }}
+                              >
+                                {memberContracts.map(mc => {
+                                  let remText = `${mc.remainingSessions} 堂`
+                                  if (mc.contractType === 'group' && mc.groupMemberQuotas && mc.groupMemberQuotas[member.id]) {
+                                    remText = `個人剩 ${mc.groupMemberQuotas[member.id].remainingSessions} 堂 / 團體總剩 ${mc.remainingSessions} 堂`
+                                  }
+                                  return (
+                                    <option key={mc.id} value={mc.id}>
+                                      {mc.contractType === 'group' ? '[團體]' : mc.contractType === 'dual' ? '[雙人]' : '[單人]'} {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
+                                    </option>
+                                  )
+                                })}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )
-                  })
+                  })}
+                </div>
+                {form.formState.errors.attendingCustomerIds && (
+                  <p className="text-red-500 text-xs">{form.formState.errors.attendingCustomerIds.message}</p>
                 )}
               </div>
             )}
-            {form.formState.errors.customerId && (
-              <p className="text-red-500 text-xs">{form.formState.errors.customerId.message}</p>
-            )}
-          </div>
 
-          <div className="space-y-2">
-            <Label>主要合約 *</Label>
-            <select
-              className="w-full border rounded-md px-3 py-2 text-sm"
-              {...form.register('contractId', {
-                onChange: (e) => {
-                  const conId = e.target.value
-                  const con = contracts.find(c => c.id === conId)
-                  if (con) {
-                    const ids = con.customerIds && con.customerIds.length > 0
-                      ? con.customerIds
-                      : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
-                    form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
-                  }
-                }
-              })}
-              disabled={!selectedCustomerId}
-            >
-              <option value="" disabled>請選擇合約</option>
-              {contracts.length === 0 && selectedCustomerId && (
-                 <option value="temp_contract_01">預設合約 (開發中佔位)</option>
-              )}
-              {contracts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.contractType === 'group' ? '👥 團體合約' : c.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'} - {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
-                </option>
-              ))}
-            </select>
-            {form.formState.errors.contractId && (
-              <p className="text-red-500 text-xs">{form.formState.errors.contractId.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>授課教練 *</Label>
-            {trainerId ? (
-              <>
-                <select
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-stone-50 text-stone-550 border-stone-200 cursor-not-allowed select-none"
-                  value={trainerId}
-                  disabled
-                >
-                  {trainers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-                <input type="hidden" {...form.register('trainerId')} value={trainerId} />
-              </>
-            ) : (
-              <select
-                className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
-                {...form.register('trainerId')}
-                disabled={!selectedCustomerId}
-              >
-                <option value="" disabled>請選擇授課教練</option>
-                {trainers.map((t) => {
-                  const isContractTrainer = selectedContract && (
-                    selectedContract.trainerId === t.id ||
-                    (selectedContract as any).secondaryTrainerId === t.id
-                  )
-                  const isSubstitute = selectedContract && !isContractTrainer
-                  return (
-                    <option key={t.id} value={t.id}>
-                      {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
-                    </option>
-                  )
-                })}
-              </select>
-            )}
-            {form.formState.errors.trainerId && (
-              <p className="text-red-500 text-xs">{form.formState.errors.trainerId.message}</p>
-            )}
-          </div>
-
-          {/* Attendance & Multi-contract selection area */}
-          {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || groupCustomers.length > 1) && (
-            <div className="space-y-3 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
-              <div className="flex items-center justify-between">
-                <Label className="text-stone-900 font-bold block text-xs">
-                  {selectedContract.contractType === 'group' ? '👥 團體合約成員出席與扣抵設定 (可勾選出席學員)' : '👥 雙人合約出席學員 (可多選)'}
-                </Label>
-                <span className="text-[10px] text-stone-400 font-medium">未勾選代表缺席（不扣堂）</span>
-              </div>
-              
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {groupCustomers.map((member) => {
-                  const isAttending = (form.watch('attendingCustomerIds') || []).includes(member.id)
-                  
-                  // Find all active contracts for this specific member
-                  const memberContracts = contracts.filter(c => {
-                    const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
-                    const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id
-                    return isInIds || isCust
-                  })
-
-                  const currentSelectedContractId = studentContractSelections[member.id] || selectedContract.id
-
-                  return (
-                    <div key={member.id} className="p-2.5 bg-white border border-stone-200 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <input
-                            type="checkbox"
-                            checked={isAttending}
-                            className="w-4 h-4 rounded border-stone-300 text-orange-500 focus:ring-orange-400 accent-orange-500"
-                            onChange={(e) => {
-                              const current = form.getValues('attendingCustomerIds') || []
-                              if (e.target.checked) {
-                                form.setValue('attendingCustomerIds', [...current, member.id])
-                              } else {
-                                form.setValue('attendingCustomerIds', current.filter(id => id !== member.id))
-                              }
-                            }}
-                          />
-                          <span className="text-xs font-bold text-stone-800">
-                            👤 {member.name}
-                          </span>
-                        </label>
-                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isAttending ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-400")}>
-                          {isAttending ? '實際出席' : '未出席'}
-                        </span>
-                      </div>
-
-                      {isAttending && (
-                        <div className="pl-6 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-stone-500 font-medium shrink-0">扣除合約:</span>
-                            <select
-                              className="w-full border border-stone-200 rounded px-2 py-1 text-[11px] bg-stone-50 text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                              value={currentSelectedContractId}
-                              onChange={(e) => {
-                                setStudentContractSelections(prev => ({
-                                  ...prev,
-                                  [member.id]: e.target.value
-                                }))
-                              }}
-                            >
-                              {memberContracts.map(mc => {
-                                let remText = `${mc.remainingSessions} 堂`
-                                if (mc.contractType === 'group' && mc.groupMemberQuotas && mc.groupMemberQuotas[member.id]) {
-                                  remText = `個人剩 ${mc.groupMemberQuotas[member.id].remainingSessions} 堂 / 團體總剩 ${mc.remainingSessions} 堂`
-                                }
-                                return (
-                                  <option key={mc.id} value={mc.id}>
-                                    {mc.contractType === 'group' ? '[團體]' : mc.contractType === 'dual' ? '[雙人]' : '[單人]'} {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
-                                  </option>
-                                )
-                              })}
-                            </select>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                <Label>上課日期 *</Label>
+                <Input type="date" {...form.register('sessionDate', { valueAsDate: true })} />
               </div>
-              {form.formState.errors.attendingCustomerIds && (
-                <p className="text-red-500 text-xs">{form.formState.errors.attendingCustomerIds.message}</p>
-              )}
+              <div className="space-y-2">
+                <Label>消耗堂數 *</Label>
+                <Input type="number" step="0.5" {...form.register('sessionAmount')} />
+              </div>
             </div>
-          )}
 
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>上課日期 *</Label>
-              <Input type="date" {...form.register('sessionDate', { valueAsDate: true })} />
-            </div>
-            <div className="space-y-2">
-              <Label>消耗堂數 *</Label>
-              <Input type="number" step="0.5" {...form.register('sessionAmount')} />
+              <Label>備註</Label>
+              <Input {...form.register('notes')} placeholder="例如：上半身訓練、深蹲進步..." />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>備註</Label>
-            <Input {...form.register('notes')} placeholder="例如：上半身訓練、深蹲進步..." />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-100 bg-stone-50/80 shrink-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-stone-200 hover:bg-stone-100 text-stone-600 font-semibold">
               取消
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold px-5">
               {loading ? '儲存中...' : '確認銷課'}
             </Button>
           </div>
