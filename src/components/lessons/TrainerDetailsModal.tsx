@@ -358,8 +358,15 @@ export function TrainerDetailsModal({
         {selectedRecord && (() => {
           const r = selectedRecord
           const contract = contracts.find(c => c.id === r.contractId)
-          const perSessionPrice = contract && contract.totalSessions > 0 ? (contract.totalAmount / contract.totalSessions) : (contract?.pricePerSession || 0)
-          const fee = contract ? Math.round(r.sessionAmount * perSessionPrice) : 0
+          const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
+          const isDual = contract ? (!isGroup && (contract.contractType === 'dual' || !!contract.sharedWithCustomerId)) : false
+          const fee = typeof (r as any).recognizedAmount === 'number'
+            ? (r as any).recognizedAmount
+            : typeof (r as any).unitPriceAtDeduction === 'number'
+            ? Math.round(r.sessionAmount * (r as any).unitPriceAtDeduction)
+            : contract
+            ? Math.round(r.sessionAmount * (contract.pricePerSession || 0))
+            : 0
           const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
           const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
           const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
@@ -452,10 +459,10 @@ export function TrainerDetailsModal({
                         {contract ? (
                           <span className={cn(
                             "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold",
-                            contract.contractType === 'group' ? "bg-emerald-100 text-emerald-700" :
-                            contract.contractType === 'dual' ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                            isGroup ? "bg-emerald-100 text-emerald-700" :
+                            isDual ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
                           )}>
-                            {contract.contractType === 'group' ? '👥 團體合約' : contract.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'}
+                            {isGroup ? '👥 團體合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
                           </span>
                         ) : '無合約資訊'}
                       </span>

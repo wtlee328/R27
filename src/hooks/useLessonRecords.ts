@@ -149,8 +149,14 @@ export function useLessonRecords() {
         }))
 
         const primaryContractSnap = contractSnapsMap.get(data.contractId)
-        const contractTrainerId = primaryContractSnap?.exists() ? primaryContractSnap.data().trainerId : null
+        const contractData = primaryContractSnap?.exists() ? primaryContractSnap.data() : null
+        const contractTrainerId = contractData ? contractData.trainerId : null
         const finalTrainerId = data.trainerId || contractTrainerId || user.uid
+
+        const unitPriceAtDeduction = contractData
+          ? (contractData.totalSessions > 0 ? Math.round((contractData.totalAmount || 0) / contractData.totalSessions) : (contractData.pricePerSession || 0))
+          : 0
+        const recognizedAmount = Math.round((data.sessionAmount || 1) * unitPriceAtDeduction)
 
         const trainerRef = doc(db, 'trainers', finalTrainerId)
         const trainerSnap = await transaction.get(trainerRef)
@@ -163,7 +169,9 @@ export function useLessonRecords() {
           deductions: finalDeductions,
           trainerId: finalTrainerId,
           contractTrainerId: contractTrainerId || finalTrainerId,
-          attendingCustomerNames: attendeeNames
+          attendingCustomerNames: attendeeNames,
+          unitPriceAtDeduction,
+          recognizedAmount,
         })
 
         const deductionsByContract = new Map<string, StudentDeduction[]>()
