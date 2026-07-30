@@ -121,6 +121,9 @@ export function useCustomers() {
                 console.log(`Group contract ${c.id} totalSessions (${c.totalSessions}) !== quotaSum (${quotaSum}). Auto syncing totalSessions to ${quotaSum}...`)
                 updates.totalSessions = quotaSum
                 c.totalSessions = quotaSum
+                const newPricePerSession = Math.round(c.totalAmount / quotaSum)
+                updates.pricePerSession = newPricePerSession
+                c.pricePerSession = newPricePerSession
                 isRepaired = true
               }
             }

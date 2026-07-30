@@ -197,7 +197,8 @@ export function TrainerDetailsModal({
               ) : (
                 filteredLessons.map((r) => {
                   const contract = contracts.find(c => c.id === r.contractId)
-                  const fee = contract ? r.sessionAmount * contract.pricePerSession : 0
+                  const perSessionPrice = contract && contract.totalSessions > 0 ? (contract.totalAmount / contract.totalSessions) : (contract?.pricePerSession || 0)
+                  const fee = contract ? Math.round(r.sessionAmount * perSessionPrice) : 0
                   const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
                   const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
                   const isSelected = selectedRecord?.id === r.id
@@ -357,7 +358,8 @@ export function TrainerDetailsModal({
         {selectedRecord && (() => {
           const r = selectedRecord
           const contract = contracts.find(c => c.id === r.contractId)
-          const fee = contract ? r.sessionAmount * contract.pricePerSession : 0
+          const perSessionPrice = contract && contract.totalSessions > 0 ? (contract.totalAmount / contract.totalSessions) : (contract?.pricePerSession || 0)
+          const fee = contract ? Math.round(r.sessionAmount * perSessionPrice) : 0
           const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
           const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
           const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
@@ -450,9 +452,10 @@ export function TrainerDetailsModal({
                         {contract ? (
                           <span className={cn(
                             "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold",
+                            contract.contractType === 'group' ? "bg-emerald-100 text-emerald-700" :
                             contract.contractType === 'dual' ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
                           )}>
-                            {contract.contractType === 'dual' ? '雙人合約' : '單人合約'}
+                            {contract.contractType === 'group' ? '👥 團體合約' : contract.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'}
                           </span>
                         ) : '無合約資訊'}
                       </span>

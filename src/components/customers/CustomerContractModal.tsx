@@ -379,11 +379,14 @@ export function CustomerContractModal({
         })
       }
 
+      const computedPricePerSession = Number(editTotalSessions) > 0 ? Math.round(Number(editTotalAmount) / Number(editTotalSessions)) : 0
+
       const updateData: Record<string, any> = {
         totalSessions: Number(editTotalSessions),
         remainingSessions: finalRemainingSessions,
         status: newStatus,
         totalAmount: Number(editTotalAmount),
+        pricePerSession: computedPricePerSession,
         paidAmount: finalPaidAmount,
         startDate: Timestamp.fromDate(ensureDate(editStartDate)),
         endDate: Timestamp.fromDate(ensureDate(editEndDate)),
@@ -417,6 +420,7 @@ export function CustomerContractModal({
         contract.totalSessions = Number(editTotalSessions)
         contract.remainingSessions = finalRemainingSessions
         contract.totalAmount = Number(editTotalAmount)
+        contract.pricePerSession = computedPricePerSession
         contract.paidAmount = finalPaidAmount
         contract.startDate = ensureDate(editStartDate)
         contract.endDate = ensureDate(editEndDate)
