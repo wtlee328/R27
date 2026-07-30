@@ -359,7 +359,27 @@ export function CustomerContractModal({
       const isCompleted = finalRemainingSessions <= 0
       const newStatus = isCompleted ? 'completed' : (contract?.status === 'completed' && finalRemainingSessions > 0 ? 'active' : contract?.status || 'active')
 
-      const updateData = {
+      let updatedGroupMemberQuotas: Record<string, any> | undefined = undefined
+      if (contract?.contractType === 'group' && contract.groupMemberQuotas) {
+        const memberKeys = Object.keys(contract.groupMemberQuotas)
+        const memberCount = memberKeys.length || 1
+        const perMemberQuota = Math.floor(Number(editTotalSessions) / memberCount)
+        const remainder = Number(editTotalSessions) % memberCount
+
+        updatedGroupMemberQuotas = {}
+        memberKeys.forEach((key, idx) => {
+          const existing = contract.groupMemberQuotas![key]
+          const allocated = idx === 0 ? perMemberQuota + remainder : perMemberQuota
+          const used = Math.max(0, (existing.totalSessions || 0) - (existing.remainingSessions || 0))
+          updatedGroupMemberQuotas![key] = {
+            ...existing,
+            totalSessions: allocated,
+            remainingSessions: Math.max(0, allocated - used)
+          }
+        })
+      }
+
+      const updateData: Record<string, any> = {
         totalSessions: Number(editTotalSessions),
         remainingSessions: finalRemainingSessions,
         status: newStatus,
@@ -386,6 +406,10 @@ export function CustomerContractModal({
         
         updatedAt: serverTimestamp(),
       }
+
+      if (updatedGroupMemberQuotas) {
+        updateData.groupMemberQuotas = updatedGroupMemberQuotas
+      }
       
       await updateDoc(contractRef, updateData)
 
@@ -410,6 +434,9 @@ export function CustomerContractModal({
         contract.monthlyDueAmount = Number(editMonthlyDueAmount)
         contract.signatureDataUrl = finalSigA
         contract.secondarySignatureDataUrl = finalSigB
+        if (updatedGroupMemberQuotas) {
+          contract.groupMemberQuotas = updatedGroupMemberQuotas
+        }
       }
 
       // Sync Customer A's trainer if updated

@@ -112,6 +112,20 @@ export function useCustomers() {
             isRepaired = true
           }
 
+          // Auto repair 5: Sync group contract totalSessions vs member quotas sum
+          if (c.contractType === 'group' && c.groupMemberQuotas) {
+            const memberKeys = Object.keys(c.groupMemberQuotas)
+            if (memberKeys.length > 0) {
+              const quotaSum = memberKeys.reduce((sum, key) => sum + (c.groupMemberQuotas![key].totalSessions || 0), 0)
+              if (quotaSum > 0 && c.totalSessions !== quotaSum) {
+                console.log(`Group contract ${c.id} totalSessions (${c.totalSessions}) !== quotaSum (${quotaSum}). Auto syncing totalSessions to ${quotaSum}...`)
+                updates.totalSessions = quotaSum
+                c.totalSessions = quotaSum
+                isRepaired = true
+              }
+            }
+          }
+
           if (isRepaired) {
             try {
               const contractDocRef = doc(db, 'contracts', c.id)
