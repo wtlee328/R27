@@ -16,7 +16,22 @@ import { useCustomers } from '../../hooks/useCustomers'
 import { useContracts } from '../../hooks/useContracts'
 import { useTrainers } from '../../hooks/useTrainers'
 import type { LessonRecord } from '../../types'
-
+import {
+  RiUserLine,
+  RiUserSearchLine,
+  RiFileTextLine,
+  RiUserStarLine,
+  RiTeamLine,
+  RiCalendarLine,
+  RiTimeLine,
+  RiStickyNoteLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiLoader4Line,
+  RiPhoneLine,
+  RiContractLine,
+  RiRefreshLine,
+} from '@remixicon/react'
 import { cn } from '@/lib/utils'
 
 interface LessonRecordWizardProps {
@@ -64,7 +79,7 @@ export function LessonRecordWizard({
       .map(c => ({ ...c, isSubstitute: true }))
     return [...own, ...others]
   }, [matchingCustomers, trainerId])
-  
+
   const getTodayString = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -133,16 +148,16 @@ export function LessonRecordWizard({
         setSearchTerm(selectedCust ? selectedCust.name : '')
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [selectedCustomerId, customers])
+
   const selectedContractId = form.watch('contractId')
   const selectedContract = contracts.find(c => c.id === selectedContractId)
 
   // Per-student contract selection map for multi/group contracts
-  // [customerId]: selectedContractId
   const [studentContractSelections, setStudentContractSelections] = useState<Record<string, string>>({})
 
   // All customers associated with the primary selected contract
@@ -167,12 +182,10 @@ export function LessonRecordWizard({
         // FIFO contract auto selection for each member
         const initialSelections: Record<string, string> = {}
         groupCustomers.forEach(m => {
-          // Find all active contracts for this member
           const memberContracts = contracts.filter(c => {
             const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(m.id)
             const isCust = c.customerId === m.id || c.primaryCustomerId === m.id || c.sharedWithCustomerId === m.id || c.partnerId === m.id
             if (!isInIds && !isCust) return false
-
             if (c.contractType === 'group' && c.groupMemberQuotas) {
               return (c.groupMemberQuotas[m.id]?.remainingSessions || 0) > 0
             }
@@ -183,7 +196,6 @@ export function LessonRecordWizard({
             return tA - tB // FIFO: oldest first
           })
 
-          // Prefer the primary selected contract if valid, otherwise FIFO oldest valid contract
           if (memberContracts.some(c => c.id === selectedContract.id)) {
             initialSelections[m.id] = selectedContract.id
           } else if (memberContracts.length > 0) {
@@ -221,7 +233,7 @@ export function LessonRecordWizard({
 
   const handleSubmit = async (data: LessonRecordFormValues) => {
     const isMulti = selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || (selectedContract.customerIds && selectedContract.customerIds.length > 1))
-    
+
     let attendees = data.attendingCustomerIds || []
     if (isMulti) {
       if (attendees.length === 0) {
@@ -259,22 +271,46 @@ export function LessonRecordWizard({
     }
   }
 
+  const isMultiContract = selectedContract && (
+    selectedContract.contractType === 'dual' ||
+    selectedContract.contractType === 'group' ||
+    groupCustomers.length > 1
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] p-0 flex flex-col overflow-hidden rounded-2xl border-none shadow-2xl bg-white">
-        <DialogHeader className="px-6 py-4 border-b border-stone-100 shrink-0">
-          <DialogTitle className="text-lg font-bold text-stone-900">{initialData ? '編輯銷課紀錄' : '新增銷課紀錄'}</DialogTitle>
-          <DialogDescription className="text-xs text-stone-500">請選擇客戶、合約，並選取實際出席學員與扣抵合約。</DialogDescription>
+      <DialogContent className="max-w-md max-h-[88vh] p-0 flex flex-col overflow-hidden rounded-2xl border-none shadow-2xl bg-white">
+
+        {/* Header */}
+        <DialogHeader className="px-6 pt-5 pb-4 border-b border-stone-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+              <RiTimeLine className="w-4.5 h-4.5 text-orange-600" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-stone-900 leading-tight">
+                {initialData ? '編輯銷課紀錄' : '新增銷課紀錄'}
+              </DialogTitle>
+              <DialogDescription className="text-[11px] text-stone-400 mt-0.5">
+                選擇學員、合約與出席狀態以完成銷課
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            <div className="space-y-2 relative" ref={containerRef}>
-              <Label>客戶 *</Label>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+            {/* Customer Search */}
+            <div className="space-y-1.5 relative" ref={containerRef}>
+              <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                <RiUserSearchLine className="w-3.5 h-3.5" />
+                學員
+              </Label>
               <div className="relative">
                 <Input
                   type="text"
-                  placeholder="請輸入客戶名稱或電話搜尋..."
+                  placeholder="輸入姓名或電話搜尋..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
@@ -287,9 +323,12 @@ export function LessonRecordWizard({
                     }
                   }}
                   onFocus={() => setIsOpen(true)}
-                  className="w-full text-sm pr-12 animate-in fade-in duration-300"
+                  className={cn(
+                    'w-full text-sm pr-10 h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white transition-colors',
+                    selectedCustomerId && 'border-orange-300 bg-orange-50/30'
+                  )}
                 />
-                {selectedCustomerId && (
+                {selectedCustomerId ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -300,18 +339,21 @@ export function LessonRecordWizard({
                       form.setValue('attendingCustomerIds', [])
                       setIsOpen(true)
                     }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-bold"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 transition-colors"
                   >
-                    清除
+                    <RiCloseLine className="w-4 h-4" />
                   </button>
+                ) : (
+                  <RiUserLine className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 pointer-events-none" />
                 )}
               </div>
 
               {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-lg shadow-lg max-h-60 overflow-y-auto divide-y divide-stone-100 animate-in fade-in duration-200">
+                <div className="absolute z-50 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-xl max-h-52 overflow-y-auto divide-y divide-stone-50 animate-in fade-in slide-in-from-top-1 duration-150">
                   {orderedMatchingCustomers.length === 0 ? (
-                    <div className="p-3 text-xs text-stone-500 text-center">
-                      找不到符合的客戶
+                    <div className="px-4 py-5 text-xs text-stone-400 text-center flex flex-col items-center gap-1.5">
+                      <RiUserSearchLine className="w-5 h-5 text-stone-300" />
+                      找不到符合的學員
                     </div>
                   ) : (
                     orderedMatchingCustomers.map((c) => {
@@ -323,27 +365,39 @@ export function LessonRecordWizard({
                           onClick={() => {
                             form.setValue('customerId', c.id)
                             form.setValue('customerName', c.name)
-                            form.setValue('contractId', '') // reset contract
+                            form.setValue('contractId', '')
                             form.setValue('attendingCustomerIds', [c.id])
                             setSearchTerm(c.name)
                             setIsOpen(false)
                           }}
                           className={cn(
-                            "w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-stone-50 flex flex-col gap-0.5",
-                            isSelected ? "bg-brand-50 hover:bg-brand-100" : ""
+                            'w-full text-left px-4 py-2.5 text-xs transition-colors hover:bg-stone-50 flex items-center justify-between gap-3',
+                            isSelected ? 'bg-orange-50' : ''
                           )}
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-bold text-stone-900">
-                              {c.name}
-                              {c.isSubstitute && (
-                                <span className="ml-2 text-[9px] font-extrabold text-orange-600 bg-orange-50 border border-orange-200 px-1 py-0.5 rounded">
-                                  代課
-                                </span>
-                              )}
-                            </span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold',
+                              isSelected ? 'bg-orange-500 text-white' : 'bg-stone-100 text-stone-500'
+                            )}>
+                              {c.name.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-stone-900 flex items-center gap-1.5">
+                                {c.name}
+                                {c.isSubstitute && (
+                                  <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                                    代課
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-stone-400 flex items-center gap-1 mt-0.5">
+                                <RiPhoneLine className="w-3 h-3" />
+                                {c.phone || '無電話'}
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-stone-500 text-[10px]">{c.phone || '無電話資訊'}</span>
+                          {isSelected && <RiCheckLine className="w-4 h-4 text-orange-500 shrink-0" />}
                         </button>
                       )
                     })
@@ -351,115 +405,145 @@ export function LessonRecordWizard({
                 </div>
               )}
               {form.formState.errors.customerId && (
-                <p className="text-red-500 text-xs">{form.formState.errors.customerId.message}</p>
+                <p className="text-red-500 text-xs mt-1">{form.formState.errors.customerId.message}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>主要合約 *</Label>
-              <select
-                className="w-full border rounded-md px-3 py-2 text-sm"
-                {...form.register('contractId', {
-                  onChange: (e) => {
-                    const conId = e.target.value
-                    const con = contracts.find(c => c.id === conId)
-                    if (con) {
-                      const ids = con.customerIds && con.customerIds.length > 0
-                        ? con.customerIds
-                        : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
-                      form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
-                    }
-                  }
-                })}
-                disabled={!selectedCustomerId}
-              >
-                <option value="" disabled>請選擇合約</option>
-                {contracts.length === 0 && selectedCustomerId && (
-                   <option value="temp_contract_01">預設合約 (開發中佔位)</option>
-                )}
-                {contracts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.contractType === 'group' ? '👥 團體合約' : c.contractType === 'dual' ? '👥 雙人合約' : '👤 單人合約'} - {(c as any).contractNo || c.id.substring(0, 8)} (剩餘: {c.remainingSessions} 堂)
-                  </option>
-                ))}
-              </select>
-              {form.formState.errors.contractId && (
-                <p className="text-red-500 text-xs">{form.formState.errors.contractId.message}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>授課教練 *</Label>
-              {trainerId ? (
-                <>
-                  <select
-                    className="w-full border rounded-md px-3 py-2 text-sm bg-stone-50 text-stone-550 border-stone-200 cursor-not-allowed select-none"
-                    value={trainerId}
-                    disabled
-                  >
-                    {trainers.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                  <input type="hidden" {...form.register('trainerId')} value={trainerId} />
-                </>
-              ) : (
+            {/* Contract Select */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                <RiFileTextLine className="w-3.5 h-3.5" />
+                合約
+              </Label>
+              <div className="relative">
                 <select
-                  className="w-full border rounded-md px-3 py-2 text-sm animate-in fade-in duration-300"
-                  {...form.register('trainerId')}
+                  className={cn(
+                    'w-full h-10 rounded-xl border border-stone-200 px-3 text-sm bg-stone-50 text-stone-800 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 transition-all appearance-none cursor-pointer',
+                    !selectedCustomerId && 'opacity-50 cursor-not-allowed',
+                    selectedContractId && 'border-orange-300 bg-orange-50/30'
+                  )}
+                  {...form.register('contractId', {
+                    onChange: (e) => {
+                      const conId = e.target.value
+                      const con = contracts.find(c => c.id === conId)
+                      if (con) {
+                        const ids = con.customerIds && con.customerIds.length > 0
+                          ? con.customerIds
+                          : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
+                        form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
+                      }
+                    }
+                  })}
                   disabled={!selectedCustomerId}
                 >
-                  <option value="" disabled>請選擇授課教練</option>
-                  {trainers.map((t) => {
-                    const isContractTrainer = selectedContract && (
-                      selectedContract.trainerId === t.id ||
-                      (selectedContract as any).secondaryTrainerId === t.id
-                    )
-                    const isSubstitute = selectedContract && !isContractTrainer
+                  <option value="" disabled>請選擇合約</option>
+                  {contracts.length === 0 && selectedCustomerId && (
+                    <option value="temp_contract_01">預設合約 (開發中佔位)</option>
+                  )}
+                  {contracts.map((c) => {
+                    const isGroup = c.contractType === 'group' || !!c.groupMemberQuotas
+                    const isDual = !isGroup && (c.contractType === 'dual' || !!c.sharedWithCustomerId)
+                    const typeLabel = isGroup ? '[團體]' : isDual ? '[雙人]' : '[單人]'
                     return (
-                      <option key={t.id} value={t.id}>
-                        {t.name} {isSubstitute ? ' (代課教練)' : ' (合約教練)'}
+                      <option key={c.id} value={c.id}>
+                        {typeLabel} {(c as any).contractNo || c.id.substring(0, 8)} — 剩 {c.remainingSessions} 堂
                       </option>
                     )
                   })}
                 </select>
-              )}
-              {form.formState.errors.trainerId && (
-                <p className="text-red-500 text-xs">{form.formState.errors.trainerId.message}</p>
+                <RiContractLine className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 pointer-events-none" />
+              </div>
+              {form.formState.errors.contractId && (
+                <p className="text-red-500 text-xs mt-1">{form.formState.errors.contractId.message}</p>
               )}
             </div>
 
-            {/* Attendance & Multi-contract selection area */}
-            {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || groupCustomers.length > 1) && (
-              <div className="space-y-3 p-4 bg-orange-50/50 border border-orange-100 rounded-xl animate-in fade-in duration-300">
-                <div className="flex items-center justify-between">
-                  <Label className="text-stone-900 font-bold block text-xs">
-                    {selectedContract.contractType === 'group' ? '👥 團體合約成員出席與扣抵設定 (可勾選出席學員)' : '👥 雙人合約出席學員 (可多選)'}
-                  </Label>
-                  <span className="text-[10px] text-stone-400 font-medium">未勾選代表缺席（不扣堂）</span>
+            {/* Trainer Select */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                <RiUserStarLine className="w-3.5 h-3.5" />
+                授課教練
+              </Label>
+              {trainerId ? (
+                <>
+                  <div className="h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
+                      <RiUserStarLine className="w-3 h-3 text-stone-500" />
+                    </div>
+                    <span className="text-sm text-stone-600 font-medium">
+                      {trainers.find(t => t.id === trainerId)?.name || '教練'}
+                    </span>
+                    <span className="ml-auto text-[10px] text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full">已固定</span>
+                  </div>
+                  <input type="hidden" {...form.register('trainerId')} value={trainerId} />
+                </>
+              ) : (
+                <div className="relative">
+                  <select
+                    className={cn(
+                      'w-full h-10 rounded-xl border border-stone-200 px-3 text-sm bg-stone-50 text-stone-800 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 transition-all appearance-none cursor-pointer',
+                      !selectedCustomerId && 'opacity-50 cursor-not-allowed'
+                    )}
+                    {...form.register('trainerId')}
+                    disabled={!selectedCustomerId}
+                  >
+                    <option value="" disabled>請選擇授課教練</option>
+                    {trainers.map((t) => {
+                      const isContractTrainer = selectedContract && (
+                        selectedContract.trainerId === t.id ||
+                        (selectedContract as any).secondaryTrainerId === t.id
+                      )
+                      return (
+                        <option key={t.id} value={t.id}>
+                          {t.name}{!isContractTrainer && selectedContract ? ' (代課)' : ''}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <RiUserStarLine className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-300 pointer-events-none" />
                 </div>
-                
-                <div className="space-y-2">
-                  {groupCustomers.map((member) => {
+              )}
+              {form.formState.errors.trainerId && (
+                <p className="text-red-500 text-xs mt-1">{form.formState.errors.trainerId.message}</p>
+              )}
+            </div>
+
+            {/* Attendance Section — Multi/Group contracts */}
+            {isMultiContract && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                    <RiTeamLine className="w-3.5 h-3.5" />
+                    {selectedContract?.contractType === 'group' ? '團體成員出席' : '雙人出席'}
+                  </Label>
+                  <span className="text-[10px] text-stone-400">未勾選代表缺席</span>
+                </div>
+
+                <div className="rounded-xl border border-stone-100 overflow-hidden divide-y divide-stone-50">
+                  {groupCustomers.map((member, idx) => {
                     const isAttending = (form.watch('attendingCustomerIds') || []).includes(member.id)
-                    
-                    // Find all active contracts for this specific member
                     const memberContracts = contracts.filter(c => {
                       const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
                       const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id
                       return isInIds || isCust
                     })
-
-                    const currentSelectedContractId = studentContractSelections[member.id] || selectedContract.id
+                    const currentSelectedContractId = studentContractSelections[member.id] || selectedContract?.id || ''
 
                     return (
-                      <div key={member.id} className="p-2.5 bg-white border border-stone-200 rounded-xl space-y-2">
-                        <div className="flex items-center justify-between">
-                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <div
+                        key={member.id}
+                        className={cn(
+                          'transition-colors',
+                          isAttending ? 'bg-white' : 'bg-stone-50/60'
+                        )}
+                      >
+                        {/* Member row */}
+                        <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
+                          <div className="relative shrink-0">
                             <input
                               type="checkbox"
                               checked={isAttending}
-                              className="w-4 h-4 rounded border-stone-300 text-orange-500 focus:ring-orange-400 accent-orange-500"
+                              className="w-4 h-4 rounded border-stone-300 accent-orange-500 cursor-pointer"
                               onChange={(e) => {
                                 const current = form.getValues('attendingCustomerIds') || []
                                 if (e.target.checked) {
@@ -469,42 +553,64 @@ export function LessonRecordWizard({
                                 }
                               }}
                             />
-                            <span className="text-xs font-bold text-stone-800">
-                              👤 {member.name}
-                            </span>
-                          </label>
-                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", isAttending ? "bg-green-50 text-green-700 border border-green-200" : "bg-stone-100 text-stone-400")}>
-                            {isAttending ? '實際出席' : '未出席'}
-                          </span>
-                        </div>
-
-                        {isAttending && (
-                          <div className="pl-6 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-stone-500 font-medium shrink-0">扣除合約:</span>
-                              <select
-                                className="w-full border border-stone-200 rounded px-2 py-1 text-[11px] bg-stone-50 text-stone-800 focus:outline-none focus:ring-1 focus:ring-orange-400"
-                                value={currentSelectedContractId}
-                                onChange={(e) => {
-                                  setStudentContractSelections(prev => ({
-                                    ...prev,
-                                    [member.id]: e.target.value
-                                  }))
-                                }}
-                              >
-                                {memberContracts.map(mc => {
-                                  let remText = `${mc.remainingSessions} 堂`
-                                  if (mc.contractType === 'group' && mc.groupMemberQuotas && mc.groupMemberQuotas[member.id]) {
-                                    remText = `個人剩 ${mc.groupMemberQuotas[member.id].remainingSessions} 堂 / 團體總剩 ${mc.remainingSessions} 堂`
-                                  }
-                                  return (
-                                    <option key={mc.id} value={mc.id}>
-                                      {mc.contractType === 'group' ? '[團體]' : mc.contractType === 'dual' ? '[雙人]' : '[單人]'} {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
-                                    </option>
-                                  )
-                                })}
-                              </select>
+                          </div>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className={cn(
+                              'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0',
+                              isAttending ? 'bg-orange-100 text-orange-700' : 'bg-stone-100 text-stone-400'
+                            )}>
+                              {member.name.charAt(0)}
                             </div>
+                            <span className={cn(
+                              'text-xs font-semibold truncate transition-colors',
+                              isAttending ? 'text-stone-800' : 'text-stone-400'
+                            )}>
+                              {member.name}
+                            </span>
+                            {idx === 0 && (
+                              <span className="text-[9px] font-bold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full shrink-0">
+                                主學員
+                              </span>
+                            )}
+                          </div>
+                          <span className={cn(
+                            'text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 transition-colors',
+                            isAttending
+                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                              : 'bg-stone-100 text-stone-400'
+                          )}>
+                            {isAttending ? '出席' : '缺席'}
+                          </span>
+                        </label>
+
+                        {/* Contract sub-row when attending */}
+                        {isAttending && (
+                          <div className="px-4 pb-3 flex items-center gap-2">
+                            <div className="w-4 shrink-0" />
+                            <RiContractLine className="w-3.5 h-3.5 text-stone-300 shrink-0" />
+                            <select
+                              className="flex-1 border border-stone-200 rounded-lg px-2.5 py-1.5 text-[11px] bg-stone-50 text-stone-700 focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400 appearance-none cursor-pointer"
+                              value={currentSelectedContractId}
+                              onChange={(e) => {
+                                setStudentContractSelections(prev => ({
+                                  ...prev,
+                                  [member.id]: e.target.value
+                                }))
+                              }}
+                            >
+                              {memberContracts.map(mc => {
+                                const isGroup = mc.contractType === 'group' && mc.groupMemberQuotas && mc.groupMemberQuotas[member.id]
+                                const remText = isGroup
+                                  ? `個人剩 ${mc.groupMemberQuotas![member.id].remainingSessions} 堂`
+                                  : `剩 ${mc.remainingSessions} 堂`
+                                const typeLabel = mc.contractType === 'group' ? '團體' : mc.contractType === 'dual' ? '雙人' : '單人'
+                                return (
+                                  <option key={mc.id} value={mc.id}>
+                                    [{typeLabel}] {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
+                                  </option>
+                                )
+                              })}
+                            </select>
                           </div>
                         )}
                       </div>
@@ -517,29 +623,83 @@ export function LessonRecordWizard({
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>上課日期 *</Label>
-                <Input type="date" {...form.register('sessionDate')} />
+            {/* Date & Sessions row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <RiCalendarLine className="w-3.5 h-3.5" />
+                  上課日期
+                </Label>
+                <Input
+                  type="date"
+                  {...form.register('sessionDate')}
+                  className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm"
+                />
+                {form.formState.errors.sessionDate && (
+                  <p className="text-red-500 text-xs">{form.formState.errors.sessionDate.message as string}</p>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>消耗堂數 *</Label>
-                <Input type="number" step="1" min="1" {...form.register('sessionAmount', { valueAsNumber: true })} />
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <RiRefreshLine className="w-3.5 h-3.5" />
+                  消耗堂數
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    {...form.register('sessionAmount', { valueAsNumber: true })}
+                    className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-stone-400 pointer-events-none">堂</span>
+                </div>
+                {form.formState.errors.sessionAmount && (
+                  <p className="text-red-500 text-xs">{form.formState.errors.sessionAmount.message as string}</p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>備註</Label>
-              <Input {...form.register('notes')} placeholder="例如：上半身訓練、深蹲進步..." />
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-stone-500 uppercase tracking-wide flex items-center gap-1.5">
+                <RiStickyNoteLine className="w-3.5 h-3.5" />
+                備註
+              </Label>
+              <Input
+                {...form.register('notes')}
+                placeholder="課程重點、進展說明..."
+                className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm"
+              />
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-stone-100 bg-stone-50/80 shrink-0">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-stone-200 hover:bg-stone-100 text-stone-600 font-semibold">
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-stone-100 bg-stone-50/60 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-100 font-medium text-sm"
+            >
               取消
             </Button>
-            <Button type="submit" disabled={loading} className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold px-5">
-              {loading ? '儲存中...' : '確認銷課'}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 text-sm shadow-sm shadow-orange-200 transition-all"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <RiLoader4Line className="w-4 h-4 animate-spin" />
+                  儲存中...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <RiCheckLine className="w-4 h-4" />
+                  確認銷課
+                </span>
+              )}
             </Button>
           </div>
         </form>
