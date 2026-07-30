@@ -578,13 +578,18 @@ export function CustomerContractModal({
                 {/* 團體課成員配額表 */}
                 {contract?.contractType === 'group' && contract.groupMemberQuotas && (
                   <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl space-y-2 text-xs">
-                    <div className="font-bold text-emerald-900 text-[11px]">👥 團體合約成員與獨立剩餘堂數明細：</div>
+                    <div className="flex justify-between items-center text-[11px] font-bold text-emerald-900">
+                      <span>👥 團體合約成員每人總堂數明細：</span>
+                      <span className="font-mono text-emerald-700">
+                        單堂每人金額: NT$ {contract.totalSessions > 0 ? Math.round((contract.totalAmount || 0) / contract.totalSessions) : 0} / 堂
+                      </span>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.values(contract.groupMemberQuotas).map((gm, i) => (
                         <div key={gm.customerId || i} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
                           <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
                           <span className="font-mono font-bold text-emerald-800">
-                            個人剩額：{gm.remainingSessions} / {gm.totalSessions} 堂
+                            每人總堂數：{gm.totalSessions} 堂
                           </span>
                         </div>
                       ))}
