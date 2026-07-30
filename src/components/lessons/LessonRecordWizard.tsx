@@ -65,6 +65,14 @@ export function LessonRecordWizard({
     return [...own, ...others]
   }, [matchingCustomers, trainerId])
   
+  const getTodayString = () => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const form = useForm<LessonRecordFormValues>({
     resolver: zodResolver(lessonRecordFormSchema),
     defaultValues: {
@@ -72,7 +80,7 @@ export function LessonRecordWizard({
       customerName: '',
       contractId: '',
       trainerId: trainerId || '',
-      sessionDate: new Date(),
+      sessionDate: getTodayString() as any,
       sessionAmount: 1,
       notes: '',
       attendingCustomerIds: [],
@@ -82,13 +90,19 @@ export function LessonRecordWizard({
   // Update form when initialData changes
   useEffect(() => {
     if (initialData) {
+      const d = initialData.sessionDate ? initialData.sessionDate.toDate() : new Date()
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+
       form.reset({
         customerId: initialData.customerId,
         customerName: initialData.customerName,
         contractId: initialData.contractId,
         trainerId: initialData.trainerId || trainerId || '',
-        sessionDate: initialData.sessionDate.toDate(),
-        sessionAmount: initialData.sessionAmount,
+        sessionDate: dateStr as any,
+        sessionAmount: initialData.sessionAmount || 1,
         notes: initialData.notes || '',
         attendingCustomerIds: initialData.attendingCustomerIds || [initialData.customerId],
       })
@@ -99,7 +113,7 @@ export function LessonRecordWizard({
         customerName: '',
         contractId: '',
         trainerId: trainerId || '',
-        sessionDate: new Date().toISOString().split('T')[0] as any,
+        sessionDate: getTodayString() as any,
         sessionAmount: 1,
         notes: '',
         attendingCustomerIds: [],
@@ -185,6 +199,14 @@ export function LessonRecordWizard({
       }
     }
   }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form])
+
+  // Dynamically adjust sessionAmount based on selected attending customers count (only for new records)
+  const watchedAttendingIds = form.watch('attendingCustomerIds') || []
+  useEffect(() => {
+    if (!initialData && watchedAttendingIds.length > 0) {
+      form.setValue('sessionAmount', watchedAttendingIds.length)
+    }
+  }, [watchedAttendingIds.length, initialData, form])
 
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
@@ -498,11 +520,11 @@ export function LessonRecordWizard({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>上課日期 *</Label>
-                <Input type="date" {...form.register('sessionDate', { valueAsDate: true })} />
+                <Input type="date" {...form.register('sessionDate')} />
               </div>
               <div className="space-y-2">
                 <Label>消耗堂數 *</Label>
-                <Input type="number" step="0.5" {...form.register('sessionAmount')} />
+                <Input type="number" step="1" min="1" {...form.register('sessionAmount', { valueAsNumber: true })} />
               </div>
             </div>
 
