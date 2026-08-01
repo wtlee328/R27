@@ -15,6 +15,8 @@ import { lessonRecordFormSchema, type LessonRecordFormValues } from '../../lib/v
 import { useCustomers } from '../../hooks/useCustomers'
 import { useContracts } from '../../hooks/useContracts'
 import { useTrainers } from '../../hooks/useTrainers'
+import { useAuthStore } from '@/stores/authStore'
+import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import type { LessonRecord } from '../../types'
 import {
   RiUserLine,
@@ -54,6 +56,10 @@ export function LessonRecordWizard({
   const { customers } = useCustomers()
   const { trainers } = useTrainers()
 
+  const { user } = useAuthStore()
+  const { selectedTrainerId: activeTrainerId } = useTrainerProfileStore()
+  const effectiveTrainerId = trainerId || activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null) || ''
+
   // Show all accessible customers — the Firestore layer already scopes by role.
   // Don't filter by trainerId here: substitute trainers need to see other trainers' students.
   const filteredCustomers = customers
@@ -69,17 +75,17 @@ export function LessonRecordWizard({
 
   // Prioritize trainer's own customers at the top of the list, label other trainers' customers as substitute ("代課")
   const orderedMatchingCustomers = useMemo(() => {
-    if (!trainerId) {
+    if (!effectiveTrainerId) {
       return matchingCustomers.map(c => ({ ...c, isSubstitute: false }))
     }
     const own = matchingCustomers
-      .filter(c => c.trainerId === trainerId)
+      .filter(c => c.trainerId === effectiveTrainerId)
       .map(c => ({ ...c, isSubstitute: false }))
     const others = matchingCustomers
-      .filter(c => c.trainerId !== trainerId)
+      .filter(c => c.trainerId !== effectiveTrainerId)
       .map(c => ({ ...c, isSubstitute: true }))
     return [...own, ...others]
-  }, [matchingCustomers, trainerId])
+  }, [matchingCustomers, effectiveTrainerId])
 
   const getTodayString = () => {
     const now = new Date()
@@ -95,7 +101,7 @@ export function LessonRecordWizard({
       customerId: '',
       customerName: '',
       contractId: '',
-      trainerId: trainerId || '',
+      trainerId: effectiveTrainerId,
       sessionDate: getTodayString() as any,
       sessionAmount: 1,
       notes: '',
@@ -116,7 +122,7 @@ export function LessonRecordWizard({
         customerId: initialData.customerId,
         customerName: initialData.customerName,
         contractId: initialData.contractId,
-        trainerId: initialData.trainerId || trainerId || '',
+        trainerId: initialData.trainerId || effectiveTrainerId,
         sessionDate: dateStr as any,
         sessionAmount: initialData.sessionAmount || 1,
         notes: initialData.notes || '',
@@ -128,7 +134,7 @@ export function LessonRecordWizard({
         customerId: '',
         customerName: '',
         contractId: '',
-        trainerId: trainerId || '',
+        trainerId: effectiveTrainerId,
         sessionDate: getTodayString() as any,
         sessionAmount: 1,
         notes: '',
@@ -136,7 +142,7 @@ export function LessonRecordWizard({
       })
       setSearchTerm('')
     }
-  }, [initialData, form, trainerId])
+  }, [initialData, form, effectiveTrainerId])
 
   const selectedCustomerId = form.watch('customerId')
   const { contracts } = useContracts(selectedCustomerId)
@@ -236,13 +242,13 @@ export function LessonRecordWizard({
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
     if (!initialData && selectedContract) {
-      if (trainerId) {
-        form.setValue('trainerId', trainerId)
+      if (effectiveTrainerId) {
+        form.setValue('trainerId', effectiveTrainerId)
       } else {
         form.setValue('trainerId', selectedContract.trainerId || '')
       }
     }
-  }, [selectedContract, initialData, form, trainerId])
+  }, [selectedContract, initialData, form, effectiveTrainerId])
 
   // Validation & Safeguard Check (防呆機制)
   const validationError = useMemo(() => {

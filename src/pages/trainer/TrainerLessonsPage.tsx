@@ -159,8 +159,18 @@ export default function TrainerLessonsPage() {
     setSelectedCustomerId(customer.id)
     setSelectedContractId('')
     setAttendingCustomerIds([customer.id])
+    if (currentTrainerId) {
+      setSelectedTrainerId(currentTrainerId)
+    }
     setStep(2)
   }
+
+  // Ensure selectedTrainerId is defaulted to logged-in coach when entering recording mode or when currentTrainerId changes
+  useEffect(() => {
+    if (currentTrainerId) {
+      setSelectedTrainerId(currentTrainerId)
+    }
+  }, [currentTrainerId, isRecording])
 
   // Pre-select contract/trainer when contracts load
   useEffect(() => {
@@ -168,9 +178,15 @@ export default function TrainerLessonsPage() {
       // Find the first contract with remaining sessions
       const activeContract = contracts.find(c => c.remainingSessions > 0) || contracts[0]
       setSelectedContractId(activeContract.id)
-      setSelectedTrainerId(activeContract.trainerId || '')
+      if (currentTrainerId) {
+        setSelectedTrainerId(currentTrainerId)
+      } else if (activeContract.trainerId) {
+        setSelectedTrainerId(activeContract.trainerId)
+      }
+    } else if (currentTrainerId) {
+      setSelectedTrainerId(currentTrainerId)
     }
-  }, [contracts])
+  }, [contracts, currentTrainerId])
 
   const handleBack = () => {
     if (step === 2) {
@@ -195,6 +211,9 @@ export default function TrainerLessonsPage() {
     setCustomerSearch('')
     setEntryMode('regular')
     setSelectedSubstitutedTrainerId('')
+    if (currentTrainerId) {
+      setSelectedTrainerId(currentTrainerId)
+    }
   }
 
   const [submitting, setSubmitting] = useState(false)
