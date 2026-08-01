@@ -24,7 +24,7 @@ export default function TrainerLessonsPage() {
   const currentTrainerId = activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
 
   const { records, loading: recordsLoading, createRecord } = useLessonRecords()
-  const { customers, loading: customersLoading } = useCustomers()
+  const { customers, contracts: venueContracts, loading: customersLoading } = useCustomers()
   const { trainers, loading: trainersLoading } = useTrainers()
 
   const [isRecording, setIsRecording] = useState(false)
@@ -56,8 +56,6 @@ export default function TrainerLessonsPage() {
 
   // Fetch contracts for the selected customer
   const { contracts, loading: contractsLoading } = useContracts(selectedCustomerId)
-  // Fetch all venue contracts for contract-student prioritization & substitute filtering
-  const { contracts: venueContracts } = useContracts()
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId)
@@ -103,6 +101,20 @@ export default function TrainerLessonsPage() {
     return map
   }, [venueContracts])
 
+  // Filter customers that belong to current trainer for regular mode
+  const myCustomers = useMemo(() => {
+    if (!currentTrainerId) return customers
+    return customers.filter(cust => {
+      // 1. Primary assigned trainer is current trainer
+      if (cust.trainerId === currentTrainerId) return true
+      // 2. Or has a contract where current trainer is primary or secondary trainer
+      return venueContracts.some(con =>
+        (con.customerId === cust.id || con.sharedWithCustomerId === cust.id || (con.customerIds && con.customerIds.includes(cust.id))) &&
+        (con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId)
+      )
+    })
+  }, [customers, venueContracts, currentTrainerId])
+
   // Customer IDs for a specific substituted trainer
   const substitutedTrainerCustomerIds = useMemo(() => {
     if (!selectedSubstitutedTrainerId) return new Set<string>()
@@ -119,14 +131,24 @@ export default function TrainerLessonsPage() {
         if (c.sharedWithCustomerId) set.add(c.sharedWithCustomerId)
       }
     })
+    // Also include customers assigned to this trainer who have active remaining contracts
+    customers.forEach((c) => {
+      if (c.trainerId === selectedSubstitutedTrainerId) {
+        const info = customerContractMap.get(c.id)
+        if (info && info.remainingTotal > 0) {
+          set.add(c.id)
+        }
+      }
+    })
     return set
-  }, [venueContracts, selectedSubstitutedTrainerId])
+  }, [venueContracts, customers, selectedSubstitutedTrainerId, customerContractMap])
 
   // Filter and sort customers (Contract students prioritized!)
   const filteredAndSortedCustomers = useMemo(() => {
-    let list = customers
+    // 1. Regular mode: only show current trainer's students (myCustomers)
+    // 2. Substitute mode: filter strictly by selected substituted trainer's contract students
+    let list = entryMode === 'substitute' ? customers : myCustomers
 
-    // Substitute mode: filter strictly by selected substituted trainer's contract students
     if (entryMode === 'substitute') {
       if (!selectedSubstitutedTrainerId) return []
       list = list.filter((c) => substitutedTrainerCustomerIds.has(c.id))
@@ -152,7 +174,7 @@ export default function TrainerLessonsPage() {
       }
       return a.name.localeCompare(b.name, 'zh-Hant')
     })
-  }, [customers, entryMode, selectedSubstitutedTrainerId, substitutedTrainerCustomerIds, customerSearch, customerContractMap])
+  }, [customers, myCustomers, entryMode, selectedSubstitutedTrainerId, substitutedTrainerCustomerIds, customerSearch, customerContractMap])
 
   // Handle customer selection
   const handleSelectCustomer = (customer: Customer) => {
@@ -328,7 +350,7 @@ export default function TrainerLessonsPage() {
                   )}
                 >
                   <User className="w-3.5 h-3.5 text-orange-500" />
-                  一般銷課 (同場館學員)
+                  一般銷課 (我的學員)
                 </button>
                 <button
                   type="button"
