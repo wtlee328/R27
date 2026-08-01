@@ -37,6 +37,7 @@ import { Label } from '../ui/label'
 import { contractFormSchema, type ContractFormValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
 import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
+import { SearchableCustomerSelect } from '../shared/SearchableCustomerSelect'
 import type { Customer, Contract } from '../../types'
 import { useCenterStore } from '@/stores/centerStore'
 function addOneYearToDateString(dateVal: string | Date): string {
@@ -1012,23 +1013,17 @@ export function ContractFormModal({
                           <div className="grid grid-cols-2 gap-4 pt-2 border-t border-blue-100">
                             <div className="space-y-2">
                               <Label className="text-xs text-blue-900 font-medium">選擇欲連結的場館學員 (主學員 / 合約持有者) *</Label>
-                              <div className="relative">
-                                <select
+                                <SearchableCustomerSelect
+                                  customers={activeCustomers}
                                   value={selectedExistingCustomerId || ''}
-                                  onChange={(e) => {
-                                    setSelectedExistingCustomerId(e.target.value || null)
+                                  onChange={(id) => {
+                                    setSelectedExistingCustomerId(id || null)
                                     form.setValue('existingContractId', null)
                                     form.setValue('secondaryTrainerId', null)
                                   }}
-                                  className="w-full h-10 rounded-xl border border-stone-200 bg-white text-stone-800 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
-                                >
-                                  <option value="">-- 請選擇學員 --</option>
-                                  {activeCustomers.filter(c => c.id !== customer.id).map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name} ({c.phone || '無電話'})</option>
-                                  ))}
-                                </select>
-                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                              </div>
+                                  excludeIds={customer?.id ? [customer.id] : []}
+                                  placeholder="-- 請搜尋或選擇場館學員 --"
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -1282,10 +1277,10 @@ export function ContractFormModal({
                                   {/* Mode Content */}
                                   {m.memberMode === 'existing' ? (
                                     <div className="space-y-1.5">
-                                      <select
+                                      <SearchableCustomerSelect
+                                        customers={activeCustomers}
                                         value={m.existingCustomerId || ''}
-                                        onChange={(e) => {
-                                          const selectedId = e.target.value
+                                        onChange={(selectedId) => {
                                           if (selectedId) {
                                             const selectedCust = activeCustomers.find(c => c.id === selectedId)
                                             if (selectedCust) {
@@ -1296,45 +1291,32 @@ export function ContractFormModal({
                                                   : new Date(selectedCust.dateOfBirth)
                                                 if (!isNaN(d.getTime())) dobStr = d.toISOString().split('T')[0]
                                               }
-                                              setAdditionalGroupMembers(prev => {
-                                                const next = [...prev]
-                                                next[idx] = {
-                                                  ...next[idx],
-                                                  memberMode: 'existing',
-                                                  existingCustomerId: selectedCust.id,
-                                                  name: selectedCust.name,
-                                                  idNumber: selectedCust.idNumber || '',
-                                                  phone: selectedCust.phone || '',
-                                                  email: selectedCust.email || '',
-                                                  dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
-                                                  gender: (selectedCust.gender as any) || 'female',
-                                                  exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
-                                                  source: selectedCust.source || 'existing',
-                                                  emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
-                                                  medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
-                                                }
-                                                return next
-                                              })
+                                              setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
+                                                ...item,
+                                                memberMode: 'existing',
+                                                existingCustomerId: selectedCust.id,
+                                                name: selectedCust.name,
+                                                idNumber: selectedCust.idNumber || '',
+                                                phone: selectedCust.phone || '',
+                                                email: selectedCust.email || '',
+                                                dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+                                                gender: (selectedCust.gender as any) || 'female',
+                                                exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
+                                                source: selectedCust.source || 'existing',
+                                                emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
+                                                medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                              } : item))
                                             }
                                           } else {
-                                            setAdditionalGroupMembers(prev => {
-                                              const next = [...prev]
-                                              next[idx] = { ...next[idx], memberMode: 'existing', existingCustomerId: '', name: '' }
-                                              return next
-                                            })
+                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '', name: '' } : item))
                                           }
                                         }}
-                                        className="w-full h-9 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
-                                      >
-                                        <option value="">— 請選擇現有學員 —</option>
-                                        {(activeCustomers || [])
-                                          .filter(c => c.id !== customer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== idx && other.existingCustomerId === c.id))
-                                          .map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                              {c.name} ({c.phone || '無電話'})
-                                            </option>
-                                          ))}
-                                      </select>
+                                        excludeIds={[
+                                          ...(customer?.id ? [customer.id] : []),
+                                          ...additionalGroupMembers.filter((_, oIdx) => oIdx !== idx).map(item => item.existingCustomerId).filter(Boolean) as string[]
+                                        ]}
+                                        placeholder="-- 請搜尋或選擇現有學員 --"
+                                      />
                                     </div>
                                   ) : (
                                     <p className="text-[11px] font-semibold text-emerald-700 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200/60">
@@ -1461,25 +1443,16 @@ export function ContractFormModal({
                           {form.watch('partnerMode') === 'existing' && (
                             <div className="space-y-2 pt-1">
                               <Label className="text-xs text-stone-500 font-medium">選擇現有學員 *</Label>
-                              <div className="relative">
-                                <select
-                                  value={form.watch('sharedWithCustomerId') || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value || null
-                                    form.setValue('sharedWithCustomerId', val)
-                                    form.setValue('partnerId', val)
-                                  }}
-                                  className="w-full h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 pr-8 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:bg-white appearance-none"
-                                >
-                                  <option value="">— 請選擇學員 —</option>
-                                  {(activeCustomers || []).filter(c => c.id !== customer.id).map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                      {c.name} ({c.phone})
-                                    </option>
-                                  ))}
-                                </select>
-                                <RiArrowDownSLine className="w-4 h-4 text-stone-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                              </div>
+                              <SearchableCustomerSelect
+                                customers={activeCustomers}
+                                value={form.watch('sharedWithCustomerId') || ''}
+                                onChange={(val) => {
+                                  form.setValue('sharedWithCustomerId', val || null)
+                                  form.setValue('partnerId', val || null)
+                                }}
+                                excludeIds={customer?.id ? [customer.id] : []}
+                                placeholder="-- 請搜尋或選擇共享學員 --"
+                              />
                               {form.watch('sharedWithCustomerId') && (
                                 <p className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
                                   <RiUserSharedLine className="w-3 h-3 shrink-0" />

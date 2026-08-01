@@ -38,6 +38,7 @@ import { Label } from '../ui/label'
 import { combinedCustomerContractSchema, type CombinedCustomerContractValues } from '../../lib/validators'
 import { cn } from '@/lib/utils'
 import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
+import { SearchableCustomerSelect } from '../shared/SearchableCustomerSelect'
 import type { Customer, Contract } from '../../types'
 import { useCenterStore } from '@/stores/centerStore'
 function addOneYearToDateString(dateVal: string | Date): string {
@@ -1295,54 +1296,46 @@ export function CustomerFormModal({
                             <div className="p-5 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 rounded-2xl space-y-4 animate-in fade-in duration-300">
                               <div className="space-y-2">
                                 <Label className="text-xs text-stone-700 dark:text-stone-300 font-semibold">選擇現有學員 *</Label>
-                                <div className="relative">
-                                  <select
-                                    value={memberData.existingCustomerId || ''}
-                                    onChange={(e) => {
-                                      const selectedId = e.target.value
-                                      const selectedCust = activeCustomers.find(c => c.id === selectedId)
-                                      if (selectedCust) {
-                                        let dobStr = ''
-                                        if (selectedCust.dateOfBirth) {
-                                          const d = (selectedCust.dateOfBirth as any).seconds 
-                                            ? new Date((selectedCust.dateOfBirth as any).seconds * 1000) 
-                                            : new Date(selectedCust.dateOfBirth)
-                                          if (!isNaN(d.getTime())) {
-                                            dobStr = d.toISOString().split('T')[0]
-                                          }
-                                        }
-                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? {
-                                          ...m,
-                                          memberMode: 'existing',
-                                          existingCustomerId: selectedCust.id,
-                                          name: selectedCust.name,
-                                          idNumber: selectedCust.idNumber || '',
-                                          phone: selectedCust.phone || '',
-                                          email: selectedCust.email || '',
-                                          dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
-                                          gender: (selectedCust.gender as any) || 'female',
-                                          exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
-                                          source: selectedCust.source || 'existing',
-                                          emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
-                                          medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
-                                        } : m))
-                                      } else {
-                                        setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, memberMode: 'existing', existingCustomerId: '', name: '' } : m))
-                                      }
-                                    }}
-                                    className="w-full h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 pr-8 text-sm font-semibold text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none"
-                                  >
-                                    <option value="">— 請選擇現有學員 —</option>
-                                    {(activeCustomers || [])
-                                      .filter(c => c.id !== initialCustomer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== memberArrIdx && other.existingCustomerId === c.id))
-                                      .map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name} ({c.phone || '無電話'})
-                                        </option>
-                                      ))}
-                                  </select>
-                                  <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
+                                 <SearchableCustomerSelect
+                                   customers={activeCustomers}
+                                   value={memberData.existingCustomerId || ''}
+                                   onChange={(selectedId) => {
+                                     const selectedCust = activeCustomers.find(c => c.id === selectedId)
+                                     if (selectedCust) {
+                                       let dobStr = ''
+                                       if (selectedCust.dateOfBirth) {
+                                         const d = (selectedCust.dateOfBirth as any).seconds 
+                                           ? new Date((selectedCust.dateOfBirth as any).seconds * 1000) 
+                                           : new Date(selectedCust.dateOfBirth)
+                                         if (!isNaN(d.getTime())) {
+                                           dobStr = d.toISOString().split('T')[0]
+                                         }
+                                       }
+                                       setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? {
+                                         ...m,
+                                         memberMode: 'existing',
+                                         existingCustomerId: selectedCust.id,
+                                         name: selectedCust.name,
+                                         idNumber: selectedCust.idNumber || '',
+                                         phone: selectedCust.phone || '',
+                                         email: selectedCust.email || '',
+                                         dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+                                         gender: (selectedCust.gender as any) || 'female',
+                                         exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
+                                         source: selectedCust.source || 'existing',
+                                         emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
+                                         medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                       } : m))
+                                     } else {
+                                       setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, memberMode: 'existing', existingCustomerId: '', name: '' } : m))
+                                     }
+                                   }}
+                                   excludeIds={[
+                                     ...(initialCustomer?.id ? [initialCustomer.id] : []),
+                                     ...additionalGroupMembers.filter((_, oIdx) => oIdx !== memberArrIdx).map(item => item.existingCustomerId).filter(Boolean) as string[]
+                                   ]}
+                                   placeholder="-- 請搜尋或選擇現有學員 --"
+                                 />
                               </div>
 
                               {memberData.existingCustomerId && (
@@ -1828,10 +1821,10 @@ export function CustomerFormModal({
                                     {/* Mode Content */}
                                     {m.memberMode === 'existing' ? (
                                       <div className="space-y-1.5">
-                                        <select
+                                        <SearchableCustomerSelect
+                                          customers={activeCustomers}
                                           value={m.existingCustomerId || ''}
-                                          onChange={(e) => {
-                                            const selectedId = e.target.value
+                                          onChange={(selectedId) => {
                                             if (selectedId) {
                                               const selectedCust = activeCustomers.find(c => c.id === selectedId)
                                               if (selectedCust) {
@@ -1862,17 +1855,12 @@ export function CustomerFormModal({
                                               setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '', name: '' } : item))
                                             }
                                           }}
-                                          className="w-full h-9 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-1 focus:ring-emerald-500/20"
-                                        >
-                                          <option value="">— 請選擇現有學員 —</option>
-                                          {(activeCustomers || [])
-                                            .filter(c => c.id !== initialCustomer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== idx && other.existingCustomerId === c.id))
-                                            .map((c) => (
-                                              <option key={c.id} value={c.id}>
-                                                {c.name} ({c.phone || '無電話'})
-                                              </option>
-                                            ))}
-                                        </select>
+                                          excludeIds={[
+                                            ...(initialCustomer?.id ? [initialCustomer.id] : []),
+                                            ...additionalGroupMembers.filter((_, oIdx) => oIdx !== idx).map(item => item.existingCustomerId).filter(Boolean) as string[]
+                                          ]}
+                                          placeholder="-- 請搜尋或選擇現有學員 --"
+                                        />
                                       </div>
                                     ) : (
                                       <p className="text-[11px] font-semibold text-emerald-700 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200/60">
