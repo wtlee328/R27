@@ -31,6 +31,7 @@ import {
   RiPhoneLine,
   RiContractLine,
   RiRefreshLine,
+  RiAlertLine,
 } from '@remixicon/react'
 import { cn } from '@/lib/utils'
 
@@ -212,8 +213,20 @@ export function LessonRecordWizard({
     }
   }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form])
 
-  // Dynamically adjust sessionAmount based on selected attending customers count (only for new records)
+  const isMultiContract = Boolean(selectedContract && (
+    selectedContract.contractType === 'dual' ||
+    selectedContract.contractType === 'group' ||
+    groupCustomers.length > 1
+  ))
+
+  const watchedCustomerId = form.watch('customerId')
+  const watchedContractId = form.watch('contractId')
+  const watchedTrainerId = form.watch('trainerId') || (trainerId || '')
+  const watchedSessionDate = form.watch('sessionDate')
+  const watchedSessionAmount = form.watch('sessionAmount')
   const watchedAttendingIds = form.watch('attendingCustomerIds') || []
+
+  // Dynamically adjust sessionAmount based on selected attending customers count (only for new records)
   useEffect(() => {
     if (!initialData && watchedAttendingIds.length > 0) {
       form.setValue('sessionAmount', watchedAttendingIds.length)
@@ -231,8 +244,77 @@ export function LessonRecordWizard({
     }
   }, [selectedContract, initialData, form, trainerId])
 
+  // Validation & Safeguard Check (防呆機制)
+  const validationError = useMemo(() => {
+    // 1. Required fields check
+    if (!watchedCustomerId) {
+      return '請先選擇學員'
+    }
+    if (!watchedContractId) {
+      return '請選擇合約'
+    }
+    if (!watchedTrainerId) {
+      return '請選擇授課教練'
+    }
+    if (!watchedSessionDate) {
+      return '請選擇上課日期'
+    }
+    if (watchedSessionAmount === undefined || watchedSessionAmount === null || Number(watchedSessionAmount) < 1 || isNaN(Number(watchedSessionAmount))) {
+      return '消耗堂數必須至少為 1 堂'
+    }
+
+    // 2. Dual & Group contract attendance vs sessionAmount rule check
+    if (isMultiContract) {
+      if (watchedAttendingIds.length === 0) {
+        return '雙人/團體合約請至少勾選一位實際出席學員'
+      }
+      if (Number(watchedSessionAmount) !== watchedAttendingIds.length) {
+        return `銷課堂數 (${watchedSessionAmount} 堂) 與實際出席人數 (${watchedAttendingIds.length} 人) 不符`
+      }
+    }
+
+    // 3. Quota sufficiency check for each attendee
+    const targetCustomerIds = isMultiContract ? watchedAttendingIds : [watchedCustomerId]
+    for (const custId of targetCustomerIds) {
+      const chosenContractId = studentContractSelections[custId] || watchedContractId
+      const con = contracts.find(c => c.id === chosenContractId)
+      const custName = groupCustomers.find(c => c.id === custId)?.name || customers.find(c => c.id === custId)?.name || '學員'
+      if (!con) {
+        return `找不到學員 ${custName} 的扣抵合約`
+      }
+      if (con.contractType === 'group' && con.groupMemberQuotas && con.groupMemberQuotas[custId]) {
+        const memberQuota = con.groupMemberQuotas[custId].remainingSessions || 0
+        if (memberQuota < 1) {
+          return `學員 ${custName} 的個人剩餘堂數不足 (現有 ${memberQuota} 堂)`
+        }
+      } else if (con.remainingSessions < 1) {
+        return `合約 (剩餘 ${con.remainingSessions} 堂) 堂數不足`
+      }
+    }
+
+    return null
+  }, [
+    watchedCustomerId,
+    watchedContractId,
+    watchedTrainerId,
+    watchedSessionDate,
+    watchedSessionAmount,
+    watchedAttendingIds,
+    isMultiContract,
+    studentContractSelections,
+    contracts,
+    groupCustomers,
+    customers,
+  ])
+
+  const isValid = validationError === null
+
   const handleSubmit = async (data: LessonRecordFormValues) => {
-    const isMulti = selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || (selectedContract.customerIds && selectedContract.customerIds.length > 1))
+    if (validationError) {
+      return
+    }
+
+    const isMulti = isMultiContract
 
     let attendees = data.attendingCustomerIds || []
     if (isMulti) {
@@ -270,12 +352,6 @@ export function LessonRecordWizard({
       setLoading(false)
     }
   }
-
-  const isMultiContract = selectedContract && (
-    selectedContract.contractType === 'dual' ||
-    selectedContract.contractType === 'group' ||
-    groupCustomers.length > 1
-  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -672,6 +748,14 @@ export function LessonRecordWizard({
                 className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm"
               />
             </div>
+
+            {/* Validation Warning Alert Box (防呆提示) */}
+            {validationError && watchedCustomerId && (
+              <div className="p-3 bg-amber-50 border border-amber-200/80 rounded-xl text-amber-800 text-xs flex items-center gap-2 animate-in fade-in duration-200">
+                <RiAlertLine className="w-4 h-4 text-amber-600 shrink-0" />
+                <span className="font-medium">{validationError}</span>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
@@ -686,8 +770,13 @@ export function LessonRecordWizard({
             </Button>
             <Button
               type="submit"
-              disabled={loading}
-              className="rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 text-sm shadow-sm shadow-orange-200 transition-all"
+              disabled={!isValid || loading}
+              className={cn(
+                "rounded-xl font-semibold px-6 text-sm transition-all",
+                isValid && !loading
+                  ? "bg-orange-500 hover:bg-orange-600 text-white shadow-sm shadow-orange-200"
+                  : "bg-stone-200 text-stone-400 border border-stone-200 shadow-none cursor-not-allowed"
+              )}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
