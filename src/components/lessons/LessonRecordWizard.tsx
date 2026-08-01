@@ -250,6 +250,9 @@ export function LessonRecordWizard({
     if (!watchedCustomerId) {
       return '請先選擇學員'
     }
+    if (contracts.length === 0) {
+      return '該學員無進行中合約，無法進行銷課'
+    }
     if (!watchedContractId) {
       return '請選擇合約'
     }
@@ -495,7 +498,7 @@ export function LessonRecordWizard({
                 <select
                   className={cn(
                     'w-full h-10 rounded-xl border border-stone-200 px-3 text-sm bg-stone-50 text-stone-800 focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 transition-all appearance-none cursor-pointer',
-                    !selectedCustomerId && 'opacity-50 cursor-not-allowed',
+                    (!selectedCustomerId || contracts.length === 0) && 'opacity-50 cursor-not-allowed select-none bg-stone-100 text-stone-400 border-stone-200',
                     selectedContractId && 'border-orange-300 bg-orange-50/30'
                   )}
                   {...form.register('contractId', {
@@ -510,11 +513,14 @@ export function LessonRecordWizard({
                       }
                     }
                   })}
-                  disabled={!selectedCustomerId}
+                  disabled={!selectedCustomerId || contracts.length === 0}
                 >
-                  <option value="" disabled>請選擇合約</option>
-                  {contracts.length === 0 && selectedCustomerId && (
-                    <option value="temp_contract_01">預設合約 (開發中佔位)</option>
+                  {!selectedCustomerId ? (
+                    <option value="" disabled>請先選擇學員</option>
+                  ) : contracts.length === 0 ? (
+                    <option value="" disabled>無進行中合約</option>
+                  ) : (
+                    <option value="" disabled>請選擇合約</option>
                   )}
                   {contracts.map((c) => {
                     const isGroup = c.contractType === 'group' || !!c.groupMemberQuotas
