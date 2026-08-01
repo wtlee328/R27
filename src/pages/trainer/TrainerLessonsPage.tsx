@@ -406,7 +406,7 @@ export default function TrainerLessonsPage() {
                     className="w-full bg-white border border-amber-300 text-stone-900 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-xs focus:ring-2 focus:ring-amber-500 cursor-pointer"
                   >
                     <option value="">-- 請先選擇被代課的教練名稱 --</option>
-                    {trainers.map((t) => (
+                    {trainers.filter((t) => t.id !== currentTrainerId).map((t) => (
                       <option key={t.id} value={t.id}>
                         {t.name}
                       </option>
