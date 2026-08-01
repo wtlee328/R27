@@ -1,7 +1,24 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { Calendar, User, BookOpen, Clock, AlertCircle, Plus, Search, Check, ChevronRight, RefreshCw, X } from 'lucide-react'
-import { RiCalendarCheckLine } from '@remixicon/react'
+import {
+  RiCalendarCheckLine,
+  RiAddLine,
+  RiArrowLeftLine,
+  RiUser3Line,
+  RiRefreshLine,
+  RiSearchLine,
+  RiArrowRightSLine,
+  RiCheckLine,
+  RiAlertLine,
+  RiTimeLine,
+  RiCloseLine,
+  RiUserSharedLine,
+  RiFileTextLine,
+  RiUserLine,
+  RiCalendarLine,
+  RiInformationLine,
+  RiLoader4Line,
+} from '@remixicon/react'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
@@ -310,9 +327,9 @@ export default function TrainerLessonsPage() {
         {!isRecording && (
           <Button
             onClick={() => setIsRecording(true)}
-            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold"
+            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold transition-all"
           >
-            <Plus className="h-4 w-4" />
+            <RiAddLine className="h-4 w-4" />
             新增銷課紀錄
           </Button>
         )}
@@ -324,18 +341,21 @@ export default function TrainerLessonsPage() {
           <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-1">
             <button
               onClick={handleBack}
-              className="text-stone-500 hover:text-stone-800 text-sm font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-stone-500 hover:text-stone-800 text-sm font-bold flex items-center gap-1 cursor-pointer transition-colors px-2 py-1 rounded-lg hover:bg-stone-100"
             >
-              ← 返回列表
+              <RiArrowLeftLine className="w-4 h-4" />
+              <span>返回列表</span>
             </button>
-            <span className="text-sm text-stone-400 font-medium bg-stone-100 px-3 py-1 rounded-full">步驟 {step} / 2</span>
+            <span className="text-xs text-stone-500 font-extrabold bg-stone-100 px-3 py-1 rounded-full border border-stone-200/60">
+              步驟 {step} / 2
+            </span>
           </div>
 
           {step === 1 ? (
             /* ---- Step 1: Select Customer ---- */
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
               {/* Mode Tabs */}
-              <div className="flex rounded-xl bg-stone-100 p-1 border border-stone-200">
+              <div className="flex rounded-xl bg-stone-100/90 p-1 border border-stone-200/60">
                 <button
                   type="button"
                   onClick={() => {
@@ -343,34 +363,35 @@ export default function TrainerLessonsPage() {
                     setSelectedSubstitutedTrainerId('')
                   }}
                   className={cn(
-                    "flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    "flex-1 py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
                     entryMode === 'regular'
-                      ? "bg-white text-stone-900 shadow-xs"
+                      ? "bg-white text-stone-900 shadow-xs border border-stone-200/40"
                       : "text-stone-500 hover:text-stone-800"
                   )}
                 >
-                  <User className="w-3.5 h-3.5 text-orange-500" />
+                  <RiUser3Line className="w-4 h-4 text-orange-500" />
                   一般銷課 (我的學員)
                 </button>
                 <button
                   type="button"
                   onClick={() => setEntryMode('substitute')}
                   className={cn(
-                    "flex-1 py-2 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    "flex-1 py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
                     entryMode === 'substitute'
-                      ? "bg-white text-amber-700 shadow-xs"
+                      ? "bg-white text-amber-700 shadow-xs border border-amber-200/40"
                       : "text-stone-500 hover:text-stone-800"
                   )}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-500" />
+                  <RiUserSharedLine className="w-4 h-4 text-amber-500" />
                   代課銷課 (選擇代課教練)
                 </button>
               </div>
 
               {/* Substitute Mode: Select Substituted Trainer First */}
               {entryMode === 'substitute' && (
-                <div className="space-y-2 p-4 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                <div className="space-y-2 p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
                   <Label className="text-amber-900 font-bold text-xs flex items-center gap-1.5">
+                    <RiUserSharedLine className="w-4 h-4 text-amber-600" />
                     <span>選擇被代課的教練 *</span>
                   </Label>
                   <select
@@ -404,7 +425,7 @@ export default function TrainerLessonsPage() {
                     className="h-10 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-xs"
                     autoFocus
                   />
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
+                  <RiSearchLine className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                 </div>
               </div>
 
@@ -424,8 +445,9 @@ export default function TrainerLessonsPage() {
                 </div>
 
                 {entryMode === 'substitute' && !selectedSubstitutedTrainerId ? (
-                  <div className="text-center py-10 text-stone-400 text-xs bg-stone-50 rounded-xl border border-dashed border-stone-200">
-                    👈 請先在上方選擇「被代課的教練」，系統將自動列出該教練之合約學員
+                  <div className="text-center py-10 text-stone-400 text-xs bg-stone-50/80 rounded-2xl border border-dashed border-stone-200/90 flex flex-col items-center justify-center gap-2">
+                    <RiUserSharedLine className="w-6 h-6 text-amber-500/80" />
+                    <span>請先在上方選擇「被代課的教練」，系統將自動列出該教練之合約學員</span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
@@ -472,7 +494,7 @@ export default function TrainerLessonsPage() {
                                 </div>
                               </div>
                             </div>
-                            <ChevronRight className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                            <RiArrowRightSLine className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
                           </button>
                         )
                       })
@@ -527,14 +549,14 @@ export default function TrainerLessonsPage() {
                               剩餘堂數: <span className="font-bold text-brand-600">{contract.remainingSessions}</span> / {contract.totalSessions} 堂
                             </div>
                           </div>
-                          {isSelected && <Check className="h-4 w-4 text-brand-500 shrink-0" />}
+                          {isSelected && <RiCheckLine className="h-4 w-4 text-brand-500 shrink-0" />}
                         </button>
                       )
                     })}
                   </div>
                 ) : (
                   <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <RiAlertLine className="h-4 w-4 shrink-0 mt-0.5" />
                     <span>該學員沒有可用的有效合約，請聯絡管理員新增合約。</span>
                   </div>
                 )}
@@ -610,7 +632,7 @@ export default function TrainerLessonsPage() {
                 )}
                 {isSubstituteTeaching && (
                   <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center gap-2 mt-2">
-                    <span className="font-bold bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded text-[10px] shrink-0">代課提示</span>
+                    <RiInformationLine className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>目前選擇之教練與原合約教練（{contractPrimaryTrainer?.name || '主合約教練'}）不同，將自動建立為「代課紀錄」。</span>
                   </div>
                 )}
@@ -658,7 +680,7 @@ export default function TrainerLessonsPage() {
 
               {submitError && (
                 <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
-                  <AlertCircle className="h-4.5 w-4.5 shrink-0" />
+                  <RiAlertLine className="h-4.5 w-4.5 shrink-0" />
                   <span>{submitError}</span>
                 </div>
               )}
@@ -677,10 +699,17 @@ export default function TrainerLessonsPage() {
                 <Button
                   type="button"
                   onClick={handleSubmit}
-                  className="flex-1 h-11 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold cursor-pointer"
+                  className="flex-1 h-11 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5"
                   disabled={submitting || !selectedContractId || !selectedTrainerId}
                 >
-                  {submitting ? '儲存中...' : '確認銷課'}
+                  {submitting ? (
+                    <>
+                      <RiLoader4Line className="h-4 w-4 animate-spin" />
+                      <span>儲存中...</span>
+                    </>
+                  ) : (
+                    '確認銷課'
+                  )}
                 </Button>
               </div>
             </div>
@@ -692,7 +721,7 @@ export default function TrainerLessonsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-brand-500" />
+                <RiTimeLine className="h-5 w-5 text-brand-500" />
                 最近銷課紀錄
               </h2>
             </div>
@@ -755,7 +784,7 @@ export default function TrainerLessonsPage() {
                         )}
                       </div>
                       <span className="text-sm text-stone-500 flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-stone-400" />
+                        <RiCalendarLine className="h-3.5 w-3.5 text-stone-400" />
                         {formatRecordDate(record.sessionDate)}
                       </span>
                       <div className="flex items-center justify-end gap-2">
@@ -763,7 +792,7 @@ export default function TrainerLessonsPage() {
                           "font-black text-base transition-colors",
                           isSelected ? "text-brand-600" : "text-brand-600"
                         )}>-{record.sessionAmount}<span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span></span>
-                        <ChevronRight className={cn(
+                        <RiArrowRightSLine className={cn(
                           "h-4 w-4 text-stone-300 transition-all duration-200",
                           isSelected ? "rotate-90 text-brand-500" : "group-hover:translate-x-0.5"
                         )} />
@@ -820,7 +849,7 @@ export default function TrainerLessonsPage() {
                     }}
                     className="p-2 rounded-xl text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors shrink-0 mt-0.5"
                   >
-                    <X className="h-4 w-4" />
+                    <RiCloseLine className="h-4 w-4" />
                   </button>
                 </div>
 
@@ -884,7 +913,7 @@ export default function TrainerLessonsPage() {
                       <div className="flex flex-wrap gap-2">
                         {r.attendingCustomerNames.map((name, i) => (
                           <span key={i} className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-700 font-bold text-xs px-3 py-1.5 rounded-full">
-                            <User className="h-3 w-3" />
+                            <RiUserLine className="h-3 w-3" />
                             {name}
                           </span>
                         ))}
