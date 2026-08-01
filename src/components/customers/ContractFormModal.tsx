@@ -788,6 +788,10 @@ export function ContractFormModal({
         ;(data as any).customerIds = allCustomerIds
       }
 
+      if (!data.remainingSessions || data.remainingSessions <= 0) {
+        data.remainingSessions = Number(data.totalSessions) || 0
+      }
+
       await onSubmit(data)
       onOpenChange(false)
     } catch (error) {
@@ -1495,7 +1499,8 @@ export function ContractFormModal({
                       )}
                       {/* 課程教練分配 */}
                       {!form.watch('bindExistingContractMode') && (
-                        <div className="space-y-4 border-t border-stone-100 pt-6">
+                        <>
+                          <div className="space-y-4 border-t border-stone-100 pt-6">
                           <div className="space-y-1">
                             <Label className="text-stone-700 font-bold block text-xs">分配課程教練 *</Label>
                             <p className="text-[10px] text-stone-400">設定指導本合約學員的教練分配</p>
@@ -1612,148 +1617,8 @@ export function ContractFormModal({
                             </div>
                           )}
                         </div>
-                      )}
 
-                      {!form.watch('bindExistingContractMode') && (
-                        <>
-                          {form.watch('contractType') === 'dual' && (
-                            <div className="p-5 bg-amber-50/50 border border-amber-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                              <Label className="text-stone-700 font-semibold block text-xs">共享學員綁定方式 *</Label>
-                              <div className="flex gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    form.setValue('partnerMode', 'existing')
-                                    form.setValue('partnerCustomerData', null)
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                                    form.watch('partnerMode') === 'existing'
-                                      ? "bg-amber-500 border-amber-500 text-white shadow-md"
-                                      : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
-                                  )}
-                                >
-                                  <RiLinkM className="w-4 h-4" />
-                                  連結現有學員
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    form.setValue('partnerMode', 'new')
-                                    form.setValue('partnerId', null)
-                                    form.setValue('sharedWithCustomerId', null)
-                                    form.setValue('partnerCustomerData', {
-                                      name: '',
-                                      idNumber: '',
-                                      phone: '',
-                                      email: '',
-                                      dateOfBirth: new Date(),
-                                      historicalSessions: 0,
-                                      emergencyContact: { name: '', relation: '', phone: '' },
-                                      sharedContractCustomerId: null,
-                                      medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                                    })
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                                    form.watch('partnerMode') === 'new'
-                                      ? "bg-amber-500 border-amber-500 text-white shadow-md"
-                                      : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
-                                  )}
-                                >
-                                  <RiUserAddLine className="w-4 h-4" />
-                                  新增全新學員
-                                </button>
-                              </div>
-
-                              {form.watch('partnerMode') === 'existing' && (
-                                <div className="space-y-2 pt-1">
-                                  <Label className="text-xs text-stone-500 font-medium">選擇共享學員 *</Label>
-                                  <select
-                                    value={form.watch('partnerId') || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                      form.setValue('partnerId', val)
-                                      form.setValue('sharedWithCustomerId', val)
-                                    }}
-                                    className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                  >
-                                    <option value="">-- 請選擇學員 --</option>
-                                    {activeCustomers.filter(c => c.id !== customer?.id).map((c) => (
-                                      <option key={c.id} value={c.id}>{c.name} ({c.phone || '無電話'})</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              )}
-
-                              {isOneToTwo ? (
-                                <div className="space-y-2 max-w-md pt-1">
-                                  <Label className="text-xs text-stone-500 font-medium">共享授課教練</Label>
-                                  <select
-                                    value={form.watch('trainerId') || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                      form.setValue('trainerId', val)
-                                      form.setValue('secondaryTrainerId', val)
-                                    }}
-                                    className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                  >
-                                    <option value="">-- 請選擇教練 --</option>
-                                    {trainers.map((t) => (
-                                      <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                  </select>
-                                  {form.formState.errors.trainerId && (
-                                    <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.trainerId.message}</p>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-4 pt-1">
-                                  <div className="space-y-2">
-                                    <Label className="text-xs text-stone-500 font-medium">
-                                      學員 A ({customer?.name || '主學員'}) 的教練
-                                    </Label>
-                                    <select
-                                      value={form.watch('trainerId') || ''}
-                                      onChange={(e) => {
-                                        const val = e.target.value
-                                        form.setValue('trainerId', val)
-                                      }}
-                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                    >
-                                      <option value="">-- 請選擇教練 --</option>
-                                      {trainers.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                    {form.formState.errors.trainerId && (
-                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.trainerId.message}</p>
-                                    )}
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label className="text-xs text-stone-500 font-medium">
-                                      學員 B ({watchedValues.partnerMode === 'existing' ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
-                                    </Label>
-                                    <select
-                                      value={form.watch('secondaryTrainerId') || ''}
-                                      onChange={(e) => form.setValue('secondaryTrainerId', e.target.value)}
-                                      className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                                    >
-                                      <option value="">-- 請選擇教練 --</option>
-                                      {trainers.map((t) => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                    {form.formState.errors.secondaryTrainerId && (
-                                      <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.secondaryTrainerId.message}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-5">
+                        <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600">合約總堂數 *</Label>
                               <Input type="number" {...form.register('totalSessions')} onChange={handleSessionsChange} className="h-10 rounded-xl bg-stone-50 border-stone-200 focus:bg-white" />

@@ -87,28 +87,53 @@ export function useCustomers() {
             }
           }
 
-          // Auto repair 2: remainingSessions cap check (skip for group contracts)
-          if (c.contractType !== 'group' && c.remainingSessions > c.totalSessions) {
-            console.warn(`Contract ${c.id} has remainingSessions (${c.remainingSessions}) > totalSessions (${c.totalSessions}). Fixing...`)
-            updates.remainingSessions = c.totalSessions
-            c.remainingSessions = c.totalSessions
-            isRepaired = true
+          // Auto repair 1.5: Dual contract type and customerIds restoration
+          const isDualContract = c.contractType === 'dual' || !!c.sharedWithCustomerId
+          if (isDualContract) {
+            if (c.contractType !== 'dual') {
+              updates.contractType = 'dual'
+              c.contractType = 'dual'
+              isRepaired = true
+            }
+            const dualCustomerIds = Array.from(new Set([...(c.customerIds || []), c.customerId, (c as any).primaryCustomerId, c.sharedWithCustomerId].filter((id): id is string => !!id)))
+            const currentSorted = [...(c.customerIds || [])].sort().join(',')
+            const fullSorted = [...dualCustomerIds].sort().join(',')
+            if (currentSorted !== fullSorted) {
+              updates.customerIds = dualCustomerIds
+              c.customerIds = dualCustomerIds
+              isRepaired = true
+            }
           }
 
-          // Auto repair 3: remainingSessions <= 0 => set status = 'completed' in DB (ONLY if signed)
-          const isUnsigned = c.status === 'pending_signature' || !c.signatureDataUrl
-          if (!isUnsigned && c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
-            console.log(`Contract ${c.id} has remainingSessions <= 0 and is signed. Syncing status to completed...`)
-            updates.status = 'completed'
-            c.status = 'completed'
-            isRepaired = true
+          // Auto repair 2: remainingSessions cap check & repair for pending contracts
+          if (c.contractType !== 'group') {
+            if (c.totalSessions > 0 && (c.remainingSessions === undefined || c.remainingSessions === null || (c.status === 'pending_signature' && c.remainingSessions === 0))) {
+              updates.remainingSessions = c.totalSessions
+              c.remainingSessions = c.totalSessions
+              isRepaired = true
+            } else if (c.remainingSessions > c.totalSessions) {
+              console.warn(`Contract ${c.id} has remainingSessions (${c.remainingSessions}) > totalSessions (${c.totalSessions}). Fixing...`)
+              updates.remainingSessions = c.totalSessions
+              c.remainingSessions = c.totalSessions
+              isRepaired = true
+            }
           }
 
-          // Auto repair 4: If contract is missing primary signature, ensure status is 'pending_signature' (unless cancelled)
-          if (!c.signatureDataUrl && c.status !== 'pending_signature' && c.status !== 'cancelled') {
-            console.log(`Contract ${c.id} is missing signatureDataUrl. Restoring status to pending_signature...`)
+          // Auto repair 3: Check if contract is unsigned (Single/Group needs primary signature, Dual needs both signatures)
+          const isUnsigned = c.status === 'pending_signature' || !c.signatureDataUrl || (isDualContract && !c.secondarySignatureDataUrl)
+
+          // Auto repair 4: If contract is missing required signature(s), ensure status is 'pending_signature' (unless cancelled)
+          if (isUnsigned && c.status !== 'pending_signature' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} is missing required signature(s). Restoring status to pending_signature...`)
             updates.status = 'pending_signature'
             c.status = 'pending_signature'
+            isRepaired = true
+          }
+
+          if (!isUnsigned && c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} has remainingSessions <= 0 and is fully signed. Syncing status to completed...`)
+            updates.status = 'completed'
+            c.status = 'completed'
             isRepaired = true
           }
 
@@ -339,12 +364,19 @@ export function useCustomers() {
     }
 
     const contractType = isGroup ? 'group' : (isDual ? 'dual' : 'single')
-    const status = data.status || 'active'
-
+    
     const cleanData = { ...data }
     delete (cleanData as any).partnerMode
     delete (cleanData as any).partnerId
     delete (cleanData as any).partnerCustomerData
+
+    const totSessions = Number(cleanData.totalSessions) || 0
+    const remSessions = typeof cleanData.remainingSessions === 'number' && cleanData.remainingSessions > 0
+      ? cleanData.remainingSessions
+      : totSessions
+
+    const isUnsignedContract = !cleanData.signatureDataUrl || (isDual && !cleanData.secondarySignatureDataUrl)
+    const status = isUnsignedContract ? 'pending_signature' : (data.status || 'active')
 
     // ── Generate contract number (ROC date + daily sequence) ──
     const today = new Date()
@@ -364,8 +396,10 @@ export function useCustomers() {
       sharedWithCustomerId: partnerId,
       customerIds,
       contractType,
-      coachRatio: isGroup ? (Object.keys(groupMemberQuotas || {}).length || 3) : (isDual ? 2 : 1),
+      coachRatio: isGroup ? (Object.keys((cleanData as any).groupMemberQuotas || {}).length || 3) : (isDual ? 2 : 1),
       status,
+      totalSessions: totSessions,
+      remainingSessions: remSessions,
       primaryCustomerId: customerId,
       startDate: Timestamp.fromDate(ensureDate(data.startDate)),
       endDate: Timestamp.fromDate(ensureDate(data.endDate)),
