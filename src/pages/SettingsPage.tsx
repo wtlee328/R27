@@ -1,5 +1,5 @@
 import React from 'react'
-import { Settings, GripVertical, RotateCcw, Clock, Lock, Check } from 'lucide-react'
+import { Settings, GripVertical, RotateCcw, Clock, Lock, Check, ShieldAlert } from 'lucide-react'
 import { RiSettings4Line, RiSunLine, RiMoonLine } from '@remixicon/react'
 import { useThemeStore } from '@/stores/themeStore'
 import { Reorder } from 'framer-motion'
