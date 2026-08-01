@@ -18,6 +18,7 @@ import {
   RiCalendarLine,
   RiInformationLine,
   RiLoader4Line,
+  RiLockLine,
 } from '@remixicon/react'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
@@ -73,6 +74,11 @@ export default function TrainerLessonsPage() {
 
   // Fetch contracts for the selected customer
   const { contracts, loading: contractsLoading } = useContracts(selectedCustomerId)
+
+  const currentTrainerName = useMemo(() => {
+    if (!currentTrainerId) return ''
+    return trainers.find(t => t.id === currentTrainerId)?.name || user?.displayName || user?.email || '當前教練'
+  }, [trainers, currentTrainerId, user])
 
   const selectedCustomer = useMemo(() => {
     return customers.find(c => c.id === selectedCustomerId)
@@ -609,10 +615,21 @@ export default function TrainerLessonsPage() {
                 </div>
               )}
 
-              {/* Select Trainer */}
+              {/* Trainer Display / Select */}
               <div className="space-y-1.5">
-                <Label htmlFor="trainer" className="text-stone-700 font-bold text-xs">上課教練 (您是哪位教練) *</Label>
-                {trainersLoading ? (
+                <Label className="text-stone-700 font-bold text-xs">授課教練 *</Label>
+                {currentTrainerId ? (
+                  <div className="w-full bg-stone-50 border border-stone-200/90 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm font-bold shadow-2xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <RiUser3Line className="w-4 h-4 text-orange-500" />
+                      <span>{currentTrainerName}</span>
+                    </div>
+                    <span className="text-[11px] text-stone-400 font-normal bg-white border border-stone-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <RiLockLine className="w-3 h-3 text-stone-400" />
+                      登入教練
+                    </span>
+                  </div>
+                ) : trainersLoading ? (
                   <div className="text-xs text-stone-400">載入教練名單中...</div>
                 ) : (
                   <select
@@ -633,7 +650,7 @@ export default function TrainerLessonsPage() {
                 {isSubstituteTeaching && (
                   <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center gap-2 mt-2">
                     <RiInformationLine className="h-4 w-4 shrink-0 text-amber-600" />
-                    <span>目前選擇之教練與原合約教練（{contractPrimaryTrainer?.name || '主合約教練'}）不同，將自動建立為「代課紀錄」。</span>
+                    <span>目前授課教練為（{currentTrainerName}），與合約原教練（{contractPrimaryTrainer?.name || '主合約教練'}）不同，將自動建立為「代課紀錄」。</span>
                   </div>
                 )}
               </div>
