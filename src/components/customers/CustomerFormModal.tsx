@@ -2447,38 +2447,17 @@ export function CustomerFormModal({
                                 </div>
                               ) : (
                                 <div className="space-y-4 bg-stone-50 dark:bg-stone-800/40 p-4.5 rounded-2xl border border-stone-200/50 dark:border-stone-700/50">
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      id="isOneToTwoForm"
-                                      checked={isOneToTwo}
-                                      onChange={(e) => {
-                                        const checked = e.target.checked
-                                        setIsOneToTwo(checked)
-                                        if (checked) {
-                                          form.setValue('contract.secondaryTrainerId', form.getValues('contract.trainerId'))
-                                        } else {
-                                          form.setValue('contract.secondaryTrainerId', trainers[0]?.id || '')
-                                        }
-                                      }}
-                                      className="rounded text-stone-900 focus:ring-stone-500 w-4 h-4"
-                                    />
-                                    <label htmlFor="isOneToTwoForm" className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 select-none cursor-pointer">
-                                      <RiGroupLine className="w-3.5 h-3.5 text-stone-500" />
-                                      1×2 同時間上課（共用同一位教練）
-                                    </label>
-                                  </div>
-
-                                  {isOneToTwo ? (
-                                    <div className="space-y-2 max-w-md pt-1">
-                                      <Label className="text-xs text-stone-500 font-medium">共享授課教練</Label>
+                                  <div className="grid grid-cols-2 gap-4 pt-1">
+                                    <div className="space-y-2">
+                                      <Label className="text-xs text-stone-600 font-bold dark:text-stone-300">
+                                        學員 A ({watchedValues.name || '主學員'}) 的教練 *
+                                      </Label>
                                       <div className="relative">
                                         <select
                                           value={form.watch('contract.trainerId') || ''}
                                           onChange={(e) => {
                                             const val = e.target.value
                                             form.setValue('contract.trainerId', val)
-                                            form.setValue('contract.secondaryTrainerId', val)
                                           }}
                                           className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
                                         >
@@ -2493,55 +2472,28 @@ export function CustomerFormModal({
                                         <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
                                       )}
                                     </div>
-                                  ) : (
-                                    <div className="grid grid-cols-2 gap-4 pt-1">
-                                      <div className="space-y-2">
-                                        <Label className="text-xs text-stone-500 font-medium">
-                                          學員 A ({watchedValues.name || '主學員'}) 的教練
-                                        </Label>
-                                        <div className="relative">
-                                          <select
-                                            value={form.watch('contract.trainerId') || ''}
-                                            onChange={(e) => {
-                                              const val = e.target.value
-                                              form.setValue('contract.trainerId', val)
-                                            }}
-                                            className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
-                                          >
-                                            <option value="">-- 請選擇教練 --</option>
-                                            {trainers.map((t) => (
-                                              <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                          </select>
-                                          <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                        </div>
-                                        {form.formState.errors.contract?.trainerId && (
-                                          <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
-                                        )}
+                                    <div className="space-y-2">
+                                      <Label className="text-xs text-stone-600 font-bold dark:text-stone-300">
+                                        學員 B ({watchedValues.partnerMode === 'existing' ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '合約成員') : (watchedValues.partnerCustomerData?.name || '合約成員')}) 的教練 *
+                                      </Label>
+                                      <div className="relative">
+                                        <select
+                                          value={form.watch('contract.secondaryTrainerId') || ''}
+                                          onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
+                                          className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
+                                        >
+                                          <option value="">-- 請選擇教練 --</option>
+                                          {trainers.map((t) => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                          ))}
+                                        </select>
+                                        <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                       </div>
-                                      <div className="space-y-2">
-                                        <Label className="text-xs text-stone-500 font-medium">
-                                          學員 B ({watchedValues.partnerMode === 'existing' ? (activeCustomers.find(c => c.id === watchedValues.partnerId)?.name || '共享學員') : (watchedValues.partnerCustomerData?.name || '共享學員')}) 的教練
-                                        </Label>
-                                        <div className="relative">
-                                          <select
-                                            value={form.watch('contract.secondaryTrainerId') || ''}
-                                            onChange={(e) => form.setValue('contract.secondaryTrainerId', e.target.value)}
-                                            className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20 appearance-none cursor-pointer"
-                                          >
-                                            <option value="">-- 請選擇教練 --</option>
-                                            {trainers.map((t) => (
-                                              <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                          </select>
-                                          <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                        </div>
-                                        {form.formState.errors.contract?.secondaryTrainerId && (
-                                          <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
-                                        )}
-                                      </div>
+                                      {form.formState.errors.contract?.secondaryTrainerId && (
+                                        <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.secondaryTrainerId.message}</p>
+                                      )}
                                     </div>
-                                  )}
+                                  </div>
                                 </div>
                               )}
                             </div>
