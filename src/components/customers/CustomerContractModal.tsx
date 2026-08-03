@@ -47,6 +47,7 @@ export function CustomerContractModal({
   onUpdate,
 }: CustomerContractModalProps) {
   const [partner, setPartner] = React.useState<Customer | null>(null)
+  const [allContractMembers, setAllContractMembers] = React.useState<Customer[]>([])
   const sigCanvas = React.useRef<any>(null)
   const secondarySigCanvas = React.useRef<any>(null)
   const isSigAClearedRef = React.useRef(false)
@@ -121,32 +122,66 @@ export function CustomerContractModal({
   }, [open, centerId])
 
   React.useEffect(() => {
-    const fetchPartner = async () => {
-      if (!contract || !customer) {
+    const fetchAllMembers = async () => {
+      if (!contract || !customer || !open) {
+        setAllContractMembers([])
         setPartner(null)
         return
       }
-      const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
-      if (!isDual) {
+
+      const rawIds = [
+        customer.id,
+        contract.primaryCustomerId,
+        contract.customerId,
+        contract.sharedWithCustomerId,
+        contract.partnerId,
+        ...(Array.isArray(contract.customerIds) ? contract.customerIds : []),
+        ...(contract.groupMemberQuotas ? Object.keys(contract.groupMemberQuotas) : []),
+        ...(contract.studentTrainers ? Object.keys(contract.studentTrainers) : []),
+      ].filter((id): id is string => Boolean(id))
+
+      const uniqueIds = Array.from(new Set(rawIds))
+
+      if (uniqueIds.length === 0) {
+        setAllContractMembers([customer])
         setPartner(null)
         return
       }
-      const partnerId = contract.customerIds && contract.customerIds.length > 1
-        ? contract.customerIds.find(id => id !== customer.id)
-        : contract.sharedWithCustomerId
+
+      try {
+        const docsSnaps = await Promise.all(
+          uniqueIds.map(async (id) => {
+            if (id === customer.id) return customer
+            const dSnap = await getDoc(doc(db, 'customers', id))
+            return dSnap.exists() ? ({ id: dSnap.id, ...dSnap.data() } as Customer) : null
+          })
+        )
+
+        const fetchedMembers = docsSnaps.filter((m): m is Customer => m !== null)
         
-      if (partnerId) {
-        try {
-          const docSnap = await getDoc(doc(db, 'customers', partnerId))
-          if (docSnap.exists()) {
-            setPartner({ id: docSnap.id, ...docSnap.data() } as Customer)
-          }
-        } catch (err) {
-          console.error('Error fetching partner in contract modal:', err)
+        // Ensure primary customer is always Member 1 at index 0
+        const primaryIndex = fetchedMembers.findIndex(m => m.id === customer.id)
+        if (primaryIndex > 0) {
+          const [primary] = fetchedMembers.splice(primaryIndex, 1)
+          fetchedMembers.unshift(primary)
+        } else if (primaryIndex === -1) {
+          fetchedMembers.unshift(customer)
         }
+
+        setAllContractMembers(fetchedMembers)
+
+        if (fetchedMembers.length > 1) {
+          setPartner(fetchedMembers[1])
+        } else {
+          setPartner(null)
+        }
+      } catch (err) {
+        console.error('Error fetching all contract members in contract modal:', err)
+        setAllContractMembers([customer])
+        setPartner(null)
       }
     }
-    fetchPartner()
+    fetchAllMembers()
   }, [contract, customer, open])
 
   // Sync edit state
@@ -186,9 +221,12 @@ export function CustomerContractModal({
       setEditEmergencyRelation(customer.emergencyContact?.relation || '')
       setEditEmergencyPhone(customer.emergencyContact?.phone || '')
 
-      const isDualContract = contract.contractType === 'dual' || !!contract.sharedWithCustomerId || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 2)
-      const defaultStudentCount = isDualContract ? 2 : (contract.contractType === 'group' ? (Object.keys(contract.groupMemberQuotas || {}).length || 3) : 1)
-      const initialRatio = contract.coachRatio && contract.coachRatio > 0 ? (isDualContract && contract.coachRatio === 1 ? 2 : contract.coachRatio) : defaultStudentCount
+      const isSharedContract = contract.contractType === 'shared'
+      const isDualContract = !isSharedContract && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'group'))
+      const isGroupContract = contract.contractType === 'group'
+
+      const defaultStudentCount = isSharedContract ? 1 : isDualContract ? 2 : isGroupContract ? (Object.keys(contract.groupMemberQuotas || {}).length || 3) : 1
+      const initialRatio = isSharedContract ? 1 : (contract.coachRatio && contract.coachRatio > 0 ? (isDualContract && contract.coachRatio === 1 ? 2 : contract.coachRatio) : defaultStudentCount)
 
       setEditCoachRatio(initialRatio)
       setEditMonthlyDueDay(contract.monthlyDueDay || 5)
@@ -207,14 +245,16 @@ export function CustomerContractModal({
       setEditPartnerEmergencyName(partner.emergencyContact?.name || '')
       setEditPartnerEmergencyRelation(partner.emergencyContact?.relation || '')
       setEditPartnerEmergencyPhone(partner.emergencyContact?.phone || '')
-      setEditCoachRatio(prev => (prev === 1 ? 2 : prev))
+      if (contract?.contractType === 'dual') {
+        setEditCoachRatio(prev => (prev === 1 ? 2 : prev))
+      }
     } else {
       setEditPartnerBirthDate('')
       setEditPartnerEmergencyName('')
       setEditPartnerEmergencyRelation('')
       setEditPartnerEmergencyPhone('')
     }
-  }, [partner])
+  }, [partner, contract])
 
   if (!customer) return null
 
@@ -630,139 +670,85 @@ export function CustomerContractModal({
                   </div>
                 )}
                 
-                {/* 甲方: 主學員 */}
-                <div className="space-y-2.5">
-                  <div className="font-bold text-stone-850 bg-stone-100 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
-                    <span>會員姓名（簡稱甲方）{partner && ' - 學員 A'}</span>
-                    {!contract?.signatureDataUrl ? (
-                      <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                        待簽名
-                      </span>
-                    ) : (
-                      <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
-                        已簽名
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
-                    <div className="col-span-2 flex items-center gap-1.5">
-                      <span>姓名：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{customer.name}</span>
-                      {!contract?.signatureDataUrl && (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
-                          待簽名
-                        </span>
-                      )}
-                    </div>
-                    <div className="col-span-2">
-                      <span>身分證字號：</span>
-                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{customer.idNumber || '──────'}</span>
-                    </div>
-                    <div className="col-span-3">
-                      <span>生日：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
-                        {customer.dateOfBirth ? formatMinguoDate(customer.dateOfBirth) : '──────'}
-                      </span>
-                    </div>
+                {/* 甲方: 所有合約學員清單 */}
+                {(allContractMembers.length > 0 ? allContractMembers : [customer]).map((m, idx) => {
+                  const isDualMemberB = contract?.contractType === 'dual' && idx === 1
+                  const isSigned = isDualMemberB
+                    ? Boolean(contract?.secondarySignatureDataUrl)
+                    : Boolean(contract?.signatureDataUrl)
 
-                    <div className="col-span-3">
-                      <span>電話：</span>
-                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{customer.phone}</span>
-                    </div>
-                    <div className="col-span-3">
-                      <span>電子郵件：</span>
-                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{customer.email || '──────'}</span>
-                    </div>
+                  const memberLabel = (allContractMembers.length > 1 || partner)
+                    ? ` - 學員 ${String.fromCharCode(65 + idx)}${idx === 0 ? ' (主學員)' : ` (成員 ${idx + 1})`}`
+                    : ''
 
-                    <div className="col-span-2">
-                      <span>緊急聯絡人：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">
-                        {customer.emergencyContact?.name || '──────'}
-                      </span>
-                    </div>
-                    <div className="col-span-2">
-                      <span>關係：</span>
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">
-                        {customer.emergencyContact?.relation || '──────'}
-                      </span>
-                    </div>
-                    <div className="col-span-2">
-                      <span>電話：</span>
-                      <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">
-                        {customer.emergencyContact?.phone || '──────'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 甲方: 學員 B (Partner) if dual */}
-                {partner && (
-                  <div className="space-y-2.5 pt-2 border-t border-dashed border-stone-200">
-                    <div className="font-bold text-orange-900 bg-orange-50 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
-                      <span>會員姓名（簡稱甲方） - 學員 B</span>
-                      {!contract?.secondarySignatureDataUrl ? (
-                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                          待簽名
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
-                          已簽名
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
-                      <div className="col-span-2 flex items-center gap-1.5">
-                        <span>姓名：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{partner.name}</span>
-                        {!contract?.secondarySignatureDataUrl && (
-                          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
+                  return (
+                    <div key={m.id} className={cn("space-y-2.5", idx > 0 && "pt-3 border-t border-dashed border-stone-200")}>
+                      <div className="font-bold text-stone-850 bg-stone-100 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
+                        <span>會員姓名（簡稱甲方）{memberLabel}</span>
+                        {!isSigned ? (
+                          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
                             待簽名
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
+                            已簽名
                           </span>
                         )}
                       </div>
-                      <div className="col-span-2">
-                        <span>身分證字號：</span>
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{partner.idNumber || '──────'}</span>
-                      </div>
-                      <div className="col-span-3">
-                        <span>生日：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
-                          {partner.dateOfBirth ? formatMinguoDate(partner.dateOfBirth) : '──────'}
-                        </span>
-                      </div>
 
-                      <div className="col-span-3">
-                        <span>電話：</span>
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{partner.phone}</span>
-                      </div>
-                      <div className="col-span-3">
-                        <span>電子郵件：</span>
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{partner.email || '──────'}</span>
-                      </div>
+                      <div className="grid grid-cols-6 gap-x-2 gap-y-2 text-stone-700">
+                        <div className="col-span-2 flex items-center gap-1.5">
+                          <span>姓名：</span>
+                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{m.name}</span>
+                          {!isSigned && (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
+                              待簽名
+                            </span>
+                          )}
+                        </div>
+                        <div className="col-span-2">
+                          <span>身分證字號：</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[100px]">{m.idNumber || '──────'}</span>
+                        </div>
+                        <div className="col-span-3">
+                          <span>生日：</span>
+                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">
+                            {m.dateOfBirth ? formatMinguoDate(m.dateOfBirth) : '──────'}
+                          </span>
+                        </div>
 
-                      <div className="col-span-2">
-                        <span>緊急聯絡人：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">
-                          {partner.emergencyContact?.name || '──────'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span>關係：</span>
-                        <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">
-                          {partner.emergencyContact?.relation || '──────'}
-                        </span>
-                      </div>
-                      <div className="col-span-2">
-                        <span>電話：</span>
-                        <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">
-                          {partner.emergencyContact?.phone || '──────'}
-                        </span>
+                        <div className="col-span-3">
+                          <span>電話：</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[160px]">{m.phone}</span>
+                        </div>
+                        <div className="col-span-3">
+                          <span>電子郵件：</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[180px] break-all">{m.email || '──────'}</span>
+                        </div>
+
+                        <div className="col-span-2">
+                          <span>緊急聯絡人：</span>
+                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[60px]">
+                            {m.emergencyContact?.name || '──────'}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span>關係：</span>
+                          <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[40px]">
+                            {m.emergencyContact?.relation || '──────'}
+                          </span>
+                        </div>
+                        <div className="col-span-2">
+                          <span>電話：</span>
+                          <span className="font-bold font-mono text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[90px]">
+                            {m.emergencyContact?.phone || '──────'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )
+                })}
 
                 {/* 乙方 */}
                 <div className="space-y-2 pt-2 border-t border-dashed border-stone-200 text-stone-700">
