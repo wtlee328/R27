@@ -130,10 +130,10 @@ export default function TrainerLessonsPage() {
     return customers.filter(cust => {
       // 1. Primary assigned trainer is current trainer
       if (cust.trainerId === currentTrainerId) return true
-      // 2. Or has a contract where current trainer is primary or secondary trainer
+      // 2. Or has a contract where current trainer is primary, secondary, or designated in studentTrainers
       return venueContracts.some(con =>
         (con.customerId === cust.id || con.sharedWithCustomerId === cust.id || (con.customerIds && con.customerIds.includes(cust.id))) &&
-        (con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId)
+        (con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId || (con.studentTrainers && con.studentTrainers[cust.id] === currentTrainerId))
       )
     })
   }, [customers, venueContracts, currentTrainerId])
@@ -143,10 +143,11 @@ export default function TrainerLessonsPage() {
     if (!selectedSubstitutedTrainerId) return new Set<string>()
     const set = new Set<string>()
     venueContracts.forEach((c) => {
-      if (
-        (c.trainerId === selectedSubstitutedTrainerId || c.secondaryTrainerId === selectedSubstitutedTrainerId) &&
-        c.remainingSessions > 0
-      ) {
+      const isSubscribedTrainer = c.trainerId === selectedSubstitutedTrainerId ||
+        c.secondaryTrainerId === selectedSubstitutedTrainerId ||
+        (c.studentTrainers && Object.values(c.studentTrainers).includes(selectedSubstitutedTrainerId))
+
+      if (isSubscribedTrainer && c.remainingSessions > 0) {
         if (c.customerId) set.add(c.customerId)
         if (c.customerIds && Array.isArray(c.customerIds)) {
           c.customerIds.forEach((id) => set.add(id))
