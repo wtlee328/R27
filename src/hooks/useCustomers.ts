@@ -87,8 +87,9 @@ export function useCustomers() {
             }
           }
 
-          // Auto repair 1.5: Dual contract type and customerIds restoration
-          const isDualContract = c.contractType === 'dual' || !!c.sharedWithCustomerId
+          // Auto repair 1.5: Dual vs Shared contract type and customerIds restoration
+          const isSharedContract = c.contractType === 'shared'
+          const isDualContract = !isSharedContract && (c.contractType === 'dual' || !!c.sharedWithCustomerId)
           if (isDualContract) {
             if (c.contractType !== 'dual') {
               updates.contractType = 'dual'
@@ -103,6 +104,13 @@ export function useCustomers() {
               c.customerIds = dualCustomerIds
               isRepaired = true
             }
+          }
+
+          // Ensure primaryCustomerId is always present
+          if (!c.primaryCustomerId && c.customerId) {
+            updates.primaryCustomerId = c.customerId
+            c.primaryCustomerId = c.customerId
+            isRepaired = true
           }
 
           // Auto repair 2: remainingSessions cap check & repair for pending contracts

@@ -1548,7 +1548,7 @@ export function ContractFormModal({
                                 <span>3. 多人共享合約堂數模式說明</span>
                               </div>
                               <p className="text-xs text-stone-600 leading-relaxed font-medium">
-                                本合約設定為 <span className="font-bold text-blue-900">「多人共享合約」</span>，由全體 {groupMemberCount} 位學員共同持有一份合約堂數池（合約總堂數: <span className="font-bold text-stone-900">{form.watch('totalSessions') || 0} 堂</span>）。學員各自約課銷課時直接由該合約剩餘堂數扣抵，無需為每位成員個別設定堂數上限。
+                                本合約設定為 <span className="font-bold text-blue-900">「多人共享合約」</span>，由全體 {sharedMemberCount} 位學員共同持有一份合約堂數池（合約總堂數: <span className="font-bold text-stone-900">{form.watch('totalSessions') || 0} 堂</span>）。學員各自約課銷課時直接由該合約剩餘堂數扣抵，無需為每位成員個別設定堂數上限。
                               </p>
                             </div>
                           ) : (
@@ -1645,7 +1645,7 @@ export function ContractFormModal({
                                   idNumber: '',
                                   phone: '',
                                   email: '',
-                                  dateOfBirth: new Date(),
+                                  dateOfBirth: new Date() as any,
                                   historicalSessions: 0,
                                   emergencyContact: { name: '', relation: '', phone: '' },
                                   sharedContractCustomerId: null,
@@ -1653,7 +1653,7 @@ export function ContractFormModal({
                                 })
                               }}
                               className={cn(
-                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
+                                "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all",
                                 form.watch('partnerMode') === 'new'
                                   ? "bg-amber-500 border-amber-500 text-white shadow-md"
                                   : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
@@ -1694,8 +1694,9 @@ export function ContractFormModal({
                           )}
                         </div>
                       )}
-                      {/* 課程教練分配 */}
-                      {!form.watch('bindExistingContractMode') && (
+                      
+                      {/* 課程教練分配 — single & dual only; shared trainers are set inline in each member card above */}
+                      {!form.watch('bindExistingContractMode') && (watchedValues.contractType === 'single' || watchedValues.contractType === 'dual') && (
                         <>
                           <div className="space-y-4 border-t border-stone-100 pt-6">
                           <div className="space-y-1">
@@ -1723,64 +1724,16 @@ export function ContractFormModal({
                                 <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.trainerId.message}</p>
                               )}
                             </div>
-                          ) : watchedValues.contractType === 'shared' ? (
-                            <div className="space-y-3 bg-blue-50/50 p-4.5 rounded-2xl border border-blue-100">
-                              <p className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                                <RiTeamLine className="w-4 h-4 text-blue-600" />
-                                多人共享合約各學員專屬教練設定
-                              </p>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1.5 bg-white p-3 rounded-xl border border-stone-200">
-                                  <Label className="text-xs font-bold text-stone-800">
-                                    主學員: {customer?.name}
-                                  </Label>
-                                  <select
-                                    value={form.watch('trainerId') || ''}
-                                    onChange={(e) => form.setValue('trainerId', e.target.value)}
-                                    className="w-full h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold"
-                                  >
-                                    <option value="">-- 請選擇教練 --</option>
-                                    {trainers.map(t => (
-                                      <option key={t.id} value={t.id}>{t.name}</option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                {additionalGroupMembers.slice(0, sharedMemberCount - 1).map((m, idx) => (
-                                  <div key={idx} className="space-y-1.5 bg-white p-3 rounded-xl border border-stone-200">
-                                    <Label className="text-xs font-bold text-stone-800">
-                                      成員 {idx + 2}: {m.name || `學員 ${idx + 2}`}
-                                    </Label>
-                                    <select
-                                      value={m.assignedTrainerId || form.watch('trainerId') || ''}
-                                      onChange={(e) => {
-                                        const tId = e.target.value
-                                        setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
-                                      }}
-                                      className="w-full h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold"
-                                    >
-                                      <option value="">-- 請選擇教練 --</option>
-                                      {trainers.map(t => (
-                                        <option key={t.id} value={t.id}>{t.name}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : watchedValues.contractType === 'dual' ? (
-                            <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
-                              <div className="grid grid-cols-2 gap-4 pt-1">
+                          ) : (
+                            <div className="space-y-4 bg-stone-50 p-4 rounded-2xl border border-stone-200/50">
+                              <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                   <Label className="text-xs text-stone-600 font-bold">
                                     學員 A ({customer?.name || '主學員'}) 的教練 *
                                   </Label>
                                   <select
                                     value={form.watch('trainerId') || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value
-                                      form.setValue('trainerId', val)
-                                    }}
+                                    onChange={(e) => form.setValue('trainerId', e.target.value)}
                                     className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
                                   >
                                     <option value="">-- 請選擇教練 --</option>
@@ -1811,27 +1764,6 @@ export function ContractFormModal({
                                   )}
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            /* group contract: single trainer selector */
-                            <div className="space-y-2 max-w-md">
-                              <Label className="text-xs text-stone-500 font-medium">授課教練</Label>
-                              <select
-                                value={form.watch('trainerId') || ''}
-                                onChange={(e) => {
-                                  form.setValue('trainerId', e.target.value)
-                                  form.setValue('secondaryTrainerId', null)
-                                }}
-                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
-                              >
-                                <option value="">-- 請選擇教練 --</option>
-                                {trainers.map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                              </select>
-                              {form.formState.errors.trainerId && (
-                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.trainerId.message}</p>
-                              )}
                             </div>
                           )}
                         </div>
