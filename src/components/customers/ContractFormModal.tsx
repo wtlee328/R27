@@ -388,7 +388,7 @@ export function ContractFormModal({
           ] 
         }
       )
-    } else if (watchedValues.contractType === 'group') {
+    } else if (watchedValues.contractType === 'group' || watchedValues.contractType === 'shared') {
       const groupSteps: any[] = []
       for (let i = 2; i <= groupMemberCount; i++) {
         const mData = additionalGroupMembers[i - 2]
@@ -705,6 +705,67 @@ export function ContractFormModal({
           const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
           data.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
         }
+      }
+
+      if (data.contractType === 'shared') {
+        for (let i = 0; i < additionalGroupMembers.length; i++) {
+          const m = additionalGroupMembers[i]
+          if (m.memberMode === 'existing') {
+            if (!m.existingCustomerId || !m.name) {
+              alert(`請選擇學員 ${i + 2} 的現有學員資料。`)
+              setLoading(false)
+              return
+            }
+          } else {
+            if (!m.name || !m.phone || !m.idNumber) {
+              alert(`請完整填寫學員 ${i + 2} 的真實姓名、電話與身分證字號。`)
+              setLoading(false)
+              return
+            }
+          }
+        }
+
+        const createdMemberIds: string[] = []
+        for (let i = 0; i < additionalGroupMembers.length; i++) {
+          const m = additionalGroupMembers[i]
+          if (m.memberMode === 'existing' && m.existingCustomerId) {
+            createdMemberIds.push(m.existingCustomerId)
+          } else {
+            const mCustomer = {
+              name: m.name || `共享成員${i + 2}`,
+              idNumber: m.idNumber || '',
+              phone: m.phone || '',
+              email: m.email || '',
+              dateOfBirth: m.dateOfBirth ? Timestamp.fromDate(new Date(m.dateOfBirth)) : serverTimestamp(),
+              gender: m.gender,
+              exerciseHabit: m.exerciseHabit,
+              source: m.source || 'existing',
+              emergencyContact: m.emergencyContact,
+              medicalHistory: m.medicalHistory,
+              trainerId: (m as any).assignedTrainerId || data.trainerId || customer?.trainerId,
+              centerId,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+            const newDocRef = await addDoc(collection(db, 'customers'), mCustomer)
+            createdMemberIds.push(newDocRef.id)
+          }
+        }
+
+        const allCustomerIds = [customer!.id, ...createdMemberIds]
+        const studentTrainersMap: Record<string, string> = {
+          [customer!.id]: data.trainerId || customer?.trainerId || ''
+        }
+        additionalGroupMembers.forEach((m, idx) => {
+          const id = createdMemberIds[idx]
+          if (id) {
+            studentTrainersMap[id] = (m as any).assignedTrainerId || data.trainerId || ''
+          }
+        })
+
+        ;(data as any).customerIds = allCustomerIds
+        ;(data as any).studentTrainers = studentTrainersMap
+        ;(data as any).primaryCustomerId = customer!.id
       }
 
       if (data.contractType === 'group') {

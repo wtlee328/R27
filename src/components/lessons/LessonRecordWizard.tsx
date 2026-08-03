@@ -219,11 +219,71 @@ export function LessonRecordWizard({
     }
   }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form])
 
+  const isDualContract = selectedContract?.contractType === 'dual'
+  const isSharedContract = selectedContract?.contractType === 'shared'
+  const isGroupContract = selectedContract?.contractType === 'group'
+
   const isMultiContract = Boolean(selectedContract && (
-    selectedContract.contractType === 'dual' ||
-    selectedContract.contractType === 'group' ||
+    isDualContract ||
+    isSharedContract ||
+    isGroupContract ||
     groupCustomers.length > 1
   ))
+
+  // Automatically select initial attendees and FIFO contracts when primary contract changes
+  useEffect(() => {
+    if (selectedContract) {
+      if (isDualContract) {
+        // Dual contract: Both students must attend together, fixed 1 session
+        const allMemberIds = groupCustomers.map(c => c.id)
+        form.setValue('attendingCustomerIds', allMemberIds)
+        form.setValue('sessionAmount', 1)
+        const initialSelections: Record<string, string> = {}
+        allMemberIds.forEach(id => { initialSelections[id] = selectedContract.id })
+        setStudentContractSelections(initialSelections)
+      } else if (isSharedContract) {
+        // Shared contract: Default select primary customer, 1 session
+        form.setValue('attendingCustomerIds', [selectedCustomerId])
+        form.setValue('sessionAmount', 1)
+        const initialSelections: Record<string, string> = {}
+        groupCustomers.forEach(m => { initialSelections[m.id] = selectedContract.id })
+        setStudentContractSelections(initialSelections)
+      } else if (isGroupContract && groupCustomers.length > 0) {
+        // Group contract: Default check all members
+        const allMemberIds = groupCustomers.map(c => c.id)
+        form.setValue('attendingCustomerIds', allMemberIds)
+
+        const initialSelections: Record<string, string> = {}
+        groupCustomers.forEach(m => {
+          const memberContracts = contracts.filter(c => {
+            const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(m.id)
+            const isCust = c.customerId === m.id || c.primaryCustomerId === m.id || c.sharedWithCustomerId === m.id || c.partnerId === m.id
+            if (!isInIds && !isCust) return false
+            if (c.contractType === 'group' && c.groupMemberQuotas) {
+              return (c.groupMemberQuotas[m.id]?.remainingSessions || 0) > 0
+            }
+            return c.remainingSessions > 0
+          }).sort((a, b) => {
+            const tA = a.createdAt?.seconds || 0
+            const tB = b.createdAt?.seconds || 0
+            return tA - tB // FIFO
+          })
+
+          if (memberContracts.some(c => c.id === selectedContract.id)) {
+            initialSelections[m.id] = selectedContract.id
+          } else if (memberContracts.length > 0) {
+            initialSelections[m.id] = memberContracts[0].id
+          } else {
+            initialSelections[m.id] = selectedContract.id
+          }
+        })
+        setStudentContractSelections(initialSelections)
+      } else {
+        form.setValue('attendingCustomerIds', [selectedCustomerId])
+        setStudentContractSelections({ [selectedCustomerId]: selectedContract.id })
+      }
+    }
+  }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form, isDualContract, isSharedContract, isGroupContract])
 
   const watchedCustomerId = form.watch('customerId')
   const watchedContractId = form.watch('contractId')
@@ -232,12 +292,16 @@ export function LessonRecordWizard({
   const watchedSessionAmount = form.watch('sessionAmount')
   const watchedAttendingIds = form.watch('attendingCustomerIds') || []
 
-  // Dynamically adjust sessionAmount based on selected attending customers count (only for new records)
+  // Dynamically adjust sessionAmount based on contract type
   useEffect(() => {
-    if (!initialData && watchedAttendingIds.length > 0) {
-      form.setValue('sessionAmount', watchedAttendingIds.length)
+    if (!initialData && selectedContract) {
+      if (isDualContract) {
+        form.setValue('sessionAmount', 1)
+      } else if (isGroupContract && watchedAttendingIds.length > 0) {
+        form.setValue('sessionAmount', watchedAttendingIds.length)
+      }
     }
-  }, [watchedAttendingIds.length, initialData, form])
+  }, [watchedAttendingIds.length, initialData, form, selectedContract, isDualContract, isGroupContract])
 
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
@@ -268,14 +332,22 @@ export function LessonRecordWizard({
     if (!watchedSessionDate) {
       return '請選擇上課日期'
     }
-    if (watchedSessionAmount === undefined || watchedSessionAmount === null || Number(watchedSessionAmount) < 1 || isNaN(Number(watchedSessionAmount))) {
+    if (!isDualContract && (watchedSessionAmount === undefined || watchedSessionAmount === null || Number(watchedSessionAmount) < 1 || isNaN(Number(watchedSessionAmount)))) {
       return '消耗堂數必須至少為 1 堂'
     }
 
-    // 2. Dual & Group contract attendance vs sessionAmount rule check
-    if (isMultiContract) {
+    // 2. Attendance vs sessionAmount rule check per contract type
+    if (isDualContract) {
+      if (watchedAttendingIds.length < 2) {
+        return '雙人合約必須由 2 位學員同時出席'
+      }
+    } else if (isSharedContract) {
       if (watchedAttendingIds.length === 0) {
-        return '雙人/團體合約請至少勾選一位實際出席學員'
+        return '共享合約請至少勾選一位實際出席學員'
+      }
+    } else if (isGroupContract) {
+      if (watchedAttendingIds.length === 0) {
+        return '團體合約請至少勾選一位實際出席學員'
       }
       if (Number(watchedSessionAmount) !== watchedAttendingIds.length) {
         return `銷課堂數 (${watchedSessionAmount} 堂) 與實際出席人數 (${watchedAttendingIds.length} 人) 不符`
@@ -296,7 +368,7 @@ export function LessonRecordWizard({
         if (memberQuota < 1) {
           return `學員 ${custName} 的個人剩餘堂數不足 (現有 ${memberQuota} 堂)`
         }
-      } else if (con.remainingSessions < 1) {
+      } else if (con.remainingSessions < (isDualContract ? 1 : Number(watchedSessionAmount || 1))) {
         return `合約 (剩餘 ${con.remainingSessions} 堂) 堂數不足`
       }
     }
@@ -309,6 +381,9 @@ export function LessonRecordWizard({
     watchedSessionDate,
     watchedSessionAmount,
     watchedAttendingIds,
+    isDualContract,
+    isSharedContract,
+    isGroupContract,
     isMultiContract,
     studentContractSelections,
     contracts,
@@ -603,15 +678,17 @@ export function LessonRecordWizard({
               )}
             </div>
 
-            {/* ── 出席管理（雙人 / 團體合約）── */}
+            {/* ── 出席管理（雙人 / 共享 / 團體合約）── */}
             {isMultiContract && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
                 <div className="flex items-center justify-between">
                   <Label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1.5">
                     <RiTeamLine className="w-3.5 h-3.5" />
-                    {selectedContract?.contractType === 'group' ? '團體成員出席' : '雙人出席'}
+                    {selectedContract?.contractType === 'group' ? '團體成員出席' : selectedContract?.contractType === 'shared' ? '共享成員出席' : '雙人成員出席 (固定同堂)'}
                   </Label>
-                  <span className="text-[10px] text-stone-400 font-medium">未勾選代表缺席</span>
+                  <span className="text-[10px] text-stone-400 font-medium">
+                    {isDualContract ? '雙人合約固定兩人同時出席' : '未勾選代表缺席'}
+                  </span>
                 </div>
 
                 <div className="rounded-xl border border-stone-100 overflow-hidden bg-stone-50/40 divide-y divide-stone-100/80">
@@ -635,9 +712,11 @@ export function LessonRecordWizard({
                         <label className="flex items-center gap-3 px-4 py-3 cursor-pointer select-none">
                           <input
                             type="checkbox"
-                            checked={isAttending}
-                            className="w-4 h-4 rounded border-stone-300 accent-orange-500 cursor-pointer shrink-0"
+                            checked={isDualContract ? true : isAttending}
+                            disabled={isDualContract}
+                            className="w-4 h-4 rounded border-stone-300 accent-orange-500 cursor-pointer shrink-0 disabled:opacity-80"
                             onChange={(e) => {
+                              if (isDualContract) return
                               const current = form.getValues('attendingCustomerIds') || []
                               if (e.target.checked) {
                                 form.setValue('attendingCustomerIds', [...current, member.id])
@@ -649,13 +728,13 @@ export function LessonRecordWizard({
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div className={cn(
                               'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 transition-colors',
-                              isAttending ? 'bg-orange-100 text-orange-700' : 'bg-stone-200 text-stone-400'
+                              isAttending || isDualContract ? 'bg-orange-100 text-orange-700' : 'bg-stone-200 text-stone-400'
                             )}>
                               {member.name.charAt(0)}
                             </div>
                             <span className={cn(
                               'text-xs font-semibold truncate transition-colors',
-                              isAttending ? 'text-stone-800' : 'text-stone-400'
+                              isAttending || isDualContract ? 'text-stone-800' : 'text-stone-400'
                             )}>
                               {member.name}
                             </span>
@@ -665,15 +744,15 @@ export function LessonRecordWizard({
                           </div>
                           <span className={cn(
                             'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 transition-all border',
-                            isAttending
+                            isAttending || isDualContract
                               ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
                               : 'bg-stone-100 text-stone-400 border-transparent'
                           )}>
-                            {isAttending ? '出席' : '缺席'}
+                            {isAttending || isDualContract ? '出席' : '缺席'}
                           </span>
                         </label>
 
-                        {isAttending && (
+                        {isAttending && !isDualContract && (
                           <div className="px-4 pb-3 flex items-center gap-2">
                             <div className="w-4 shrink-0" />
                             <RiContractLine className="w-3.5 h-3.5 text-stone-300 shrink-0" />
@@ -692,7 +771,7 @@ export function LessonRecordWizard({
                                 const remText = isGroup
                                   ? `個人剩 ${mc.groupMemberQuotas![member.id].remainingSessions} 堂`
                                   : `剩 ${mc.remainingSessions} 堂`
-                                const typeLabel = mc.contractType === 'group' ? '團體' : mc.contractType === 'dual' ? '雙人' : '單人'
+                                const typeLabel = mc.contractType === 'group' ? '團體' : mc.contractType === 'shared' ? '共享' : mc.contractType === 'dual' ? '雙人' : '單人'
                                 return (
                                   <option key={mc.id} value={mc.id}>
                                     [{typeLabel}] {(mc as any).contractNo || mc.id.substring(0, 8)} ({remText})
@@ -734,14 +813,25 @@ export function LessonRecordWizard({
                   消耗堂數
                 </Label>
                 <div className="relative">
-                  <Input
-                    type="number"
-                    step="1"
-                    min="1"
-                    {...form.register('sessionAmount', { valueAsNumber: true })}
-                    className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-stone-400 pointer-events-none font-medium">堂</span>
+                  {isDualContract ? (
+                    <Input
+                      type="number"
+                      value={1}
+                      disabled
+                      className="h-10 rounded-xl border-stone-200 bg-stone-100 text-stone-600 text-sm pr-12 font-bold cursor-not-allowed"
+                    />
+                  ) : (
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      {...form.register('sessionAmount', { valueAsNumber: true })}
+                      className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm pr-8 font-medium"
+                    />
+                  )}
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-stone-400 pointer-events-none font-medium">
+                    {isDualContract ? '堂 (固定)' : '堂'}
+                  </span>
                 </div>
                 {form.formState.errors.sessionAmount && (
                   <p className="text-red-500 text-xs">{form.formState.errors.sessionAmount.message as string}</p>

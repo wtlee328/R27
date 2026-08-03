@@ -88,8 +88,9 @@ export interface Contract {
   customerId: string
   sharedWithCustomerId: string | null
   customerIds: string[]
-  contractType: 'single' | 'dual' | 'group'
+  contractType: 'single' | 'dual' | 'shared' | 'group'
   primaryCustomerId: string
+  studentTrainers?: Record<string, string>
   totalSessions: number
   remainingSessions: number
   groupMemberQuotas?: Record<string, GroupMemberQuota>

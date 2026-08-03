@@ -532,14 +532,23 @@ export default function TrainerLessonsPage() {
                   <div className="space-y-2">
                     {contracts.map((contract) => {
                       const isSelected = selectedContractId === contract.id
-                      const typeLabel = contract.contractType === 'dual' ? '雙人課' : '一對一'
+                      const typeLabel = contract.contractType === 'group' ? '團體' : contract.contractType === 'shared' ? '共享' : contract.contractType === 'dual' ? '雙人' : '單人'
                       return (
                         <button
                           key={contract.id}
                           type="button"
                           onClick={() => {
                             setSelectedContractId(contract.id)
-                            setAttendingCustomerIds([selectedCustomerId])
+                            if (contract.contractType === 'dual') {
+                              const allIds = Array.isArray(contract.customerIds) && contract.customerIds.length > 0
+                                ? contract.customerIds
+                                : [contract.customerId, contract.sharedWithCustomerId].filter(Boolean) as string[]
+                              setAttendingCustomerIds(allIds)
+                              setSessionAmount(1)
+                            } else {
+                              setAttendingCustomerIds([selectedCustomerId])
+                              setSessionAmount(1)
+                            }
                           }}
                           className={`w-full flex items-center justify-between p-3 rounded-xl border text-left cursor-pointer transition-all ${
                             isSelected
@@ -568,44 +577,54 @@ export default function TrainerLessonsPage() {
                 )}
               </div>
 
-              {/* Dual Contract Attendees */}
-              {selectedContract && (selectedContract.contractType === 'dual' || partners.length > 0) && (
+              {/* Dual / Shared / Group Contract Attendees */}
+              {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'shared' || selectedContract.contractType === 'group' || partners.length > 0) && (
                 <div className="space-y-2">
-                  <Label className="text-stone-700 font-bold text-xs">上課學員 (多選) *</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-stone-700 font-bold text-xs">
+                      {selectedContract.contractType === 'group' ? '團體成員出席' : selectedContract.contractType === 'shared' ? '共享成員出席' : '雙人成員出席 (固定同堂)'} *
+                    </Label>
+                    {selectedContract.contractType === 'dual' && (
+                      <span className="text-[10px] text-stone-400 font-medium">雙人合約固定兩人同時出席</span>
+                    )}
+                  </div>
                   <div className="space-y-1.5">
                     {/* Primary Attending Customer */}
                     <label className="flex items-center gap-2.5 p-2.5 bg-stone-50 rounded-xl border border-stone-200 text-xs font-semibold cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={attendingCustomerIds.includes(selectedCustomerId)}
-                        disabled
-                        className="rounded border-stone-300 text-brand-500 focus:ring-brand-500"
+                        checked={selectedContract.contractType === 'dual' ? true : attendingCustomerIds.includes(selectedCustomerId)}
+                        disabled={selectedContract.contractType === 'dual'}
+                        className="rounded border-stone-300 text-brand-500 focus:ring-brand-500 disabled:opacity-80"
                       />
                       <span>{selectedCustomer?.name} (主學員)</span>
                     </label>
                     {/* Partners */}
                     {partners.map(partner => {
                       const isAttending = attendingCustomerIds.includes(partner.id)
+                      const isDual = selectedContract.contractType === 'dual'
                       return (
                         <label
                           key={partner.id}
                           className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
-                            isAttending
+                            isAttending || isDual
                               ? 'bg-brand-50/20 border-brand-200 text-brand-900'
                               : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
                           }`}
                         >
                           <input
                             type="checkbox"
-                            checked={isAttending}
+                            checked={isDual ? true : isAttending}
+                            disabled={isDual}
                             onChange={(e) => {
+                              if (isDual) return
                               if (e.target.checked) {
                                 setAttendingCustomerIds([...attendingCustomerIds, partner.id])
                               } else {
                                 setAttendingCustomerIds(attendingCustomerIds.filter(id => id !== partner.id))
                               }
                             }}
-                            className="rounded border-stone-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
+                            className="rounded border-stone-300 text-brand-500 focus:ring-brand-500 cursor-pointer disabled:opacity-80"
                           />
                           <span>{partner.name}</span>
                         </label>
@@ -670,16 +689,26 @@ export default function TrainerLessonsPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="sessionAmount" className="text-stone-700 font-bold text-xs">扣堂數 *</Label>
-                  <Input
-                    id="sessionAmount"
-                    type="number"
-                    min="1"
-                    max={selectedContract ? selectedContract.remainingSessions : 100}
-                    value={sessionAmount}
-                    onChange={(e) => setSessionAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                    required
-                    className="h-11 bg-white border-stone-200 rounded-xl"
-                  />
+                  {selectedContract?.contractType === 'dual' ? (
+                    <Input
+                      id="sessionAmount"
+                      type="number"
+                      value={1}
+                      disabled
+                      className="h-11 bg-stone-100 border-stone-200 rounded-xl text-stone-600 font-bold cursor-not-allowed"
+                    />
+                  ) : (
+                    <Input
+                      id="sessionAmount"
+                      type="number"
+                      min="1"
+                      max={selectedContract ? selectedContract.remainingSessions : 100}
+                      value={sessionAmount}
+                      onChange={(e) => setSessionAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                      required
+                      className="h-11 bg-white border-stone-200 rounded-xl"
+                    />
+                  )}
                 </div>
               </div>
 

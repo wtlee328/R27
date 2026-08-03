@@ -153,10 +153,13 @@ export function useLessonRecords() {
         const contractTrainerId = contractData ? contractData.trainerId : null
         const finalTrainerId = data.trainerId || contractTrainerId || user.uid
 
+        const isDualContract = contractData?.contractType === 'dual'
+        const effectiveSessionAmount = isDualContract ? 1 : (data.sessionAmount || 1)
+
         const unitPriceAtDeduction = contractData
           ? (contractData.totalSessions > 0 ? Math.round((contractData.totalAmount || 0) / contractData.totalSessions) : (contractData.pricePerSession || 0))
           : 0
-        const recognizedAmount = Math.round((data.sessionAmount || 1) * unitPriceAtDeduction)
+        const recognizedAmount = Math.round(effectiveSessionAmount * unitPriceAtDeduction)
 
         const trainerRef = doc(db, 'trainers', finalTrainerId)
         const trainerSnap = await transaction.get(trainerRef)
@@ -166,6 +169,7 @@ export function useLessonRecords() {
         const recordRef = doc(collection(db, 'lessonRecords'))
         transaction.set(recordRef, {
           ...newRecordData,
+          sessionAmount: effectiveSessionAmount,
           deductions: finalDeductions,
           trainerId: finalTrainerId,
           contractTrainerId: contractTrainerId || finalTrainerId,
@@ -185,7 +189,13 @@ export function useLessonRecords() {
           const cSnap = contractSnapsMap.get(cid)
           if (!cSnap || !cSnap.exists()) continue
           const cData = cSnap.data() as Contract
-          const totalDeductedAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+
+          let totalDeductedAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+          if (cData.contractType === 'dual') {
+            totalDeductedAmount = 1
+          } else if (cData.contractType === 'shared') {
+            totalDeductedAmount = effectiveSessionAmount
+          }
 
           if (cData.contractType === 'group' && cData.groupMemberQuotas) {
             const updatedQuotas = { ...cData.groupMemberQuotas }
@@ -222,7 +232,7 @@ export function useLessonRecords() {
           const uref = customerRefsMap.get(d.customerId)
           if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
             transaction.update(uref, {
-              historicalSessions: increment(d.sessionAmount),
+              historicalSessions: increment(isDualContract ? 1 : d.sessionAmount),
               updatedAt: serverTimestamp()
             })
           }
@@ -312,7 +322,13 @@ export function useLessonRecords() {
           const cSnap = contractSnapsMap.get(cid)
           if (!cSnap || !cSnap.exists()) continue
           const cData = cSnap.data() as Contract
-          const totalRestoredAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+
+          let totalRestoredAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+          if (cData.contractType === 'dual') {
+            totalRestoredAmount = 1
+          } else if (cData.contractType === 'shared') {
+            totalRestoredAmount = recordData.sessionAmount || 1
+          }
 
           if (cData.contractType === 'group' && cData.groupMemberQuotas) {
             const updatedQuotas = { ...cData.groupMemberQuotas }
@@ -347,9 +363,11 @@ export function useLessonRecords() {
 
         deductions.forEach(d => {
           const uref = customerRefsMap.get(d.customerId)
+          const cType = contractSnapsMap.get(d.contractId)?.data()?.contractType
+          const decAmount = cType === 'dual' ? 1 : d.sessionAmount
           if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
             transaction.update(uref, {
-              historicalSessions: increment(-d.sessionAmount),
+              historicalSessions: increment(-decAmount),
               updatedAt: serverTimestamp()
             })
           }
