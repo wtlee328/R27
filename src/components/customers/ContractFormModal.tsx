@@ -505,12 +505,17 @@ export function ContractFormModal({
           })
         }
 
+        const isDualPartnerOk = watchedValues.contractType !== 'dual' || (
+          watchedValues.partnerMode === 'existing'
+            ? !!watchedValues.sharedWithCustomerId
+            : watchedValues.partnerMode === 'new'
+        )
+
         const hasBasicData = watchedValues.totalSessions > 0 &&
                watchedValues.pricePerSession > 0 &&
                !!watchedValues.startDate &&
                !!watchedValues.endDate &&
-               (watchedValues.contractType !== 'dual' || watchedValues.partnerMode !== 'none') &&
-               (watchedValues.partnerMode !== 'existing' || !!watchedValues.sharedWithCustomerId) &&
+               isDualPartnerOk &&
                groupOk;
 
         if (!hasBasicData) return false;

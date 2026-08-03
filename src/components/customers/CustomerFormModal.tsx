@@ -420,7 +420,7 @@ export function CustomerFormModal({
 
     // 2. Contract Settings Step (User chooses single/dual/group & member count N here)
     const contractFields = ['contract.totalSessions', 'contract.totalAmount', 'contract.startDate', 'contract.endDate']
-    if (watchedValues.partnerMode === 'existing') {
+    if (watchedValues.contract?.contractType === 'dual' && watchedValues.partnerMode === 'existing') {
       contractFields.push('partnerId')
     }
     dynamicSteps.push({
@@ -590,6 +590,18 @@ export function CustomerFormModal({
           }
           return !!watchedValues.existingContractId
         }
+
+        let groupOk = true
+        if (watchedValues.contract?.contractType === 'group' || watchedValues.contract?.contractType === 'shared') {
+          const effectiveCount = watchedValues.contract?.contractType === 'shared' ? sharedMemberCount : groupMemberCount
+          groupOk = additionalGroupMembers.slice(0, effectiveCount - 1).every(m => {
+            if (m.memberMode === 'existing') {
+              return !!m.existingCustomerId
+            }
+            return true
+          })
+        }
+        if (!groupOk) return false
 
         const stepFields = step.fields as any[]
         const isComplete = stepFields.every(field => {
