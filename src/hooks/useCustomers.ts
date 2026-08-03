@@ -284,6 +284,7 @@ export function useCustomers() {
       if (contractSnap.exists()) {
         const existingContractData = contractSnap.data()
         const isGroup = existingContractData.contractType === 'group'
+        const isShared = existingContractData.contractType === 'shared' || updatedCustomerIds.length > 2
         const primaryCustId = existingContractData.customerId || existingContractData.primaryCustomerId
         const currentCustomerIds = existingContractData.customerIds || (primaryCustId ? [primaryCustId] : [])
         const updatedCustomerIds = Array.from(new Set([primaryCustId, ...currentCustomerIds, customerId].filter(Boolean)))
@@ -307,6 +308,12 @@ export function useCustomers() {
           }
           contractUpdate.groupMemberQuotas = existingQuotas
           contractUpdate.status = 'pending_signature'
+        } else if (isShared || existingContractData.contractType === 'shared') {
+          contractUpdate.contractType = 'shared'
+          contractUpdate.secondaryTrainerId = secondaryTrainerId
+          if (data.secondarySignatureDataUrl) {
+            contractUpdate.secondarySignatureDataUrl = data.secondarySignatureDataUrl
+          }
         } else {
           contractUpdate.contractType = 'dual'
           contractUpdate.sharedWithCustomerId = customerId
@@ -351,11 +358,12 @@ export function useCustomers() {
     }
 
     const isGroup = data.contractType === 'group'
-    const isDual = !isGroup && (data.contractType === 'dual' || !!finalPartnerId)
+    const isShared = data.contractType === 'shared'
+    const isDual = !isGroup && !isShared && (data.contractType === 'dual' || !!finalPartnerId)
     const partnerId = finalPartnerId
 
     let customerIds: string[]
-    if (isGroup) {
+    if (isGroup || isShared) {
       customerIds = Array.from(new Set([customerId, ...(data.customerIds || [])]))
     } else if (isDual) {
       customerIds = Array.from(new Set([customerId, partnerId].filter((id): id is string => !!id)))
@@ -363,7 +371,7 @@ export function useCustomers() {
       customerIds = [customerId]
     }
 
-    const contractType = isGroup ? 'group' : (isDual ? 'dual' : 'single')
+    const contractType = isShared ? 'shared' : (isGroup ? 'group' : (isDual ? 'dual' : 'single'))
     
     const cleanData = { ...data }
     delete (cleanData as any).partnerMode

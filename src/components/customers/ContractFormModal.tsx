@@ -1124,23 +1124,26 @@ export function ContractFormModal({
                                   {existingCustomerContracts.map((c) => {
                                     const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
                                     const isGroup = c.contractType === 'group'
-                                    const isDual = !isGroup && (c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2))
+                                    const isShared = c.contractType === 'shared'
+                                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2))
                                     const currentMemberCount = isGroup
                                       ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
+                                      : isShared
+                                      ? (Array.isArray(c.customerIds) ? c.customerIds.length : 1)
                                       : isDual ? 2 : 1
-                                    const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
+                                    const isFull = (isGroup || isShared) ? currentMemberCount >= 6 : isDual ? true : false
                                     const isAlreadyMember = isCustomerAlreadyInContract(c)
 
-                                    const tagText = isGroup ? '[團體]' : isDual ? '[雙人共享]' : '[個人]'
+                                    const tagText = isGroup ? '[團體]' : isShared ? '[多人共享]' : isDual ? '[雙人共享]' : '[個人]'
                                     const statusSuffix = isAlreadyMember
                                       ? ' (此學員已在此合約中 - 無法重複加入)'
                                       : isFull
-                                      ? ` (已滿額 ${isGroup ? currentMemberCount + '/6' : '2/2'}人 - 無法綁定)`
-                                      : isDual
-                                      ? ''
+                                      ? ` (已滿額 ${currentMemberCount}/${isDual ? 2 : 6}人 - 無法綁定)`
+                                      : isShared
+                                      ? ` (${currentMemberCount}/6人)`
                                       : isGroup
                                       ? ` (${currentMemberCount}/6人)`
-                                      : ' (綁定後轉雙人合約)'
+                                      : ' (綁定後轉共享合約)'
 
                                     return (
                                       <option key={c.id} value={c.id} disabled={isFull || isAlreadyMember}>
@@ -1156,11 +1159,14 @@ export function ContractFormModal({
 
                           {selectedContract && (() => {
                             const isGroup = selectedContract.contractType === 'group'
-                            const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
+                            const isShared = selectedContract.contractType === 'shared'
+                            const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
                             const currentCount = isGroup
                               ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
+                              : isShared
+                              ? (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1)
                               : isDual ? 2 : 1
-                            const isFull = isGroup ? currentCount >= 6 : isDual ? true : false
+                            const isFull = (isGroup || isShared) ? currentCount >= 6 : isDual ? true : false
                             const isAlreadyMember = isCustomerAlreadyInContract(selectedContract)
 
                             if (isAlreadyMember) {
@@ -1172,6 +1178,36 @@ export function ContractFormModal({
                                   </div>
                                   <p className="text-red-700 leading-relaxed">
                                     學員 <span className="font-bold underline">{customer?.name}</span> 目前已是此合約（編號：<span className="font-mono font-bold">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span>）的成員之一，無法重複新增或綁定至同一合約！
+                                  </p>
+                                </div>
+                              )
+                            }
+
+                            if (isShared) {
+                              return (
+                                <div className="mt-4 p-4 bg-blue-50/70 rounded-2xl border border-blue-200/80 space-y-3 text-xs text-stone-700 shadow-xs animate-in fade-in duration-300">
+                                  <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+                                    <h4 className="font-bold text-blue-950 text-sm flex items-center gap-1.5">
+                                      <RiUserSharedLine className="w-4 h-4 text-blue-600" />
+                                      <span>👥 多人共享合約新增成員明細</span>
+                                    </h4>
+                                    <span className={cn(
+                                      "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                                      isFull
+                                        ? "bg-red-100 text-red-700 border-red-200"
+                                        : "bg-blue-100 text-blue-800 border-blue-200"
+                                    )}>
+                                      目前成員: {currentCount} / 6 人 ({isFull ? '已滿額' : `可再加入 ${6 - currentCount} 人`})
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium">
+                                    <div>合約編號: <span className="font-mono font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span></div>
+                                    <div>總課堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span> (剩餘 {selectedContract.remainingSessions} 堂)</div>
+                                    <div>合約效期: <span className="font-bold text-stone-900">{selectedContract.startDate ? new Date((selectedContract.startDate as any).seconds ? (selectedContract.startDate as any).seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''} ~ {selectedContract.endDate ? new Date((selectedContract.endDate as any).seconds ? (selectedContract.endDate as any).seconds * 1000 : selectedContract.endDate).toLocaleDateString() : ''}</span></div>
+                                    <div>主教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                  </div>
+                                  <p className="text-[10px] text-blue-800 font-medium pt-1 border-t border-blue-200/60">
+                                    💡 提示：連結完成後，{customer.name} 將加入成為該合約的共享成員之一，全體成員共享此合約之剩餘堂數 ({selectedContract.remainingSessions} 堂)。
                                   </p>
                                 </div>
                               )
@@ -1218,14 +1254,14 @@ export function ContractFormModal({
                               <div className="mt-4 p-4 bg-blue-50/70 rounded-2xl border border-blue-200/80 space-y-3 text-xs text-stone-700 shadow-xs animate-in fade-in duration-300">
                                 <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
                                   <h4 className="font-bold text-blue-950 text-sm flex items-center gap-1.5">
-                                    <span>🔗 雙人共享合約升級說明</span>
+                                    <span>🔗 多人共享合約升級說明</span>
                                   </h4>
                                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                    個人合約 ➔ 轉雙人共享
+                                    個人合約 ➔ 轉多人共享
                                   </span>
                                 </div>
                                 <p className="text-stone-600 leading-relaxed font-medium">
-                                  將連結學員 <span className="font-bold text-stone-900">{activeCustomers.find(c => c.id === selectedExistingCustomerId)?.name || '原學員'}</span> 的個人合約。連結後，系統將自動升級轉換為「雙人共享合約」，由兩人共同持用該合約之堂數。
+                                  將連結學員 <span className="font-bold text-stone-900">{activeCustomers.find(c => c.id === selectedExistingCustomerId)?.name || '原學員'}</span> 的個人合約。連結後，系統將自動升級轉換為「多人共享合約」，由多人共同持用該合約之堂數。
                                 </p>
                                 <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium bg-white/70 p-3 rounded-xl border border-blue-100">
                                   <div>原合約編號: <span className="font-mono font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span></div>
@@ -1259,11 +1295,18 @@ export function ContractFormModal({
                         </div>
                       )}
 
-                      {!form.watch('bindExistingContractMode') && form.watch('contractType') === 'group' && (
-                        <div className="p-5 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                      {!form.watch('bindExistingContractMode') && (form.watch('contractType') === 'group' || form.watch('contractType') === 'shared') && (
+                        <div className={cn(
+                          "p-5 rounded-2xl space-y-5 animate-in fade-in slide-in-from-top-2 duration-300 border",
+                          form.watch('contractType') === 'shared'
+                            ? "bg-blue-50/50 border-blue-100"
+                            : "bg-emerald-50/50 border-emerald-100"
+                        )}>
                           {/* 1. 人數選擇 */}
                           <div className="space-y-2">
-                            <Label className="text-stone-900 font-bold block text-xs">1. 選擇團體課總人數 (2~6 人) *</Label>
+                            <Label className="text-stone-900 font-bold block text-xs">
+                              1. 選擇{form.watch('contractType') === 'shared' ? '多人共享' : '團體課'}總人數 (2~6 人) *
+                            </Label>
                             <div className="flex gap-2">
                               {[2, 3, 4, 5, 6].map(count => (
                                 <button
@@ -1272,23 +1315,27 @@ export function ContractFormModal({
                                   onClick={() => {
                                     setGroupMemberCount(count)
                                     syncAdditionalMembersCount(count - 1)
-                                    recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, count)
+                                    if (form.getValues('contractType') === 'group') {
+                                      recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, count)
+                                    }
                                   }}
                                   className={cn(
                                     "flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1",
                                     groupMemberCount === count
-                                      ? "bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                                      ? form.watch('contractType') === 'shared'
+                                        ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                                        : "bg-emerald-600 border-emerald-600 text-white shadow-sm"
                                       : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
                                   )}
                                 >
-                                  {count} 人團課
+                                  {count} 人{form.watch('contractType') === 'shared' ? '共享' : '團課'}
                                 </button>
                               ))}
                             </div>
                           </div>
 
                           {/* 2. 成員綁定方式與現有學員選取 */}
-                          <div className="space-y-3 pt-2 border-t border-emerald-100/80">
+                          <div className="space-y-3 pt-2 border-t border-stone-200/50">
                             <Label className="text-stone-900 font-bold block text-xs">2. 設定成員綁定方式與現有學員 *</Label>
                             
                             <div className="space-y-3">
@@ -1296,13 +1343,18 @@ export function ContractFormModal({
                                 <div key={idx} className="p-3.5 bg-white rounded-xl border border-stone-200/80 shadow-xs space-y-3">
                                   <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold flex items-center justify-center">
+                                      <span className={cn(
+                                        "w-5 h-5 rounded-full text-[10px] font-extrabold flex items-center justify-center",
+                                        form.watch('contractType') === 'shared'
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-emerald-100 text-emerald-800"
+                                      )}>
                                         {idx + 2}
                                       </span>
                                       學員 {idx + 2} {m.name ? `(${m.name})` : ''}
                                     </span>
                                     
-                                    {/* Member Mode Switcher (Matching Dual Contract) */}
+                                    {/* Member Mode Switcher */}
                                     <div className="flex gap-1.5">
                                       <button
                                         type="button"
@@ -1316,7 +1368,9 @@ export function ContractFormModal({
                                         className={cn(
                                           "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
                                           m.memberMode === 'existing'
-                                            ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                                            ? form.watch('contractType') === 'shared'
+                                              ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                                              : "bg-emerald-600 border-emerald-600 text-white shadow-xs"
                                             : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
                                         )}
                                       >
@@ -1346,7 +1400,9 @@ export function ContractFormModal({
                                         className={cn(
                                           "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
                                           m.memberMode === 'new'
-                                            ? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+                                            ? form.watch('contractType') === 'shared'
+                                              ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                                              : "bg-emerald-600 border-emerald-600 text-white shadow-xs"
                                             : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
                                         )}
                                       >
@@ -1401,7 +1457,12 @@ export function ContractFormModal({
                                       />
                                     </div>
                                   ) : (
-                                    <p className="text-[11px] font-semibold text-emerald-700 bg-emerald-50/80 p-2 rounded-lg border border-emerald-200/60">
+                                    <p className={cn(
+                                      "text-[11px] font-semibold p-2 rounded-lg border",
+                                      form.watch('contractType') === 'shared'
+                                        ? "text-blue-700 bg-blue-50/80 border-blue-200/60"
+                                        : "text-emerald-700 bg-emerald-50/80 border-emerald-200/60"
+                                    )}>
                                       ✨ 學員 {idx + 2} 之基本資料與健康狀態將於點擊「下一步」後填寫。
                                     </p>
                                   )}
@@ -1410,65 +1471,77 @@ export function ContractFormModal({
                             </div>
                           </div>
 
-                          {/* 3. 堂數分配 */}
-                          <div className="p-4 bg-white rounded-xl border border-emerald-200/60 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-stone-800">3. 堂數分配設定（全體總堂數: {form.watch('totalSessions') || 0} 堂）</span>
-                              {groupQuotaRemainder > 0 && (
-                                <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                  餘 {groupQuotaRemainder} 堂可微調分配
-                                </span>
-                              )}
+                          {/* 3. 堂數模式 (團體課配額 vs 多人共享堂數池) */}
+                          {form.watch('contractType') === 'shared' ? (
+                            <div className="p-4 bg-white rounded-xl border border-blue-200/60 space-y-2">
+                              <div className="flex items-center gap-1.5 font-bold text-xs text-blue-950">
+                                <RiUserSharedLine className="w-4 h-4 text-blue-600" />
+                                <span>3. 多人共享合約堂數模式說明</span>
+                              </div>
+                              <p className="text-xs text-stone-600 leading-relaxed font-medium">
+                                本合約設定為 <span className="font-bold text-blue-900">「多人共享合約」</span>，由全體 {groupMemberCount} 位學員共同持有一份合約堂數池（合約總堂數: <span className="font-bold text-stone-900">{form.watch('totalSessions') || 0} 堂</span>）。學員各自約課銷課時直接由該合約剩餘堂數扣抵，無需為每位成員個別設定堂數上限。
+                              </p>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-3 pt-1">
-                              <div className="space-y-1 bg-emerald-50/40 p-2.5 rounded-lg border border-emerald-100">
-                                <span className="text-[11px] font-bold text-stone-700 block truncate">學員 1 (主學員: {customer.name})</span>
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={primaryMemberQuota}
-                                    onChange={(e) => setPrimaryMemberQuota(Number(e.target.value))}
-                                    className="w-full h-8 rounded-lg border border-stone-200 px-2 text-xs font-bold bg-white"
-                                  />
-                                  <span className="text-[10px] text-stone-500 font-bold shrink-0">堂</span>
-                                </div>
+                          ) : (
+                            <div className="p-4 bg-white rounded-xl border border-emerald-200/60 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-stone-800">3. 堂數分配設定（全體總堂數: {form.watch('totalSessions') || 0} 堂）</span>
+                                {groupQuotaRemainder > 0 && (
+                                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                    餘 {groupQuotaRemainder} 堂可微調分配
+                                  </span>
+                                )}
                               </div>
 
-                              {additionalGroupMembers.map((m, idx) => (
-                                <div key={idx} className="space-y-1 bg-stone-50 p-2.5 rounded-lg border border-stone-200/60">
-                                  <span className="text-[11px] font-bold text-stone-700 block truncate">
-                                    學員 {idx + 2} {m.name ? `(${m.name})` : ''}
-                                  </span>
+                              <div className="grid grid-cols-2 gap-3 pt-1">
+                                <div className="space-y-1 bg-emerald-50/40 p-2.5 rounded-lg border border-emerald-100">
+                                  <span className="text-[11px] font-bold text-stone-700 block truncate">學員 1 (主學員: {customer.name})</span>
                                   <div className="flex items-center gap-1">
                                     <input
                                       type="number"
                                       min={0}
-                                      value={m.allocatedSessions}
-                                      onChange={(e) => {
-                                        const val = Number(e.target.value)
-                                        setAdditionalGroupMembers(prev => {
-                                          const next = [...prev]
-                                          next[idx] = { ...next[idx], allocatedSessions: val }
-                                          return next
-                                        })
-                                      }}
+                                      value={primaryMemberQuota}
+                                      onChange={(e) => setPrimaryMemberQuota(Number(e.target.value))}
                                       className="w-full h-8 rounded-lg border border-stone-200 px-2 text-xs font-bold bg-white"
                                     />
                                     <span className="text-[10px] text-stone-500 font-bold shrink-0">堂</span>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
 
-                            {groupQuotaSum !== Number(form.watch('totalSessions')) && (
-                              <p className="text-[10px] font-bold text-red-500 flex items-center gap-1 pt-1">
-                                <RiAlertLine className="w-3 h-3 shrink-0" />
-                                目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({form.watch('totalSessions') || 0} 堂) 不一致，請微調個人堂數。
-                              </p>
-                            )}
-                          </div>
+                                {additionalGroupMembers.map((m, idx) => (
+                                  <div key={idx} className="space-y-1 bg-stone-50 p-2.5 rounded-lg border border-stone-200/60">
+                                    <span className="text-[11px] font-bold text-stone-700 block truncate">
+                                      學員 {idx + 2} {m.name ? `(${m.name})` : ''}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={m.allocatedSessions}
+                                        onChange={(e) => {
+                                          const val = Number(e.target.value)
+                                          setAdditionalGroupMembers(prev => {
+                                            const next = [...prev]
+                                            next[idx] = { ...next[idx], allocatedSessions: val }
+                                            return next
+                                          })
+                                        }}
+                                        className="w-full h-8 rounded-lg border border-stone-200 px-2 text-xs font-bold bg-white"
+                                      />
+                                      <span className="text-[10px] text-stone-500 font-bold shrink-0">堂</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {groupQuotaSum !== Number(form.watch('totalSessions')) && (
+                                <p className="text-[10px] font-bold text-red-500 flex items-center gap-1 pt-1">
+                                  <RiAlertLine className="w-3 h-3 shrink-0" />
+                                  目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({form.watch('totalSessions') || 0} 堂) 不一致，請微調個人堂數。
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
 
