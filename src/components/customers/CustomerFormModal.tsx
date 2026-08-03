@@ -1773,7 +1773,7 @@ export function CustomerFormModal({
                               )}
                             >
                               <RiGroupLine className="w-3.5 h-3.5" />
-                              團體課合約 (2~6人)
+                              團體合約
                             </button>
                             <button
                               type="button"
@@ -1793,7 +1793,7 @@ export function CustomerFormModal({
                               )}
                             >
                               <RiUserSharedLine className="w-3.5 h-3.5" />
-                              多人共享合約
+                              共享合約
                             </button>
                             <button
                               type="button"

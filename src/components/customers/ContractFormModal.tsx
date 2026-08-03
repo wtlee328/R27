@@ -1062,7 +1062,7 @@ export function ContractFormModal({
                             )}
                           >
                             <RiTeamLine className="w-4.5 h-4.5" />
-                            團體課合約
+                            團體合約
                           </button>
                           <button
                             type="button"
