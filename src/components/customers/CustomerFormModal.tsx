@@ -2445,6 +2445,62 @@ export function CustomerFormModal({
                                     <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
                                   )}
                                 </div>
+                              ) : watchedValues.contract?.contractType === 'shared' || watchedValues.contract?.contractType === 'group' ? (
+                                <div className="space-y-3 bg-blue-50/50 dark:bg-blue-900/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/40">
+                                  <p className="text-xs font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                                    <RiTeamLine className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                    {watchedValues.contract?.contractType === 'shared' ? '多人共享合約各學員專屬教練設定' : '團體合約各學員專屬教練設定'}
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    {/* 主學員 (成員 1) */}
+                                    <div className="space-y-1.5 bg-white dark:bg-stone-800 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+                                      <Label className="text-xs font-bold text-stone-800 dark:text-stone-200 block truncate">
+                                        主學員 (成員 1: {watchedValues.name || '全新主學員'}) 的教練 *
+                                      </Label>
+                                      <div className="relative">
+                                        <select
+                                          value={form.watch('contract.trainerId') || ''}
+                                          onChange={(e) => form.setValue('contract.trainerId', e.target.value)}
+                                          className="w-full h-9 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-2.5 pr-8 text-xs font-semibold appearance-none cursor-pointer"
+                                        >
+                                          <option value="">-- 請選擇主學員教練 --</option>
+                                          {trainers.map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                          ))}
+                                        </select>
+                                        <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                      </div>
+                                      {form.formState.errors.contract?.trainerId && (
+                                        <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.contract.trainerId.message}</p>
+                                      )}
+                                    </div>
+
+                                    {/* 成員 2, 3, 4 */}
+                                    {additionalGroupMembers.slice(0, (watchedValues.contract?.contractType === 'shared' ? sharedMemberCount : groupMemberCount) - 1).map((m, idx) => (
+                                      <div key={idx} className="space-y-1.5 bg-white dark:bg-stone-800 p-3 rounded-xl border border-stone-200 dark:border-stone-700">
+                                        <Label className="text-xs font-bold text-stone-800 dark:text-stone-200 block truncate">
+                                          成員 {idx + 2} ({m.name || `合約成員 ${idx + 2}`}) 的教練 *
+                                        </Label>
+                                        <div className="relative">
+                                          <select
+                                            value={m.assignedTrainerId || form.watch('contract.trainerId') || ''}
+                                            onChange={(e) => {
+                                              const tId = e.target.value
+                                              setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
+                                            }}
+                                            className="w-full h-9 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-2.5 pr-8 text-xs font-semibold appearance-none cursor-pointer"
+                                          >
+                                            <option value="">-- 請選擇教練 (預設同主學員) --</option>
+                                            {trainers.map(t => (
+                                              <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                          </select>
+                                          <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               ) : (
                                 <div className="space-y-4 bg-stone-50 dark:bg-stone-800/40 p-4.5 rounded-2xl border border-stone-200/50 dark:border-stone-700/50">
                                   <div className="grid grid-cols-2 gap-4 pt-1">

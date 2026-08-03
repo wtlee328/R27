@@ -1512,7 +1512,7 @@ export function ContractFormModal({
                                         ? "text-blue-700 bg-blue-50/80 border-blue-200/60"
                                         : "text-emerald-700 bg-emerald-50/80 border-emerald-200/60"
                                     )}>
-                                      ✨ 學員 {idx + 2} 之基本資料與健康狀態將於點擊「下一步」後填寫。
+                                      學員 {idx + 2} 之基本資料與健康狀態將於點擊「下一步」後填寫。
                                     </p>
                                   )}
 
@@ -1611,177 +1611,6 @@ export function ContractFormModal({
                               )}
                             </div>
                           )}
-                        </div>
-                      )}
-
-                      {form.watch('contractType') === 'shared' && !form.watch('bindExistingContractMode') && (
-                        <div className="p-5 bg-blue-50/50 border border-blue-200/80 rounded-2xl space-y-5 animate-in fade-in duration-300">
-                          {/* 1. 人數選擇 */}
-                          <div className="space-y-2">
-                            <Label className="text-blue-950 font-bold block text-xs">1. 選擇多人共享總人數 (2~4 人) *</Label>
-                            <div className="flex gap-2">
-                              {[2, 3, 4].map((count) => {
-                                const isSelected = sharedMemberCount === count
-                                return (
-                                  <button
-                                    key={count}
-                                    type="button"
-                                    onClick={() => {
-                                      setSharedMemberCount(count)
-                                      syncAdditionalMembersCount(count - 1, 0)
-                                    }}
-                                    className={cn(
-                                      "flex-1 py-2 rounded-xl text-xs font-bold transition-all border",
-                                      isSelected
-                                        ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20"
-                                        : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
-                                    )}
-                                  >
-                                    {count} 人共享堂數
-                                  </button>
-                                )
-                              })}
-                            </div>
-                            <p className="text-[10px] text-blue-700 font-semibold pt-0.5">
-                              ℹ️ 多人共享合約由主學員 ({customer?.name || '主學員'}) 持有總堂數，其他成員共享點數，各成員可綁定各自的教練。
-                            </p>
-                          </div>
-
-                          {/* 2. 成員綁定與教練設定 */}
-                          <div className="space-y-3 pt-2 border-t border-blue-200/60">
-                            <Label className="text-blue-950 font-bold block text-xs">2. 設定共享成員學員與教練 *</Label>
-                            
-                            <div className="space-y-3">
-                              {additionalGroupMembers.slice(0, sharedMemberCount - 1).map((m, idx) => (
-                                <div key={idx} className="p-3.5 bg-white rounded-xl border border-stone-200 shadow-xs space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                                      <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold flex items-center justify-center">
-                                        {idx + 2}
-                                      </span>
-                                      成員 {idx + 2} {m.name ? `(${m.name})` : ''}
-                                    </span>
-                                    
-                                    <div className="flex gap-1.5">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '' } : item))
-                                        }}
-                                        className={cn(
-                                          "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
-                                          m.memberMode === 'existing'
-                                            ? "bg-blue-600 border-blue-600 text-white shadow-xs"
-                                            : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
-                                        )}
-                                      >
-                                        <RiLinkM className="w-3 h-3" />
-                                        連結現有學員
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
-                                            ...item,
-                                            memberMode: 'new',
-                                            existingCustomerId: undefined,
-                                            name: '',
-                                            idNumber: '',
-                                            phone: '',
-                                            email: '',
-                                            dateOfBirth: new Date().toISOString().split('T')[0],
-                                            emergencyContact: { name: '', relation: '', phone: '' },
-                                            medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                                          } : item))
-                                        }}
-                                        className={cn(
-                                          "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
-                                          m.memberMode === 'new'
-                                            ? "bg-blue-600 border-blue-600 text-white shadow-xs"
-                                            : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
-                                        )}
-                                      >
-                                        <RiUserAddLine className="w-3 h-3" />
-                                        新增全新學員
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {m.memberMode === 'existing' ? (
-                                    <div className="grid grid-cols-2 gap-3 pt-1">
-                                      <div className="space-y-1">
-                                        <Label className="text-[11px] text-stone-500 font-medium">選擇現有學員</Label>
-                                        <SearchableCustomerSelect
-                                          customers={activeCustomers}
-                                          value={m.existingCustomerId || ''}
-                                          onChange={(selectedId) => {
-                                            if (selectedId) {
-                                              const selectedCust = activeCustomers.find(c => c.id === selectedId)
-                                              if (selectedCust) {
-                                                setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
-                                                  ...item,
-                                                  memberMode: 'existing',
-                                                  existingCustomerId: selectedCust.id,
-                                                  name: selectedCust.name,
-                                                  assignedTrainerId: item.assignedTrainerId || selectedCust.trainerId || form.getValues('trainerId'),
-                                                } : item))
-                                              }
-                                            } else {
-                                              setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '', name: '' } : item))
-                                            }
-                                          }}
-                                          excludeIds={[
-                                            ...(customer?.id ? [customer.id] : []),
-                                            ...additionalGroupMembers.filter((_, oIdx) => oIdx !== idx).map(item => item.existingCustomerId).filter(Boolean) as string[]
-                                          ]}
-                                          placeholder="-- 請搜尋或選擇現有學員 --"
-                                        />
-                                      </div>
-
-                                      <div className="space-y-1">
-                                        <Label className="text-[11px] text-stone-500 font-medium">指定該成員教練</Label>
-                                        <select
-                                          value={m.assignedTrainerId || form.watch('trainerId') || ''}
-                                          onChange={(e) => {
-                                            const tId = e.target.value
-                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
-                                          }}
-                                          className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-xs font-semibold"
-                                        >
-                                          <option value="">-- 請選擇教練 --</option>
-                                          {trainers.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2 pt-1">
-                                      <p className="text-[11px] font-semibold text-blue-700 bg-blue-50/80 p-2 rounded-lg border border-blue-200/60">
-                                        ✨ 成員 {idx + 2} 之基本資料與健康狀態將於點擊「下一步」後填寫。
-                                      </p>
-                                      <div className="space-y-1 max-w-xs">
-                                        <Label className="text-[11px] text-stone-500 font-medium">指定該成員教練</Label>
-                                        <select
-                                          value={m.assignedTrainerId || form.watch('trainerId') || ''}
-                                          onChange={(e) => {
-                                            const tId = e.target.value
-                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
-                                          }}
-                                          className="w-full h-9 rounded-xl border border-stone-200 bg-white px-3 text-xs font-semibold"
-                                        >
-                                          <option value="">-- 請選擇教練 --</option>
-                                          {trainers.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
                         </div>
                       )}
 
@@ -1939,7 +1768,7 @@ export function ContractFormModal({
                                 ))}
                               </div>
                             </div>
-                          ) : (
+                          ) : watchedValues.contractType === 'dual' ? (
                             <div className="space-y-4 bg-stone-50 p-4.5 rounded-2xl border border-stone-200/50">
                               <div className="grid grid-cols-2 gap-4 pt-1">
                                 <div className="space-y-2">
@@ -1982,6 +1811,27 @@ export function ContractFormModal({
                                   )}
                                 </div>
                               </div>
+                            </div>
+                          ) : (
+                            /* group contract: single trainer selector */
+                            <div className="space-y-2 max-w-md">
+                              <Label className="text-xs text-stone-500 font-medium">授課教練</Label>
+                              <select
+                                value={form.watch('trainerId') || ''}
+                                onChange={(e) => {
+                                  form.setValue('trainerId', e.target.value)
+                                  form.setValue('secondaryTrainerId', null)
+                                }}
+                                className="w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-stone-900/20"
+                              >
+                                <option value="">-- 請選擇教練 --</option>
+                                {trainers.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                              </select>
+                              {form.formState.errors.trainerId && (
+                                <p className="text-red-500 text-[10px] font-medium">{form.formState.errors.trainerId.message}</p>
+                              )}
                             </div>
                           )}
                         </div>
