@@ -601,8 +601,10 @@ export function CustomerContractModal({
                   <span>立契約書人</span>
                   {contract?.contractType === 'group' ? (
                     <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">👥 團體課合約模式 ({Object.keys(contract.groupMemberQuotas || {}).length || contract.customerIds?.length || 1} 人)</span>
+                  ) : contract?.contractType === 'shared' ? (
+                    <span className="text-[10px] text-blue-600 font-bold">共享合約模式</span>
                   ) : partner ? (
-                    <span className="text-[10px] text-orange-600 font-bold">雙人共享合約模式</span>
+                    <span className="text-[10px] text-orange-600 font-bold">雙人合約模式</span>
                   ) : null}
                 </h3>
                 
@@ -787,7 +789,7 @@ export function CustomerContractModal({
                   <div className="col-span-6 flex items-center">
                     <span>課程名稱：</span>
                     <span className="font-bold text-stone-900 border-b border-stone-200 px-1">
-                      {contract?.contractType === 'group' ? '團體教練課程' : (contract?.contractType === 'dual' || partner) ? '雙人共享教練課程' : '一對一私人教練課程'}
+                      {contract?.contractType === 'group' ? '團體教練課程' : contract?.contractType === 'shared' ? '共享教練課程' : (contract?.contractType === 'dual' || partner) ? '雙人教練課程' : '一對一私人教練課程'}
                     </span>
                   </div>
                   <div className="col-span-6 flex items-center">

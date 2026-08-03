@@ -1140,7 +1140,7 @@ export function ContractFormModal({
                                     const isFull = (isGroup || isShared) ? currentMemberCount >= 6 : isDual ? true : false
                                     const isAlreadyMember = isCustomerAlreadyInContract(c)
 
-                                    const tagText = isGroup ? '[團體]' : isShared ? '[多人共享]' : isDual ? '[雙人共享]' : '[個人]'
+                                    const tagText = isGroup ? '[團體]' : isShared ? '[共享]' : isDual ? '[雙人]' : '[個人]'
                                     const statusSuffix = isAlreadyMember
                                       ? ' (此學員已在此合約中 - 無法重複加入)'
                                       : isFull
@@ -1251,7 +1251,7 @@ export function ContractFormModal({
                             if (isDual) {
                               return (
                                 <div className="mt-4 p-3.5 bg-red-50/70 border border-red-200/60 rounded-xl text-xs text-red-800 flex items-center gap-2 font-medium">
-                                  <span>此雙人共享合約成員已滿 (2/2人)，無法再新增綁定學員。</span>
+                                  <span>此雙人合約成員已滿 (2/2人)，無法再新增綁定學員。</span>
                                 </div>
                               )
                             }

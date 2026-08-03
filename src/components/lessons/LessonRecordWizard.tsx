@@ -225,9 +225,7 @@ export function LessonRecordWizard({
 
   const isMultiContract = Boolean(selectedContract && (
     isDualContract ||
-    isSharedContract ||
-    isGroupContract ||
-    groupCustomers.length > 1
+    isGroupContract
   ))
 
   // Automatically select initial attendees and FIFO contracts when primary contract changes
@@ -610,8 +608,9 @@ export function LessonRecordWizard({
                   )}
                   {contracts.map((c) => {
                     const isGroup = c.contractType === 'group' || !!c.groupMemberQuotas
-                    const isDual = !isGroup && (c.contractType === 'dual' || !!c.sharedWithCustomerId)
-                    const typeLabel = isGroup ? '團體' : isDual ? '雙人' : '單人'
+                    const isShared = c.contractType === 'shared'
+                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
+                    const typeLabel = isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'
                     return (
                       <option key={c.id} value={c.id}>
                         [{typeLabel}] {(c as any).contractNo || c.id.substring(0, 8)} — 剩 {c.remainingSessions} 堂

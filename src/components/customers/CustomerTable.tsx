@@ -107,7 +107,8 @@ export function CustomerTable({
       }
     }
 
-    const isDual = activeContract ? (activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId) : false
+    const isShared = activeContract ? (activeContract.contractType === 'shared') : false
+    const isDual = activeContract ? (!isShared && (activeContract.contractType === 'dual' || (!!activeContract.sharedWithCustomerId && activeContract.contractType !== 'group'))) : false
     const isUnsigned = activeContract ? (activeContract.status === 'pending_signature' || 
       !activeContract.signatureDataUrl || 
       (isDual && !activeContract.secondarySignatureDataUrl)) : false
@@ -126,15 +127,17 @@ export function CustomerTable({
       customerStatus = '待簽名'
     }
 
-    // 2. 合約類別（顯示於剩餘堂數下方）：個人合約 / 雙人共享 / 團體合約 / 複數合約
+    // 2. 合約類別（顯示於剩餘堂數下方）：個人合約 / 雙人合約 / 共享合約 / 團體合約 / 複數合約
     let contractCategoryText = '個人合約'
     if (hasMultiple) {
       contractCategoryText = '複數合約'
     } else if (activeContract) {
       if (activeContract.contractType === 'group') {
         contractCategoryText = '團體合約'
+      } else if (isShared) {
+        contractCategoryText = '共享合約'
       } else if (isDual) {
-        contractCategoryText = '雙人共享'
+        contractCategoryText = '雙人合約'
       }
     }
 
@@ -427,7 +430,8 @@ export function CustomerTable({
                               "text-[10px] font-bold block",
                               contractCategoryText === '複數合約' ? "text-purple-600" :
                               contractCategoryText === '團體合約' ? "text-emerald-600" :
-                              contractCategoryText === '雙人共享' ? "text-orange-500" : "text-stone-500"
+                              contractCategoryText === '共享合約' ? "text-blue-600" :
+                              contractCategoryText === '雙人合約' ? "text-orange-500" : "text-stone-500"
                             )}>
                               {contractCategoryText}
                             </span>

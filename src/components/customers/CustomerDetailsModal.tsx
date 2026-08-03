@@ -304,24 +304,30 @@ export function CustomerDetailsModal({
                       {/* Contract type badge row */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2 flex-wrap">
-                          {isUnsigned ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white px-2.5 py-1 rounded-full animate-pulse">
-                              {isGroup ? <RiTeamLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
-                              {isGroup ? '團體課待簽名' : isDual ? '雙人待簽名' : '待簽名'}
-                            </span>
-                          ) : (
-                            <span className={cn(
-                              'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm',
-                              isGroup
-                                ? 'bg-emerald-600 text-white'
-                                : isDual
-                                  ? 'bg-orange-500 text-white'
-                                  : 'bg-stone-800 text-stone-200 border border-stone-700'
-                            )}>
-                              {isGroup ? <RiTeamLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
-                              {isGroup ? '團體合約' : isDual ? '雙人共享合約' : '一般合約'}
-                            </span>
-                          )}
+                          {activeContract && (() => {
+                            const isGroup = activeContract.contractType === 'group'
+                            const isShared = activeContract.contractType === 'shared'
+                            const isDual = !isGroup && !isShared && (activeContract.contractType === 'dual' || !!activeContract.sharedWithCustomerId)
+                            return isUnsigned ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500 text-white shadow-sm shadow-amber-500/20">
+                                {isGroup ? '團體課待簽名' : isShared ? '共享待簽名' : isDual ? '雙人待簽名' : '待簽名'}
+                              </span>
+                            ) : (
+                              <span className={cn(
+                                'inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm',
+                                isGroup
+                                  ? 'bg-emerald-600 text-white'
+                                  : isShared
+                                    ? 'bg-blue-600 text-white'
+                                    : isDual
+                                      ? 'bg-amber-500 text-white'
+                                      : 'bg-stone-800 text-stone-200 border border-stone-700'
+                              )}>
+                                {isGroup ? <RiTeamLine className="w-3 h-3" /> : isShared ? <RiUserSharedLine className="w-3 h-3" /> : isDual ? <RiGroupLine className="w-3 h-3" /> : <RiUser3Line className="w-3 h-3" />}
+                                {isGroup ? '團體合約' : isShared ? '共享合約' : isDual ? '雙人合約' : '一般合約'}
+                              </span>
+                            )
+                          })()}
                           {activePartnerName && (
                             <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
                               與 {activePartnerName} 共享
@@ -450,8 +456,9 @@ export function CustomerDetailsModal({
                   </div>
                 ) : (
                   contracts.map((contract) => {
-                    const isContractDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
-                    const partnerId = isContractDual
+                    const isContractShared = contract.contractType === 'shared'
+                    const isContractDual = !isContractShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'group'))
+                    const partnerId = (isContractDual || isContractShared)
                       ? (contract.customerIds && contract.customerIds.length > 1
                           ? contract.customerIds.find(id => id !== customer.id)
                           : contract.sharedWithCustomerId)
@@ -489,9 +496,14 @@ export function CustomerDetailsModal({
                             ) : (
                               <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-600 text-white shadow-sm shadow-emerald-500/20">進行中</span>
                             )}
+                            {isContractShared && (
+                              <span className="text-[10px] font-bold flex items-center gap-1 text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                                <RiUserSharedLine className="w-3 h-3" /> 共享合約
+                              </span>
+                            )}
                             {isContractDual && (
                               <span className="text-[10px] font-bold flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                                <RiGroupLine className="w-3 h-3" /> 雙人共享
+                                <RiGroupLine className="w-3 h-3" /> 雙人合約
                               </span>
                             )}
                             {contract.contractType === 'group' && (

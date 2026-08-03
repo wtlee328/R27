@@ -2124,14 +2124,15 @@ export function CustomerFormModal({
                                     {existingCustomerContracts.map((c) => {
                                       const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
                                       const isGroup = c.contractType === 'group'
-                                      const isDual = !isGroup && (c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2))
-                                      const currentMemberCount = isGroup
+                                      const isShared = c.contractType === 'shared'
+                                      const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
+                                      const currentMemberCount = (isGroup || isShared)
                                         ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                         : isDual ? 2 : 1
-                                      const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
+                                      const isFull = (isGroup || isShared) ? currentMemberCount >= 6 : isDual ? true : false
                                       const isAlreadyMember = isCustomerAlreadyInContract(c)
 
-                                      const tagText = isGroup ? '[團體]' : isDual ? '[雙人共享]' : '[個人]'
+                                      const tagText = isGroup ? '[團體]' : isShared ? '[共享]' : isDual ? '[雙人]' : '[個人]'
                                       const statusSuffix = isAlreadyMember
                                         ? ' (此學員已在此合約中 - 無法重複加入)'
                                         : isFull
