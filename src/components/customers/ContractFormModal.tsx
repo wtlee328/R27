@@ -205,9 +205,7 @@ export function ContractFormModal({
 
   const isSingleBinding = useMemo(() => {
     if (!form.watch('bindExistingContractMode') || !selectedContract) return false
-    const isGroup = selectedContract.contractType === 'group'
-    const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
-    return !isGroup && !isDual
+    return selectedContract.contractType === 'single'
   }, [form.watch('bindExistingContractMode'), selectedContract])
 
   const groupQuotaSum = useMemo(() => {
