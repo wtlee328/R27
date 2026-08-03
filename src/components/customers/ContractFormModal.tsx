@@ -1020,6 +1020,27 @@ export function ContractFormModal({
                             onClick={() => {
                               form.setValue('bindExistingContractMode', false)
                               form.setValue('existingContractId', null)
+                              form.setValue('contractType', 'shared')
+                              form.setValue('sharedWithCustomerId', null)
+                              form.setValue('partnerMode', 'none')
+                              form.setValue('partnerId', null)
+                              form.setValue('partnerCustomerData', null)
+                            }}
+                            className={cn(
+                              "flex-1 py-3 px-3 rounded-2xl border-2 font-bold text-xs transition-all duration-200 flex flex-col items-center justify-center gap-1.5",
+                              !form.watch('bindExistingContractMode') && form.watch('contractType') === 'shared'
+                                ? "bg-blue-600 border-blue-600 text-white shadow-lg"
+                                : "bg-white border-stone-200 text-stone-500 hover:border-stone-300 hover:bg-stone-50"
+                            )}
+                          >
+                            <RiUserSharedLine className="w-4.5 h-4.5" />
+                            多人共享合約
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue('bindExistingContractMode', false)
+                              form.setValue('existingContractId', null)
                               form.setValue('contractType', 'group')
                               form.setValue('sharedWithCustomerId', null)
                               form.setValue('partnerMode', 'none')
@@ -1035,7 +1056,7 @@ export function ContractFormModal({
                             )}
                           >
                             <RiTeamLine className="w-4.5 h-4.5" />
-                            團體課合約 (2~6人)
+                            團體課合約 (配額制)
                           </button>
                           <button
                             type="button"
@@ -2425,8 +2446,10 @@ export function ContractFormModal({
                         <div className="space-y-2">
                           <Label className="text-stone-700 font-bold text-sm">合約預覽與條款</Label>
                           {(() => {
-                            const isDual = form.watch('contractType') === 'dual'
-                            const isGroup = form.watch('contractType') === 'group'
+                            const contractType = form.watch('contractType')
+                            const isDual = contractType === 'dual'
+                            const isShared = contractType === 'shared'
+                            const isGroup = contractType === 'group'
                             const partnerMode = form.watch('partnerMode')
                             const reviewDate = formatROCDate(form.watch('startDate') || new Date())
                             
@@ -2445,7 +2468,7 @@ export function ContractFormModal({
                               emergencyPhone: customer?.emergencyContact?.phone || '',
                             }
 
-                            // Partner Info
+                            // Partner Info (Dual)
                             let partnerInfo = null
                             if (isDual) {
                               if (partnerMode === 'existing') {
@@ -2484,9 +2507,20 @@ export function ContractFormModal({
 
                             const coachA = trainers.find(t => t.id === form.watch('trainerId'))?.name || '未指定'
                             const coachB = trainers.find(t => t.id === form.watch('secondaryTrainerId'))?.name
-                            const coachNames = isDual
-                              ? (coachB && coachB !== coachA ? `學員 A: ${coachA} / 學員 B: ${coachB}` : `${coachA} (同教練)`)
-                              : coachA
+                            const coachNames = (() => {
+                              if (isShared) {
+                                const list = [`學員 1 (${primaryInfo.name || '主學員'}): ${coachA}`]
+                                additionalGroupMembers.forEach((m, idx) => {
+                                  const tName = trainers.find(t => t.id === (m as any).assignedTrainerId)?.name || coachA
+                                  list.push(`學員 ${idx + 2} (${m.name || '成員'}): ${tName}`)
+                                })
+                                return list.join('；')
+                              }
+                              if (isDual) {
+                                return coachB && coachB !== coachA ? `學員 A: ${coachA} / 學員 B: ${coachB}` : `${coachA} (同教練)`
+                              }
+                              return coachA
+                            })()
 
                             const totalSessions = form.watch('totalSessions') || 0
                             const totalAmount = form.watch('totalAmount') || 0
@@ -2505,7 +2539,7 @@ export function ContractFormModal({
                                   {/* Header */}
                                   <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
                                     <h1 className="text-base font-black text-stone-900 tracking-tight">
-                                      {brandName} {isGroup ? '團體健身教練課程契約書' : isDual ? '雙人共享健身教練課程契約書' : '健身教練課程契約書'}
+                                      {brandName} {isGroup ? '團體健身教練課程契約書' : isShared ? '多人共享健身教練課程契約書' : isDual ? '雙人共享健身教練課程契約書' : '健身教練課程契約書'}
                                     </h1>
                                     <div className="flex justify-between text-[9px] font-bold text-stone-500">
                                       <span>紅二七健身有限公司</span>
@@ -2540,6 +2574,10 @@ export function ContractFormModal({
                                         <span className="text-[9px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                                           <RiTeamLine className="w-3 h-3" /> 團體課合約模式 ({groupMemberCount} 人團課)
                                         </span>
+                                      ) : isShared ? (
+                                        <span className="text-[9px] text-blue-800 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200 flex items-center gap-1">
+                                          <RiUserSharedLine className="w-3 h-3" /> 多人共享合約模式 ({groupMemberCount} 人共享堂數)
+                                        </span>
                                       ) : isDual ? (
                                         <span className="text-[9px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                                           雙人共享合約模式
@@ -2572,7 +2610,7 @@ export function ContractFormModal({
                                     {/* Primary Customer */}
                                     <div className="space-y-1.5 bg-stone-50/60 p-2.5 rounded-xl border border-stone-150">
                                       <div className="font-bold text-stone-800 border-b border-stone-200 pb-0.5 text-[9px] flex justify-between">
-                                        <span>會員姓名（簡稱甲方）{isGroup ? ' - 學員 1 (主學員)' : isDual ? ' - 學員 A' : ''}</span>
+                                        <span>會員姓名（簡稱甲方）{isGroup ? ' - 學員 1 (主學員)' : isShared ? ' - 學員 1 (主學員)' : isDual ? ' - 學員 A' : ''}</span>
                                         {isGroup && <span className="text-emerald-700 font-mono">分配: {primaryMemberQuota} 堂</span>}
                                       </div>
                                       <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
@@ -2587,15 +2625,26 @@ export function ContractFormModal({
                                       </div>
                                     </div>
 
-                                    {/* Additional Group Members */}
-                                    {isGroup && additionalGroupMembers.map((m, idx) => {
+                                    {/* Additional Shared or Group Members */}
+                                    {(isGroup || isShared) && additionalGroupMembers.map((m, idx) => {
                                       const mDob = formatROCDate(m.dateOfBirth)
                                       const mDobStr = mDob.y ? `${mDob.y}/${mDob.m}/${mDob.d}` : ''
+                                      const mCoach = trainers.find(t => t.id === (m as any).assignedTrainerId)?.name || coachA
                                       return (
-                                        <div key={idx} className="space-y-1.5 bg-emerald-50/30 p-2.5 rounded-xl border border-emerald-100/60">
-                                          <div className="font-bold text-emerald-900 border-b border-emerald-200 pb-0.5 text-[9px] flex justify-between">
+                                        <div key={idx} className={cn(
+                                          "space-y-1.5 p-2.5 rounded-xl border",
+                                          isGroup ? "bg-emerald-50/30 border-emerald-100/60" : "bg-blue-50/30 border-blue-100/60"
+                                        )}>
+                                          <div className={cn(
+                                            "font-bold border-b pb-0.5 text-[9px] flex justify-between",
+                                            isGroup ? "text-emerald-900 border-emerald-200" : "text-blue-900 border-blue-200"
+                                          )}>
                                             <span>會員姓名（簡稱甲方） - 學員 {idx + 2}</span>
-                                            <span className="text-emerald-700 font-mono">分配: {m.allocatedSessions} 堂</span>
+                                            {isGroup ? (
+                                              <span className="text-emerald-700 font-mono">分配: {m.allocatedSessions} 堂</span>
+                                            ) : (
+                                              <span className="text-blue-700 font-mono">對應教練: {mCoach}</span>
+                                            )}
                                           </div>
                                           <div className="grid grid-cols-6 gap-x-2 gap-y-1 text-stone-600 text-[10px]">
                                             <div className="col-span-2">姓名：<span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[50px]">{m.name || '──────'}</span></div>
@@ -2652,7 +2701,7 @@ export function ContractFormModal({
                                     <div className="grid grid-cols-12 gap-y-1.5 gap-x-3 text-stone-600 text-[10px]">
                                       <div className="col-span-6">
                                         課程名稱：<span className="font-bold text-stone-900">
-                                          {isGroup ? '團體教練課程' : isDual ? '雙人共享教練課程' : '一對一私人教練課程'}
+                                          {isGroup ? '團體教練課程' : isShared ? '多人共享教練課程' : isDual ? '雙人共享教練課程' : '一對一私人教練課程'}
                                         </span>
                                       </div>
                                       <div className="col-span-6">
