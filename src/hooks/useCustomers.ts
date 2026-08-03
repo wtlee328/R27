@@ -610,10 +610,11 @@ export function useCustomers() {
         if (data.contract && totalSessions > 0) {
           console.log('Onboarding: Creating initial contract...')
           const isGroup = data.contract.contractType === 'group'
-          const isDual = !isGroup && !!finalPartnerId
+          const isShared = data.contract.contractType === 'shared'
+          const isDual = !isGroup && !isShared && !!finalPartnerId
           
           let customerIds: string[]
-          if (isGroup) {
+          if (isGroup || isShared) {
             customerIds = data.contract.customerIds || [customerId]
             if (!customerIds.includes(customerId)) {
               customerIds.unshift(customerId)
@@ -635,8 +636,8 @@ export function useCustomers() {
 
           const contractData = {
             ...data.contract,
-            sharedWithCustomerId: finalPartnerId,
-            contractType: isGroup ? ('group' as const) : (isDual ? ('dual' as const) : ('single' as const)),
+            sharedWithCustomerId: finalPartnerId || (customerIds[1] || null),
+            contractType: isShared ? ('shared' as const) : (isGroup ? ('group' as const) : (isDual ? ('dual' as const) : ('single' as const))),
             customerIds,
           }
           await createContract(customerId, contractData as any)

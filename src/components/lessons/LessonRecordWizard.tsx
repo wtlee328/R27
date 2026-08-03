@@ -741,6 +741,18 @@ export function LessonRecordWizard({
                             {idx === 0 && (
                               <span className="text-[9px] font-bold text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded-full shrink-0">主學員</span>
                             )}
+                            {(() => {
+                              const assignedTrainerId = selectedContract?.studentTrainers?.[member.id] || member.trainerId
+                              const trainerObj = trainers.find(t => t.id === assignedTrainerId)
+                              if (trainerObj) {
+                                return (
+                                  <span className="text-[9px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.5 rounded-full shrink-0">
+                                    教練: {trainerObj.name}
+                                  </span>
+                                )
+                              }
+                              return null
+                            })()}
                           </div>
                           <span className={cn(
                             'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 transition-all border',

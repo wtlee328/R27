@@ -158,11 +158,13 @@ export function CustomerFormModal({
   const activeCustomers = useMemo(() => customers.length > 0 ? customers : fetchedCustomers, [customers, fetchedCustomers])
   const activeContracts = useMemo(() => contracts.length > 0 ? contracts : fetchedContracts, [contracts, fetchedContracts])
 
-  // Group Contract State (2 to 6 students)
+  // Group & Shared Contract State
   const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
+  const [sharedMemberCount, setSharedMemberCount] = useState<number>(2)
   const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
     memberMode?: 'existing' | 'new'
     existingCustomerId?: string
+    assignedTrainerId?: string
     name: string
     idNumber: string
     phone: string
@@ -460,7 +462,8 @@ export function CustomerFormModal({
 
     // 4. Group Contract Additional Members Steps (Only for NEW members)
     if (isGroupContract) {
-      for (let i = 2; i <= groupMemberCount; i++) {
+      const effectiveCount = watchedValues.contract?.contractType === 'shared' ? sharedMemberCount : groupMemberCount
+      for (let i = 2; i <= effectiveCount; i++) {
         const mData = additionalGroupMembers[i - 2]
         if (mData?.memberMode === 'new') {
           dynamicSteps.push(
@@ -485,7 +488,7 @@ export function CustomerFormModal({
     dynamicSteps.push({ id: 'signature', title: '簽署確認', icon: RiShieldCheckLine, fields: [] })
 
     return dynamicSteps
-  }, [isEditMode, watchedValues.contract?.contractType, watchedValues.bindExistingContractMode, watchedValues.partnerMode, groupMemberCount, additionalGroupMembers, initialCustomer, initialData?.name])
+  }, [isEditMode, watchedValues.contract?.contractType, watchedValues.bindExistingContractMode, watchedValues.partnerMode, groupMemberCount, sharedMemberCount, additionalGroupMembers, initialCustomer, initialData?.name])
 
   const formatROCDate = (dateVal: any) => {
     if (!dateVal) return { y: '   ', m: '  ', d: '  ' }
@@ -881,6 +884,78 @@ export function CustomerFormModal({
       } catch (err: any) {
         console.error('Error creating additional group members:', err)
         alert('建立團體課成員失敗：' + err.message)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Shared contract additional member creation & studentTrainers mapping
+    if (data.contract?.contractType === 'shared' && !data.bindExistingContractMode) {
+      setLoading(true)
+      try {
+        const createdMemberIds: string[] = []
+        const studentTrainersMap: Record<string, string> = {}
+        const coStudentCount = sharedMemberCount - 1
+
+        for (let i = 0; i < coStudentCount; i++) {
+          const m = additionalGroupMembers[i]
+          if (!m) continue
+          let memberId = ''
+          if (m.memberMode === 'existing' && m.existingCustomerId) {
+            memberId = m.existingCustomerId
+          } else {
+            if (!m.name || !m.phone) {
+              alert(`請填寫成員 ${i + 2} 的姓名與電話！`)
+              setLoading(false)
+              return
+            }
+            const docRef = await addDoc(collection(db, 'customers'), {
+              centerId,
+              name: m.name,
+              idNumber: m.idNumber || '',
+              phone: m.phone,
+              email: m.email || '',
+              dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : new Date(),
+              gender: m.gender || 'female',
+              exerciseHabit: m.exerciseHabit || 'none',
+              source: m.source || 'existing',
+              emergencyContact: m.emergencyContact,
+              medicalHistory: m.medicalHistory,
+              historicalSessions: 0,
+              status: 'active',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+            memberId = docRef.id
+          }
+          createdMemberIds.push(memberId)
+          if (m.assignedTrainerId) {
+            studentTrainersMap[memberId] = m.assignedTrainerId
+          }
+        }
+
+        const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
+        const primaryCustId = initialCustomer?.id || (initialData as any)?.id
+        const allCustomerIds: string[] = []
+
+        if (isFromExistingCustomer && primaryCustId) {
+          allCustomerIds.push(primaryCustId)
+          if (data.contract.trainerId) {
+            studentTrainersMap[primaryCustId] = data.contract.trainerId
+          }
+        }
+
+        createdMemberIds.forEach(id => {
+          if (!allCustomerIds.includes(id)) {
+            allCustomerIds.push(id)
+          }
+        })
+
+        ;(data.contract as any).customerIds = allCustomerIds
+        ;(data.contract as any).studentTrainers = studentTrainersMap
+      } catch (err: any) {
+        console.error('Error creating additional shared contract members:', err)
+        alert('建立共享合約成員失敗：' + err.message)
         setLoading(false)
         return
       }
@@ -1949,6 +2024,179 @@ export function CustomerFormModal({
                                   目前個人配額小計 ({groupQuotaSum} 堂) 與合約總堂數 ({watchedValues.contract?.totalSessions || 0} 堂) 不一致，請微調個人堂數。
                                 </p>
                               )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 多人共享合約人數與成員教練設定區塊 */}
+                        {form.watch('contract.contractType') === 'shared' && !form.watch('bindExistingContractMode') && (
+                          <div className="col-span-2 p-5 bg-indigo-50/50 border border-indigo-200/80 rounded-2xl space-y-5 animate-in fade-in duration-300">
+                            {/* 1. 人數選擇 */}
+                            <div className="space-y-2">
+                              <Label className="text-indigo-950 font-bold block text-xs">1. 選擇共享合約總人數 (2~4 人) *</Label>
+                              <div className="flex gap-2">
+                                {[2, 3, 4].map((count) => {
+                                  const isSelected = sharedMemberCount === count
+                                  return (
+                                    <button
+                                      key={count}
+                                      type="button"
+                                      onClick={() => {
+                                        setSharedMemberCount(count)
+                                        const targetNewCount = count - 1
+                                        syncAdditionalMembersCount(targetNewCount, Number(watchedValues.contract?.totalSessions) || 0)
+                                      }}
+                                      className={cn(
+                                        "flex-1 py-2 rounded-xl text-xs font-bold transition-all border",
+                                        isSelected
+                                          ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                                          : "bg-white border-stone-200 text-stone-700 hover:border-stone-300"
+                                      )}
+                                    >
+                                      {count} 人共享合約
+                                    </button>
+                                  )}
+                                )}
+                              </div>
+                              <p className="text-[11px] text-indigo-700 font-medium pt-1">
+                                💡 共享合約堂數將統一計入主學員合約資金池（共 {watchedValues.contract?.totalSessions || 0} 堂），所有共享成員均可扣除此合約堂數。
+                              </p>
+                            </div>
+
+                            {/* 2. 成員綁定與教練設定 */}
+                            <div className="space-y-3 pt-2 border-t border-indigo-200/60">
+                              <Label className="text-indigo-950 font-bold block text-xs">2. 設定共享成員與各自負責教練 *</Label>
+                              
+                              <div className="space-y-3">
+                                {additionalGroupMembers.slice(0, sharedMemberCount - 1).map((m, idx) => (
+                                  <div key={idx} className="p-3.5 bg-white rounded-xl border border-stone-200 shadow-xs space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                                        <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-extrabold flex items-center justify-center">
+                                          {idx + 2}
+                                        </span>
+                                        共享成員 {idx + 2} {m.name ? `(${m.name})` : ''}
+                                      </span>
+                                      
+                                      {/* Member Mode Switcher */}
+                                      <div className="flex gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '' } : item))
+                                          }}
+                                          className={cn(
+                                            "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
+                                            m.memberMode === 'existing'
+                                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                                              : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
+                                          )}
+                                        >
+                                          <RiLinkM className="w-3 h-3" />
+                                          連結現有學員
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
+                                              ...item,
+                                              memberMode: 'new',
+                                              existingCustomerId: undefined,
+                                              name: '',
+                                              idNumber: '',
+                                              phone: '',
+                                              email: '',
+                                              dateOfBirth: new Date().toISOString().split('T')[0],
+                                              emergencyContact: { name: '', relation: '', phone: '' },
+                                              medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                            } : item))
+                                          }}
+                                          className={cn(
+                                            "py-1 px-2.5 rounded-lg border text-[11px] font-bold transition-all flex items-center gap-1",
+                                            m.memberMode === 'new'
+                                              ? "bg-indigo-600 border-indigo-600 text-white shadow-xs"
+                                              : "bg-stone-50 border-stone-200 text-stone-600 hover:bg-stone-100"
+                                          )}
+                                        >
+                                          <RiUserAddLine className="w-3 h-3" />
+                                          新增全新學員
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Mode Content */}
+                                    {m.memberMode === 'existing' ? (
+                                      <div className="space-y-2">
+                                        <SearchableCustomerSelect
+                                          customers={activeCustomers}
+                                          value={m.existingCustomerId || ''}
+                                          onChange={(selectedId) => {
+                                            if (selectedId) {
+                                              const selectedCust = activeCustomers.find(c => c.id === selectedId)
+                                              if (selectedCust) {
+                                                let dobStr = ''
+                                                if (selectedCust.dateOfBirth) {
+                                                  const d = (selectedCust.dateOfBirth as any).seconds 
+                                                    ? new Date((selectedCust.dateOfBirth as any).seconds * 1000) 
+                                                    : new Date(selectedCust.dateOfBirth)
+                                                  if (!isNaN(d.getTime())) dobStr = d.toISOString().split('T')[0]
+                                                }
+                                                setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? {
+                                                  ...item,
+                                                  memberMode: 'existing',
+                                                  existingCustomerId: selectedCust.id,
+                                                  name: selectedCust.name,
+                                                  idNumber: selectedCust.idNumber || '',
+                                                  phone: selectedCust.phone || '',
+                                                  email: selectedCust.email || '',
+                                                  dateOfBirth: dobStr || new Date().toISOString().split('T')[0],
+                                                  gender: (selectedCust.gender as any) || 'female',
+                                                  exerciseHabit: (selectedCust.exerciseHabit as any) || 'none',
+                                                  source: selectedCust.source || 'existing',
+                                                  emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
+                                                  medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                                  assignedTrainerId: item.assignedTrainerId || selectedCust.trainerId || '',
+                                                } : item))
+                                              }
+                                            } else {
+                                              setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, memberMode: 'existing', existingCustomerId: '', name: '' } : item))
+                                            }
+                                          }}
+                                          excludeIds={[
+                                            ...(initialCustomer?.id ? [initialCustomer.id] : []),
+                                            ...additionalGroupMembers.filter((_, oIdx) => oIdx !== idx).map(item => item.existingCustomerId).filter(Boolean) as string[]
+                                          ]}
+                                          placeholder="-- 請搜尋或選擇現有學員 --"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <p className="text-[11px] font-semibold text-indigo-700 bg-indigo-50/80 p-2 rounded-lg border border-indigo-200/60">
+                                        ✨ 成員 {idx + 2} 之基本資料將於點擊「下一步」後填寫。
+                                      </p>
+                                    )}
+
+                                    {/* 教練綁定 */}
+                                    <div className="pt-2 border-t border-stone-100 flex items-center gap-2">
+                                      <Label className="text-[11px] font-bold text-stone-700 shrink-0">成員 {idx + 2} 專屬教練：</Label>
+                                      <select
+                                        value={m.assignedTrainerId || ''}
+                                        onChange={(e) => {
+                                          const tId = e.target.value
+                                          setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
+                                        }}
+                                        className="w-full h-8 rounded-lg border border-stone-200 text-xs font-semibold px-2 bg-white text-stone-800"
+                                      >
+                                        <option value="">-- 同主合約教練 / 請選擇 --</option>
+                                        {trainers.map((t) => (
+                                          <option key={t.id} value={t.id}>
+                                            {t.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         )}
