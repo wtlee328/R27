@@ -1761,6 +1761,25 @@ export function CustomerFormModal({
                               <RiUserSharedLine className="w-3.5 h-3.5" />
                               共享合約
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('bindExistingContractMode', true)
+                                form.setValue('sharedWithCustomerId', null)
+                                form.setValue('partnerMode', 'none')
+                                form.setValue('partnerId', null)
+                                form.setValue('partnerCustomerData', null)
+                              }}
+                              className={cn(
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-1.5",
+                                form.watch('bindExistingContractMode')
+                                  ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20"
+                                  : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
+                              )}
+                            >
+                              <RiLinkM className="w-3.5 h-3.5" />
+                              連結合約
+                            </button>
                           </div>
                         </div>
 
@@ -2273,11 +2292,83 @@ export function CustomerFormModal({
                         {!form.watch('bindExistingContractMode') && (
                           <>
                             {form.watch('contract.contractType') === 'dual' && (
-                              <div className="col-span-2 p-4 bg-orange-50/60 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-800/30 rounded-xl space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <div className="flex items-start gap-2.5 text-orange-800 dark:text-orange-400 text-xs font-medium">
-                                  <RiInformationLine className="w-4 h-4 shrink-0 mt-0.5" />
-                                  <span>此合約模式為雙人合約。下一步我們將會引導您填寫第二位全新學員的基本資料與健康狀態。</span>
+                              <div className="col-span-2 p-5 bg-amber-50/50 border border-amber-100 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Label className="text-stone-700 font-semibold block text-xs">共享學員綁定方式 *</Label>
+                                <div className="flex gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      form.setValue('partnerMode', 'existing')
+                                      form.setValue('partnerCustomerData', null)
+                                    }}
+                                    className={cn(
+                                      "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
+                                      form.watch('partnerMode') === 'existing'
+                                        ? "bg-amber-500 border-amber-500 text-white shadow-md"
+                                        : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
+                                    )}
+                                  >
+                                    <RiLinkM className="w-4 h-4" />
+                                    連結現有學員
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      form.setValue('partnerMode', 'new')
+                                      form.setValue('partnerId', null)
+                                      form.setValue('sharedWithCustomerId', null)
+                                      form.setValue('partnerCustomerData', {
+                                        name: '',
+                                        idNumber: '',
+                                        phone: '',
+                                        email: '',
+                                        dateOfBirth: new Date() as any,
+                                        historicalSessions: 0,
+                                        emergencyContact: { name: '', relation: '', phone: '' },
+                                        sharedContractCustomerId: null,
+                                        medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
+                                      })
+                                    }}
+                                    className={cn(
+                                      "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all",
+                                      form.watch('partnerMode') === 'new'
+                                        ? "bg-amber-500 border-amber-500 text-white shadow-md"
+                                        : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
+                                    )}
+                                  >
+                                    <RiUserAddLine className="w-4 h-4" />
+                                    新增全新學員
+                                  </button>
                                 </div>
+
+                                {form.watch('partnerMode') === 'existing' && (
+                                  <div className="space-y-2 pt-1">
+                                    <Label className="text-xs text-stone-500 font-medium">選擇現有學員 *</Label>
+                                    <SearchableCustomerSelect
+                                      customers={activeCustomers}
+                                      value={form.watch('sharedWithCustomerId') || ''}
+                                      onChange={(val) => {
+                                        form.setValue('sharedWithCustomerId', val || null)
+                                        form.setValue('partnerId', val || null)
+                                      }}
+                                      excludeIds={initialCustomer?.id ? [initialCustomer.id] : []}
+                                      placeholder="-- 請搜尋或選擇共享學員 --"
+                                    />
+                                    {form.watch('sharedWithCustomerId') && (
+                                      <p className="text-[10px] text-amber-700 font-semibold flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
+                                        <RiUserSharedLine className="w-3 h-3 shrink-0" />
+                                        此合約將由主學員與 {(activeCustomers || []).find(c => c.id === form.watch('sharedWithCustomerId'))?.name || '選擇的學員'} 共同持有。
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+
+                                {form.watch('partnerMode') === 'new' && (
+                                  <div className="flex items-start gap-2.5 p-3 bg-amber-50 text-amber-800 rounded-xl text-xs font-semibold border border-amber-100">
+                                    <RiUserAddLine className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <span>已選擇新增全新學員。下一步將引導您填寫第二位學員的基本資料與健康狀態。</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                             {/* 課程教練分配 */}
