@@ -1700,8 +1700,7 @@ export function ContractFormModal({
                       
                       {/* 課程教練分配 — single & dual only; shared trainers are set inline in each member card above */}
                       {!form.watch('bindExistingContractMode') && (watchedValues.contractType === 'single' || watchedValues.contractType === 'dual') && (
-                        <>
-                          <div className="space-y-4 border-t border-stone-100 pt-6">
+                        <div className="space-y-4 border-t border-stone-100 pt-6">
                           <div className="space-y-1">
                             <Label className="text-stone-700 font-bold block text-xs">分配課程教練 *</Label>
                             <p className="text-[10px] text-stone-400">設定指導本合約學員的教練分配</p>
@@ -1730,10 +1729,13 @@ export function ContractFormModal({
                             )}
                           </div>
                         </div>
+                      )}
 
-                        <div className="pt-2 border-t border-stone-200/60">
-                          <Label className="text-stone-900 font-bold block text-xs">4. 合約方案與金額設定 *</Label>
-                        </div>
+                      {!form.watch('bindExistingContractMode') && (
+                        <>
+                          <div className="pt-2 border-t border-stone-200/60">
+                            <Label className="text-stone-900 font-bold block text-xs">4. 合約方案與金額設定 *</Label>
+                          </div>
 
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-1.5">
