@@ -673,6 +673,7 @@ export function CustomerContractModal({
                 {/* 甲方: 所有合約學員清單 */}
                 {(allContractMembers.length > 0 ? allContractMembers : [customer]).map((m, idx) => {
                   const isDualMemberB = contract?.contractType === 'dual' && idx === 1
+                  const requiresSignature = idx === 0 || isDualMemberB
                   const isSigned = isDualMemberB
                     ? Boolean(contract?.secondarySignatureDataUrl)
                     : Boolean(contract?.signatureDataUrl)
@@ -685,15 +686,17 @@ export function CustomerContractModal({
                     <div key={m.id} className={cn("space-y-2.5", idx > 0 && "pt-3 border-t border-dashed border-stone-200")}>
                       <div className="font-bold text-stone-850 bg-stone-100 px-2 py-0.5 rounded text-[11px] flex justify-between items-center">
                         <span>會員姓名（簡稱甲方）{memberLabel}</span>
-                        {!isSigned ? (
-                          <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            待簽名
-                          </span>
-                        ) : (
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
-                            已簽名
-                          </span>
+                        {requiresSignature && (
+                          !isSigned ? (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-300 flex items-center gap-1 print:hidden">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                              待簽名
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1 print:hidden">
+                              已簽名
+                            </span>
+                          )
                         )}
                       </div>
 
@@ -701,7 +704,7 @@ export function CustomerContractModal({
                         <div className="col-span-2 flex items-center gap-1.5">
                           <span>姓名：</span>
                           <span className="font-bold text-stone-900 border-b border-stone-200 px-1 inline-block min-w-[80px]">{m.name}</span>
-                          {!isSigned && (
+                          {requiresSignature && !isSigned && (
                             <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-1.5 py-0.2 rounded border border-amber-300 shrink-0 print:hidden">
                               待簽名
                             </span>
@@ -1165,10 +1168,10 @@ export function CustomerContractModal({
                 <div className="space-y-4 text-right flex-1 min-w-0">
                   <div className="flex flex-wrap gap-3 items-end justify-end">
                     {/* Primary Signature */}
-                    <div className={cn("space-y-1.5 text-left flex-1 min-w-[160px]", partner ? "max-w-[220px]" : "max-w-[280px]")}>
+                    <div className={cn("space-y-1.5 text-left flex-1 min-w-[160px]", (contract?.contractType === 'dual' && partner) ? "max-w-[220px]" : "max-w-[280px]")}>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] text-stone-600 font-bold uppercase tracking-widest truncate">
-                          {partner ? '甲方學員 A 簽名' : '會員簽名'}
+                          {contract?.contractType === 'dual' ? '甲方學員 A 簽名' : (contract?.contractType === 'shared' || contract?.contractType === 'group' ? '主要學員 (代表簽署人) 簽名' : '會員簽名')}
                         </p>
                         {isEditing && (
                           <button
@@ -1209,8 +1212,8 @@ export function CustomerContractModal({
                       )}
                     </div>
 
-                    {/* Secondary Signature */}
-                    {partner && (
+                    {/* Secondary Signature — dual contract only */}
+                    {contract?.contractType === 'dual' && partner && (
                       <div className="space-y-1.5 text-left flex-1 min-w-[160px] max-w-[220px]">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest truncate">甲方學員 B 簽名</p>
