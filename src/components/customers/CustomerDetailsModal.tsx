@@ -15,6 +15,7 @@ import {
   RiGroupLine, 
   RiTeamLine,
   RiUser3Line, 
+  RiUserSharedLine,
   RiDeleteBinLine, 
   RiEditLine, 
   RiAddLine, 
