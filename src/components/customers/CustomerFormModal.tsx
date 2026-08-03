@@ -22,6 +22,7 @@ import {
   RiInformationLine,
   RiAlertLine,
   RiUserAddLine,
+  RiUserSharedLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { collection, getDocs, query, where, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
@@ -404,7 +405,7 @@ export function CustomerFormModal({
   const activeSteps = useMemo(() => {
     if (isEditMode) return STEPS.slice(0, 2)
 
-    const isGroupContract = watchedValues.contract?.contractType === 'group' && !watchedValues.bindExistingContractMode
+    const isGroupContract = (watchedValues.contract?.contractType === 'group' || watchedValues.contract?.contractType === 'shared') && !watchedValues.bindExistingContractMode
     const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
     const dynamicSteps: Array<{ id: string; title: string; icon: any; fields: string[] }> = []
 
@@ -1698,6 +1699,26 @@ export function CustomerFormModal({
                             >
                               <RiGroupLine className="w-3.5 h-3.5" />
                               團體課合約 (2~6人)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                form.setValue('bindExistingContractMode', false)
+                                form.setValue('contract.contractType', 'shared')
+                                form.setValue('partnerMode', 'none')
+                                form.setValue('partnerId', null)
+                                form.setValue('partnerCustomerData', null)
+                                form.setValue('existingContractId', null)
+                              }}
+                              className={cn(
+                                "flex-1 py-2.5 px-3 rounded-xl border-2 font-semibold text-xs transition-all flex items-center justify-center gap-1.5",
+                                (!form.watch('bindExistingContractMode') && form.watch('contract.contractType') === 'shared')
+                                  ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/20"
+                                  : "bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:border-stone-300 dark:hover:border-stone-500"
+                              )}
+                            >
+                              <RiUserSharedLine className="w-3.5 h-3.5" />
+                              多人共享合約
                             </button>
                             <button
                               type="button"
