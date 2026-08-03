@@ -2417,6 +2417,10 @@ export function CustomerFormModal({
                               </div>
                             )}
 
+                            <div className="col-span-2 pt-3 border-t border-stone-200/60">
+                              <Label className="text-stone-900 dark:text-stone-100 font-bold block text-xs">4. 合約方案與金額設定 *</Label>
+                            </div>
+
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600 dark:text-stone-400">合約總堂數 *</Label>
                               <Input type="number" {...form.register('contract.totalSessions')} onChange={handleSessionsChange} className="h-10 bg-stone-50 dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-white" />

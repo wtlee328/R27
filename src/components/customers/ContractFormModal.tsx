@@ -1731,6 +1731,10 @@ export function ContractFormModal({
                           </div>
                         </div>
 
+                        <div className="pt-2 border-t border-stone-200/60">
+                          <Label className="text-stone-900 font-bold block text-xs">4. 合約方案與金額設定 *</Label>
+                        </div>
+
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-1.5">
                               <Label className="text-xs font-semibold text-stone-600">合約總堂數 *</Label>
