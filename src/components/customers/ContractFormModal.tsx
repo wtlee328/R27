@@ -1110,7 +1110,7 @@ export function ContractFormModal({
                                     const isFull = isGroup ? currentMemberCount >= 6 : isDual ? true : false
                                     const isAlreadyMember = isCustomerAlreadyInContract(c)
 
-                                    const tagText = isGroup ? '[👥 團體]' : isDual ? '[👥 雙人共享]' : '[👤 個人]'
+                                    const tagText = isGroup ? '[團體]' : isDual ? '[雙人共享]' : '[個人]'
                                     const statusSuffix = isAlreadyMember
                                       ? ' (此學員已在此合約中 - 無法重複加入)'
                                       : isFull
