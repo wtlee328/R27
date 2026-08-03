@@ -1311,41 +1311,83 @@ export function ContractFormModal({
                           {/* 1. 人數選擇 */}
                           <div className="space-y-2">
                             <Label className="text-stone-900 font-bold block text-xs">
-                              1. 選擇{form.watch('contractType') === 'shared' ? '多人共享' : '團體課'}總人數 (2~6 人) *
+                              1. 選擇{form.watch('contractType') === 'shared' ? '多人共享合約 (2~4 人)' : '團體課 (2~6 人)'}總人數 *
                             </Label>
                             <div className="flex gap-2">
-                              {[2, 3, 4, 5, 6].map(count => (
-                                <button
-                                  key={count}
-                                  type="button"
-                                  onClick={() => {
-                                    setGroupMemberCount(count)
-                                    syncAdditionalMembersCount(count - 1)
-                                    if (form.getValues('contractType') === 'group') {
-                                      recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, count)
-                                    }
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1",
-                                    groupMemberCount === count
-                                      ? form.watch('contractType') === 'shared'
-                                        ? "bg-blue-600 border-blue-600 text-white shadow-sm"
-                                        : "bg-emerald-600 border-emerald-600 text-white shadow-sm"
-                                      : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
-                                  )}
-                                >
-                                  {count} 人{form.watch('contractType') === 'shared' ? '共享' : '團課'}
-                                </button>
-                              ))}
+                              {(form.watch('contractType') === 'shared' ? [2, 3, 4] : [2, 3, 4, 5, 6]).map(count => {
+                                const isSelected = form.watch('contractType') === 'shared'
+                                  ? sharedMemberCount === count
+                                  : groupMemberCount === count
+                                return (
+                                  <button
+                                    key={count}
+                                    type="button"
+                                    onClick={() => {
+                                      if (form.watch('contractType') === 'shared') {
+                                        setSharedMemberCount(count)
+                                      } else {
+                                        setGroupMemberCount(count)
+                                      }
+                                      syncAdditionalMembersCount(count - 1)
+                                      if (form.getValues('contractType') === 'group') {
+                                        recalculateGroupQuotas(Number(form.getValues('totalSessions')) || 0, count)
+                                      }
+                                    }}
+                                    className={cn(
+                                      "flex-1 py-2 px-3 rounded-xl border font-bold text-xs transition-all flex items-center justify-center gap-1",
+                                      isSelected
+                                        ? form.watch('contractType') === 'shared'
+                                          ? "bg-blue-600 border-blue-600 text-white shadow-sm"
+                                          : "bg-emerald-600 border-emerald-600 text-white shadow-sm"
+                                        : "bg-white border-stone-200 text-stone-600 hover:border-stone-300"
+                                    )}
+                                  >
+                                    {count} 人{form.watch('contractType') === 'shared' ? '共享' : '團課'}
+                                  </button>
+                                )
+                              })}
                             </div>
                           </div>
 
-                          {/* 2. 成員綁定方式與現有學員選取 */}
+                          {/* 2. 成員綁定方式與指導教練 */}
                           <div className="space-y-3 pt-2 border-t border-stone-200/50">
-                            <Label className="text-stone-900 font-bold block text-xs">2. 設定成員綁定方式與現有學員 *</Label>
+                            <Label className="text-stone-900 font-bold block text-xs">2. 設定成員綁定方式與指導教練 *</Label>
                             
                             <div className="space-y-3">
-                              {additionalGroupMembers.map((m, idx) => (
+                              {/* 成員 1 (主學員) - 僅用於共享合約顯示與設定教練 */}
+                              {form.watch('contractType') === 'shared' && (
+                                <div className="p-3.5 bg-blue-50/70 rounded-xl border border-blue-200/80 shadow-xs space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold flex items-center justify-center">
+                                        1
+                                      </span>
+                                      主學員 (成員 1)：{customer?.name || '主學員'}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-700 bg-white px-2 py-0.5 rounded-full border border-blue-200">
+                                      合約主要紀錄者
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1.5 pt-1 border-t border-blue-100">
+                                    <Label className="text-[11px] font-bold text-blue-900">指導教練 *</Label>
+                                    <select
+                                      value={form.watch('trainerId') || ''}
+                                      onChange={(e) => {
+                                        form.setValue('trainerId', e.target.value)
+                                        form.setValue('secondaryTrainerId', null)
+                                      }}
+                                      className="w-full h-9 rounded-lg border border-blue-200 bg-white px-2.5 text-xs font-semibold text-stone-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    >
+                                      <option value="">-- 請選擇主學員教練 --</option>
+                                      {trainers.map((t) => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+
+                              {additionalGroupMembers.slice(0, (form.watch('contractType') === 'shared' ? sharedMemberCount : groupMemberCount) - 1).map((m, idx) => (
                                 <div key={idx} className="p-3.5 bg-white rounded-xl border border-stone-200/80 shadow-xs space-y-3">
                                   <div className="flex items-center justify-between">
                                     <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
@@ -1449,6 +1491,7 @@ export function ContractFormModal({
                                                 source: selectedCust.source || 'existing',
                                                 emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
                                                 medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
+                                                assignedTrainerId: item.assignedTrainerId || selectedCust.trainerId || form.watch('trainerId') || '',
                                               } : item))
                                             }
                                           } else {
@@ -1471,6 +1514,26 @@ export function ContractFormModal({
                                     )}>
                                       ✨ 學員 {idx + 2} 之基本資料與健康狀態將於點擊「下一步」後填寫。
                                     </p>
+                                  )}
+
+                                  {/* 教練選擇 (共享合約獨立設定成員教練) */}
+                                  {form.watch('contractType') === 'shared' && (
+                                    <div className="space-y-1.5 pt-2 border-t border-stone-100">
+                                      <Label className="text-[11px] font-bold text-stone-700">指導教練 *</Label>
+                                      <select
+                                        value={m.assignedTrainerId || form.watch('trainerId') || ''}
+                                        onChange={(e) => {
+                                          const tId = e.target.value
+                                          setAdditionalGroupMembers(prev => prev.map((item, i) => i === idx ? { ...item, assignedTrainerId: tId } : item))
+                                        }}
+                                        className="w-full h-9 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                      >
+                                        <option value="">-- 請選擇成員教練 (預設同主學員教練) --</option>
+                                        {trainers.map((t) => (
+                                          <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
                                   )}
                                 </div>
                               ))}
@@ -1501,7 +1564,7 @@ export function ContractFormModal({
 
                               <div className="grid grid-cols-2 gap-3 pt-1">
                                 <div className="space-y-1 bg-emerald-50/40 p-2.5 rounded-lg border border-emerald-100">
-                                  <span className="text-[11px] font-bold text-stone-700 block truncate">學員 1 (主學員: {customer.name})</span>
+                                  <span className="text-[11px] font-bold text-stone-700 block truncate">學員 1 (主學員: {customer?.name})</span>
                                   <div className="flex items-center gap-1">
                                     <input
                                       type="number"
