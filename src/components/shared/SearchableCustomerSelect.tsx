@@ -97,7 +97,7 @@ export const SearchableCustomerSelect: React.FC<SearchableCustomerSelectProps> =
   }
 
   return (
-    <div ref={containerRef} className={cn('relative w-full', className)}>
+    <div ref={containerRef} className={cn('relative w-full', isOpen && 'z-50', className)}>
       {/* Trigger Button */}
       <button
         type="button"
