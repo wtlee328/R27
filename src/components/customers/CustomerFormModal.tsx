@@ -24,6 +24,7 @@ import {
   RiUserAddLine,
   RiUserSharedLine,
   RiArrowDownSLine,
+  RiTeamLine,
 } from '@remixicon/react'
 import { collection, getDocs, query, where, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
