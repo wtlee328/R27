@@ -763,66 +763,13 @@ export default function AnalyticsPage() {
             </Card>
           </div>
 
-          {/* Section 4: 幽靈會員預警 */}
-          <Card className="border border-stone-200/80 shadow-xs">
-            <CardHeader className="border-b border-stone-100 pb-4">
-              <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
-                <RiAlertLine className="w-5 h-5 text-orange-500" />
-                幽靈會員預警清單 (超過 30 天未到店且無未來預約)
-              </CardTitle>
-              <CardDescription className="text-xs text-stone-500">
-                共有 <span className="font-bold text-stone-950">{churnAnalysis.inactiveGhostMembers.length}</span> 位學員合約尚在，但長期未到店上課。
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>學員姓名</TableHead>
-                    <TableHead>聯絡電話</TableHead>
-                    <TableHead>負責教練</TableHead>
-                    <TableHead className="text-right">上次到店時間</TableHead>
-                    <TableHead className="text-center">狀態</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {churnAnalysis.inactiveGhostMembers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-8 text-center text-stone-500 text-xs font-bold">
-                        <RiCheckboxCircleLine className="w-5 h-5 text-emerald-500 inline mr-1" />
-                        太棒了！目前無任何超過 30 天未到店的幽靈學員
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    churnAnalysis.inactiveGhostMembers.map(({ customer, lastLessonDate, daysInactive, trainerName }) => (
-                      <TableRow key={customer.id}>
-                        <TableCell className="font-bold text-stone-900">{customer.name}</TableCell>
-                        <TableCell className="font-mono text-xs text-stone-600">{customer.phone}</TableCell>
-                        <TableCell className="font-medium text-xs text-stone-700">{trainerName}</TableCell>
-                        <TableCell className="text-right font-mono text-xs text-stone-600">
-                          {lastLessonDate ? `${daysInactive} 天前` : '未會面過'}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200/80 font-bold">
-                            <RiUserForbidLine className="w-3.5 h-3.5 mr-1" />
-                            流失預警
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Section 5: 會員活躍度 RFM 模型 */}
+          {/* Section 4: 會員活躍度 RFM 模型 */}
           <Card className="border border-stone-200/80 shadow-xs">
             <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-100 pb-4 gap-3">
               <div>
                 <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
                   <RiPulseLine className="w-5 h-5 text-orange-500" />
-                  會員活躍度 RFM 模型排行榜
+                  會員活躍度 RFM 模型排行榜 ({sortedRfmMembers.length})
                 </CardTitle>
                 <CardDescription className="text-xs text-stone-500">
                   R (最近到店) | F (每週平均上課頻率) | 歷史堂數 (累計銷課堂數) | M (累計會籍與合約貢獻金額)
@@ -854,128 +801,185 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-stone-50/70 border-b border-stone-200">
-                    <TableHead className="w-12 text-center font-bold text-stone-700">排名</TableHead>
-                    <TableHead className="font-bold text-stone-700">學員姓名</TableHead>
-                    <TableHead className="font-bold text-stone-700">聯絡電話</TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleRfmSort('recency')}
-                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
-                          rfmSortBy === 'recency'
-                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
-                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                        }`}
-                        title={rfmSortBy === 'recency' ? (rfmSortOrder === 'asc' ? '目前：近至遠（點擊切換為遠至近）' : '目前：遠至近（點擊切換為近至遠）') : '點擊依最近到店排序'}
-                      >
-                        <span>R (最近到店)</span>
-                        {rfmSortBy === 'recency' ? (
-                          rfmSortOrder === 'asc' ? (
-                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+              <div className="max-h-[600px] overflow-y-auto relative">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-stone-50 border-b border-stone-200">
+                    <TableRow className="border-b border-stone-200">
+                      <TableHead className="w-12 text-center font-bold text-stone-700">排名</TableHead>
+                      <TableHead className="font-bold text-stone-700">學員姓名</TableHead>
+                      <TableHead className="font-bold text-stone-700">聯絡電話</TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          onClick={() => handleRfmSort('recency')}
+                          className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                            rfmSortBy === 'recency'
+                              ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                          }`}
+                          title={rfmSortBy === 'recency' ? (rfmSortOrder === 'asc' ? '目前：近至遠（點擊切換為遠至近）' : '目前：遠至近（點擊切換為近至遠）') : '點擊依最近到店排序'}
+                        >
+                          <span>R (最近到店)</span>
+                          {rfmSortBy === 'recency' ? (
+                            rfmSortOrder === 'asc' ? (
+                              <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                            ) : (
+                              <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            )
                           ) : (
-                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
-                          )
-                        ) : (
-                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleRfmSort('frequency')}
-                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
-                          rfmSortBy === 'frequency'
-                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
-                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                        }`}
-                        title={rfmSortBy === 'frequency' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依每週頻率排序'}
-                      >
-                        <span>F (每週頻率)</span>
-                        {rfmSortBy === 'frequency' ? (
-                          rfmSortOrder === 'desc' ? (
-                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          onClick={() => handleRfmSort('frequency')}
+                          className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                            rfmSortBy === 'frequency'
+                              ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                          }`}
+                          title={rfmSortBy === 'frequency' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依每週頻率排序'}
+                        >
+                          <span>F (每週頻率)</span>
+                          {rfmSortBy === 'frequency' ? (
+                            rfmSortOrder === 'desc' ? (
+                              <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            ) : (
+                              <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                            )
                           ) : (
-                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
-                          )
-                        ) : (
-                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleRfmSort('totalLessons')}
-                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
-                          rfmSortBy === 'totalLessons'
-                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
-                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                        }`}
-                        title={rfmSortBy === 'totalLessons' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依歷史堂數排序'}
-                      >
-                        <span>歷史堂數</span>
-                        {rfmSortBy === 'totalLessons' ? (
-                          rfmSortOrder === 'desc' ? (
-                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          onClick={() => handleRfmSort('totalLessons')}
+                          className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                            rfmSortBy === 'totalLessons'
+                              ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                          }`}
+                          title={rfmSortBy === 'totalLessons' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依歷史堂數排序'}
+                        >
+                          <span>歷史堂數</span>
+                          {rfmSortBy === 'totalLessons' ? (
+                            rfmSortOrder === 'desc' ? (
+                              <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            ) : (
+                              <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                            )
                           ) : (
-                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
-                          )
-                        ) : (
-                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
-                        )}
-                      </button>
-                    </TableHead>
-                    <TableHead className="text-right">
-                      <button
-                        onClick={() => handleRfmSort('monetary')}
-                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
-                          rfmSortBy === 'monetary'
-                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
-                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-                        }`}
-                        title={rfmSortBy === 'monetary' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依累計貢獻度排序'}
-                      >
-                        <span>M (累計貢獻度)</span>
-                        {rfmSortBy === 'monetary' ? (
-                          rfmSortOrder === 'desc' ? (
-                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
+                      </TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          onClick={() => handleRfmSort('monetary')}
+                          className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                            rfmSortBy === 'monetary'
+                              ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                          }`}
+                          title={rfmSortBy === 'monetary' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依累計貢獻度排序'}
+                        >
+                          <span>M (累計貢獻度)</span>
+                          {rfmSortBy === 'monetary' ? (
+                            rfmSortOrder === 'desc' ? (
+                              <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                            ) : (
+                              <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                            )
                           ) : (
-                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
-                          )
-                        ) : (
-                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
-                        )}
-                      </button>
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedRfmMembers.slice(0, 15).map((m, idx) => (
-                    <TableRow key={m.customer.id}>
-                      <TableCell className="text-center font-mono font-bold text-xs">
-                        <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center ${
-                          idx === 0 ? 'bg-orange-500 text-white' : idx === 1 ? 'bg-stone-900 text-white' : idx === 2 ? 'bg-stone-700 text-white' : 'bg-stone-100 text-stone-600'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-bold text-stone-900">{m.customer.name}</TableCell>
-                      <TableCell className="font-mono text-xs text-stone-500">{m.customer.phone}</TableCell>
-                      <TableCell className="text-right font-mono text-xs text-stone-700">{m.recencyDays}</TableCell>
-                      <TableCell className="text-right font-mono font-bold text-stone-950 text-xs">
-                        {m.frequency} 次/週
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-bold text-stone-900 text-xs">
-                        {m.totalLessonsCount} 堂
-                      </TableCell>
-                      <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
-                        NT$ {Number(m.monetary || 0).toLocaleString()}
-                      </TableCell>
+                            <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                          )}
+                        </button>
+                      </TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedRfmMembers.map((m, idx) => (
+                      <TableRow key={m.customer.id}>
+                        <TableCell className="text-center font-mono font-bold text-xs">
+                          <span className={`w-5 h-5 rounded-full inline-flex items-center justify-center ${
+                            idx === 0 ? 'bg-orange-500 text-white' : idx === 1 ? 'bg-stone-900 text-white' : idx === 2 ? 'bg-stone-700 text-white' : 'bg-stone-100 text-stone-600'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-bold text-stone-900">{m.customer.name}</TableCell>
+                        <TableCell className="font-mono text-xs text-stone-500">{m.customer.phone}</TableCell>
+                        <TableCell className="text-right font-mono text-xs text-stone-700">{m.recencyDays}</TableCell>
+                        <TableCell className="text-right font-mono font-bold text-stone-950 text-xs">
+                          {m.frequency} 次/週
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-stone-900 text-xs">
+                          {m.totalLessonsCount} 堂
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
+                          NT$ {Number(m.monetary || 0).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 5: 幽靈會員預警 (已放置於 RFM 下方) */}
+          <Card className="border border-stone-200/80 shadow-xs">
+            <CardHeader className="border-b border-stone-100 pb-4">
+              <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                <RiAlertLine className="w-5 h-5 text-orange-500" />
+                幽靈會員預警清單 (超過 30 天未到店且無未來預約)
+              </CardTitle>
+              <CardDescription className="text-xs text-stone-500">
+                共有 <span className="font-bold text-stone-950">{churnAnalysis.inactiveGhostMembers.length}</span> 位學員合約尚在，但長期未到店上課。
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="max-h-[600px] overflow-y-auto relative">
+                <Table>
+                  <TableHeader className="sticky top-0 z-10 bg-stone-50 border-b border-stone-200">
+                    <TableRow>
+                      <TableHead className="font-bold text-stone-700">學員姓名</TableHead>
+                      <TableHead className="font-bold text-stone-700">聯絡電話</TableHead>
+                      <TableHead className="font-bold text-stone-700">負責教練</TableHead>
+                      <TableHead className="text-right font-bold text-stone-700">上次到店時間</TableHead>
+                      <TableHead className="text-center font-bold text-stone-700">狀態</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {churnAnalysis.inactiveGhostMembers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-stone-500 text-xs font-bold">
+                          <RiCheckboxCircleLine className="w-5 h-5 text-emerald-500 inline mr-1" />
+                          太棒了！目前無任何超過 30 天未到店的幽靈學員
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      churnAnalysis.inactiveGhostMembers.map(({ customer, lastLessonDate, daysInactive, trainerName }) => (
+                        <TableRow key={customer.id}>
+                          <TableCell className="font-bold text-stone-900">{customer.name}</TableCell>
+                          <TableCell className="font-mono text-xs text-stone-600">{customer.phone}</TableCell>
+                          <TableCell className="font-medium text-xs text-stone-700">{trainerName}</TableCell>
+                          <TableCell className="text-right font-mono text-xs text-stone-600">
+                            {lastLessonDate ? `${daysInactive} 天前` : '未會面過'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-200/80 font-bold">
+                              <RiUserForbidLine className="w-3.5 h-3.5 mr-1" />
+                              流失預警
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </>
