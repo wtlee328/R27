@@ -188,6 +188,24 @@ export function CustomerContractModal({
   // Sync edit state
   React.useEffect(() => {
     if (contract && open && customer) {
+      const primaryTrainer = contract.studentTrainers?.[customer.id] || contract.trainerId || customer.trainerId || ''
+      setEditTrainerId(primaryTrainer)
+
+      const partnerId = partner?.id || (allContractMembers.length > 1 ? allContractMembers[1].id : null)
+      const partnerTrainer = contract.secondaryTrainerId || (partnerId ? contract.studentTrainers?.[partnerId] : null) || partner?.trainerId || (allContractMembers.length > 1 ? allContractMembers[1].trainerId : null) || primaryTrainer
+
+      setEditSecondaryTrainerId(partnerTrainer)
+
+      const initialMemberTrainers: Record<string, string> = { ...(contract.studentTrainers || {}) }
+      const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
+      membersList.forEach((m, idx) => {
+        const tId = contract.studentTrainers?.[m.id] || (idx === 0 ? primaryTrainer : (idx === 1 ? partnerTrainer : (m.trainerId || primaryTrainer)))
+        if (tId) {
+          initialMemberTrainers[m.id] = tId
+        }
+      })
+      setEditMemberTrainers(initialMemberTrainers)
+
       setEditTotalSessions(contract.totalSessions || 0)
       setEditRemainingSessions(contract.remainingSessions || 0)
       setEditTotalAmount(contract.totalAmount || 0)
@@ -196,9 +214,6 @@ export function CustomerContractModal({
       setEditEndDate(toDateString(contract.endDate))
       setEditPaymentType(contract.paymentType || 'single')
       setEditInstallmentCount(contract.installmentCount || 2)
-      setEditTrainerId(contract.trainerId || '')
-      setEditSecondaryTrainerId(contract.secondaryTrainerId || null)
-      setEditMemberTrainers(contract.studentTrainers || {})
       setIsOneToTwo(!contract.secondaryTrainerId || contract.secondaryTrainerId === contract.trainerId)
       
       const mappedInsts = (contract.installments || []).map((inst: any) => ({
@@ -839,8 +854,10 @@ export function CustomerContractModal({
                               const isMemberA = idx === 0
                               const isMemberB = idx === 1
                               const currentVal = isMemberA 
-                                ? editTrainerId 
-                                : (isMemberB ? (editSecondaryTrainerId || '') : (editMemberTrainers[m.id] || m.trainerId || editTrainerId))
+                                ? (editTrainerId || contract?.studentTrainers?.[m.id] || m.trainerId || '') 
+                                : (isMemberB 
+                                    ? (editSecondaryTrainerId || editMemberTrainers[m.id] || contract?.studentTrainers?.[m.id] || m.trainerId || editTrainerId) 
+                                    : (editMemberTrainers[m.id] || contract?.studentTrainers?.[m.id] || m.trainerId || editTrainerId))
                               
                               return (
                                 <div key={m.id}>
