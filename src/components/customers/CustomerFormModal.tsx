@@ -2135,7 +2135,7 @@ export function CustomerFormModal({
                                       const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
                                       const isGroup = c.contractType === 'group'
                                       const isShared = c.contractType === 'shared'
-                                      const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
+                                      const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group' && c.contractType !== 'shared'))
                                       const currentMemberCount = (isGroup || isShared)
                                         ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                         : isDual ? 2 : 1

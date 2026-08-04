@@ -1118,7 +1118,7 @@ export function ContractFormModal({
                             </div>
 
                             <div className="space-y-2">
-                              <Label className="text-xs text-blue-900 font-medium">選擇其現有合約 *</Label>
+<Label className="text-xs text-blue-900 font-medium">選擇其現有合約 *</Label>
                               <div className="relative">
                                 <select
                                   value={form.watch('existingContractId') || ''}
@@ -1134,11 +1134,9 @@ export function ContractFormModal({
                                     const trainerName = trainers.find(t => t.id === c.trainerId)?.name || c.trainerId || '未指定'
                                     const isGroup = c.contractType === 'group'
                                     const isShared = c.contractType === 'shared'
-                                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || !!c.sharedWithCustomerId || (Array.isArray(c.customerIds) && c.customerIds.length >= 2))
-                                    const currentMemberCount = isGroup
+                                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared' && c.contractType !== 'group'))
+                                    const currentMemberCount = (isGroup || isShared)
                                       ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
-                                      : isShared
-                                      ? (Array.isArray(c.customerIds) ? c.customerIds.length : 1)
                                       : isDual ? 2 : 1
                                     const isFull = (isGroup || isShared) ? currentMemberCount >= 6 : isDual ? true : false
                                     const isAlreadyMember = isCustomerAlreadyInContract(c)
@@ -1147,7 +1145,7 @@ export function ContractFormModal({
                                     const statusSuffix = isAlreadyMember
                                       ? ' (此學員已在此合約中 - 無法重複加入)'
                                       : isFull
-                                      ? ` (已滿額 ${currentMemberCount}/${isDual ? 2 : 6}人 - 無法綁定)`
+                                      ? ` (已滿額 ${currentMemberCount}/${(isGroup || isShared) ? 6 : 2}人 - 無法綁定)`
                                       : isShared
                                       ? ` (${currentMemberCount}/6人)`
                                       : isGroup
@@ -1169,11 +1167,9 @@ export function ContractFormModal({
                           {selectedContract && (() => {
                             const isGroup = selectedContract.contractType === 'group'
                             const isShared = selectedContract.contractType === 'shared'
-                            const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
-                            const currentCount = isGroup
+                            const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || (!!selectedContract.sharedWithCustomerId && selectedContract.contractType !== 'shared' && selectedContract.contractType !== 'group'))
+                            const currentCount = (isGroup || isShared)
                               ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
-                              : isShared
-                              ? (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1)
                               : isDual ? 2 : 1
                             const isFull = (isGroup || isShared) ? currentCount >= 6 : isDual ? true : false
                             const isAlreadyMember = isCustomerAlreadyInContract(selectedContract)

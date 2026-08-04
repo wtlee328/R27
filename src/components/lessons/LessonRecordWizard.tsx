@@ -180,7 +180,7 @@ export function LessonRecordWizard({
   // Automatically select initial attendees and FIFO contracts when primary contract changes
   useEffect(() => {
     if (selectedContract) {
-      const isMulti = selectedContract.contractType === 'dual' || selectedContract.contractType === 'group' || (selectedContract.customerIds && selectedContract.customerIds.length > 1)
+      const isMulti = selectedContract.contractType === 'dual' || selectedContract.contractType === 'group'
       if (isMulti && groupCustomers.length > 0) {
         // Default check all group members as attending
         const allMemberIds = groupCustomers.map(c => c.id)
