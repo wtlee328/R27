@@ -2162,11 +2162,11 @@ export function ContractFormModal({
                             <div className="p-5 bg-emerald-50/40 border border-emerald-100 rounded-2xl space-y-4 animate-in fade-in duration-300">
                               <div className="space-y-2">
                                 <Label className="text-xs text-stone-700 font-semibold">選擇現有學員 *</Label>
-                                <div className="relative">
-                                  <select
-                                    value={memberData.existingCustomerId || ''}
-                                    onChange={(e) => {
-                                      const selectedId = e.target.value
+                                <SearchableCustomerSelect
+                                  customers={(customers || []).filter(c => c.id !== customer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== memberIdx && other.existingCustomerId === c.id))}
+                                  value={memberData.existingCustomerId || ''}
+                                  onChange={(selectedId) => {
+                                    if (selectedId) {
                                       const selectedCust = customers.find(c => c.id === selectedId)
                                       if (selectedCust) {
                                         let dobStr = ''
@@ -2195,20 +2195,12 @@ export function ContractFormModal({
                                       } else {
                                         updateMember({ memberMode: 'existing', existingCustomerId: '', name: '' })
                                       }
-                                    }}
-                                    className="w-full h-11 rounded-xl border border-stone-200 bg-white px-3 pr-8 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none"
-                                  >
-                                    <option value="">— 請選擇現有學員 —</option>
-                                    {(customers || [])
-                                      .filter(c => c.id !== customer?.id && !additionalGroupMembers.some((other, oIdx) => oIdx !== memberIdx && other.existingCustomerId === c.id))
-                                      .map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                          {c.name} ({c.phone || '無電話'})
-                                        </option>
-                                      ))}
-                                  </select>
-                                  <RiArrowDownSLine className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
+                                    } else {
+                                      updateMember({ memberMode: 'existing', existingCustomerId: '', name: '' })
+                                    }
+                                  }}
+                                  placeholder="-- 請搜尋或選擇現有學員 --"
+                                />
                               </div>
 
                               {memberData.existingCustomerId && (

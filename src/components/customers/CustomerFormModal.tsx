@@ -2107,24 +2107,15 @@ export function CustomerFormModal({
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <Label className="text-xs text-blue-900 font-medium">選擇現有學員 *</Label>
-                                <div className="relative">
-                                  <select
-                                    value={selectedExistingCustomerId}
-                                    onChange={(e) => {
-                                      setSelectedExistingCustomerId(e.target.value)
-                                      form.setValue('existingContractId', null)
-                                    }}
-                                    className="w-full h-10 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none cursor-pointer"
-                                  >
-                                    <option value="">-- 請選擇學員 --</option>
-                                    {activeCustomers.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.name} ({c.phone})
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <RiArrowDownSLine className="w-4 h-4 text-stone-400 dark:text-stone-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
+                                <SearchableCustomerSelect
+                                  customers={activeCustomers}
+                                  value={selectedExistingCustomerId || ''}
+                                  onChange={(id) => {
+                                    setSelectedExistingCustomerId(id || '')
+                                    form.setValue('existingContractId', null)
+                                  }}
+                                  placeholder="-- 請搜尋或選擇學員 --"
+                                />
                               </div>
                               <div className="space-y-2">
                                 <Label className="text-xs text-blue-900 font-medium">選擇其現有合約 *</Label>
