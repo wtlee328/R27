@@ -10,6 +10,7 @@ import { CustomerDetailsModal } from '@/components/customers/CustomerDetailsModa
 import { ContractFormModal } from '@/components/customers/ContractFormModal'
 import { InstallmentManagerModal } from '@/components/customers/InstallmentManagerModal'
 import { useCustomers } from '@/hooks/useCustomers'
+import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useAuthStore } from '@/stores/authStore'
 import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
 import type { CombinedCustomerContractValues, ContractFormValues } from '@/lib/validators'
@@ -21,6 +22,7 @@ export default function TrainerCustomersPage() {
   const { user } = useAuthStore()
   const { selectedTrainerId } = useTrainerProfileStore()
   const currentTrainerId = selectedTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
+  const { records: lessons } = useLessonRecords()
 
   const { 
     customers, 
@@ -359,6 +361,7 @@ export default function TrainerCustomersPage() {
           <CustomerTable 
             customers={filteredCustomers} 
             contracts={myContracts}
+            lessons={lessons}
             onView={handleViewDetails}
           />
         )}

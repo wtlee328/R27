@@ -14,7 +14,8 @@ import {
   RiFilterLine, 
   RiArrowUpDownLine, 
   RiDeleteBinLine,
-  RiFileTextLine
+  RiFileTextLine,
+  RiHistoryLine
 } from '@remixicon/react'
 import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
@@ -27,17 +28,19 @@ export function CustomerTable({
   onView,
   onDelete,
   trainers,
+  lessons,
 }: { 
   customers: Customer[] 
   contracts: Contract[]
   onView: (customer: Customer) => void
   onDelete?: (customer: Customer) => void
   trainers?: any[]
+  lessons?: any[]
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTrainerId, setSelectedTrainerId] = useState('all')
   const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
-  const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
+  const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'historical-desc' | 'historical-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
   const checkIsMember = useCallback((con: Contract, customerId: string) => {
     if (!con || !customerId) return false
     if (con.customerId === customerId) return true
@@ -164,6 +167,34 @@ export function CustomerTable({
     })[0]
   }, [contracts, checkIsMember])
 
+  const getCustomerHistoricalSessions = useCallback((c: Customer) => {
+    if (lessons && lessons.length > 0) {
+      const custLessons = lessons.filter(
+        l => (l.customerId === c.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(c.id))) && (l.sessionDate || l.date)
+      )
+      return custLessons.reduce((sum, l) => {
+        if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+          const custDed = l.deductions.find((d: any) => d.customerId === c.id)
+          if (custDed && typeof custDed.amount === 'number') {
+            return sum + custDed.amount
+          }
+        }
+        return sum + Number(l.sessionAmount || 1)
+      }, 0)
+    }
+
+    const custContracts = contracts.filter(con => checkIsMember(con, c.id))
+    return custContracts.reduce((sum, con) => {
+      if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
+        const q = con.groupMemberQuotas[c.id]
+        const used = Math.max(0, (q.totalSessions || 0) - (q.remainingSessions || 0))
+        return sum + used
+      }
+      const used = Math.max(0, (con.totalSessions || 0) - (con.remainingSessions || 0))
+      return sum + used
+    }, 0)
+  }, [lessons, contracts, checkIsMember])
+
   const processedCustomers = useMemo(() => {
     // 1. Search text filter
     let result = customers.filter(c => 
@@ -199,6 +230,18 @@ export function CustomerTable({
         const remA = activeA ? activeA.remainingSessions : 0
         const remB = activeB ? activeB.remainingSessions : 0
         return remA - remB
+      })
+    } else if (sortBy === 'historical-desc') {
+      result.sort((a, b) => {
+        const histA = getCustomerHistoricalSessions(a)
+        const histB = getCustomerHistoricalSessions(b)
+        return histB - histA
+      })
+    } else if (sortBy === 'historical-asc') {
+      result.sort((a, b) => {
+        const histA = getCustomerHistoricalSessions(a)
+        const histB = getCustomerHistoricalSessions(b)
+        return histA - histB
       })
     } else if (sortBy === 'contract-date') {
       result.sort((a, b) => {
@@ -304,6 +347,8 @@ export function CustomerTable({
                 { value: 'default', label: '預設排序' },
                 { value: 'remaining-desc', label: '剩餘堂數 (多 → 少)' },
                 { value: 'remaining-asc', label: '剩餘堂數 (少 → 多)' },
+                { value: 'historical-desc', label: '歷史堂數 (多 → 少)' },
+                { value: 'historical-asc', label: '歷史堂數 (少 → 多)' },
                 { value: 'contract-date', label: '合約建立日期' },
                 { value: 'end-date', label: '合約到期日期 (近 → 遠)' },
                 { value: 'birthday', label: '生日月份 (1月 → 12月)' },
@@ -443,6 +488,17 @@ export function CustomerTable({
                       ) : (
                         <p className="text-xs font-bold text-stone-300 italic">無合約</p>
                       )}
+                    </div>
+
+                    {/* Historical Sessions Column */}
+                    <div className="space-y-1 min-w-[90px]">
+                      <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">歷史堂數</p>
+                      <div className="flex items-center gap-1.5">
+                        <RiHistoryLine className="w-3.5 h-3.5 text-stone-400" />
+                        <p className="text-xs font-bold text-stone-900 font-mono">
+                          {getCustomerHistoricalSessions(c)} <span className="text-[10px] text-stone-400 font-normal">堂</span>
+                        </p>
+                      </div>
                     </div>
 
                     {/* Expiration Date */}

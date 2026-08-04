@@ -22,6 +22,7 @@ import { InstallmentManagerModal } from '../components/customers/InstallmentMana
 import { DeleteCustomerModal } from '../components/customers/DeleteCustomerModal'
 import { useCustomers } from '../hooks/useCustomers'
 import { useTrainers } from '../hooks/useTrainers'
+import { useLessonRecords } from '../hooks/useLessonRecords'
 import { useAuthStore } from '../stores/authStore'
 import type { CombinedCustomerContractValues, ContractFormValues } from '../lib/validators'
 import type { Customer, Contract } from '../types'
@@ -32,6 +33,7 @@ export default function CustomersPage() {
   const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
   const { trainers } = useTrainers()
+  const { records: lessons } = useLessonRecords()
   const { 
     customers, 
     contracts,
@@ -392,6 +394,7 @@ export default function CustomersPage() {
             <CustomerTable 
               customers={filteredCustomers} 
               contracts={contracts}
+              lessons={lessons}
               onView={handleViewDetails}
               onDelete={isAdmin ? handleOpenDeleteCustomer : undefined}
               trainers={trainers}
