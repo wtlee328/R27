@@ -83,6 +83,7 @@ export function CustomerContractModal({
   const [editInstallments, setEditInstallments] = React.useState<any[]>([])
   const [editTrainerId, setEditTrainerId] = React.useState<string>('')
   const [editSecondaryTrainerId, setEditSecondaryTrainerId] = React.useState<string | null>(null)
+  const [editMemberTrainers, setEditMemberTrainers] = React.useState<Record<string, string>>({})
   const [trainers, setTrainers] = React.useState<any[]>([])
   const [isOneToTwo, setIsOneToTwo] = React.useState<boolean>(true)
 
@@ -197,6 +198,7 @@ export function CustomerContractModal({
       setEditInstallmentCount(contract.installmentCount || 2)
       setEditTrainerId(contract.trainerId || '')
       setEditSecondaryTrainerId(contract.secondaryTrainerId || null)
+      setEditMemberTrainers(contract.studentTrainers || {})
       setIsOneToTwo(!contract.secondaryTrainerId || contract.secondaryTrainerId === contract.trainerId)
       
       const mappedInsts = (contract.installments || []).map((inst: any) => ({
@@ -496,13 +498,43 @@ export function CustomerContractModal({
         }
       }
 
+      // Sync Member Trainers for Shared / Group contract
+      const isSharedOrGroup = contract.contractType === 'shared' || contract.contractType === 'group'
+      if (isSharedOrGroup) {
+        const updatedStudentTrainers: Record<string, string> = { ...(contract.studentTrainers || {}) }
+        const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
+        membersList.forEach((m, idx) => {
+          const assignedId = idx === 0 ? editTrainerId : (idx === 1 ? (editSecondaryTrainerId || editTrainerId) : (editMemberTrainers[m.id] || editTrainerId))
+          if (assignedId) {
+            updatedStudentTrainers[m.id] = assignedId
+          }
+        })
+        updateData.studentTrainers = updatedStudentTrainers
+        if (contract) contract.studentTrainers = updatedStudentTrainers
+
+        await Promise.all(membersList.map(async (m, idx) => {
+          const assignedId = idx === 0 ? editTrainerId : (idx === 1 ? (editSecondaryTrainerId || editTrainerId) : (editMemberTrainers[m.id] || editTrainerId))
+          if (assignedId && m.id) {
+            try {
+              await updateDoc(doc(db, 'customers', m.id), {
+                trainerId: assignedId,
+                updatedAt: serverTimestamp(),
+              })
+              m.trainerId = assignedId
+            } catch (err) {
+              console.error(`Failed to sync trainer for member ${m.id}:`, err)
+            }
+          }
+        }))
+      }
+
       // Sync Customer B's trainer if dual contract
       const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
       const partnerId = contract.customerIds && contract.customerIds.length > 1
         ? contract.customerIds.find(id => id !== customer.id)
         : contract.sharedWithCustomerId
 
-      if (isDual && partnerId) {
+      if (isDual && partnerId && !isSharedOrGroup) {
         const syncTrainerId = editSecondaryTrainerId || editTrainerId
         if (syncTrainerId) {
           try {
@@ -800,67 +832,58 @@ export function CustomerContractModal({
                   <div className="col-span-12 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-2">
                     <span className="font-bold text-stone-800">指定教練：</span>
                     {isEditing ? (
-                      <div className="flex items-center gap-4 bg-stone-50 p-2 rounded-xl border border-stone-200 flex-1">
-                        {partner ? (
-                          <div className="flex flex-col gap-2 w-full">
-                            <div className="flex items-center gap-2">
-                              <input 
-                                type="checkbox" 
-                                id="isOneToTwoEditDoc" 
-                                checked={isOneToTwo} 
-                                onChange={e => {
-                                  const checked = e.target.checked
-                                  setIsOneToTwo(checked)
-                                  if (checked) {
-                                    setEditSecondaryTrainerId(editTrainerId)
-                                  } else {
-                                    setEditSecondaryTrainerId(trainers[0]?.id || '')
-                                  }
-                                }} 
-                                className="rounded text-brand-600 focus:ring-brand-500 w-4 h-4" 
-                              />
-                              <label htmlFor="isOneToTwoEditDoc" className="text-xs font-bold text-stone-700 cursor-pointer">
-                                1對{contract?.contractType === 'group' ? (contract?.groupMemberQuotas?.length || 2) : 2} 同時間上課（共用同一位教練）
-                              </label>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <span className="text-[10px] text-stone-500 font-bold block mb-1">學員 A ({customer.name}) 教練</span>
-                                <select 
-                                  value={editTrainerId} 
-                                  onChange={e => {
-                                    const val = e.target.value
-                                    setEditTrainerId(val)
-                                    if (isOneToTwo) setEditSecondaryTrainerId(val)
-                                  }}
-                                  className="w-full h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs"
-                                >
-                                  {trainers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                </select>
-                              </div>
-                              {!isOneToTwo && (
-                                <div>
-                                  <span className="text-[10px] text-orange-600 font-bold block mb-1">學員 B ({partner.name}) 教練</span>
+                      <div className="flex items-center gap-4 bg-stone-50 p-2.5 rounded-xl border border-stone-200 flex-1">
+                        {(contract?.contractType === 'shared' || contract?.contractType === 'group') ? (
+                          <div className="grid grid-cols-2 gap-4 w-full">
+                            {(allContractMembers.length > 0 ? allContractMembers : [customer]).map((m, idx) => {
+                              const isMemberA = idx === 0
+                              const isMemberB = idx === 1
+                              const currentVal = isMemberA 
+                                ? editTrainerId 
+                                : (isMemberB ? (editSecondaryTrainerId || '') : (editMemberTrainers[m.id] || m.trainerId || editTrainerId))
+                              
+                              return (
+                                <div key={m.id}>
+                                  <span className="text-[10px] text-stone-500 font-bold block mb-1">
+                                    學員 {String.fromCharCode(65 + idx)} ({m.name}) 教練
+                                  </span>
                                   <select 
-                                    value={editSecondaryTrainerId || ''} 
-                                    onChange={e => setEditSecondaryTrainerId(e.target.value)}
-                                    className="w-full h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs"
+                                    value={currentVal} 
+                                    onChange={e => {
+                                      const val = e.target.value
+                                      if (isMemberA) {
+                                        setEditTrainerId(val)
+                                      } else if (isMemberB) {
+                                        setEditSecondaryTrainerId(val)
+                                      }
+                                      setEditMemberTrainers(prev => ({ ...prev, [m.id]: val }))
+                                    }}
+                                    className="w-full h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs font-bold"
                                   >
+                                    <option value="">-- 請選擇教練 --</option>
                                     {trainers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                   </select>
                                 </div>
-                              )}
-                            </div>
+                              )
+                            })}
                           </div>
                         ) : (
-                          <select 
-                            value={editTrainerId} 
-                            onChange={e => setEditTrainerId(e.target.value)}
-                            className="w-full h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs"
-                          >
-                            <option value="">不指定</option>
-                            {trainers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                          </select>
+                          <div className="w-full max-w-xs">
+                            <select 
+                              value={editTrainerId} 
+                              onChange={e => {
+                                const val = e.target.value
+                                setEditTrainerId(val)
+                                if (contract?.contractType === 'dual' || contract?.sharedWithCustomerId) {
+                                  setEditSecondaryTrainerId(val)
+                                }
+                              }}
+                              className="w-full h-8 rounded-lg border border-stone-200 bg-white px-2 text-xs font-bold"
+                            >
+                              <option value="">不指定</option>
+                              {trainers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                            </select>
+                          </div>
                         )}
                       </div>
                     ) : (
