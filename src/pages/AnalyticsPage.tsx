@@ -285,12 +285,13 @@ export default function AnalyticsPage() {
     return { genderCount, habitCount, channelCount, totalCust }
   }, [customers])
 
-  // --- 3. 合約規格分佈 (8/12/24/48堂) ---
+  // --- 3. 合約規格分佈 (8/12/24/27/48堂) ---
   const contractSpecs = useMemo(() => {
     const specMap: Record<string, number> = {
       '8堂': 0,
       '12堂': 0,
       '24堂': 0,
+      '27堂': 0,
       '48堂': 0,
       其他規格: 0,
     }
@@ -300,6 +301,7 @@ export default function AnalyticsPage() {
       if (s === 8) specMap['8堂'] += 1
       else if (s === 12) specMap['12堂'] += 1
       else if (s === 24) specMap['24堂'] += 1
+      else if (s === 27) specMap['27堂'] += 1
       else if (s === 48) specMap['48堂'] += 1
       else specMap.其他規格 += 1
     })
