@@ -67,23 +67,32 @@ export function TrainerDetailsModal({
   const [selectedRecord, setSelectedRecord] = useState<LessonRecord | null>(null)
   const [isPanelVisible, setIsPanelVisible] = useState(false)
 
-  if (!trainer) return null
-
-  // Get assigned students for this trainer
-  const trainerStudents = customers.filter(c => c.trainerId === trainer.id)
-  const trainerStudentIds = trainerStudents.map(c => c.id)
-
-  // Find lesson records belonging to this trainer
-  const trainerLessons = records.filter(lr => lr.trainerId === trainer.id)
-
-  // Filter lessons by selected month if needed
-  const filteredLessons = selectedMonth === 'all'
-    ? trainerLessons
-    : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
-
   // Sorting states for lesson records (Date, Student Name)
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // Get assigned students for this trainer
+  const trainerStudents = useMemo(() => {
+    if (!trainer) return []
+    return customers.filter(c => c.trainerId === trainer.id)
+  }, [customers, trainer])
+
+  const trainerStudentIds = useMemo(() => {
+    return trainerStudents.map(c => c.id)
+  }, [trainerStudents])
+
+  // Find lesson records belonging to this trainer
+  const trainerLessons = useMemo(() => {
+    if (!trainer) return []
+    return records.filter(lr => lr.trainerId === trainer.id)
+  }, [records, trainer])
+
+  // Filter lessons by selected month if needed
+  const filteredLessons = useMemo(() => {
+    return selectedMonth === 'all'
+      ? trainerLessons
+      : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+  }, [trainerLessons, selectedMonth])
 
   const sortedFilteredLessons = useMemo(() => {
     return [...filteredLessons].sort((a, b) => {
@@ -107,6 +116,8 @@ export function TrainerDetailsModal({
       }
     })
   }, [filteredLessons, sortBy, sortOrder])
+
+  if (!trainer) return null
 
   // Helper to get contracts for a specific student
   const getStudentContracts = (studentId: string) => {
