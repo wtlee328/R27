@@ -135,13 +135,19 @@ export function useCustomers() {
           }
 
           // Auto repair 3: Check if contract is unsigned (Single/Group/Shared needs primary signature, Dual needs both signatures)
-          const isUnsigned = c.status === 'pending_signature' || !c.signatureDataUrl || (isDualContract && !c.secondarySignatureDataUrl)
+          const isUnsigned = !c.signatureDataUrl || (isDualContract && !c.secondarySignatureDataUrl)
 
-          // Auto repair 4: If contract is missing required signature(s), ensure status is 'pending_signature' (unless cancelled)
+          // Auto repair 4: Ensure status matches signature state
           if (isUnsigned && c.status !== 'pending_signature' && c.status !== 'cancelled') {
             console.log(`Contract ${c.id} is missing required signature(s). Restoring status to pending_signature...`)
             updates.status = 'pending_signature'
             c.status = 'pending_signature'
+            isRepaired = true
+          } else if (!isUnsigned && c.status === 'pending_signature') {
+            const targetStatus = (c.remainingSessions !== undefined && c.remainingSessions <= 0) ? 'completed' : 'active'
+            console.log(`Contract ${c.id} has required signature(s). Promoting status from pending_signature to ${targetStatus}...`)
+            updates.status = targetStatus
+            c.status = targetStatus
             isRepaired = true
           }
 

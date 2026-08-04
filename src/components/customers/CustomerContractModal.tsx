@@ -377,33 +377,11 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
-      let finalSigA: string | null = null
-      if (sigCanvas.current) {
-        try {
-          const canvasObj = sigCanvas.current as any
-          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
-          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
-            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
-            finalSigA = rawCanvas.toDataURL('image/png')
-          }
-        } catch (err) {
-          console.error('Error getting sigCanvas A:', err)
-        }
-      }
+      const effectiveSigA = finalSigA || (isSigAClearedRef.current ? null : (contract?.signatureDataUrl || null))
+      const effectiveSigB = finalSigB || (isSigBClearedRef.current ? null : (contract?.secondarySignatureDataUrl || null))
 
-      let finalSigB: string | null = null
-      if (secondarySigCanvas.current) {
-        try {
-          const canvasObj = secondarySigCanvas.current as any
-          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
-          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
-            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
-            finalSigB = rawCanvas.toDataURL('image/png')
-          }
-        } catch (err) {
-          console.error('Error getting sigCanvas B:', err)
-        }
-      }
+      const isDualContract = contract?.contractType === 'dual' || (contract as any)?.isDual || (!!contract?.sharedWithCustomerId && contract?.contractType !== 'group' && contract?.contractType !== 'shared')
+      const hasRequiredSignatures = Boolean(effectiveSigA) && (!isDualContract || Boolean(effectiveSigB))
 
       const origTotal = contract?.totalSessions || 0
       const origRemaining = contract?.remainingSessions || 0
@@ -413,8 +391,16 @@ export function CustomerContractModal({
         ? calculatedRemaining
         : Number(editRemainingSessions)
 
-      const isCompleted = finalRemainingSessions <= 0
-      const newStatus = isCompleted ? 'completed' : (contract?.status === 'completed' && finalRemainingSessions > 0 ? 'active' : contract?.status || 'active')
+      let newStatus: string
+      if (!hasRequiredSignatures) {
+        newStatus = 'pending_signature'
+      } else if (finalRemainingSessions <= 0) {
+        newStatus = 'completed'
+      } else if (contract?.status === 'cancelled') {
+        newStatus = 'cancelled'
+      } else {
+        newStatus = 'active'
+      }
 
       let updatedGroupMemberQuotas: Record<string, any> | undefined = undefined
       if (contract?.contractType === 'group' && contract.groupMemberQuotas) {
@@ -461,8 +447,8 @@ export function CustomerContractModal({
         monthlyDueDay: Number(editMonthlyDueDay),
         monthlyDueAmount: Number(editMonthlyDueAmount),
         
-        signatureDataUrl: finalSigA,
-        secondarySignatureDataUrl: finalSigB,
+        signatureDataUrl: effectiveSigA,
+        secondarySignatureDataUrl: effectiveSigB,
         
         updatedAt: serverTimestamp(),
       }
@@ -476,6 +462,7 @@ export function CustomerContractModal({
       if (contract) {
         contract.totalSessions = Number(editTotalSessions)
         contract.remainingSessions = finalRemainingSessions
+        contract.status = newStatus as any
         contract.totalAmount = Number(editTotalAmount)
         contract.pricePerSession = computedPricePerSession
         contract.paidAmount = finalPaidAmount
@@ -493,8 +480,8 @@ export function CustomerContractModal({
         contract.coachRatio = Number(editCoachRatio)
         contract.monthlyDueDay = Number(editMonthlyDueDay)
         contract.monthlyDueAmount = Number(editMonthlyDueAmount)
-        contract.signatureDataUrl = finalSigA
-        contract.secondarySignatureDataUrl = finalSigB
+        contract.signatureDataUrl = effectiveSigA
+        contract.secondarySignatureDataUrl = effectiveSigB
         if (updatedGroupMemberQuotas) {
           contract.groupMemberQuotas = updatedGroupMemberQuotas
         }
