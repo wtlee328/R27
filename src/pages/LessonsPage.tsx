@@ -113,6 +113,7 @@ export default function LessonsPage() {
       const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
       const taughtLessons = (records || []).filter((lr) => lr.trainerId === t.id)
+      const allTimeUsedLessons = taughtLessons.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
 
       const filteredLessonsForMonth = selectedMonth === 'all'
         ? taughtLessons
@@ -123,6 +124,7 @@ export default function LessonsPage() {
       return {
         ...t,
         systemLessons,
+        allTimeUsedLessons,
         totalUsedLessons: usedLessons,
       }
     })
@@ -401,27 +403,35 @@ export default function LessonsPage() {
                     </div>
 
                     {/* Trainer Stats Section */}
-                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 sm:gap-10 mt-4 lg:mt-0">
-                      {/* Total Used Lessons */}
-                      <div className="space-y-1 min-w-[100px]">
-                        <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">
-                          {selectedMonth === 'all' ? '累計已銷' : '本月已銷'}
-                        </p>
-                        <p className="text-xs font-bold text-stone-700 tabular-nums">
-                          {t.totalUsedLessons || 0} 堂
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-6 sm:gap-8 mt-4 lg:mt-0">
+                      {/* Trainer Cumulative Used Lessons */}
+                      <div className="space-y-1 min-w-[95px]">
+                        <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">教練累積銷課</p>
+                        <p className="text-xs font-black text-stone-900 font-mono tabular-nums">
+                          {t.allTimeUsedLessons || 0} 堂
                         </p>
                       </div>
 
+                      {/* Filtered Month Used Lessons (Only show if a specific month is selected) */}
+                      {selectedMonth !== 'all' && (
+                        <div className="space-y-1 min-w-[95px]">
+                          <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">本月已銷堂數</p>
+                          <p className="text-xs font-bold text-orange-600 font-mono tabular-nums">
+                            {t.totalUsedLessons || 0} 堂
+                          </p>
+                        </div>
+                      )}
+
                       {/* System Remaining Lessons */}
-                      <div className="space-y-1 min-w-[100px]">
+                      <div className="space-y-1 min-w-[95px]">
                         <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">系統剩餘堂數</p>
-                        <p className="text-xs font-bold text-stone-900 tabular-nums">
+                        <p className="text-xs font-bold text-stone-700 tabular-nums">
                           {t.systemLessons || 0} 堂
                         </p>
                       </div>
 
                       {/* Dedicated Students */}
-                      <div className="space-y-1 min-w-[90px]">
+                      <div className="space-y-1 min-w-[80px]">
                         <p className="text-[9px] font-black text-stone-300 uppercase tracking-[0.2em]">專屬學員</p>
                         <p className="text-xs font-bold text-stone-700 tabular-nums">
                           {assignedStudentCount} 人

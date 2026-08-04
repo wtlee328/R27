@@ -317,9 +317,6 @@ export function TrainerDetailsModal({
                           <span className={cn('font-bold text-sm truncate', isSelected ? 'text-white' : 'text-stone-900')}>
                             {attendingNames}
                           </span>
-                          <span className="text-[9px] font-bold text-stone-600 bg-stone-100 border border-stone-200 rounded-full px-2 py-0.5">
-                            累計已銷 {cumSessions} 堂
-                          </span>
                           {isSubstitute && (
                             <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">代課</span>
                           )}
@@ -366,6 +363,18 @@ export function TrainerDetailsModal({
                   const activeContracts = studentContracts.filter(c => c.status === 'active' || c.remainingSessions > 0)
                   const totalRemaining = activeContracts.reduce((sum, c) => sum + c.remainingSessions, 0)
 
+                  const studentCumSessions = records.filter(l => 
+                    (l.customerId === s.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(s.id)))
+                  ).reduce((sum, l) => {
+                    if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+                      const custDed = l.deductions.find((d: any) => d.customerId === s.id)
+                      if (custDed && typeof custDed.amount === 'number') {
+                        return sum + custDed.amount
+                      }
+                    }
+                    return sum + Number(l.sessionAmount || 1)
+                  }, 0)
+
                   return (
                     <div key={s.id} className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3 hover:border-stone-200 transition-colors">
                       {/* Student header */}
@@ -379,9 +388,15 @@ export function TrainerDetailsModal({
                             <p className="text-xs text-stone-400 font-mono">{s.phone}</p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">剩餘堂數</p>
-                          <p className="text-lg font-black text-stone-900 tabular-nums">{totalRemaining}</p>
+                        <div className="flex items-center gap-4 text-right shrink-0">
+                          <div>
+                            <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">累積已銷</p>
+                            <p className="text-base font-black text-brand-600 tabular-nums">{studentCumSessions} <span className="text-xs font-normal text-stone-400">堂</span></p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">剩餘堂數</p>
+                            <p className="text-base font-black text-stone-900 tabular-nums">{totalRemaining} <span className="text-xs font-normal text-stone-400">堂</span></p>
+                          </div>
                         </div>
                       </div>
 
