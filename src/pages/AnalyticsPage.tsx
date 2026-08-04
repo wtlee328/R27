@@ -41,7 +41,7 @@ import { useCenterStore } from '@/stores/centerStore'
 import type { Customer, TrialRecord, Trainer } from '../types'
 import { normalizeCashFlowRecord } from '../components/cashflow/CashFlowTable'
 
-type RfmSortKey = 'frequency' | 'monetary' | 'recency'
+type RfmSortKey = 'frequency' | 'totalLessons' | 'monetary' | 'recency'
 
 export default function AnalyticsPage() {
   const { centerId } = useCenterStore()
@@ -440,7 +440,15 @@ export default function AnalyticsPage() {
         ? Math.floor((now.getTime() - lastLessonDate.getTime()) / (1000 * 60 * 60 * 24))
         : 999
 
-      const totalLessonsCount = custLessons.reduce((sum, l) => sum + Number(l.sessionAmount || 1), 0)
+      const totalLessonsCount = custLessons.reduce((sum, l) => {
+        if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+          const custDed = l.deductions.find((d: any) => d.customerId === cust.id)
+          if (custDed && typeof custDed.amount === 'number') {
+            return sum + custDed.amount
+          }
+        }
+        return sum + Number(l.sessionAmount || 1)
+      }, 0)
 
       // Dynamic weekly frequency calculation based on active timeframe span
       let frequency = 0
@@ -477,6 +485,8 @@ export default function AnalyticsPage() {
       let diff = 0
       if (rfmSortBy === 'frequency') {
         diff = b.frequency - a.frequency
+      } else if (rfmSortBy === 'totalLessons') {
+        diff = b.totalLessonsCount - a.totalLessonsCount
       } else if (rfmSortBy === 'monetary') {
         diff = b.monetary - a.monetary
       } else if (rfmSortBy === 'recency') {
@@ -813,7 +823,7 @@ export default function AnalyticsPage() {
                   會員活躍度 RFM 模型排行榜
                 </CardTitle>
                 <CardDescription className="text-xs text-stone-500">
-                  R (最近到店) | F (每週平均上課頻率) | M (累計會籍與合約貢獻金額)
+                  R (最近到店) | F (每週平均上課頻率) | 歷史堂數 (累計銷課堂數) | M (累計會籍與合約貢獻金額)
                 </CardDescription>
               </div>
 
@@ -830,6 +840,8 @@ export default function AnalyticsPage() {
                   options={[
                     { value: 'frequency-desc', label: '按每週頻率 (F - 高至低)' },
                     { value: 'frequency-asc', label: '按每週頻率 (F - 低至高)' },
+                    { value: 'totalLessons-desc', label: '按歷史堂數 (高至低)' },
+                    { value: 'totalLessons-asc', label: '按歷史堂數 (低至高)' },
                     { value: 'monetary-desc', label: '按消費貢獻 (M - 高至低)' },
                     { value: 'monetary-asc', label: '按消費貢獻 (M - 低至高)' },
                     { value: 'recency-asc', label: '按最近到店 (R - 近至遠)' },
@@ -892,6 +904,28 @@ export default function AnalyticsPage() {
                     </TableHead>
                     <TableHead className="text-right">
                       <button
+                        onClick={() => handleRfmSort('totalLessons')}
+                        className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
+                          rfmSortBy === 'totalLessons'
+                            ? 'bg-orange-50 text-orange-600 font-black border border-orange-200/80 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
+                        }`}
+                        title={rfmSortBy === 'totalLessons' ? (rfmSortOrder === 'desc' ? '目前：高至低（點擊切換為低至高）' : '目前：低至高（點擊切換為高至低）') : '點擊依歷史堂數排序'}
+                      >
+                        <span>歷史堂數</span>
+                        {rfmSortBy === 'totalLessons' ? (
+                          rfmSortOrder === 'desc' ? (
+                            <RiArrowDownLine className="w-3.5 h-3.5 text-orange-600" />
+                          ) : (
+                            <RiArrowUpLine className="w-3.5 h-3.5 text-orange-600" />
+                          )
+                        ) : (
+                          <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-400" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <button
                         onClick={() => handleRfmSort('monetary')}
                         className={`inline-flex items-center gap-1 font-bold text-xs transition-all px-2 py-1 rounded-lg ${
                           rfmSortBy === 'monetary'
@@ -928,7 +962,10 @@ export default function AnalyticsPage() {
                       <TableCell className="font-mono text-xs text-stone-500">{m.customer.phone}</TableCell>
                       <TableCell className="text-right font-mono text-xs text-stone-700">{m.recencyDays}</TableCell>
                       <TableCell className="text-right font-mono font-bold text-stone-950 text-xs">
-                        {m.frequency} 次/週 ({m.totalLessonsCount} 堂)
+                        {m.frequency} 次/週
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-bold text-stone-900 text-xs">
+                        {m.totalLessonsCount} 堂
                       </TableCell>
                       <TableCell className="text-right font-mono font-black text-stone-950 text-xs">
                         NT$ {Number(m.monetary || 0).toLocaleString()}
