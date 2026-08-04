@@ -797,12 +797,17 @@ export function CustomerFormModal({
         return
       }
       const isGroup = selectedContract.contractType === 'group'
-      const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
-      const currentCount = isGroup
+      const isShared = selectedContract.contractType === 'shared'
+      const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || (!!selectedContract.sharedWithCustomerId && selectedContract.contractType !== 'shared' && selectedContract.contractType !== 'group'))
+      const currentCount = (isGroup || isShared)
         ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
         : isDual ? 2 : 1
       if (isDual) {
-        alert('此雙人共享合約成員已滿 (2/2人)，無法再進行新增綁定！')
+        alert('此雙人合約成員已滿 (2/2人)，無法再進行新增綁定！')
+        return
+      }
+      if (isShared && currentCount >= 4) {
+        alert('此共享合約成員已達人數上限 (4/4人)，無法再進行新增綁定！')
         return
       }
       if (isGroup && currentCount >= 6) {
@@ -2136,21 +2141,22 @@ export function CustomerFormModal({
                                       const isGroup = c.contractType === 'group'
                                       const isShared = c.contractType === 'shared'
                                       const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group' && c.contractType !== 'shared'))
+                                      const maxCap = isGroup ? 6 : (isShared ? 4 : (isDual ? 2 : 1))
                                       const currentMemberCount = (isGroup || isShared)
                                         ? (Object.keys(c.groupMemberQuotas || {}).length || (Array.isArray(c.customerIds) ? c.customerIds.length : 1))
                                         : isDual ? 2 : 1
-                                      const isFull = (isGroup || isShared) ? currentMemberCount >= 6 : isDual ? true : false
+                                      const isFull = currentMemberCount >= maxCap
                                       const isAlreadyMember = isCustomerAlreadyInContract(c)
 
                                       const tagText = isGroup ? '[團體]' : isShared ? '[共享]' : isDual ? '[雙人]' : '[個人]'
                                       const statusSuffix = isAlreadyMember
                                         ? ' (此學員已在此合約中 - 無法重複加入)'
                                         : isFull
-                                        ? ` (已滿額 ${isGroup ? currentMemberCount + '/6' : '2/2'}人 - 無法綁定)`
+                                        ? ` (已滿額 ${currentMemberCount}/${maxCap}人 - 無法綁定)`
                                         : isDual
                                         ? ''
-                                        : isGroup
-                                        ? ` (${currentMemberCount}/6人)`
+                                        : isGroup || isShared
+                                        ? ` (${currentMemberCount}/${maxCap}人)`
                                         : ' (綁定後轉雙人合約)'
 
                                       return (
@@ -2169,10 +2175,11 @@ export function CustomerFormModal({
                                 const isGroup = selectedContract.contractType === 'group'
                                 const isShared = selectedContract.contractType === 'shared'
                                 const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || (!!selectedContract.sharedWithCustomerId && selectedContract.contractType !== 'shared' && selectedContract.contractType !== 'group'))
+                                const maxCap = isGroup ? 6 : (isShared ? 4 : (isDual ? 2 : 1))
                                 const currentCount = (isGroup || isShared)
                                   ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
                                   : isDual ? 2 : 1
-                                const isFull = (isGroup || isShared) ? currentCount >= 6 : isDual ? true : false
+                                const isFull = currentCount >= maxCap
 
                                 if (isGroup) {
                                   return (
