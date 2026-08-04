@@ -209,10 +209,21 @@ export function useCustomers() {
 
     return contracts.filter(c => {
       if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
-      if (!c.endDate) return false
-      const end = c.endDate.toDate()
-      // Expired or expiring within next 30 days
-      return end <= thirtyDaysFromNow
+      
+      let isExpiringSoon = false
+      if (c.endDate) {
+        const end = (c.endDate as any).toDate ? (c.endDate as any).toDate() : new Date(c.endDate)
+        if (!isNaN(end.getTime()) && end <= thirtyDaysFromNow) {
+          isExpiringSoon = true
+        }
+      }
+
+      let isLowSessions = false
+      if (typeof c.remainingSessions === 'number' && c.remainingSessions < 5) {
+        isLowSessions = true
+      }
+
+      return isExpiringSoon || isLowSessions
     }).length
   }, [contracts])
 

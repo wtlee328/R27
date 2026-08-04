@@ -74,16 +74,36 @@ export default function TrainerCustomersPage() {
     const thirtyDaysFromNow = new Date()
     thirtyDaysFromNow.setDate(now.getDate() + 30)
 
-    const expiringCustIds = new Set(
-      myContracts
-        .filter(c => {
-          if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
-          if (!c.endDate) return false
-          const end = c.endDate.toDate()
-          return end <= thirtyDaysFromNow
-        })
-        .map(c => c.customerId)
-    )
+    const expiringCustIds = new Set<string>()
+    myContracts.forEach(c => {
+      if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return
+
+      let isExpiringSoon = false
+      if (c.endDate) {
+        const end = (c.endDate as any).toDate ? (c.endDate as any).toDate() : new Date(c.endDate)
+        if (!isNaN(end.getTime()) && end <= thirtyDaysFromNow) {
+          isExpiringSoon = true
+        }
+      }
+
+      const ids: string[] = []
+      if (c.customerId) ids.push(c.customerId)
+      if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
+      if (c.customerIds) ids.push(...c.customerIds)
+
+      ids.forEach(id => {
+        let isLowSessions = false
+        if (c.contractType === 'group' && c.groupMemberQuotas?.[id]) {
+          if (c.groupMemberQuotas[id].remainingSessions < 5) isLowSessions = true
+        } else {
+          if (typeof c.remainingSessions === 'number' && c.remainingSessions < 5) isLowSessions = true
+        }
+
+        if (isExpiringSoon || isLowSessions) {
+          expiringCustIds.add(id)
+        }
+      })
+    })
     return myCustomers.filter(cust => expiringCustIds.has(cust.id)).length
   }, [myCustomers, myContracts])
 
@@ -192,16 +212,36 @@ export default function TrainerCustomersPage() {
       const thirtyDaysFromNow = new Date()
       thirtyDaysFromNow.setDate(now.getDate() + 30)
 
-      const expiringCustomerIds = new Set(
-        myContracts
-          .filter(c => {
-            if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return false
-            if (!c.endDate) return false
-            const end = c.endDate.toDate()
-            return end <= thirtyDaysFromNow
-          })
-          .map(c => c.customerId)
-      )
+      const expiringCustomerIds = new Set<string>()
+      myContracts.forEach(c => {
+        if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return
+
+        let isExpiringSoon = false
+        if (c.endDate) {
+          const end = (c.endDate as any).toDate ? (c.endDate as any).toDate() : new Date(c.endDate)
+          if (!isNaN(end.getTime()) && end <= thirtyDaysFromNow) {
+            isExpiringSoon = true
+          }
+        }
+
+        const ids: string[] = []
+        if (c.customerId) ids.push(c.customerId)
+        if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
+        if (c.customerIds) ids.push(...c.customerIds)
+
+        ids.forEach(id => {
+          let isLowSessions = false
+          if (c.contractType === 'group' && c.groupMemberQuotas?.[id]) {
+            if (c.groupMemberQuotas[id].remainingSessions < 5) isLowSessions = true
+          } else {
+            if (typeof c.remainingSessions === 'number' && c.remainingSessions < 5) isLowSessions = true
+          }
+
+          if (isExpiringSoon || isLowSessions) {
+            expiringCustomerIds.add(id)
+          }
+        })
+      })
       return myCustomers.filter(cust => expiringCustomerIds.has(cust.id))
     }
 
@@ -258,7 +298,7 @@ export default function TrainerCustomersPage() {
           className={`cursor-pointer transition-all hover:scale-[1.01] ${activeFilter === 'active' ? 'ring-2 ring-brand-500' : ''}`}
         />
         <StatCard
-          title="合約即將到期"
+          title="即將到期／堂數<5"
           value={loading ? '...' : String(expiringContractsCount)}
           icon={FileText}
           iconColor="text-amber-600"
@@ -299,7 +339,7 @@ export default function TrainerCustomersPage() {
           <h2 className="text-lg font-bold text-stone-800">
             {activeFilter === 'all' && '學員名單'}
             {activeFilter === 'active' && '合約有效學員名單'}
-            {activeFilter === 'expiring' && '合約即將到期學員名單'}
+            {activeFilter === 'expiring' && '即將到期／堂數<5學員名單'}
             {activeFilter === 'birthday' && '本月壽星學員名單'}
             {activeFilter === 'pending_collection' && '分期款待收款名單'}
           </h2>

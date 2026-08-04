@@ -163,17 +163,37 @@ export default function CustomersPage() {
     if (activeFilter === 'expiring') {
       const now = new Date()
       const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-      const expiringCustomerIds = new Set(
-        contracts
-          .filter(c => c.status === 'active' && c.endDate && c.endDate.toDate() <= in30Days)
-          .flatMap(c => {
-            const ids: string[] = []
-            if (c.customerId) ids.push(c.customerId)
-            if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
-            if (c.customerIds) ids.push(...c.customerIds)
-            return ids
-          })
-      )
+      const expiringCustomerIds = new Set<string>()
+
+      contracts.forEach(c => {
+        if (c.status !== 'active' && c.status !== 'expiring' && c.status !== 'expired') return
+        
+        let isExpiringSoon = false
+        if (c.endDate) {
+          const end = (c.endDate as any).toDate ? (c.endDate as any).toDate() : new Date(c.endDate)
+          if (!isNaN(end.getTime()) && end <= in30Days) {
+            isExpiringSoon = true
+          }
+        }
+
+        const ids: string[] = []
+        if (c.customerId) ids.push(c.customerId)
+        if (c.primaryCustomerId) ids.push(c.primaryCustomerId)
+        if (c.customerIds) ids.push(...c.customerIds)
+
+        ids.forEach(id => {
+          let isLowSessions = false
+          if (c.contractType === 'group' && c.groupMemberQuotas?.[id]) {
+            if (c.groupMemberQuotas[id].remainingSessions < 5) isLowSessions = true
+          } else {
+            if (typeof c.remainingSessions === 'number' && c.remainingSessions < 5) isLowSessions = true
+          }
+
+          if (isExpiringSoon || isLowSessions) {
+            expiringCustomerIds.add(id)
+          }
+        })
+      })
       return customers.filter(c => expiringCustomerIds.has(c.id))
     }
 
@@ -238,10 +258,10 @@ export default function CustomersPage() {
           isActive={activeFilter === 'active'}
         />
         <StatCard 
-          title="即將到期" 
+          title="即將到期／堂數<5" 
           value={expiringContractsCount.toString()} 
           icon={RiAlertLine} 
-          subtitle="未來 30 天內" 
+          subtitle="30天內到期或堂數<5" 
           onClick={() => setActiveFilter('expiring')}
           isActive={activeFilter === 'expiring'}
           iconColor="text-amber-600"
@@ -267,7 +287,7 @@ export default function CustomersPage() {
               篩選中：
               {activeFilter === 'active' && '有效合約學員'}
               {activeFilter === 'pending_collection' && '待收分期合約學員'}
-              {activeFilter === 'expiring' && '合約即將到期學員'}
+              {activeFilter === 'expiring' && '即將到期／堂數<5學員'}
               {activeFilter === 'birthday' && '本月壽星學員'}
               {` (${filteredCustomers.length} 人)`}
             </span>
