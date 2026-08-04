@@ -2167,11 +2167,12 @@ export function CustomerFormModal({
 
                               {selectedContract && (() => {
                                 const isGroup = selectedContract.contractType === 'group'
-                                const isDual = !isGroup && (selectedContract.contractType === 'dual' || !!selectedContract.sharedWithCustomerId || (Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length >= 2))
-                                const currentCount = isGroup
+                                const isShared = selectedContract.contractType === 'shared'
+                                const isDual = !isGroup && !isShared && (selectedContract.contractType === 'dual' || (!!selectedContract.sharedWithCustomerId && selectedContract.contractType !== 'shared' && selectedContract.contractType !== 'group'))
+                                const currentCount = (isGroup || isShared)
                                   ? (Object.keys(selectedContract.groupMemberQuotas || {}).length || (Array.isArray(selectedContract.customerIds) ? selectedContract.customerIds.length : 1))
                                   : isDual ? 2 : 1
-                                const isFull = isGroup ? currentCount >= 6 : isDual ? true : false
+                                const isFull = (isGroup || isShared) ? currentCount >= 6 : isDual ? true : false
 
                                 if (isGroup) {
                                   return (
@@ -2227,18 +2228,59 @@ export function CustomerFormModal({
                                   )
                                 }
 
+                                if (isShared) {
+                                  return (
+                                    <div className="mt-4 p-4 bg-blue-50/70 rounded-2xl border border-blue-200/80 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
+                                      <div className="flex items-center justify-between border-b border-blue-200/60 pb-2">
+                                        <h4 className="font-bold text-blue-950 text-sm flex items-center gap-1.5">
+                                          <RiUserSharedLine className="w-4 h-4 text-blue-600" />
+                                          <span>👥 多人共享合約新增成員明細</span>
+                                        </h4>
+                                        <span className={cn(
+                                          "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                                          isFull
+                                            ? "bg-red-50 text-red-700 border-red-200"
+                                            : "bg-blue-100 text-blue-800 border-blue-200"
+                                        )}>
+                                          {isFull ? `成員滿額 (${currentCount}/6人)` : `現有成員: ${currentCount}/6人 (尚有 ${6 - currentCount} 個空位)`}
+                                        </span>
+                                      </div>
+
+                                      {!isFull && (
+                                        <div className="p-2.5 bg-blue-100/70 text-blue-900 rounded-xl text-[11px] font-bold border border-blue-200 flex items-center gap-1.5">
+                                          <span>✨ 新學員「{form.watch('name') || '新學員'}」將新增綁定為共享合約成員之一。</span>
+                                        </div>
+                                      )}
+
+                                      {isFull && (
+                                        <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
+                                          <RiAlertLine className="w-4 h-4 shrink-0" />
+                                          <span>此共享合約成員人數已達上限 (6人)，無法再新增綁定！</span>
+                                        </div>
+                                      )}
+
+                                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1 text-[11px] text-stone-600">
+                                        <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
+                                        <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                        <div>合約總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
+                                        <div>合約剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
+                                      </div>
+                                    </div>
+                                  )
+                                }
+
                                 if (isDual) {
                                   return (
                                     <div className="mt-4 p-4 bg-amber-50/70 rounded-2xl border border-amber-200/80 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
                                       <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
-                                        <h4 className="font-bold text-amber-950 text-sm">👥 雙人共享合約明細</h4>
+                                        <h4 className="font-bold text-amber-950 text-sm">👥 雙人合約明細</h4>
                                         <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-red-200">
                                           已滿額 (2/2人)
                                         </span>
                                       </div>
                                       <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
                                         <RiAlertLine className="w-4 h-4 shrink-0" />
-                                        <span>此雙人共享合約成員已滿 (2/2人)，無法再新增綁定學員。</span>
+                                        <span>此雙人合約成員已滿 (2/2人)，無法再新增綁定學員。</span>
                                       </div>
                                       <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1 text-[11px]">
                                         <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
