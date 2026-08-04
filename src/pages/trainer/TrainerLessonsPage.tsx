@@ -53,10 +53,10 @@ export default function TrainerLessonsPage() {
   const panelRef = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(1) // 1: Select Customer, 2: Select Contract & Trainer & Details
 
-  // Filter records for current trainer
+  // Filter records for current trainer (only actual teaching trainer)
   const myRecords = useMemo(() => {
     if (!currentTrainerId) return records
-    return records.filter(r => r.trainerId === currentTrainerId || r.contractTrainerId === currentTrainerId)
+    return records.filter(r => r.trainerId === currentTrainerId)
   }, [records, currentTrainerId])
 
   // Sorting states for lesson records (Date, Student Name)
