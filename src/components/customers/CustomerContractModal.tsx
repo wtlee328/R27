@@ -160,13 +160,12 @@ export function CustomerContractModal({
 
         const fetchedMembers = docsSnaps.filter((m): m is Customer => m !== null)
         
-        // Ensure primary customer is always Member 1 at index 0
-        const primaryIndex = fetchedMembers.findIndex(m => m.id === customer.id)
+        // Ensure REAL primary customer (true primary student) is always Member 1 at index 0
+        const truePrimaryId = contract.primaryCustomerId || contract.customerId || (Array.isArray(contract.customerIds) && contract.customerIds.length > 0 ? contract.customerIds[0] : customer.id)
+        const primaryIndex = fetchedMembers.findIndex(m => m.id === truePrimaryId)
         if (primaryIndex > 0) {
           const [primary] = fetchedMembers.splice(primaryIndex, 1)
           fetchedMembers.unshift(primary)
-        } else if (primaryIndex === -1) {
-          fetchedMembers.unshift(customer)
         }
 
         setAllContractMembers(fetchedMembers)
@@ -188,7 +187,8 @@ export function CustomerContractModal({
   // Sync edit state
   React.useEffect(() => {
     if (contract && open && customer) {
-      const primaryTrainer = contract.studentTrainers?.[customer.id] || contract.trainerId || customer.trainerId || ''
+      const primaryMember = allContractMembers[0] || customer
+      const primaryTrainer = contract.studentTrainers?.[primaryMember.id] || contract.trainerId || primaryMember.trainerId || ''
       setEditTrainerId(primaryTrainer)
 
       const partnerId = partner?.id || (allContractMembers.length > 1 ? allContractMembers[1].id : null)
