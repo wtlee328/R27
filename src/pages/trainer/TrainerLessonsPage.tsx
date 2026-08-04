@@ -827,7 +827,7 @@ export default function TrainerLessonsPage() {
           {/* Lesson Records List */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1.2fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
+            <div className="grid grid-cols-[1.8fr_1fr_1.2fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
               <button
                 type="button"
                 onClick={() => {
@@ -844,6 +844,7 @@ export default function TrainerLessonsPage() {
                 {sortBy === 'name' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
               </button>
               <span>教練</span>
+              <span>累積已銷堂數</span>
               <button
                 type="button"
                 onClick={() => {
@@ -874,6 +875,19 @@ export default function TrainerLessonsPage() {
                   const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
                   const isSelected = selectedRecord?.id === record.id
 
+                  const targetCustId = record.customerId || (record.attendingCustomerIds && record.attendingCustomerIds[0])
+                  const cumSessions = (records || []).filter(l => 
+                    (l.customerId === targetCustId || (l.attendingCustomerIds && l.attendingCustomerIds.includes(targetCustId)))
+                  ).reduce((sum, l) => {
+                    if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+                      const custDed = l.deductions.find((d: any) => d.customerId === targetCustId)
+                      if (custDed && typeof custDed.amount === 'number') {
+                        return sum + custDed.amount
+                      }
+                    }
+                    return sum + Number(l.sessionAmount || 1)
+                  }, 0)
+
                   return (
                     <div
                       key={record.id}
@@ -890,7 +904,7 @@ export default function TrainerLessonsPage() {
                         }
                       }}
                       className={cn(
-                        "grid grid-cols-[2fr_1.2fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
+                        "grid grid-cols-[1.8fr_1fr_1.2fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
                         isSelected
                           ? "bg-brand-50/60 border-l-2 border-brand-500"
                           : "hover:bg-stone-50 border-l-2 border-transparent"
@@ -908,6 +922,9 @@ export default function TrainerLessonsPage() {
                           </span>
                         )}
                       </div>
+                      <span className="text-xs font-bold text-stone-700 font-mono">
+                        {cumSessions} 堂
+                      </span>
                       <span className="text-sm text-stone-500 flex items-center gap-1.5">
                         <RiCalendarLine className="h-3.5 w-3.5 text-stone-400" />
                         {formatRecordDate(record.sessionDate)}

@@ -263,6 +263,19 @@ export function TrainerDetailsModal({
                     ? r.attendingCustomerNames.join(' & ')
                     : r.customerName
 
+                  const targetCustId = r.customerId || (r.attendingCustomerIds && r.attendingCustomerIds[0])
+                  const cumSessions = records.filter(l => 
+                    (l.customerId === targetCustId || (l.attendingCustomerIds && l.attendingCustomerIds.includes(targetCustId)))
+                  ).reduce((sum, l) => {
+                    if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+                      const custDed = l.deductions.find((d: any) => d.customerId === targetCustId)
+                      if (custDed && typeof custDed.amount === 'number') {
+                        return sum + custDed.amount
+                      }
+                    }
+                    return sum + Number(l.sessionAmount || 1)
+                  }, 0)
+
                   return (
                     <div
                       key={r.id}
@@ -303,6 +316,9 @@ export function TrainerDetailsModal({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={cn('font-bold text-sm truncate', isSelected ? 'text-white' : 'text-stone-900')}>
                             {attendingNames}
+                          </span>
+                          <span className="text-[9px] font-bold text-stone-600 bg-stone-100 border border-stone-200 rounded-full px-2 py-0.5">
+                            累計已銷 {cumSessions} 堂
                           </span>
                           {isSubstitute && (
                             <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">代課</span>
