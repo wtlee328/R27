@@ -59,6 +59,51 @@ export default function TrainerLessonsPage() {
     return records.filter(r => r.trainerId === currentTrainerId)
   }, [records, currentTrainerId])
 
+  // Date filtering state for top metrics (Default: current year & current month)
+  const [metricsYear, setMetricsYear] = useState(() => new Date().getFullYear())
+  const [metricsMonth, setMetricsMonth] = useState(() => new Date().getMonth() + 1)
+
+  // 1. Monthly total used sessions for current trainer in metricsYear & metricsMonth
+  const monthlyLessonsCount = useMemo(() => {
+    return myRecords.reduce((sum, r) => {
+      const dateVal = r.sessionDate || (r as any).date
+      if (!dateVal) return sum
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
+      if (d.getFullYear() === metricsYear && (d.getMonth() + 1) === metricsMonth) {
+        return sum + Number(r.sessionAmount || 1)
+      }
+      return sum
+    }, 0)
+  }, [myRecords, metricsYear, metricsMonth])
+
+  // 2. Yearly total used sessions for current trainer in metricsYear
+  const yearlyLessonsCount = useMemo(() => {
+    return myRecords.reduce((sum, r) => {
+      const dateVal = r.sessionDate || (r as any).date
+      if (!dateVal) return sum
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
+      if (d.getFullYear() === metricsYear) {
+        return sum + Number(r.sessionAmount || 1)
+      }
+      return sum
+    }, 0)
+  }, [myRecords, metricsYear])
+
+  // 3. Total remaining sessions across trainer's assigned customer contracts
+  const totalRemainingLessonsCount = useMemo(() => {
+    if (!currentTrainerId) return 0
+    const myStudentIds = customers.filter(c => c.trainerId === currentTrainerId).map(c => c.id)
+    const myContracts = venueContracts.filter(c => 
+      myStudentIds.includes(c.customerId) || 
+      myStudentIds.includes(c.primaryCustomerId) ||
+      c.trainerId === currentTrainerId
+    )
+    return myContracts.reduce((sum, c) => {
+      if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return sum
+      return sum + Number(c.remainingSessions || 0)
+    }, 0)
+  }, [customers, venueContracts, currentTrainerId])
+
   // Sorting states for lesson records (Date, Student Name)
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -369,6 +414,87 @@ export default function TrainerLessonsPage() {
           </Button>
         )}
       </div>
+
+      {/* ---- Top Metrics Cards ---- */}
+      {!isRecording && (
+        <div className="space-y-3.5">
+          {/* Year & Month Selectors */}
+          <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-3 rounded-2xl border border-stone-200/80 shadow-xs">
+            <span className="text-xs font-bold text-stone-600 flex items-center gap-1.5">
+              <RiCalendarLine className="w-4 h-4 text-orange-500" />
+              數據統計時間範圍
+            </span>
+            <div className="flex items-center gap-2">
+              <select
+                value={metricsYear}
+                onChange={(e) => setMetricsYear(Number(e.target.value))}
+                className="h-8 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+              >
+                {[2024, 2025, 2026, 2027].map(y => (
+                  <option key={y} value={y}>{y} 年</option>
+                ))}
+              </select>
+              <select
+                value={metricsMonth}
+                onChange={(e) => setMetricsMonth(Number(e.target.value))}
+                className="h-8 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <option key={m} value={m}>{m} 月</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Metrics Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* 月總堂數 */}
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-stone-400">
+                  {metricsYear}年{metricsMonth}月 銷課堂數
+                </p>
+                <p className="text-2xl font-black text-stone-900 font-mono mt-0.5 tabular-nums">
+                  {monthlyLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
+                <RiTimeLine className="w-5 h-5" />
+              </div>
+            </div>
+
+            {/* 年總堂數 */}
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-stone-400">
+                  {metricsYear} 年度 累計銷課堂數
+                </p>
+                <p className="text-2xl font-black text-stone-900 font-mono mt-0.5 tabular-nums">
+                  {yearlyLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-700 shrink-0">
+                <RiCalendarCheckLine className="w-5 h-5" />
+              </div>
+            </div>
+
+            {/* 總剩餘堂數 */}
+            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-stone-400">
+                  專屬學員 總剩餘堂數
+                </p>
+                <p className="text-2xl font-black text-emerald-600 font-mono mt-0.5 tabular-nums">
+                  {totalRemainingLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <RiFileTextLine className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isRecording ? (
         /* ---- Recording Mode ---- */
