@@ -19,6 +19,7 @@ import {
   RiInformationLine,
   RiLoader4Line,
   RiLockLine,
+  RiArrowUpDownLine,
 } from '@remixicon/react'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
@@ -57,6 +58,33 @@ export default function TrainerLessonsPage() {
     if (!currentTrainerId) return records
     return records.filter(r => r.trainerId === currentTrainerId || r.contractTrainerId === currentTrainerId)
   }, [records, currentTrainerId])
+
+  // Sorting states for lesson records (Date, Student Name)
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  const sortedRecords = useMemo(() => {
+    return [...myRecords].sort((a, b) => {
+      if (sortBy === 'date') {
+        const timeA = a.sessionDate
+          ? ((a.sessionDate as any).toMillis ? (a.sessionDate as any).toMillis() : new Date(a.sessionDate as any).getTime())
+          : 0
+        const timeB = b.sessionDate
+          ? ((b.sessionDate as any).toMillis ? (b.sessionDate as any).toMillis() : new Date(b.sessionDate as any).getTime())
+          : 0
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB
+      } else {
+        const nameA = a.attendingCustomerNames && a.attendingCustomerNames.length > 0
+          ? a.attendingCustomerNames.join('、')
+          : (a.customerName || '')
+        const nameB = b.attendingCustomerNames && b.attendingCustomerNames.length > 0
+          ? b.attendingCustomerNames.join('、')
+          : (b.customerName || '')
+        const cmp = nameA.localeCompare(nameB, 'zh-Hant')
+        return sortOrder === 'desc' ? -cmp : cmp
+      }
+    })
+  }, [myRecords, sortBy, sortOrder])
 
   // Form states
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -765,30 +793,80 @@ export default function TrainerLessonsPage() {
       ) : (
         /* ---- History/List Mode ---- */
         <div className="space-y-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
                 <RiTimeLine className="h-5 w-5 text-brand-500" />
-                最近銷課紀錄
+                最近銷課紀錄 ({sortedRecords.length})
               </h2>
+            </div>
+
+            {/* Sorting Dropdown */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-stone-500 font-semibold flex items-center gap-1">
+                <RiArrowUpDownLine className="w-3.5 h-3.5" />
+                排序方式：
+              </span>
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => {
+                  const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
+                  setSortBy(field)
+                  setSortOrder(order)
+                }}
+                className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
+              >
+                <option value="date-desc">日期（由新到舊）</option>
+                <option value="date-asc">日期（由舊到新）</option>
+                <option value="name-asc">學生姓名（A → Z）</option>
+                <option value="name-desc">學生姓名（Z → A）</option>
+              </select>
             </div>
           </div>
 
           {/* Lesson Records List */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
-              <span>學員</span>
+            <div className="grid grid-cols-[2fr_1.2fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
+              <button
+                type="button"
+                onClick={() => {
+                  if (sortBy === 'name') {
+                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+                  } else {
+                    setSortBy('name')
+                    setSortOrder('asc')
+                  }
+                }}
+                className="flex items-center gap-1 hover:text-stone-800 text-left font-bold cursor-pointer"
+              >
+                <span>學員</span>
+                {sortBy === 'name' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
+              </button>
               <span>教練</span>
-              <span>日期</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sortBy === 'date') {
+                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+                  } else {
+                    setSortBy('date')
+                    setSortOrder('desc')
+                  }
+                }}
+                className="flex items-center gap-1 hover:text-stone-800 text-left font-bold cursor-pointer"
+              >
+                <span>日期</span>
+                {sortBy === 'date' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
+              </button>
               <span className="text-right">扣堂數</span>
             </div>
 
             {recordsLoading ? (
               <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
-            ) : myRecords.length > 0 ? (
+            ) : sortedRecords.length > 0 ? (
               <div className="divide-y divide-stone-100">
-                {myRecords.slice(0, 50).map((record) => {
+                {sortedRecords.slice(0, 50).map((record) => {
                   const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '未指定教練'
                   const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
                     ? record.attendingCustomerNames.join('、')

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   Sheet,
   SheetContent,
@@ -80,6 +80,33 @@ export function TrainerDetailsModal({
   const filteredLessons = selectedMonth === 'all'
     ? trainerLessons
     : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+
+  // Sorting states for lesson records (Date, Student Name)
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  const sortedFilteredLessons = useMemo(() => {
+    return [...filteredLessons].sort((a, b) => {
+      if (sortBy === 'date') {
+        const timeA = a.sessionDate
+          ? ((a.sessionDate as any).toMillis ? (a.sessionDate as any).toMillis() : new Date(a.sessionDate as any).getTime())
+          : 0
+        const timeB = b.sessionDate
+          ? ((b.sessionDate as any).toMillis ? (b.sessionDate as any).toMillis() : new Date(b.sessionDate as any).getTime())
+          : 0
+        return sortOrder === 'desc' ? timeB - timeA : timeA - timeB
+      } else {
+        const nameA = a.attendingCustomerNames && a.attendingCustomerNames.length > 0
+          ? a.attendingCustomerNames.join('、')
+          : (a.customerName || '')
+        const nameB = b.attendingCustomerNames && b.attendingCustomerNames.length > 0
+          ? b.attendingCustomerNames.join('、')
+          : (b.customerName || '')
+        const cmp = nameA.localeCompare(nameB, 'zh-Hant')
+        return sortOrder === 'desc' ? -cmp : cmp
+      }
+    })
+  }, [filteredLessons, sortBy, sortOrder])
 
   // Helper to get contracts for a specific student
   const getStudentContracts = (studentId: string) => {
@@ -170,13 +197,13 @@ export function TrainerDetailsModal({
 
         {/* Tabs & Tab Content */}
         <Tabs defaultValue="history" value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="bg-white px-6 border-b border-stone-100 shrink-0">
+          <div className="bg-white px-6 border-b border-stone-100 shrink-0 flex items-center justify-between">
             <TabsList className="bg-transparent border-none p-0 gap-6 h-auto">
               <TabsTrigger
                 value="history"
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-stone-900 data-[state=active]:text-stone-900 rounded-none py-3 px-0 font-bold text-xs text-stone-400 hover:text-stone-700 transition-colors"
               >
-                銷課明細 ({filteredLessons.length})
+                銷課明細 ({sortedFilteredLessons.length})
               </TabsTrigger>
               <TabsTrigger
                 value="students"
@@ -185,17 +212,36 @@ export function TrainerDetailsModal({
                 專屬學員 ({trainerStudentIds.length})
               </TabsTrigger>
             </TabsList>
+
+            {activeTab === 'history' && (
+              <div className="flex items-center gap-1.5 text-xs py-1">
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
+                    setSortBy(field)
+                    setSortOrder(order)
+                  }}
+                  className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-[11px] font-semibold text-stone-700 focus:outline-none focus:ring-1 focus:ring-stone-400 cursor-pointer"
+                >
+                  <option value="date-desc">日期（由新到舊）</option>
+                  <option value="date-asc">日期（由舊到新）</option>
+                  <option value="name-asc">學生姓名（A → Z）</option>
+                  <option value="name-desc">學生姓名（Z → A）</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto">
             <TabsContent value="history" className="mt-0 p-4 space-y-2">
-              {filteredLessons.length === 0 ? (
+              {sortedFilteredLessons.length === 0 ? (
                 <div className="py-16 text-center">
                   <RiTimeLine className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                   <p className="text-stone-400 text-sm italic">無銷課紀錄</p>
                 </div>
               ) : (
-                filteredLessons.map((r) => {
+                sortedFilteredLessons.map((r) => {
                   const contract = contracts.find(c => c.id === r.contractId)
                   const perSessionPrice = contract && contract.totalSessions > 0 ? (contract.totalAmount / contract.totalSessions) : (contract?.pricePerSession || 0)
                   const fee = contract ? Math.round(r.sessionAmount * perSessionPrice) : 0
