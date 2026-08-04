@@ -866,12 +866,31 @@ export function CustomerContractModal({
                     ) : (
                       <span className="font-bold text-stone-900 bg-stone-50 px-2 py-1 rounded border border-stone-150">
                         {(() => {
+                          const isSharedOrGroup = contract?.contractType === 'shared' || contract?.contractType === 'group'
+                          
+                          if (isSharedOrGroup) {
+                            const memberCoaches = (allContractMembers.length > 0 ? allContractMembers : [customer]).map((m, idx) => {
+                              const tId = contract?.studentTrainers?.[m.id] || (idx === 0 ? editTrainerId : (idx === 1 ? editSecondaryTrainerId : (m.trainerId || editTrainerId)))
+                              const trainerName = trainers.find(t => t.id === tId)?.name || (idx === 0 ? trainers.find(t => t.id === editTrainerId)?.name : null) || '未指定'
+                              return {
+                                label: `學員 ${String.fromCharCode(65 + idx)} (${m.name})`,
+                                coachName: trainerName
+                              }
+                            })
+                            const firstCoach = memberCoaches[0]?.coachName || '未指定'
+                            const allSame = memberCoaches.every(mc => mc.coachName === firstCoach)
+                            if (allSame) {
+                              return `☑ 指定教練（姓名：${firstCoach}）`
+                            }
+                            return `☑ 指定教練（${memberCoaches.map(mc => `${mc.label}: ${mc.coachName}`).join(' / ')}）`
+                          }
+
                           const coachA = trainers.find(t => t.id === editTrainerId)?.name || '未指定';
                           const coachB = trainers.find(t => t.id === editSecondaryTrainerId)?.name;
                           if (!editTrainerId) return '□ 不指定';
                           if (!partner) return `☑ 指定教練（姓名：${coachA}）`;
                           if (isOneToTwo || !coachB || editSecondaryTrainerId === editTrainerId) {
-                            return `☑ 指定教練（姓名：${coachA} - 1對2 同教練）`;
+                            return `☑ 指定教練（姓名：${coachA}）`;
                           }
                           return `☑ 指定教練（學員 A: ${coachA} / 學員 B: ${coachB}）`;
                         })()}

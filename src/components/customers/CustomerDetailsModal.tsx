@@ -129,7 +129,8 @@ export function CustomerDetailsModal({
   const ongoingContracts = contracts.filter(con => {
     if (!checkIsMember(con, customer.id)) return false
     if (con.status === 'cancelled') return false
-    const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+    const isShared = con.contractType === 'shared'
+    const isDual = !isShared && (con.contractType === 'dual' || (!!con.sharedWithCustomerId && con.contractType !== 'group'))
     const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
     if (isUnsigned) return true
     if (con.status === 'completed' || con.status === 'expired') return false
@@ -140,7 +141,8 @@ export function CustomerDetailsModal({
   const pendingContract = contracts.find(con => {
     if (!checkIsMember(con, customer.id)) return false
     if (con.status === 'cancelled') return false
-    const isDual = con.contractType === 'dual' || !!con.sharedWithCustomerId
+    const isShared = con.contractType === 'shared'
+    const isDual = !isShared && (con.contractType === 'dual' || (!!con.sharedWithCustomerId && con.contractType !== 'group'))
     return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
   })
 

@@ -89,7 +89,7 @@ export function useCustomers() {
 
           // Auto repair 1.5: Dual vs Shared contract type and customerIds restoration
           const isSharedContract = c.contractType === 'shared'
-          const isDualContract = !isSharedContract && (c.contractType === 'dual' || !!c.sharedWithCustomerId)
+          const isDualContract = !isSharedContract && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
           if (isDualContract) {
             if (c.contractType !== 'dual') {
               updates.contractType = 'dual'
@@ -127,7 +127,7 @@ export function useCustomers() {
             }
           }
 
-          // Auto repair 3: Check if contract is unsigned (Single/Group needs primary signature, Dual needs both signatures)
+          // Auto repair 3: Check if contract is unsigned (Single/Group/Shared needs primary signature, Dual needs both signatures)
           const isUnsigned = c.status === 'pending_signature' || !c.signatureDataUrl || (isDualContract && !c.secondarySignatureDataUrl)
 
           // Auto repair 4: If contract is missing required signature(s), ensure status is 'pending_signature' (unless cancelled)
