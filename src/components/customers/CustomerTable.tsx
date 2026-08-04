@@ -110,8 +110,8 @@ export function CustomerTable({
       }
     }
 
-    const isShared = activeContract ? (activeContract.contractType === 'shared') : false
-    const isDual = activeContract ? (!isShared && (activeContract.contractType === 'dual' || (!!activeContract.sharedWithCustomerId && activeContract.contractType !== 'group'))) : false
+    const isShared = activeContract ? (activeContract.contractType === 'shared' || (Array.isArray(activeContract.customerIds) && activeContract.customerIds.length >= 3)) : false
+    const isDual = activeContract ? (!isShared && (activeContract.contractType === 'dual' || (!!activeContract.sharedWithCustomerId && activeContract.contractType !== 'group' && activeContract.contractType !== 'shared'))) : false
     const isUnsigned = activeContract ? (activeContract.status === 'pending_signature' || 
       !activeContract.signatureDataUrl || 
       (isDual && !activeContract.secondarySignatureDataUrl)) : false

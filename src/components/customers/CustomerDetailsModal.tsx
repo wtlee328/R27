@@ -264,7 +264,8 @@ export function CustomerDetailsModal({
               {/* Active Contract Card */}
               {activeContract ? (() => {
                 const isGroup = activeContract.contractType === 'group'
-                const isDual = activeContract.contractType === 'dual' || activeContract.sharedWithCustomerId
+                const isShared = activeContract.contractType === 'shared' || (Array.isArray(activeContract.customerIds) && activeContract.customerIds.length >= 3)
+                const isDual = !isGroup && !isShared && (activeContract.contractType === 'dual' || (!!activeContract.sharedWithCustomerId && activeContract.contractType !== 'shared' && activeContract.contractType !== 'group'))
                 const activePartnerId = isDual
                   ? (activeContract.customerIds && activeContract.customerIds.length > 1
                       ? activeContract.customerIds.find(id => id !== customer.id)

@@ -544,7 +544,7 @@ export function CustomerContractModal({
       }
 
       // Sync Customer B's trainer if dual contract
-      const isDual = contract.contractType === 'dual' || contract.sharedWithCustomerId
+      const isDual = !isSharedOrGroup && (contract.contractType === 'dual' || !!contract.sharedWithCustomerId)
       const partnerId = contract.customerIds && contract.customerIds.length > 1
         ? contract.customerIds.find(id => id !== customer.id)
         : contract.sharedWithCustomerId

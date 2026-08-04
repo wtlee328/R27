@@ -88,9 +88,16 @@ export function useCustomers() {
           }
 
           // Auto repair 1.5: Dual vs Shared contract type and customerIds restoration
-          const isSharedContract = c.contractType === 'shared'
-          const isDualContract = !isSharedContract && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
-          if (isDualContract) {
+          const memberCount = Array.isArray(c.customerIds) ? c.customerIds.length : 1
+          if (memberCount >= 3 && c.contractType !== 'group' && c.contractType !== 'shared') {
+            updates.contractType = 'shared'
+            c.contractType = 'shared'
+            isRepaired = true
+          }
+
+          const isSharedContract = c.contractType === 'shared' || memberCount >= 3
+          const isDualContract = !isSharedContract && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group' && c.contractType !== 'shared'))
+          if (isDualContract && memberCount < 3) {
             if (c.contractType !== 'dual') {
               updates.contractType = 'dual'
               c.contractType = 'dual'
@@ -291,11 +298,12 @@ export function useCustomers() {
       const contractSnap = await getDoc(existingContractRef)
       if (contractSnap.exists()) {
         const existingContractData = contractSnap.data()
-        const isGroup = existingContractData.contractType === 'group'
-        const isShared = existingContractData.contractType === 'shared' || updatedCustomerIds.length > 2
         const primaryCustId = existingContractData.customerId || existingContractData.primaryCustomerId
         const currentCustomerIds = existingContractData.customerIds || (primaryCustId ? [primaryCustId] : [])
         const updatedCustomerIds = Array.from(new Set([primaryCustId, ...currentCustomerIds, customerId].filter(Boolean)))
+
+        const isGroup = existingContractData.contractType === 'group' || (data as any).contractType === 'group'
+        const isShared = existingContractData.contractType === 'shared' || (data as any).contractType === 'shared' || updatedCustomerIds.length > 2
 
         const secondaryTrainerId = data.secondaryTrainerId || existingContractData.trainerId || selectedTrainerId || user.uid
 
