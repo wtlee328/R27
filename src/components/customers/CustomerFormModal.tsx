@@ -2249,7 +2249,7 @@ export function CustomerFormModal({
                                             ? "bg-red-50 text-red-700 border-red-200"
                                             : "bg-blue-100 text-blue-800 border-blue-200"
                                         )}>
-                                          {isFull ? `成員滿額 (${currentCount}/6人)` : `現有成員: ${currentCount}/6人 (尚有 ${6 - currentCount} 個空位)`}
+                                          {isFull ? `成員滿額 (${currentCount}/4人)` : `現有成員: ${currentCount}/4人 (尚有 ${4 - currentCount} 個空位)`}
                                         </span>
                                       </div>
 
@@ -2262,7 +2262,7 @@ export function CustomerFormModal({
                                       {isFull && (
                                         <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
                                           <RiAlertLine className="w-4 h-4 shrink-0" />
-                                          <span>此共享合約成員人數已達上限 (6人)，無法再新增綁定！</span>
+                                          <span>此共享合約成員人數已達上限 (4人)，無法再新增綁定！</span>
                                         </div>
                                       )}
 
