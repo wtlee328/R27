@@ -125,8 +125,8 @@ export function CustomerTable({
       total = activeContract.groupMemberQuotas[c.id].totalSessions
     }
 
-    if (hasMultiple && ongoingContracts.length > 0) {
-      const multiSum = ongoingContracts.reduce((acc, con) => {
+    if (hasMultiple && customerOngoingContracts.length > 0) {
+      const multiSum = customerOngoingContracts.reduce((acc, con) => {
         let rem = getCustomerRemainingSessionsInContract(con, c.id)
         let tot = con.totalSessions
         if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
