@@ -422,7 +422,19 @@ export function CustomerDetailsModal({
                     </div>
                     <div className="flex justify-between items-center gap-2">
                       <span className="text-stone-400 font-semibold shrink-0">歷史總堂</span>
-                      <span className="text-stone-800 font-black tabular-nums">{customer.historicalSessions} 堂</span>
+                      <span className="text-stone-800 font-black tabular-nums">
+                        {(() => {
+                          const custContracts = contracts.filter(con => checkIsMember(con, customer.id))
+                          const systemUsed = custContracts.reduce((sum, con) => {
+                            if (con.contractType === 'group' && con.groupMemberQuotas?.[customer.id]) {
+                              const q = con.groupMemberQuotas[customer.id]
+                              return sum + Math.max(0, (q.totalSessions || 0) - (q.remainingSessions || 0))
+                            }
+                            return sum + Math.max(0, (con.totalSessions || 0) - (con.remainingSessions || 0))
+                          }, 0)
+                          return systemUsed + Number(customer.historicalSessions || 0)
+                        })()} 堂
+                      </span>
                     </div>
                   </div>
                 </div>

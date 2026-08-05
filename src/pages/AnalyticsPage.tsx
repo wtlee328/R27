@@ -450,7 +450,7 @@ export default function AnalyticsPage() {
           }
         }
         return sum + Number(l.sessionAmount || 1)
-      }, 0)
+      }, 0) + Number(cust.historicalSessions || 0)
 
       // Dynamic weekly frequency calculation based on active timeframe span
       let frequency = 0

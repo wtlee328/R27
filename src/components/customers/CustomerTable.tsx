@@ -168,11 +168,12 @@ export function CustomerTable({
   }, [contracts, checkIsMember])
 
   const getCustomerHistoricalSessions = useCallback((c: Customer) => {
+    let systemSessions = 0
     if (lessons && lessons.length > 0) {
       const custLessons = lessons.filter(
         l => (l.customerId === c.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(c.id))) && (l.sessionDate || l.date)
       )
-      return custLessons.reduce((sum, l) => {
+      systemSessions = custLessons.reduce((sum, l) => {
         if (Array.isArray(l.deductions) && l.deductions.length > 0) {
           const custDed = l.deductions.find((d: any) => d.customerId === c.id)
           if (custDed && typeof custDed.amount === 'number') {
@@ -181,18 +182,20 @@ export function CustomerTable({
         }
         return sum + Number(l.sessionAmount || 1)
       }, 0)
+    } else {
+      const custContracts = contracts.filter(con => checkIsMember(con, c.id))
+      systemSessions = custContracts.reduce((sum, con) => {
+        if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
+          const q = con.groupMemberQuotas[c.id]
+          const used = Math.max(0, (q.totalSessions || 0) - (q.remainingSessions || 0))
+          return sum + used
+        }
+        const used = Math.max(0, (con.totalSessions || 0) - (con.remainingSessions || 0))
+        return sum + used
+      }, 0)
     }
 
-    const custContracts = contracts.filter(con => checkIsMember(con, c.id))
-    return custContracts.reduce((sum, con) => {
-      if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
-        const q = con.groupMemberQuotas[c.id]
-        const used = Math.max(0, (q.totalSessions || 0) - (q.remainingSessions || 0))
-        return sum + used
-      }
-      const used = Math.max(0, (con.totalSessions || 0) - (con.remainingSessions || 0))
-      return sum + used
-    }, 0)
+    return systemSessions + Number(c.historicalSessions || 0)
   }, [lessons, contracts, checkIsMember])
 
   const processedCustomers = useMemo(() => {
