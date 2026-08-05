@@ -386,6 +386,8 @@ export function TrainerDetailsModal({
                     return sum + Number(l.sessionAmount || 1)
                   }, 0)
 
+                  const studentHistoricalTotal = studentCumSessions + Number(s.historicalSessions || 0)
+
                   return (
                     <div key={s.id} className="bg-white border border-stone-100 rounded-2xl p-4 space-y-3 hover:border-stone-200 transition-colors">
                       {/* Student header */}
@@ -399,9 +401,15 @@ export function TrainerDetailsModal({
                             <p className="text-xs text-stone-400 font-mono">{s.phone}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 text-right shrink-0">
+                        <div className="flex items-center gap-3 sm:gap-4 text-right shrink-0">
                           <div>
-                            <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">累積已銷</p>
+                            <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">歷史堂數(已上)</p>
+                            <p className="text-base font-black text-stone-700 tabular-nums">
+                              {studentHistoricalTotal} <span className="text-xs font-normal text-stone-400">堂</span>
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black text-stone-400 uppercase tracking-wider">系統累積已銷</p>
                             <p className="text-base font-black text-brand-600 tabular-nums">{studentCumSessions} <span className="text-xs font-normal text-stone-400">堂</span></p>
                           </div>
                           <div>
