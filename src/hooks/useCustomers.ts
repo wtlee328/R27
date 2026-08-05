@@ -122,7 +122,7 @@ export function useCustomers() {
 
           // Auto repair 2: remainingSessions cap check & repair for pending contracts
           if (c.contractType !== 'group') {
-            if (c.totalSessions > 0 && (c.remainingSessions === undefined || c.remainingSessions === null || (c.status === 'pending_signature' && c.remainingSessions === 0))) {
+            if (c.totalSessions > 0 && (c.remainingSessions === undefined || c.remainingSessions === null)) {
               updates.remainingSessions = c.totalSessions
               c.remainingSessions = c.totalSessions
               isRepaired = true
@@ -137,24 +137,21 @@ export function useCustomers() {
           // Auto repair 3: Check if contract is unsigned (Single/Group/Shared needs primary signature, Dual needs both signatures)
           const isUnsigned = !c.signatureDataUrl || (isDualContract && !c.secondarySignatureDataUrl)
 
-          // Auto repair 4: Ensure status matches signature state
-          if (isUnsigned && c.status !== 'pending_signature' && c.status !== 'cancelled') {
+          // Auto repair 4: Ensure status matches signature state & session completion
+          if (c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
+            console.log(`Contract ${c.id} has remainingSessions <= 0. Syncing status to completed...`)
+            updates.status = 'completed'
+            c.status = 'completed'
+            isRepaired = true
+          } else if (isUnsigned && c.remainingSessions > 0 && c.status !== 'pending_signature' && c.status !== 'cancelled') {
             console.log(`Contract ${c.id} is missing required signature(s). Restoring status to pending_signature...`)
             updates.status = 'pending_signature'
             c.status = 'pending_signature'
             isRepaired = true
-          } else if (!isUnsigned && c.status === 'pending_signature') {
-            const targetStatus = (c.remainingSessions !== undefined && c.remainingSessions <= 0) ? 'completed' : 'active'
-            console.log(`Contract ${c.id} has required signature(s). Promoting status from pending_signature to ${targetStatus}...`)
-            updates.status = targetStatus
-            c.status = targetStatus
-            isRepaired = true
-          }
-
-          if (!isUnsigned && c.remainingSessions <= 0 && c.status !== 'completed' && c.status !== 'cancelled') {
-            console.log(`Contract ${c.id} has remainingSessions <= 0 and is fully signed. Syncing status to completed...`)
-            updates.status = 'completed'
-            c.status = 'completed'
+          } else if (!isUnsigned && c.remainingSessions > 0 && c.status === 'pending_signature') {
+            console.log(`Contract ${c.id} has required signature(s). Promoting status from pending_signature to active...`)
+            updates.status = 'active'
+            c.status = 'active'
             isRepaired = true
           }
 

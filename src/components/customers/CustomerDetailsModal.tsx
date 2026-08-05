@@ -128,19 +128,16 @@ export function CustomerDetailsModal({
 
   const ongoingContracts = contracts.filter(con => {
     if (!checkIsMember(con, customer.id)) return false
-    if (con.status === 'cancelled') return false
-    const isShared = con.contractType === 'shared'
-    const isDual = !isShared && (con.contractType === 'dual' || (!!con.sharedWithCustomerId && con.contractType !== 'group'))
-    const isUnsigned = con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
-    if (isUnsigned) return true
-    if (con.status === 'completed' || con.status === 'expired') return false
+    if (con.status === 'cancelled' || con.status === 'completed' || con.status === 'expired') return false
     const remaining = getCustomerRemainingSessionsInContract(con, customer.id)
     return remaining > 0
   })
 
   const pendingContract = contracts.find(con => {
     if (!checkIsMember(con, customer.id)) return false
-    if (con.status === 'cancelled') return false
+    if (con.status === 'cancelled' || con.status === 'completed' || con.status === 'expired') return false
+    const remaining = getCustomerRemainingSessionsInContract(con, customer.id)
+    if (remaining <= 0) return false
     const isShared = con.contractType === 'shared'
     const isDual = !isShared && (con.contractType === 'dual' || (!!con.sharedWithCustomerId && con.contractType !== 'group'))
     return con.status === 'pending_signature' || !con.signatureDataUrl || (isDual && !con.secondarySignatureDataUrl)
