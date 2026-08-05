@@ -1087,6 +1087,10 @@ export default function TrainerLessonsPage() {
             const contractTrainerName = r.contractTrainerId
               ? trainers.find(t => t.id === r.contractTrainerId)?.name
               : null
+            const contract = venueContracts.find(c => c.id === r.contractId)
+            const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
+            const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
+            const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
 
             return (
               <div
@@ -1154,6 +1158,19 @@ export default function TrainerLessonsPage() {
                       <div className="flex items-center justify-between px-4 py-3.5">
                         <span className="text-xs font-bold text-stone-400">原合約教練</span>
                         <span className="text-sm font-bold text-amber-700">{contractTrainerName}</span>
+                      </div>
+                    )}
+                    {contract && (
+                      <div className="flex items-center justify-between px-4 py-3.5">
+                        <span className="text-xs font-bold text-stone-400">合約類型</span>
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border",
+                          isGroup ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                          isShared ? "bg-sky-100 text-sky-700 border-sky-200" :
+                          isDual ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-blue-100 text-blue-700 border-blue-200"
+                        )}>
+                          {isGroup ? '👥 團體合約' : isShared ? '👥 共享合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
+                        </span>
                       </div>
                     )}
                     {r.contractId && (

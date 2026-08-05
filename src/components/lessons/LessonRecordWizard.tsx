@@ -608,8 +608,8 @@ export function LessonRecordWizard({
                   )}
                   {contracts.map((c) => {
                     const isGroup = c.contractType === 'group' || !!c.groupMemberQuotas
-                    const isShared = c.contractType === 'shared'
-                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group'))
+                    const isShared = c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')
+                    const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared'))
                     const typeLabel = isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'
                     return (
                       <option key={c.id} value={c.id}>

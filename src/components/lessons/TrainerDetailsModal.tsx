@@ -320,11 +320,22 @@ export function TrainerDetailsModal({
                           {isSubstitute && (
                             <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">代課</span>
                           )}
-                          {contract?.contractType === 'dual' && (
-                            <span className="text-[9px] font-black text-orange-600 bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5 flex items-center gap-0.5">
-                              <RiGroupLine className="w-2.5 h-2.5" />雙人
-                            </span>
-                          )}
+                          {(() => {
+                            const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
+                            const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
+                            const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
+                            return contract ? (
+                              <span className={cn(
+                                "text-[9px] font-black rounded-full px-2 py-0.5 flex items-center gap-0.5 border",
+                                isGroup ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
+                                isShared ? "text-sky-700 bg-sky-50 border-sky-100" :
+                                isDual ? "text-orange-600 bg-orange-50 border-orange-100" : "text-blue-600 bg-blue-50 border-blue-100"
+                              )}>
+                                <RiGroupLine className="w-2.5 h-2.5" />
+                                {isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'}
+                              </span>
+                            ) : null
+                          })()}
                         </div>
                         <p className={cn('text-xs mt-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>
                           {teachingTrainerName}
@@ -447,7 +458,8 @@ export function TrainerDetailsModal({
           const r = selectedRecord
           const contract = contracts.find(c => c.id === r.contractId)
           const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
-          const isDual = contract ? (!isGroup && (contract.contractType === 'dual' || !!contract.sharedWithCustomerId)) : false
+          const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
+          const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
           const fee = typeof (r as any).recognizedAmount === 'number'
             ? (r as any).recognizedAmount
             : typeof (r as any).unitPriceAtDeduction === 'number'
@@ -546,11 +558,12 @@ export function TrainerDetailsModal({
                       <span>
                         {contract ? (
                           <span className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold",
-                            isGroup ? "bg-emerald-100 text-emerald-700" :
-                            isDual ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border",
+                            isGroup ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
+                            isShared ? "bg-sky-100 text-sky-700 border-sky-200" :
+                            isDual ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-blue-100 text-blue-700 border-blue-200"
                           )}>
-                            {isGroup ? '👥 團體合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
+                            {isGroup ? '👥 團體合約' : isShared ? '👥 共享合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
                           </span>
                         ) : '無合約資訊'}
                       </span>
