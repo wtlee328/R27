@@ -101,6 +101,7 @@ export function PrepaidLessonsTable({
     let lumpSumTotal = 0
     let installmentPaidTotal = 0
     let pendingInstallmentsTotal = 0
+    let totalCollectedAmount = 0
 
     ;(periodContracts || []).forEach((c) => {
       const total = Number(c.totalAmount || 0)
@@ -109,8 +110,10 @@ export function PrepaidLessonsTable({
       if (c.paymentType === 'installment' || (c.installments && c.installments.length > 0)) {
         installmentPaidTotal += paid
         pendingInstallmentsTotal += Math.max(0, total - paid)
+        totalCollectedAmount += paid
       } else {
         lumpSumTotal += total
+        totalCollectedAmount += total
       }
     })
 
@@ -148,12 +151,16 @@ export function PrepaidLessonsTable({
       }
     })
 
+    const netCollectedMinusRealized = totalCollectedAmount - realizedRevenueTotal
+
     return {
       newContractsTotalValue: Math.round(newContractsTotalValue),
       lumpSumTotal: Math.round(lumpSumTotal),
       installmentPaidTotal: Math.round(installmentPaidTotal),
       pendingInstallmentsTotal: Math.round(pendingInstallmentsTotal),
+      totalCollectedAmount: Math.round(totalCollectedAmount),
       realizedRevenueTotal: Math.round(realizedRevenueTotal),
+      netCollectedMinusRealized: Math.round(netCollectedMinusRealized),
       totalSessionsUsed,
       unearnedLiabilityBalance: Math.round(unearnedLiabilityBalance),
       remainingSessionsCount,
@@ -214,8 +221,8 @@ export function PrepaidLessonsTable({
 
   const tabs = [
     { id: 'contracts' as const, label: '預收款合約', count: periodContracts.length, icon: <RiBankCardLine className="w-3.5 h-3.5" /> },
-    { id: 'lessons' as const, label: '銷課認列', count: periodLessonRecords.length, icon: <RiLineChartLine className="w-3.5 h-3.5" /> },
-    { id: 'monthly-summary' as const, label: '年度對照', count: null, icon: <RiTable2 className="w-3.5 h-3.5" /> },
+    { id: 'lessons' as const, label: '銷課明細紀錄', count: periodLessonRecords.length, icon: <RiLineChartLine className="w-3.5 h-3.5" /> },
+    { id: 'monthly-summary' as const, label: '月份權責統計', count: 12, icon: <RiTable2 className="w-3.5 h-3.5" /> },
   ]
 
   const periodLabel = selectedMonth === 'all'
@@ -266,7 +273,7 @@ export function PrepaidLessonsTable({
       </div>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard
           title={`新簽預收總額`}
           value={`NT$ ${summaryMetrics.newContractsTotalValue.toLocaleString()}`}
@@ -274,6 +281,14 @@ export function PrepaidLessonsTable({
           iconColor="text-orange-600"
           iconBg="bg-orange-50"
           subtitle={`一次付清 $${summaryMetrics.lumpSumTotal.toLocaleString()} · 分期 $${summaryMetrics.installmentPaidTotal.toLocaleString()}`}
+        />
+        <StatCard
+          title={`總已收款項扣銷課金額`}
+          value={`NT$ ${summaryMetrics.netCollectedMinusRealized.toLocaleString()}`}
+          icon={RiExchangeLine}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-50"
+          subtitle={`實收 $${summaryMetrics.totalCollectedAmount.toLocaleString()} - 銷課 $${summaryMetrics.realizedRevenueTotal.toLocaleString()}`}
         />
         <StatCard
           title={`銷課認列金額`}
