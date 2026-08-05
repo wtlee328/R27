@@ -96,6 +96,33 @@ export function PrepaidLessonsTable({
     })
   }, [records, selectedYear, selectedMonth, searchTerm, trainerMap])
 
+  const getContractPaymentInfo = (c: Contract) => {
+    const total = Number(c.totalAmount || 0)
+    const isInstallment = c.paymentType === 'installment' || c.paymentType === 'installments' || (Array.isArray(c.installments) && c.installments.length > 0)
+    
+    let paid = Number(c.paidAmount || 0)
+    if (isInstallment) {
+      if (Array.isArray(c.installments) && c.installments.length > 0) {
+        const installmentSum = c.installments
+          .filter((inst: any) => inst.status === 'paid')
+          .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
+        if (installmentSum > 0) {
+          paid = installmentSum
+        }
+      }
+    } else {
+      paid = total
+    }
+
+    return {
+      total,
+      paid,
+      isInstallment,
+      lumpSumAmount: isInstallment ? 0 : total,
+      installmentPaidAmount: isInstallment ? paid : 0,
+    }
+  }
+
   const summaryMetrics = useMemo(() => {
     let newContractsTotalValue = 0
     let lumpSumTotal = 0
@@ -104,16 +131,15 @@ export function PrepaidLessonsTable({
     let totalCollectedAmount = 0
 
     ;(periodContracts || []).forEach((c) => {
-      const total = Number(c.totalAmount || 0)
-      const paid = Number(c.paidAmount || 0)
+      const { total, paid, isInstallment, lumpSumAmount, installmentPaidAmount } = getContractPaymentInfo(c)
       newContractsTotalValue += total
-      if (c.paymentType === 'installment' || (c.installments && c.installments.length > 0)) {
-        installmentPaidTotal += paid
+      totalCollectedAmount += paid
+
+      if (isInstallment) {
+        installmentPaidTotal += installmentPaidAmount
         pendingInstallmentsTotal += Math.max(0, total - paid)
-        totalCollectedAmount += paid
       } else {
-        lumpSumTotal += total
-        totalCollectedAmount += total
+        lumpSumTotal += lumpSumAmount
       }
     })
 
@@ -178,11 +204,13 @@ export function PrepaidLessonsTable({
         if (c.createdAt) {
           const dt = c.createdAt.toDate ? c.createdAt.toDate() : new Date(c.createdAt as any)
           if (dt.getFullYear() === selectedYear && dt.getMonth() + 1 === monthNum) {
-            const total = Number(c.totalAmount || 0)
-            const paid = Number(c.paidAmount || 0)
+            const { total, isInstallment, lumpSumAmount, installmentPaidAmount } = getContractPaymentInfo(c)
             monthPrepaidValue += total
-            if (c.paymentType === 'installment') monthInstallmentPaid += paid
-            else monthLumpSum += total
+            if (isInstallment) {
+              monthInstallmentPaid += installmentPaidAmount
+            } else {
+              monthLumpSum += lumpSumAmount
+            }
           }
         }
       })
@@ -218,6 +246,27 @@ export function PrepaidLessonsTable({
       }
     })
   }, [contracts, records, selectedYear, contractMap])
+
+  const monthlyTotals = useMemo(() => {
+    return monthlyMatrix.reduce(
+      (acc, m) => ({
+        monthPrepaidValue: acc.monthPrepaidValue + m.monthPrepaidValue,
+        monthLumpSum: acc.monthLumpSum + m.monthLumpSum,
+        monthInstallmentPaid: acc.monthInstallmentPaid + m.monthInstallmentPaid,
+        monthSessionsCount: acc.monthSessionsCount + m.monthSessionsCount,
+        monthRealizedRev: acc.monthRealizedRev + m.monthRealizedRev,
+        netPrepaidChange: acc.netPrepaidChange + m.netPrepaidChange,
+      }),
+      {
+        monthPrepaidValue: 0,
+        monthLumpSum: 0,
+        monthInstallmentPaid: 0,
+        monthSessionsCount: 0,
+        monthRealizedRev: 0,
+        netPrepaidChange: 0,
+      }
+    )
+  }, [monthlyMatrix])
 
   const tabs = [
     { id: 'contracts' as const, label: '預收款合約', count: periodContracts.length, icon: <RiBankCardLine className="w-3.5 h-3.5" /> },
@@ -621,6 +670,35 @@ export function PrepaidLessonsTable({
                   )
                 })}
               </tbody>
+              <tfoot className="bg-stone-100/90 font-bold border-t-2 border-stone-200">
+                <tr>
+                  <td className="px-4 py-3.5 text-stone-900 font-black">全年度總計</td>
+                  <td className="px-4 py-3.5 text-right font-black text-stone-900 tabular-nums">
+                    NT$ {monthlyTotals.monthPrepaidValue.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-black text-stone-700 tabular-nums">
+                    {monthlyTotals.monthLumpSum.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-black text-amber-700 tabular-nums">
+                    {monthlyTotals.monthInstallmentPaid.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3.5 text-center font-black text-stone-800">
+                    {monthlyTotals.monthSessionsCount} 堂
+                  </td>
+                  <td className="px-4 py-3.5 text-right font-black text-emerald-600 tabular-nums">
+                    NT$ {monthlyTotals.monthRealizedRev.toLocaleString()}
+                  </td>
+                  <td className={cn(
+                    'px-4 py-3.5 text-right font-black tabular-nums',
+                    monthlyTotals.netPrepaidChange > 0 ? 'text-orange-600' : monthlyTotals.netPrepaidChange < 0 ? 'text-blue-600' : 'text-stone-400'
+                  )}>
+                    {monthlyTotals.netPrepaidChange !== 0
+                      ? `${monthlyTotals.netPrepaidChange >= 0 ? '+' : ''}NT$ ${monthlyTotals.netPrepaidChange.toLocaleString()}`
+                      : '—'
+                    }
+                  </td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         )}
