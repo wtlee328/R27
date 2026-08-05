@@ -377,6 +377,35 @@ export function CustomerContractModal({
           paidDate: inst.status === 'paid' && inst.paidDate ? Timestamp.fromDate(ensureDate(inst.paidDate)) : null,
         }))
       }
+
+      let finalSigA: string | null = null
+      if (sigCanvas.current) {
+        try {
+          const canvasObj = sigCanvas.current as any
+          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
+          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
+            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
+            finalSigA = rawCanvas.toDataURL('image/png')
+          }
+        } catch (err) {
+          console.error('Error getting sigCanvas A:', err)
+        }
+      }
+
+      let finalSigB: string | null = null
+      if (secondarySigCanvas.current) {
+        try {
+          const canvasObj = secondarySigCanvas.current as any
+          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
+          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
+            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
+            finalSigB = rawCanvas.toDataURL('image/png')
+          }
+        } catch (err) {
+          console.error('Error getting sigCanvas B:', err)
+        }
+      }
+
       const effectiveSigA = finalSigA || (isSigAClearedRef.current ? null : (contract?.signatureDataUrl || null))
       const effectiveSigB = finalSigB || (isSigBClearedRef.current ? null : (contract?.secondarySignatureDataUrl || null))
 
