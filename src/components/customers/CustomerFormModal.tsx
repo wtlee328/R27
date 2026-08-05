@@ -2422,13 +2422,13 @@ export function CustomerFormModal({
                                 )}
                               </div>
                             )}
-                            {/* 課程教練分配 (僅單人與雙人合約) — 團體與共享合約教練已於上方各學員卡片中獨立設定 */}
-                            {!form.watch('bindExistingContractMode') && (watchedValues.contract?.contractType === 'single' || watchedValues.contract?.contractType === 'dual') && (
+                            {/* 課程教練分配 (單人、雙人與團體合約) — 共享合約教練於各學員卡片中獨立設定 */}
+                            {!form.watch('bindExistingContractMode') && (watchedValues.contract?.contractType === 'single' || watchedValues.contract?.contractType === 'dual' || watchedValues.contract?.contractType === 'group') && (
                               <div className="space-y-4 border-t border-stone-100 dark:border-stone-800 pt-6 col-span-2">
                                 <div className="space-y-1">
                                   <Label className="text-stone-700 dark:text-stone-300 font-bold block text-xs">分配課程教練 *</Label>
                                   <p className="text-[10px] text-stone-400 dark:text-stone-500">
-                                    {watchedValues.contract?.contractType === 'dual' ? '設定指導本雙人合約 (1位教練+2位學員) 之授課教練' : '設定指導本合約學員之授課教練'}
+                                    {watchedValues.contract?.contractType === 'group' ? '設定指導本團體合約 (1位教練+多位學員) 之主授課教練' : watchedValues.contract?.contractType === 'dual' ? '設定指導本雙人合約 (1位教練+2位學員) 之授課教練' : '設定指導本合約學員之授課教練'}
                                   </p>
                                 </div>
 
