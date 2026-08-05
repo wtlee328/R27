@@ -25,16 +25,8 @@ export function StatCard({
   onClick,
   isActive,
 }: StatCardProps) {
-  const isClickable = !!onClick
-  const valueStr = String(value ?? '')
-  const valLength = valueStr.length
-
-  // Dynamically adjust font size based on character length to ensure single line display without truncation
-  const valueFontSizeClass = valLength > 13
-    ? 'text-base sm:text-lg xl:text-xl'
-    : valLength > 9
-    ? 'text-lg sm:text-xl xl:text-2xl'
-    : 'text-xl sm:text-2xl xl:text-3xl'
+  // Unified font size across all cards for clean visual alignment
+  const valueFontSizeClass = 'text-xl font-black'
 
   return (
     <div
