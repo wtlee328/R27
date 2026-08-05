@@ -1359,9 +1359,7 @@ export function CustomerContractModal({
                       <li>其他不可歸責於甲方之事由（如疫情一級開設）。</li>
                       <li>甲方於本條暫停（停權）期間仍具有健身中心會員資格，且於會員期限屆滿仍未完成堂數者，無需補足會籍，得繼續完成剩餘堂數。</li>
                     </ol>
-                    <p className="mt-1 pl-1 text-[9px] text-amber-700 bg-amber-50 p-1 border border-amber-200">
-                      <strong>註：修正：</strong>因傷病暫停超過六個月，經醫師證明不能運動者，致需終止契約，甲方得依規定辦理退費，乙方不收取手續費。
-                    </p>
+                    
                   </div>
 
                   <div>
