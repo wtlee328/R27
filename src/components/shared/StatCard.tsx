@@ -25,6 +25,7 @@ export function StatCard({
   onClick,
   isActive,
 }: StatCardProps) {
+  const isClickable = !!onClick
   // Unified font size across all cards for clean visual alignment
   const valueFontSizeClass = 'text-xl font-black'
 
