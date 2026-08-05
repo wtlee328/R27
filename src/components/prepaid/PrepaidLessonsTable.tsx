@@ -177,7 +177,32 @@ export function PrepaidLessonsTable({
       }
     })
 
-    const netCollectedMinusRealized = totalCollectedAmount - realizedRevenueTotal
+    // 全系統不限月份之「總已收款項」與「總銷課金額」
+    let allTimeCollected = 0
+    ;(contracts || []).forEach((c) => {
+      const { paid } = getContractPaymentInfo(c)
+      allTimeCollected += paid
+    })
+
+    let allTimeRealized = 0
+    ;(records || []).forEach((r) => {
+      const deductions = (r.deductions && r.deductions.length > 0)
+        ? r.deductions
+        : [{ customerId: r.customerId, customerName: r.customerName, contractId: r.contractId, sessionAmount: r.sessionAmount || 1 }]
+
+      deductions.forEach(d => {
+        const c = contractMap.get(d.contractId)
+        const sessions = Number(d.sessionAmount || 1)
+        if (c && Number(c.totalSessions) > 0) {
+          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
+          allTimeRealized += sessions * avgPrice
+        } else {
+          allTimeRealized += sessions * 1500
+        }
+      })
+    })
+
+    const allTimeNetCollectedMinusRealized = allTimeCollected - allTimeRealized
 
     return {
       newContractsTotalValue: Math.round(newContractsTotalValue),
@@ -186,12 +211,14 @@ export function PrepaidLessonsTable({
       pendingInstallmentsTotal: Math.round(pendingInstallmentsTotal),
       totalCollectedAmount: Math.round(totalCollectedAmount),
       realizedRevenueTotal: Math.round(realizedRevenueTotal),
-      netCollectedMinusRealized: Math.round(netCollectedMinusRealized),
+      allTimeCollected: Math.round(allTimeCollected),
+      allTimeRealized: Math.round(allTimeRealized),
+      netCollectedMinusRealized: Math.round(allTimeNetCollectedMinusRealized),
       totalSessionsUsed,
       unearnedLiabilityBalance: Math.round(unearnedLiabilityBalance),
       remainingSessionsCount,
     }
-  }, [periodContracts, periodLessonRecords, contractMap, contracts])
+  }, [periodContracts, periodLessonRecords, contractMap, contracts, records])
 
   const monthlyMatrix = useMemo(() => {
     return Array.from({ length: 12 }, (_, idx) => {
@@ -332,14 +359,6 @@ export function PrepaidLessonsTable({
           subtitle={`一次付清 $${summaryMetrics.lumpSumTotal.toLocaleString()} · 分期 $${summaryMetrics.installmentPaidTotal.toLocaleString()}`}
         />
         <StatCard
-          title={`總已收款項扣銷課金額`}
-          value={`NT$ ${summaryMetrics.netCollectedMinusRealized.toLocaleString()}`}
-          icon={RiExchangeLine}
-          iconColor="text-purple-600"
-          iconBg="bg-purple-50"
-          subtitle={`實收 $${summaryMetrics.totalCollectedAmount.toLocaleString()} - 銷課 $${summaryMetrics.realizedRevenueTotal.toLocaleString()}`}
-        />
-        <StatCard
           title={`銷課認列金額`}
           value={`NT$ ${summaryMetrics.realizedRevenueTotal.toLocaleString()}`}
           icon={RiLineChartLine}
@@ -362,6 +381,14 @@ export function PrepaidLessonsTable({
           iconColor="text-amber-600"
           iconBg="bg-amber-50"
           subtitle={`剩餘 ${summaryMetrics.remainingSessionsCount} 堂待履約`}
+        />
+        <StatCard
+          title={`總已收款項扣銷課金額`}
+          value={`NT$ ${summaryMetrics.netCollectedMinusRealized.toLocaleString()}`}
+          icon={RiExchangeLine}
+          iconColor="text-purple-600"
+          iconBg="bg-purple-50"
+          subtitle={`全期實收 $${summaryMetrics.allTimeCollected.toLocaleString()} - 銷課 $${summaryMetrics.allTimeRealized.toLocaleString()}`}
         />
       </div>
 
