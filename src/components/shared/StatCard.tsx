@@ -5,7 +5,7 @@ interface StatCardProps {
   title: string
   value: string | number
   subtitle?: string
-  icon?: LucideIcon
+  icon?: LucideIcon | any
   iconColor?: string
   iconBg?: string
   trend?: 'up' | 'down' | 'neutral'
@@ -19,17 +19,28 @@ export function StatCard({
   value,
   subtitle,
   icon: Icon,
+  iconColor,
+  iconBg,
   className,
   onClick,
   isActive,
 }: StatCardProps) {
   const isClickable = !!onClick
+  const valueStr = String(value ?? '')
+  const valLength = valueStr.length
+
+  // Dynamically adjust font size based on character length to ensure single line display without truncation
+  const valueFontSizeClass = valLength > 13
+    ? 'text-base sm:text-lg xl:text-xl'
+    : valLength > 9
+    ? 'text-lg sm:text-xl xl:text-2xl'
+    : 'text-xl sm:text-2xl xl:text-3xl'
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        'group relative rounded-xl border border-stone-200/80 bg-white p-5 shadow-xs transition-all duration-200',
+        'group relative rounded-xl border border-stone-200/80 bg-white p-4 shadow-xs transition-all duration-200 flex flex-col justify-between min-w-0',
         isClickable ? 'cursor-pointer select-none hover:border-stone-400 active:scale-[0.99]' : '',
         isActive 
           ? 'border-stone-900 bg-stone-900 text-white shadow-sm ring-1 ring-stone-900' 
@@ -37,41 +48,50 @@ export function StatCard({
         className
       )}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
+      <div className="space-y-2 min-w-0">
+        {/* Title & Icon Header Row */}
+        <div className="flex items-center justify-between gap-1.5 min-w-0">
           <p className={cn(
-            'text-[11px] font-bold uppercase tracking-wider',
+            'text-[10px] sm:text-[11px] font-bold uppercase tracking-wider truncate flex-1 min-w-0',
             isActive ? 'text-stone-300' : 'text-stone-500'
           )}>
             {title}
           </p>
+          {Icon && (
+            <div className={cn(
+              'p-1.5 rounded-lg shrink-0 transition-colors',
+              isActive 
+                ? 'bg-stone-800 text-stone-200' 
+                : iconBg && iconColor
+                  ? `${iconBg} ${iconColor}`
+                  : 'bg-stone-100 text-stone-500 group-hover:bg-stone-200 group-hover:text-stone-800'
+            )}>
+              <Icon className="w-3.5 h-3.5" />
+            </div>
+          )}
+        </div>
+
+        {/* Value: Full Width Single Line Display */}
+        <div className="min-w-0 overflow-hidden">
           <p className={cn(
-            'mt-2 text-2xl font-black truncate tabular-nums tracking-tight',
+            'font-black tabular-nums tracking-tight whitespace-nowrap truncate',
+            valueFontSizeClass,
             isActive ? 'text-white' : 'text-stone-950'
           )}>
             {value}
           </p>
-          {subtitle && (
-            <p className={cn(
-              'mt-1.5 text-xs font-medium truncate',
-              isActive ? 'text-stone-300' : 'text-stone-500'
-            )}>
-              {subtitle}
-            </p>
-          )}
         </div>
-
-        {Icon && (
-          <div className={cn(
-            'p-2.5 rounded-lg border shrink-0 transition-colors',
-            isActive 
-              ? 'bg-stone-800 border-stone-700 text-white' 
-              : 'bg-stone-50 border-stone-200/60 text-stone-700 group-hover:bg-stone-100 group-hover:text-stone-900'
-          )}>
-            <Icon className="w-4 h-4" />
-          </div>
-        )}
       </div>
+
+      {/* Subtitle */}
+      {subtitle && (
+        <p className={cn(
+          'mt-2 text-[11px] font-medium truncate',
+          isActive ? 'text-stone-300' : 'text-stone-500'
+        )}>
+          {subtitle}
+        </p>
+      )}
     </div>
   )
 }
