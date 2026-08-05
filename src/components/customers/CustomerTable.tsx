@@ -125,6 +125,24 @@ export function CustomerTable({
       total = activeContract.groupMemberQuotas[c.id].totalSessions
     }
 
+    if (hasMultiple && ongoingContracts.length > 0) {
+      const multiSum = ongoingContracts.reduce((acc, con) => {
+        let rem = getCustomerRemainingSessionsInContract(con, c.id)
+        let tot = con.totalSessions
+        if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
+          rem = con.groupMemberQuotas[c.id].remainingSessions
+          tot = con.groupMemberQuotas[c.id].totalSessions
+        }
+        return {
+          remaining: acc.remaining + rem,
+          total: acc.total + tot
+        }
+      }, { remaining: 0, total: 0 })
+
+      remaining = multiSum.remaining
+      total = multiSum.total
+    }
+
     // 1. 客戶合約狀態：無合約 / 待簽名 / 進行中 / 複數合約
     let customerStatus: '無合約' | '待簽名' | '進行中' | '複數合約' = '進行中'
     if (hasMultiple) {

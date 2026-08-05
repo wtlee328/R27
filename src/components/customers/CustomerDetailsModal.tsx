@@ -277,6 +277,24 @@ export function CustomerDetailsModal({
                   myRemaining = activeContract.groupMemberQuotas[customer.id].remainingSessions
                   myTotal = activeContract.groupMemberQuotas[customer.id].totalSessions
                 }
+
+                if (hasMultiple && ongoingContracts.length > 0) {
+                  const multiSum = ongoingContracts.reduce((acc, con) => {
+                    let rem = con.remainingSessions
+                    let tot = con.totalSessions
+                    if (con.contractType === 'group' && con.groupMemberQuotas && con.groupMemberQuotas[customer.id]) {
+                      rem = con.groupMemberQuotas[customer.id].remainingSessions
+                      tot = con.groupMemberQuotas[customer.id].totalSessions
+                    }
+                    return {
+                      remaining: acc.remaining + rem,
+                      total: acc.total + tot
+                    }
+                  }, { remaining: 0, total: 0 })
+
+                  myRemaining = multiSum.remaining
+                  myTotal = multiSum.total
+                }
                 const remainingPct = myTotal ? Math.round((myRemaining / myTotal) * 100) : 0
 
                 const isLightBg = isUnsigned || isDual || isGroup
