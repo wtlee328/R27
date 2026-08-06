@@ -295,11 +295,11 @@ export function LessonRecordWizard({
     if (!initialData && selectedContract) {
       if (isDualContract) {
         form.setValue('sessionAmount', 1)
-      } else if (isGroupContract && watchedAttendingIds.length > 0) {
-        form.setValue('sessionAmount', watchedAttendingIds.length)
+      } else if (isGroupContract) {
+        form.setValue('sessionAmount', 1)
       }
     }
-  }, [watchedAttendingIds.length, initialData, form, selectedContract, isDualContract, isGroupContract])
+  }, [initialData, form, selectedContract, isDualContract, isGroupContract])
 
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
@@ -347,9 +347,6 @@ export function LessonRecordWizard({
       if (watchedAttendingIds.length === 0) {
         return '團體合約請至少勾選一位實際出席學員'
       }
-      if (Number(watchedSessionAmount) !== watchedAttendingIds.length) {
-        return `銷課堂數 (${watchedSessionAmount} 堂) 與實際出席人數 (${watchedAttendingIds.length} 人) 不符`
-      }
     }
 
     // 3. Quota sufficiency check for each attendee
@@ -363,8 +360,9 @@ export function LessonRecordWizard({
       }
       if (con.contractType === 'group' && con.groupMemberQuotas && con.groupMemberQuotas[custId]) {
         const memberQuota = con.groupMemberQuotas[custId].remainingSessions || 0
-        if (memberQuota < 1) {
-          return `學員 ${custName} 的個人剩餘堂數不足 (現有 ${memberQuota} 堂)`
+        const neededPerStudent = Number(watchedSessionAmount || 1)
+        if (memberQuota < neededPerStudent) {
+          return `學員 ${custName} 的個人剩餘堂數不足 (現有 ${memberQuota} 堂, 需要 ${neededPerStudent} 堂)`
         }
       } else if (con.remainingSessions < (isDualContract ? 1 : Number(watchedSessionAmount || 1))) {
         return `合約 (剩餘 ${con.remainingSessions} 堂) 堂數不足`
@@ -409,6 +407,8 @@ export function LessonRecordWizard({
       data.attendingCustomerIds = attendees
     }
 
+    const perStudentSessionAmount = isDualContract ? 1 : (Number(data.sessionAmount) || 1)
+
     // Build per-student deductions
     const deductions = attendees.map(studentId => {
       const cust = customers.find(c => c.id === studentId)
@@ -417,10 +417,17 @@ export function LessonRecordWizard({
         customerId: studentId,
         customerName: cust?.name || '',
         contractId: chosenContractId,
-        sessionAmount: Number(data.sessionAmount) || 1,
+        sessionAmount: perStudentSessionAmount,
       }
     })
 
+    const totalRecordSessionAmount = isDualContract
+      ? 1
+      : isGroupContract
+      ? perStudentSessionAmount * attendees.length
+      : perStudentSessionAmount
+
+    data.sessionAmount = totalRecordSessionAmount
     data.deductions = deductions
 
     setLoading(true)
@@ -821,7 +828,7 @@ export function LessonRecordWizard({
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1.5">
                   <RiRefreshLine className="w-3.5 h-3.5" />
-                  消耗堂數
+                  {isGroupContract ? '每人消耗堂數' : '消耗堂數'}
                 </Label>
                 <div className="relative">
                   {isDualContract ? (
@@ -837,11 +844,11 @@ export function LessonRecordWizard({
                       step="1"
                       min="1"
                       {...form.register('sessionAmount', { valueAsNumber: true })}
-                      className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm pr-8 font-medium"
+                      className="h-10 rounded-xl border-stone-200 bg-stone-50 focus:bg-white text-sm pr-12 font-medium"
                     />
                   )}
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-stone-400 pointer-events-none font-medium">
-                    {isDualContract ? '堂 (固定)' : '堂'}
+                    {isDualContract ? '堂 (固定)' : isGroupContract ? '堂 / 人' : '堂'}
                   </span>
                 </div>
                 {form.formState.errors.sessionAmount && (
