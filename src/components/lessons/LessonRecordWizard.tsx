@@ -118,13 +118,18 @@ export function LessonRecordWizard({
       const day = String(d.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
 
+      let editPerStudentAmount = initialData.sessionAmount || 1
+      if (initialData.deductions && initialData.deductions.length > 0) {
+        editPerStudentAmount = initialData.deductions[0].sessionAmount || 1
+      }
+
       form.reset({
         customerId: initialData.customerId,
         customerName: initialData.customerName,
         contractId: initialData.contractId,
         trainerId: initialData.trainerId || effectiveTrainerId,
         sessionDate: dateStr as any,
-        sessionAmount: initialData.sessionAmount || 1,
+        sessionAmount: editPerStudentAmount,
         notes: initialData.notes || '',
         attendingCustomerIds: initialData.attendingCustomerIds || [initialData.customerId],
       })
@@ -295,11 +300,9 @@ export function LessonRecordWizard({
     if (!initialData && selectedContract) {
       if (isDualContract) {
         form.setValue('sessionAmount', 1)
-      } else if (isGroupContract) {
-        form.setValue('sessionAmount', 1)
       }
     }
-  }, [initialData, form, selectedContract, isDualContract, isGroupContract])
+  }, [initialData, form, selectedContract, isDualContract])
 
   // Pre-select contract trainer when a contract is selected (only for new records)
   useEffect(() => {
