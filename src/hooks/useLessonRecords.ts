@@ -4,6 +4,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -18,7 +19,7 @@ import { db } from '../lib/firebase'
 import { useAuthStore } from '../stores/authStore'
 import { useCenterStore } from '../stores/centerStore'
 import { useTrainerProfileStore } from '../stores/trainerProfileStore'
-import type { LessonRecord } from '../types'
+import type { LessonRecord, StudentDeduction, Contract } from '../types'
 import type { LessonRecordFormValues } from '../lib/validators'
 import { logActivity } from '../lib/activityLogger'
 
@@ -31,7 +32,7 @@ export function useLessonRecords() {
   const { selectedTrainerId } = useTrainerProfileStore()
 
   const fetchRecords = useCallback(async () => {
-    if (!user) return
+    if (!user || !centerId) return
 
     setLoading(true)
     setError(null)
@@ -78,6 +79,53 @@ export function useLessonRecords() {
           return tB - tA
         }) as LessonRecord[]
       }
+
+      // Auto repair for legacy group lesson records where each deduction had sessionAmount equal to deductions.length (e.g., 3 instead of 1)
+      data.forEach(async (r) => {
+        if (Array.isArray(r.deductions) && r.deductions.length > 1) {
+          const isCorrupted = r.deductions.every(d => d.sessionAmount === r.deductions!.length)
+          if (isCorrupted) {
+            console.log(`Auto repairing corrupted group lesson record ${r.id}...`)
+            const repairedDeductions = r.deductions.map(d => ({ ...d, sessionAmount: 1 }))
+            const recordRef = doc(db, 'lessonRecords', r.id)
+            await updateDoc(recordRef, {
+              deductions: repairedDeductions,
+              sessionAmount: r.deductions.length,
+              updatedAt: serverTimestamp()
+            })
+
+            // Also repair contract member quotas if contractId is available
+            if (r.contractId) {
+              const contractRef = doc(db, 'contracts', r.contractId)
+              const cSnap = await getDoc(contractRef)
+              if (cSnap.exists()) {
+                const cData = cSnap.data() as Contract
+                if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+                  const updatedQuotas = { ...cData.groupMemberQuotas }
+                  let quotaChanged = false
+                  const overDeducted = r.deductions.length - 1
+                  r.deductions.forEach(d => {
+                    const q = updatedQuotas[d.customerId]
+                    if (q) {
+                      updatedQuotas[d.customerId] = {
+                        ...q,
+                        remainingSessions: Math.min(q.totalSessions, q.remainingSessions + overDeducted)
+                      }
+                      quotaChanged = true
+                    }
+                  })
+                  if (quotaChanged) {
+                    await updateDoc(contractRef, {
+                      groupMemberQuotas: updatedQuotas,
+                      updatedAt: serverTimestamp()
+                    })
+                  }
+                }
+              }
+            }
+          }
+        }
+      })
 
       setRecords(data)
     } catch (err: any) {
@@ -228,15 +276,7 @@ export function useLessonRecords() {
           }
         }
 
-        finalDeductions.forEach(d => {
-          const uref = customerRefsMap.get(d.customerId)
-          if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
-            transaction.update(uref, {
-              historicalSessions: increment(isDualContract ? 1 : d.sessionAmount),
-              updatedAt: serverTimestamp()
-            })
-          }
-        })
+
 
         return {
           finalTrainerId,
@@ -361,17 +401,7 @@ export function useLessonRecords() {
           }
         }
 
-        deductions.forEach(d => {
-          const uref = customerRefsMap.get(d.customerId)
-          const cType = contractSnapsMap.get(d.contractId)?.data()?.contractType
-          const decAmount = cType === 'dual' ? 1 : d.sessionAmount
-          if (uref && customerSnapsMap.get(d.customerId)?.exists()) {
-            transaction.update(uref, {
-              historicalSessions: increment(-decAmount),
-              updatedAt: serverTimestamp()
-            })
-          }
-        })
+
 
         transaction.delete(recordRef)
 
@@ -439,30 +469,7 @@ export function useLessonRecords() {
           }
         }
 
-        uniqueAttendeeIds.forEach((aId, index) => {
-          const wasAttendee = oldAttendeeIds.includes(aId)
-          const isAttendee = newAttendeeIds.includes(aId)
-          const attendeeSnap = attendeeSnaps[index]
-          const attendeeRef = attendeeRefs[index]
 
-          if (attendeeSnap.exists()) {
-            let change = 0
-            if (wasAttendee && isAttendee) {
-              change = diff
-            } else if (wasAttendee && !isAttendee) {
-              change = -oldData.sessionAmount
-            } else if (!wasAttendee && isAttendee) {
-              change = data.sessionAmount
-            }
-
-            if (change !== 0) {
-              transaction.update(attendeeRef, {
-                historicalSessions: increment(change),
-                updatedAt: serverTimestamp()
-              })
-            }
-          }
-        })
 
         const attendeeNames = newAttendeeIds.map(id => {
           const idx = uniqueAttendeeIds.indexOf(id)
