@@ -1005,11 +1005,21 @@ export default function TrainerLessonsPage() {
                   const cumSessions = (records || []).filter(l => 
                     (l.customerId === targetCustId || (l.attendingCustomerIds && l.attendingCustomerIds.includes(targetCustId)))
                   ).reduce((sum, l) => {
+                    const attendeeCount = Array.isArray(l.attendingCustomerIds) && l.attendingCustomerIds.length > 0 ? l.attendingCustomerIds.length : 1
                     if (Array.isArray(l.deductions) && l.deductions.length > 0) {
                       const custDed = l.deductions.find((d: any) => d.customerId === targetCustId)
-                      if (custDed && typeof custDed.amount === 'number') {
-                        return sum + custDed.amount
+                      if (custDed) {
+                        const amt = typeof custDed.sessionAmount === 'number' ? custDed.sessionAmount : (typeof custDed.amount === 'number' ? custDed.amount : 0)
+                        if (amt > 0) {
+                          if (attendeeCount > 1 && amt === l.sessionAmount && l.sessionAmount > 1) {
+                            return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
+                          }
+                          return sum + amt
+                        }
                       }
+                    }
+                    if (attendeeCount > 1 && typeof l.sessionAmount === 'number' && l.sessionAmount > 1) {
+                      return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
                     }
                     return sum + Number(l.sessionAmount || 1)
                   }, 0)
