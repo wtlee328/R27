@@ -372,9 +372,63 @@ export default function TrainerLessonsPage() {
       return
     }
 
-    if (selectedContract && selectedContract.remainingSessions < sessionAmount) {
-      setSubmitError(`合約剩餘堂數不足（剩餘 ${selectedContract.remainingSessions} 堂）`)
-      return
+    const isDual = selectedContract?.contractType === 'dual'
+    const isGroup = selectedContract?.contractType === 'group' || !!selectedContract?.groupMemberQuotas
+    const isShared = selectedContract?.contractType === 'shared'
+
+    let attendees = attendingCustomerIds
+    if (isDual) {
+      const dualPartners = Array.isArray(selectedContract?.customerIds) && selectedContract!.customerIds.length > 0
+        ? selectedContract!.customerIds
+        : [selectedContract!.customerId, selectedContract!.sharedWithCustomerId].filter(Boolean) as string[]
+      attendees = dualPartners
+      if (attendees.length < 2) {
+        setSubmitError('雙人合約必須由 2 位學員同時出席')
+        return
+      }
+    } else if (isGroup) {
+      if (attendees.length === 0) {
+        setSubmitError('團體合約請至少勾選一位實際出席學員')
+        return
+      }
+    } else {
+      // Single and Shared contract: 1-on-1 for the selected customer!
+      attendees = [selectedCustomerId]
+    }
+
+    const perStudentSessionAmount = isDual ? 1 : (Number(sessionAmount) || 1)
+
+    // Build per-student deductions
+    const deductions = attendees.map(studentId => {
+      const cust = customers.find(c => c.id === studentId)
+      return {
+        customerId: studentId,
+        customerName: cust?.name || '',
+        contractId: selectedContractId,
+        sessionAmount: perStudentSessionAmount,
+      }
+    })
+
+    const totalRecordSessionAmount = isDual
+      ? 1
+      : isGroup
+      ? perStudentSessionAmount * attendees.length
+      : perStudentSessionAmount
+
+    if (selectedContract) {
+      if (isGroup && selectedContract.groupMemberQuotas) {
+        for (const studentId of attendees) {
+          const cust = customers.find(c => c.id === studentId)
+          const q = selectedContract.groupMemberQuotas[studentId]
+          if (q && q.remainingSessions < perStudentSessionAmount) {
+            setSubmitError(`學員 ${cust?.name || ''} 的個人剩餘堂數不足（現有 ${q.remainingSessions} 堂）`)
+            return
+          }
+        }
+      } else if (selectedContract.remainingSessions < totalRecordSessionAmount) {
+        setSubmitError(`合約剩餘堂數不足（剩餘 ${selectedContract.remainingSessions} 堂，需要 ${totalRecordSessionAmount} 堂）`)
+        return
+      }
     }
 
     setSubmitting(true)
@@ -390,9 +444,10 @@ export default function TrainerLessonsPage() {
           const [y, m, d] = sessionDate.split('-').map(Number)
           return new Date(y, m - 1, d)
         })(),
-        sessionAmount,
+        sessionAmount: totalRecordSessionAmount,
         notes,
-        attendingCustomerIds,
+        attendingCustomerIds: attendees,
+        deductions,
       })
       handleCancel()
     } catch (err: any) {
@@ -404,11 +459,24 @@ export default function TrainerLessonsPage() {
   }
 
   // Dual contract partners
-  const partners = useMemo(() => {
-    if (!selectedContract) return []
+  const dualPartners = useMemo(() => {
+    if (!selectedContract || selectedContract.contractType !== 'dual') return []
+    const ids = Array.isArray(selectedContract.customerIds) && selectedContract.customerIds.length > 0
+      ? selectedContract.customerIds
+      : [selectedContract.customerId, selectedContract.sharedWithCustomerId].filter(Boolean) as string[]
+    return customers.filter(c => ids.includes(c.id))
+  }, [selectedContract, customers])
+
+  // Group contract members
+  const groupMembers = useMemo(() => {
+    if (!selectedContract || (selectedContract.contractType !== 'group' && !selectedContract.groupMemberQuotas)) return []
+    if (selectedContract.groupMemberQuotas) {
+      const memberIds = Object.keys(selectedContract.groupMemberQuotas)
+      return customers.filter(c => memberIds.includes(c.id))
+    }
     const ids = selectedContract.customerIds || []
-    return customers.filter(c => ids.includes(c.id) && c.id !== selectedCustomerId)
-  }, [selectedContract, customers, selectedCustomerId])
+    return customers.filter(c => ids.includes(c.id))
+  }, [selectedContract, customers])
 
   const formatRecordDate = (timestamp: any) => {
     if (!timestamp) return ''
@@ -761,59 +829,70 @@ export default function TrainerLessonsPage() {
               </div>
 
               {/* Dual / Shared / Group Contract Attendees */}
-              {selectedContract && (selectedContract.contractType === 'dual' || selectedContract.contractType === 'shared' || selectedContract.contractType === 'group' || partners.length > 0) && (
+              {selectedContract && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-stone-700 font-bold text-xs">
-                      {selectedContract.contractType === 'group' ? '團體成員出席' : selectedContract.contractType === 'shared' ? '共享成員出席' : '雙人成員出席 (固定同堂)'} *
-                    </Label>
-                    {selectedContract.contractType === 'dual' && (
-                      <span className="text-[10px] text-stone-400 font-medium">雙人合約固定兩人同時出席</span>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    {/* Primary Attending Customer */}
-                    <label className="flex items-center gap-2.5 p-2.5 bg-stone-50 rounded-xl border border-stone-200 text-xs font-semibold cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedContract.contractType === 'dual' ? true : attendingCustomerIds.includes(selectedCustomerId)}
-                        disabled={selectedContract.contractType === 'dual'}
-                        className="rounded border-stone-300 text-brand-500 focus:ring-brand-500 disabled:opacity-80"
-                      />
-                      <span>{selectedCustomer?.name} (主學員)</span>
-                    </label>
-                    {/* Partners */}
-                    {partners.map(partner => {
-                      const isAttending = attendingCustomerIds.includes(partner.id)
-                      const isDual = selectedContract.contractType === 'dual'
-                      return (
-                        <label
-                          key={partner.id}
-                          className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
-                            isAttending || isDual
-                              ? 'bg-brand-50/20 border-brand-200 text-brand-900'
-                              : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isDual ? true : isAttending}
-                            disabled={isDual}
-                            onChange={(e) => {
-                              if (isDual) return
-                              if (e.target.checked) {
-                                setAttendingCustomerIds([...attendingCustomerIds, partner.id])
-                              } else {
-                                setAttendingCustomerIds(attendingCustomerIds.filter(id => id !== partner.id))
-                              }
-                            }}
-                            className="rounded border-stone-300 text-brand-500 focus:ring-brand-500 cursor-pointer disabled:opacity-80"
-                          />
-                          <span>{partner.name}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
+                  {selectedContract.contractType === 'dual' ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-stone-700 font-bold text-xs">雙人成員出席 (固定兩人同時出席) *</Label>
+                        <span className="text-[10px] text-stone-400 font-medium">固定兩人扣抵 1 堂</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {dualPartners.map(partner => (
+                          <div key={partner.id} className="flex items-center gap-2.5 p-2.5 bg-brand-50/30 border border-brand-200/80 rounded-xl text-xs font-bold text-brand-900">
+                            <RiUser3Line className="w-4 h-4 text-brand-500 shrink-0" />
+                            <span>{partner.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (selectedContract.contractType === 'group' || selectedContract.groupMemberQuotas) ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-stone-700 font-bold text-xs">團體成員出席 *</Label>
+                        <span className="text-[10px] text-stone-400 font-medium">各學員獨立扣抵上課堂數</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {groupMembers.map(member => {
+                          const isAttending = attendingCustomerIds.includes(member.id)
+                          return (
+                            <label
+                              key={member.id}
+                              className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
+                                isAttending
+                                  ? 'bg-emerald-50/40 border-emerald-200 text-emerald-900'
+                                  : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isAttending}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setAttendingCustomerIds([...attendingCustomerIds, member.id])
+                                  } else {
+                                    setAttendingCustomerIds(attendingCustomerIds.filter(id => id !== member.id))
+                                  }
+                                }}
+                                className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <span>{member.name}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ) : selectedContract.contractType === 'shared' ? (
+                    <div className="p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <RiUserLine className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="font-semibold text-amber-900">共享合約：一對一獨立銷課 ({selectedCustomer?.name})</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                        獨立銷課
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               )}
 
@@ -871,27 +950,34 @@ export default function TrainerLessonsPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionAmount" className="text-stone-700 font-bold text-xs">扣堂數 *</Label>
-                  {selectedContract?.contractType === 'dual' ? (
-                    <Input
-                      id="sessionAmount"
-                      type="number"
-                      value={1}
-                      disabled
-                      className="h-11 bg-stone-100 border-stone-200 rounded-xl text-stone-600 font-bold cursor-not-allowed"
-                    />
-                  ) : (
-                    <Input
-                      id="sessionAmount"
-                      type="number"
-                      min="1"
-                      max={selectedContract ? selectedContract.remainingSessions : 100}
-                      value={sessionAmount}
-                      onChange={(e) => setSessionAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                      required
-                      className="h-11 bg-white border-stone-200 rounded-xl"
-                    />
-                  )}
+                  <Label htmlFor="sessionAmount" className="text-stone-700 font-bold text-xs">
+                    {selectedContract?.contractType === 'group' ? '每人消耗堂數 *' : '扣堂數 *'}
+                  </Label>
+                  <div className="relative">
+                    {selectedContract?.contractType === 'dual' ? (
+                      <Input
+                        id="sessionAmount"
+                        type="number"
+                        value={1}
+                        disabled
+                        className="h-11 bg-stone-100 border-stone-200 rounded-xl text-stone-600 font-bold cursor-not-allowed pr-14"
+                      />
+                    ) : (
+                      <Input
+                        id="sessionAmount"
+                        type="number"
+                        min="1"
+                        max={selectedContract ? selectedContract.remainingSessions : 100}
+                        value={sessionAmount}
+                        onChange={(e) => setSessionAmount(Math.max(1, parseInt(e.target.value) || 1))}
+                        required
+                        className="h-11 bg-white border-stone-200 rounded-xl pr-14"
+                      />
+                    )}
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none font-medium">
+                      {selectedContract?.contractType === 'dual' ? '堂 (固定)' : selectedContract?.contractType === 'group' ? '堂 / 人' : '堂'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
