@@ -112,11 +112,8 @@ export function BalanceSheetTable({
     })
     periodRecords.forEach((r) => {
       const amt = r.amount || 0
-      const cat = r.category || '一般收支'
-      if (!isAssetOrLiabilityCategory(cat)) {
-        if (r.type === 'income') otherIncomeTotal += amt
-        else if (r.type === 'expense') operatingExpensesTotal += amt
-      }
+      if (r.type === 'income') otherIncomeTotal += amt
+      else if (r.type === 'expense') operatingExpensesTotal += amt
     })
     return { otherIncomeTotal, operatingExpensesTotal, netIncome: currentPnlNet }
   }, [records, selectedYear, selectedMonth, currentPnlNet])

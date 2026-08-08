@@ -32,25 +32,18 @@ export default function ProfitLossPage() {
     const expenseMap = new Map<string, (number | null)[]>()
     const initMonths = () => Array(12).fill(null)
 
-    const isAssetOrLiability = (cat: string) =>
-      ['現金', '銀行存款', '公司存款', '預收款', '應付帳款', '業主資本', '業主往來', '應收帳款'].some((a) => cat.includes(a))
-
     yearRecords.map(normalizeCashFlowRecord).forEach((r) => {
       const monthIndex = r.date.toDate().getMonth()
       const cat = r.category || '一般收支'
 
       if (r.type === 'income') {
-        if (!isAssetOrLiability(cat)) {
-          if (!incomeMap.has(cat)) incomeMap.set(cat, initMonths())
-          const arr = incomeMap.get(cat)!
-          arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
-        }
+        if (!incomeMap.has(cat)) incomeMap.set(cat, initMonths())
+        const arr = incomeMap.get(cat)!
+        arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
       } else {
-        if (!isAssetOrLiability(cat)) {
-          if (!expenseMap.has(cat)) expenseMap.set(cat, initMonths())
-          const arr = expenseMap.get(cat)!
-          arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
-        }
+        if (!expenseMap.has(cat)) expenseMap.set(cat, initMonths())
+        const arr = expenseMap.get(cat)!
+        arr[monthIndex] = (arr[monthIndex] || 0) + r.amount
       }
     })
 

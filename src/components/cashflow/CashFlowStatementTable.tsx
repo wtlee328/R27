@@ -34,6 +34,8 @@ export function CashFlowStatementTable({ records, monthLabel }: CashFlowStatemen
     '體驗收入',
     '場租收入',
     '拳擊團課/贈與課程',
+    '預收款',
+    '公司存款',
     '房租',
     '薪資',
     '水電',
@@ -44,6 +46,10 @@ export function CashFlowStatementTable({ records, monthLabel }: CashFlowStatemen
     '公司福利',
     '保險',
     '營業稅',
+    '補足損益兩平',
+    '課程轉讓',
+    '退費',
+    '淨利分配',
   ]
 
   const investingCategoryNames = ['器材', '新光AED', '攤提']
