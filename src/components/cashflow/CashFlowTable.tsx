@@ -50,8 +50,8 @@ export function normalizeCashFlowRecord(r: CashFlowRecord) {
     }
   } else {
     const isExpenseCategory = [
-      '房租', '薪資', '水電', '行銷', '會計', '網路', '雜項', '器材', '新光AED', '公司福利', '保險', '營業稅', '攤提'
-    ].some((c) => (r.debitCategory || '').includes(c))
+      '房租', '薪資', '水電', '行銷', '會計', '網路', '雜項', '器材', '新光AED', '公司福利', '保險', '營業稅', '攤提', '補足損益兩平', '課程轉讓', '退費', '淨利分配'
+    ].some((c) => (r.debitCategory || r.category || '').includes(c))
 
     return {
       ...r,

@@ -30,6 +30,10 @@ export const ACCOUNT_CATEGORY_GROUPS = [
       '保險',
       '薪資',
       '營業稅',
+      '補足損益兩平',
+      '課程轉讓',
+      '退費',
+      '淨利分配',
     ],
   },
 ]
@@ -66,6 +70,10 @@ export const CREDIT_EXPENSE_CATEGORIES = [
   '保險',
   '薪資',
   '營業稅',
+  '補足損益兩平',
+  '課程轉讓',
+  '退費',
+  '淨利分配',
 ]
 
 export const ALL_CREDIT_CATEGORIES = [
@@ -95,6 +103,10 @@ export const PL_EXPENSE_CATEGORIES = [
   '保險',
   '薪資',
   '營業稅',
+  '補足損益兩平',
+  '課程轉讓',
+  '退費',
+  '淨利分配',
 ]
 
 // ─── Contract / Installment statuses ─────────────────────────
