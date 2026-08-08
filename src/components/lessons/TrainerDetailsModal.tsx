@@ -73,8 +73,8 @@ export function TrainerDetailsModal({
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Breakdown expandable state ('period' | 'cumulative' | null)
-  const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | null>(null)
+  // Breakdown expandable state ('period' | 'cumulative' | 'remaining' | null)
+  const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | 'remaining' | null>(null)
 
   // Get assigned students for this trainer
   const trainerStudents = useMemo(() => {
@@ -166,6 +166,46 @@ export function TrainerDetailsModal({
 
   const periodBreakdown = useMemo(() => calculateBreakdown(filteredLessons), [calculateBreakdown, filteredLessons])
   const cumulativeBreakdown = useMemo(() => calculateBreakdown(trainerLessons), [calculateBreakdown, trainerLessons])
+
+  const remainingBreakdown = useMemo(() => {
+    const categories = {
+      single: { nominal: 0, actual: 0 },
+      dual:   { nominal: 0, actual: 0 },
+      shared: { nominal: 0, actual: 0 },
+      group:  { nominal: 0, actual: 0 },
+    }
+
+    if (!trainer) return { categories, totalNominal: 0, totalActual: 0 }
+
+    const studentIds = customers.filter(c => c.trainerId === trainer.id).map(c => c.id)
+    const trainerContracts = contracts.filter(c => 
+      studentIds.includes(c.customerId) || 
+      studentIds.includes(c.primaryCustomerId) ||
+      c.trainerId === trainer.id
+    )
+
+    trainerContracts.forEach(c => {
+      if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return
+      const rem = Number(c.remainingSessions || 0)
+      if (rem <= 0) return
+
+      let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
+      if (c.contractType === 'group' || !!c.groupMemberQuotas) cType = 'group'
+      else if (c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')) cType = 'shared'
+      else if (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared')) cType = 'dual'
+      else cType = 'single'
+
+      if (categories[cType]) {
+        categories[cType].nominal += rem
+        categories[cType].actual += rem
+      }
+    })
+
+    const totalNominal = Object.values(categories).reduce((sum, c) => sum + c.nominal, 0)
+    const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
+
+    return { categories, totalNominal, totalActual }
+  }, [contracts, customers, trainer])
 
   if (!trainer) return null
 
@@ -285,11 +325,23 @@ export function TrainerDetailsModal({
               </div>
 
               {/* Card 3: 系統剩餘堂數 */}
-              <div className="text-center p-2.5 rounded-xl border border-stone-100 bg-white">
-                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-0.5 truncate">系統剩餘堂數</p>
-                <p className="text-base font-black text-stone-900 tabular-nums">
-                  {trainer.systemLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
+              <div
+                onClick={() => setExpandedMetric(prev => prev === 'remaining' ? null : 'remaining')}
+                className={cn(
+                  "text-center p-2.5 rounded-xl transition-all cursor-pointer relative group border select-none",
+                  expandedMetric === 'remaining' ? "bg-emerald-50 border-emerald-200 shadow-xs" : "border-stone-100 hover:border-emerald-200 bg-white"
+                )}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest truncate">系統剩餘堂數</p>
+                  <RiArrowDownSLine className={cn("w-3 h-3 transition-transform text-emerald-500 shrink-0", expandedMetric === 'remaining' && "rotate-180")} />
+                </div>
+                <p className="text-base font-black text-stone-900 tabular-nums mt-0.5">
+                  {remainingBreakdown.totalActual || trainer.systemLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
                 </p>
+                <span className="text-[9px] text-emerald-600 font-bold block mt-0.5 truncate">
+                  {expandedMetric === 'remaining' ? '收起 Breakdown' : '點擊展開'}
+                </span>
               </div>
 
               {/* Card 4: 專屬學員人數 */}
@@ -303,16 +355,26 @@ export function TrainerDetailsModal({
 
             {/* Breakdown Expanded Section */}
             {expandedMetric && (() => {
-              const bd = expandedMetric === 'period' ? periodBreakdown : cumulativeBreakdown
+              const bd = expandedMetric === 'period'
+                ? periodBreakdown
+                : expandedMetric === 'cumulative'
+                ? cumulativeBreakdown
+                : remainingBreakdown
+
               const titleText = expandedMetric === 'period'
                 ? `${selectedMonth === 'all' ? '全期篩選' : selectedMonth} 銷課合約類別 Breakdown`
-                : '教練全期累積銷課合約類別 Breakdown'
+                : expandedMetric === 'cumulative'
+                ? '教練全期累積銷課合約類別 Breakdown'
+                : '進行中合約 系統剩餘堂數 Breakdown'
 
               return (
-                <div className="mt-3 bg-stone-50 border border-orange-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200">
+                <div className={cn(
+                  "mt-3 border rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200",
+                  expandedMetric === 'remaining' ? "bg-emerald-50/60 border-emerald-200" : "bg-stone-50 border-orange-200"
+                )}>
                   <div className="flex items-center justify-between border-b border-stone-200/60 pb-2">
                     <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                      <RiPieChartLine className="w-3.5 h-3.5 text-orange-500" />
+                      <RiPieChartLine className={cn("w-3.5 h-3.5", expandedMetric === 'remaining' ? "text-emerald-500" : "text-orange-500")} />
                       {titleText}
                     </span>
                     <button
@@ -327,8 +389,8 @@ export function TrainerDetailsModal({
                   <div className="space-y-1.5 text-xs">
                     <div className="grid grid-cols-[1fr_80px_80px] gap-2 font-bold text-[10px] text-stone-400 uppercase border-b border-stone-200/40 pb-1">
                       <span>合約類別</span>
-                      <span className="text-center">名目堂數</span>
-                      <span className="text-center">實際銷課</span>
+                      <span className="text-center">{expandedMetric === 'remaining' ? '名目剩餘' : '名目堂數'}</span>
+                      <span className="text-center">{expandedMetric === 'remaining' ? '實際剩餘' : '實際銷課'}</span>
                     </div>
                     {[
                       { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700' },
@@ -345,14 +407,18 @@ export function TrainerDetailsModal({
                             </span>
                           </div>
                           <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 堂</span>
-                          <span className="text-center font-mono font-black text-orange-600">{data.actual} 堂</span>
+                          <span className={cn("text-center font-mono font-black", expandedMetric === 'remaining' ? "text-emerald-600" : "text-orange-600")}>
+                            {data.actual} 堂
+                          </span>
                         </div>
                       )
                     })}
                     <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs pt-1.5 border-t border-stone-200 font-bold">
                       <span className="text-stone-900">總計</span>
                       <span className="text-center font-mono text-stone-900">{bd.totalNominal} 堂</span>
-                      <span className="text-center font-mono text-orange-600 font-black">{bd.totalActual} 堂</span>
+                      <span className={cn("text-center font-mono font-black", expandedMetric === 'remaining' ? "text-emerald-600" : "text-orange-600")}>
+                        {bd.totalActual} 堂
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -129,8 +129,8 @@ export default function TrainerLessonsPage() {
     return 'single'
   }, [venueContracts])
 
-  // Expandable Breakdown State for top metrics ('monthly' | 'yearly' | null)
-  const [expandedMetric, setExpandedMetric] = useState<'monthly' | 'yearly' | null>(null)
+  // Expandable Breakdown State for top metrics ('monthly' | 'yearly' | 'remaining' | null)
+  const [expandedMetric, setExpandedMetric] = useState<'monthly' | 'yearly' | 'remaining' | null>(null)
 
   const monthlyRecords = useMemo(() => {
     return myRecords.filter(r => {
@@ -188,6 +188,51 @@ export default function TrainerLessonsPage() {
 
   const monthlyBreakdown = useMemo(() => calculateBreakdown(monthlyRecords), [calculateBreakdown, monthlyRecords])
   const yearlyBreakdown = useMemo(() => calculateBreakdown(yearlyRecords), [calculateBreakdown, yearlyRecords])
+
+  const remainingBreakdown = useMemo(() => {
+    const categories = {
+      single: { nominal: 0, actual: 0, count: 0 },
+      dual:   { nominal: 0, actual: 0, count: 0 },
+      shared: { nominal: 0, actual: 0, count: 0 },
+      group:  { nominal: 0, actual: 0, count: 0 },
+    }
+
+    if (!currentTrainerId) return { categories, totalNominal: 0, totalActual: 0 }
+
+    const myStudentIds = customers.filter(c => c.trainerId === currentTrainerId).map(c => c.id)
+    const myContracts = venueContracts.filter(c => 
+      myStudentIds.includes(c.customerId) || 
+      myStudentIds.includes(c.primaryCustomerId) ||
+      c.trainerId === currentTrainerId
+    )
+
+    myContracts.forEach(c => {
+      if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return
+      const rem = Number(c.remainingSessions || 0)
+      if (rem <= 0) return
+
+      let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
+      if (c.contractType === 'group' || !!c.groupMemberQuotas) cType = 'group'
+      else if (c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')) cType = 'shared'
+      else if (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared')) cType = 'dual'
+      else cType = 'single'
+
+      if (categories[cType]) {
+        categories[cType].nominal += rem
+        categories[cType].actual += rem
+        categories[cType].count += 1
+      }
+    })
+
+    const totalNominal = Object.values(categories).reduce((sum, c) => sum + c.nominal, 0)
+    const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
+
+    return {
+      categories,
+      totalNominal,
+      totalActual,
+    }
+  }, [customers, venueContracts, currentTrainerId])
 
   // Filter records by contract type
   const filteredRecords = useMemo(() => {
@@ -657,35 +702,60 @@ export default function TrainerLessonsPage() {
           </div>
 
           {/* 剩餘堂數 */}
-          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-xs">
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">剩餘堂數</p>
+          <div
+            onClick={() => setExpandedMetric(prev => prev === 'remaining' ? null : 'remaining')}
+            className={cn(
+              "bg-white border rounded-2xl p-4 shadow-xs cursor-pointer transition-all relative group select-none",
+              expandedMetric === 'remaining'
+                ? "border-emerald-400 ring-2 ring-emerald-300/30 bg-emerald-50/20"
+                : "border-stone-100 hover:border-emerald-200"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">剩餘堂數</p>
+              <div className={cn(
+                "w-5 h-5 rounded-md flex items-center justify-center transition-all duration-200",
+                expandedMetric === 'remaining' ? "bg-emerald-500 text-white rotate-180" : "bg-stone-100 text-stone-400 group-hover:bg-emerald-100 group-hover:text-emerald-600"
+              )}>
+                <RiArrowDownSLine className="w-3.5 h-3.5" />
+              </div>
+            </div>
             <p className="text-3xl font-black text-emerald-600 font-mono mt-1 tabular-nums">
               {totalRemainingLessonsCount}
               <span className="text-xs font-semibold text-emerald-400 ml-1">堂</span>
             </p>
-            <p className="text-[10px] text-emerald-600/70 font-medium mt-1">進行中合約餘額</p>
+            <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+              <span>{expandedMetric === 'remaining' ? '收起 Breakdown' : '點擊展開 Breakdown'}</span>
+            </p>
           </div>
         </div>
 
         {/* ── Breakdown Expanded Section ── */}
         {expandedMetric && (() => {
-          const bd = expandedMetric === 'monthly' ? monthlyBreakdown : yearlyBreakdown
+          const bd = expandedMetric === 'monthly'
+            ? monthlyBreakdown
+            : expandedMetric === 'yearly'
+            ? yearlyBreakdown
+            : remainingBreakdown
+
           const titleText = expandedMetric === 'monthly'
             ? `${metricsYear} 年 ${metricsMonth} 月 銷課合約類別 Breakdown`
-            : `${metricsYear} 年度 銷課合約類別 Breakdown`
+            : expandedMetric === 'yearly'
+            ? `${metricsYear} 年度 銷課合約類別 Breakdown`
+            : `進行中合約 系統剩餘堂數 Breakdown`
 
           const catConfigs = [
-            { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700 border-blue-200', note: '一對一獨立銷課' },
-            { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700 border-purple-200', note: '兩人同時出席，固定扣 1 堂' },
-            { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700 border-amber-200', note: '同合約一對一獨立銷課' },
-            { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', note: '名目依人數累計 (如3人=3堂)，實際一次團體課算 1 堂' },
+            { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700 border-blue-200', note: '一對一獨立合約剩餘堂數' },
+            { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700 border-purple-200', note: '雙人合約剩餘堂數' },
+            { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700 border-amber-200', note: '共享合約剩餘堂數' },
+            { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', note: '團體合約剩餘堂數' },
           ]
 
           return (
-            <div className="bg-white border border-orange-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-white border border-emerald-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <RiPieChartLine className="w-5 h-5 text-orange-500" />
+                  <RiPieChartLine className="w-5 h-5 text-emerald-500" />
                   <h3 className="text-sm font-bold text-stone-900">{titleText}</h3>
                 </div>
                 <button
@@ -703,8 +773,8 @@ export default function TrainerLessonsPage() {
                   <thead>
                     <tr className="border-b border-stone-100 bg-stone-50/70 text-stone-400 font-bold uppercase tracking-wider">
                       <th className="py-2.5 px-3">合約類別</th>
-                      <th className="py-2.5 px-3 text-center">名目銷課堂數 (按人數)</th>
-                      <th className="py-2.5 px-3 text-center">實際銷課堂數 (按次數)</th>
+                      <th className="py-2.5 px-3 text-center">{expandedMetric === 'remaining' ? '名目剩餘堂數' : '名目銷課堂數 (按人數)'}</th>
+                      <th className="py-2.5 px-3 text-center">{expandedMetric === 'remaining' ? '實際剩餘堂數' : '實際銷課堂數 (按次數)'}</th>
                       <th className="py-2.5 px-3 text-left">統計與計算說明</th>
                     </tr>
                   </thead>
