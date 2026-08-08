@@ -104,12 +104,40 @@ export default function TrainerLessonsPage() {
     }, 0)
   }, [customers, venueContracts, currentTrainerId])
 
+  // Contract type filter state (all, single, dual, shared, group)
+  const [contractTypeFilter, setContractTypeFilter] = useState<'all' | 'single' | 'dual' | 'shared' | 'group'>('all')
+
   // Sorting states for lesson records (Date, Student Name)
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+  // Helper to determine contract type for a record
+  const getRecordContractType = useCallback((r: LessonRecord) => {
+    const contract = venueContracts.find(c => c.id === r.contractId)
+    if (contract) {
+      if (contract.contractType) return contract.contractType
+      if (contract.groupMemberQuotas || contract.contractType === 'group') return 'group'
+      if (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3)) return 'shared'
+      if (contract.contractType === 'dual' || !!contract.sharedWithCustomerId) return 'dual'
+      return 'single'
+    }
+    const count = r.attendingCustomerIds?.length || 1
+    if (count > 2) return 'group'
+    if (count === 2) return 'dual'
+    return 'single'
+  }, [venueContracts])
+
+  // Filter records by contract type
+  const filteredRecords = useMemo(() => {
+    return myRecords.filter(r => {
+      if (contractTypeFilter === 'all') return true
+      const cType = getRecordContractType(r)
+      return cType === contractTypeFilter
+    })
+  }, [myRecords, contractTypeFilter, getRecordContractType])
+
   const sortedRecords = useMemo(() => {
-    return [...myRecords].sort((a, b) => {
+    return [...filteredRecords].sort((a, b) => {
       if (sortBy === 'date') {
         const timeA = a.sessionDate
           ? ((a.sessionDate as any).toMillis ? (a.sessionDate as any).toMillis() : new Date(a.sessionDate as any).getTime())
@@ -129,7 +157,7 @@ export default function TrainerLessonsPage() {
         return sortOrder === 'desc' ? -cmp : cmp
       }
     })
-  }, [myRecords, sortBy, sortOrder])
+  }, [filteredRecords, sortBy, sortOrder])
 
   // Form states
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -927,33 +955,54 @@ export default function TrainerLessonsPage() {
               </h2>
             </div>
 
-            {/* Sorting Dropdown */}
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-stone-500 font-semibold flex items-center gap-1">
-                <RiArrowUpDownLine className="w-3.5 h-3.5" />
-                排序方式：
-              </span>
-              <select
-                value={`${sortBy}-${sortOrder}`}
-                onChange={(e) => {
-                  const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
-                  setSortBy(field)
-                  setSortOrder(order)
-                }}
-                className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
-              >
-                <option value="date-desc">日期（由新到舊）</option>
-                <option value="date-asc">日期（由舊到新）</option>
-                <option value="name-asc">學生姓名（A → Z）</option>
-                <option value="name-desc">學生姓名（Z → A）</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Contract Type Filter (合約類別篩選器) */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-stone-500 font-semibold flex items-center gap-1">
+                  <RiFileTextLine className="w-3.5 h-3.5" />
+                  合約類別：
+                </span>
+                <select
+                  value={contractTypeFilter}
+                  onChange={(e) => setContractTypeFilter(e.target.value as any)}
+                  className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
+                >
+                  <option value="all">全部合約類別</option>
+                  <option value="single">單人合約</option>
+                  <option value="dual">雙人合約</option>
+                  <option value="shared">共享合約</option>
+                  <option value="group">團體合約</option>
+                </select>
+              </div>
+
+              {/* Sorting Dropdown */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-stone-500 font-semibold flex items-center gap-1">
+                  <RiArrowUpDownLine className="w-3.5 h-3.5" />
+                  排序方式：
+                </span>
+                <select
+                  value={`${sortBy}-${sortOrder}`}
+                  onChange={(e) => {
+                    const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
+                    setSortBy(field)
+                    setSortOrder(order)
+                  }}
+                  className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
+                >
+                  <option value="date-desc">日期（由新到舊）</option>
+                  <option value="date-asc">日期（由舊到新）</option>
+                  <option value="name-asc">學生姓名（A → Z）</option>
+                  <option value="name-desc">學生姓名（Z → A）</option>
+                </select>
+              </div>
             </div>
           </div>
 
           {/* Lesson Records List */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[1.8fr_1fr_1.2fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
+            <div className="grid grid-cols-[1.6fr_110px_1fr_1.1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
               <button
                 type="button"
                 onClick={() => {
@@ -969,6 +1018,7 @@ export default function TrainerLessonsPage() {
                 <span>學員</span>
                 {sortBy === 'name' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
               </button>
+              <span>合約類別</span>
               <span>教練</span>
               <span>累積已銷堂數</span>
               <button
@@ -1000,6 +1050,15 @@ export default function TrainerLessonsPage() {
                     : record.customerName
                   const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
                   const isSelected = selectedRecord?.id === record.id
+
+                  const cType = getRecordContractType(record)
+                  const badgeInfo = cType === 'group'
+                    ? { label: '團體合約', style: 'bg-emerald-50 text-emerald-700 border-emerald-200/80' }
+                    : cType === 'shared'
+                    ? { label: '共享合約', style: 'bg-amber-50 text-amber-700 border-amber-200/80' }
+                    : cType === 'dual'
+                    ? { label: '雙人合約', style: 'bg-purple-50 text-purple-700 border-purple-200/80' }
+                    : { label: '單人合約', style: 'bg-blue-50 text-blue-700 border-blue-200/80' }
 
                   const targetCustId = record.customerId || (record.attendingCustomerIds && record.attendingCustomerIds[0])
                   const cumSessions = (records || []).filter(l => 
@@ -1040,7 +1099,7 @@ export default function TrainerLessonsPage() {
                         }
                       }}
                       className={cn(
-                        "grid grid-cols-[1.8fr_1fr_1.2fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
+                        "grid grid-cols-[1.6fr_110px_1fr_1.1fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
                         isSelected
                           ? "bg-brand-50/60 border-l-2 border-brand-500"
                           : "hover:bg-stone-50 border-l-2 border-transparent"
@@ -1050,6 +1109,11 @@ export default function TrainerLessonsPage() {
                         "font-semibold text-sm truncate transition-colors",
                         isSelected ? "text-brand-700" : "text-stone-800 group-hover:text-stone-900"
                       )}>{attendingNames}</span>
+                      <div>
+                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block", badgeInfo.style)}>
+                          {badgeInfo.label}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
                         {isSubstituteRecord && (
