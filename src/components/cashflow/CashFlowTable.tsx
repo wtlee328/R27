@@ -1,7 +1,10 @@
+import React, { useState, useMemo } from 'react'
 import type { CashFlowRecord } from '../../types'
 import { format } from 'date-fns'
 import { Edit2, Trash2 } from 'lucide-react'
 import { Button } from '../ui/button'
+import { RiArrowUpLine, RiArrowDownLine, RiArrowUpDownLine } from '@remixicon/react'
+import { cn } from '../../lib/utils'
 
 interface CashFlowTableProps {
   records: CashFlowRecord[]
@@ -60,14 +63,20 @@ export function normalizeCashFlowRecord(r: CashFlowRecord) {
   }
 }
 
+type SortField = 'date' | 'type' | 'category' | 'account' | 'description' | null
+type SortOrder = 'asc' | 'desc'
+
 export function CashFlowTable({ records, onEdit, onDelete }: CashFlowTableProps) {
-  if (records.length === 0) {
-    return (
-      <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
-        <p className="text-stone-500 text-sm font-medium">目前沒有記帳資料</p>
-        <p className="text-stone-400 text-xs mt-1">點擊上方按鈕新增第一筆紀錄</p>
-      </div>
-    )
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortOrder(field === 'date' ? 'desc' : 'asc')
+    }
   }
 
   const sourceLabels: Record<string, string> = {
@@ -77,19 +86,100 @@ export function CashFlowTable({ records, onEdit, onDelete }: CashFlowTableProps)
     lesson: '銷課',
   }
 
-  const normalizedRecords = records.map(normalizeCashFlowRecord)
+  const sortedRecords = useMemo(() => {
+    const list = records.map(normalizeCashFlowRecord)
+
+    if (!sortField) return list
+
+    return [...list].sort((a, b) => {
+      let result = 0
+
+      switch (sortField) {
+        case 'date': {
+          const tA = a.date?.toDate ? a.date.toDate().getTime() : (a.date ? new Date(a.date as any).getTime() : 0)
+          const tB = b.date?.toDate ? b.date.toDate().getTime() : (b.date ? new Date(b.date as any).getTime() : 0)
+          result = tA - tB
+          break
+        }
+        case 'type': {
+          const typeA = a.type === 'income' ? '收入' : '支出'
+          const typeB = b.type === 'income' ? '收入' : '支出'
+          result = typeA.localeCompare(typeB, 'zh-TW')
+          break
+        }
+        case 'category': {
+          const catA = a.category || ''
+          const catB = b.category || ''
+          result = catA.localeCompare(catB, 'zh-TW')
+          break
+        }
+        case 'account': {
+          const accA = a.account || ''
+          const accB = b.account || ''
+          result = accA.localeCompare(accB, 'zh-TW')
+          break
+        }
+        case 'description': {
+          const descA = a.description || a.notes || ''
+          const descB = b.description || b.notes || ''
+          result = descA.localeCompare(descB, 'zh-TW')
+          break
+        }
+      }
+
+      return sortOrder === 'asc' ? result : -result
+    })
+  }, [records, sortField, sortOrder])
+
+  if (records.length === 0) {
+    return (
+      <div className="py-16 text-center bg-white rounded-xl border border-stone-200">
+        <p className="text-stone-500 text-sm font-medium">目前沒有記帳資料</p>
+        <p className="text-stone-400 text-xs mt-1">點擊上方按鈕新增第一筆紀錄</p>
+      </div>
+    )
+  }
+
+  const renderSortableHeader = (field: SortField, label: string, className: string = '') => {
+    const isActive = sortField === field
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={cn(
+          'px-5 py-3.5 font-semibold text-xs uppercase tracking-wider cursor-pointer select-none transition-colors hover:text-stone-900 group',
+          isActive ? 'text-stone-900 font-bold' : 'text-stone-500',
+          className
+        )}
+      >
+        <div className="flex items-center gap-1.5">
+          <span>{label}</span>
+          <span className="inline-flex shrink-0">
+            {isActive ? (
+              sortOrder === 'asc' ? (
+                <RiArrowUpLine className="w-3.5 h-3.5 text-stone-900 font-bold" />
+              ) : (
+                <RiArrowDownLine className="w-3.5 h-3.5 text-stone-900 font-bold" />
+              )
+            ) : (
+              <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-500 transition-colors" />
+            )}
+          </span>
+        </div>
+      </th>
+    )
+  }
 
   return (
     <div className="border border-stone-200 rounded-xl overflow-hidden bg-white shadow-sm">
       <table className="w-full text-sm text-left">
         <thead className="bg-stone-50/80 text-stone-500 border-b border-stone-200">
           <tr>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">日期</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">交易類型</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">會計科目</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">資金帳戶</th>
+            {renderSortableHeader('date', '日期')}
+            {renderSortableHeader('type', '交易類型')}
+            {renderSortableHeader('category', '會計科目')}
+            {renderSortableHeader('account', '資金帳戶')}
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">金額</th>
-            <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider">摘要</th>
+            {renderSortableHeader('description', '摘要')}
             <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-center">來源</th>
             {(onEdit || onDelete) && (
               <th className="px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-right">操作</th>
@@ -97,10 +187,10 @@ export function CashFlowTable({ records, onEdit, onDelete }: CashFlowTableProps)
           </tr>
         </thead>
         <tbody className="divide-y divide-stone-100">
-          {normalizedRecords.map((r) => (
+          {sortedRecords.map((r) => (
             <tr key={r.id} className="hover:bg-stone-50/80 transition-colors duration-150">
               <td className="px-5 py-3.5 text-stone-500 tabular-nums">
-                {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}
+                {r.date ? format(r.date.toDate ? r.date.toDate() : new Date(r.date as any), 'yyyy/MM/dd') : '-'}
               </td>
               <td className="px-5 py-3.5">
                 <span
