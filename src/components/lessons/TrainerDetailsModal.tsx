@@ -73,8 +73,8 @@ export function TrainerDetailsModal({
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Breakdown expandable state
-  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false)
+  // Breakdown expandable state ('period' | 'cumulative' | null)
+  const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | null>(null)
 
   // Get assigned students for this trainer
   const trainerStudents = useMemo(() => {
@@ -122,7 +122,7 @@ export function TrainerDetailsModal({
     })
   }, [filteredLessons, sortBy, sortOrder])
 
-  const breakdown = useMemo(() => {
+  const calculateBreakdown = useCallback((lessonList: LessonRecord[]) => {
     const categories = {
       single: { nominal: 0, actual: 0 },
       dual:   { nominal: 0, actual: 0 },
@@ -130,7 +130,7 @@ export function TrainerDetailsModal({
       group:  { nominal: 0, actual: 0 },
     }
 
-    filteredLessons.forEach(r => {
+    lessonList.forEach(r => {
       const contract = contracts.find(c => c.id === r.contractId)
       let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
       if (contract) {
@@ -160,7 +160,10 @@ export function TrainerDetailsModal({
     const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
 
     return { categories, totalNominal, totalActual }
-  }, [filteredLessons, contracts])
+  }, [contracts])
+
+  const periodBreakdown = useMemo(() => calculateBreakdown(filteredLessons), [calculateBreakdown, filteredLessons])
+  const cumulativeBreakdown = useMemo(() => calculateBreakdown(trainerLessons), [calculateBreakdown, trainerLessons])
 
   if (!trainer) return null
 
