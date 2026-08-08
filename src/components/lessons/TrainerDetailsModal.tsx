@@ -149,8 +149,10 @@ export function TrainerDetailsModal({
         ? r.attendingCustomerIds.length
         : 1
       
-      const nominalSessions = 1
-      const actualSessions = Number(r.sessionAmount || attendeeCount || 1)
+      // 名目銷課堂數：依上課人數計算，例如 3 人一起上課 = 3 堂
+      const nominalSessions = Number(r.sessionAmount || attendeeCount || 1)
+      // 實際銷課堂數：一次團體課不論幾人上課皆算 1 堂
+      const actualSessions = 1
 
       categories[cType].nominal += nominalSessions
       categories[cType].actual += actualSessions
@@ -342,14 +344,14 @@ export function TrainerDetailsModal({
                               {cat.label}
                             </span>
                           </div>
-                          <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 次</span>
+                          <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 堂</span>
                           <span className="text-center font-mono font-black text-orange-600">{data.actual} 堂</span>
                         </div>
                       )
                     })}
                     <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs pt-1.5 border-t border-stone-200 font-bold">
                       <span className="text-stone-900">總計</span>
-                      <span className="text-center font-mono text-stone-900">{bd.totalNominal} 次</span>
+                      <span className="text-center font-mono text-stone-900">{bd.totalNominal} 堂</span>
                       <span className="text-center font-mono text-orange-600 font-black">{bd.totalActual} 堂</span>
                     </div>
                   </div>

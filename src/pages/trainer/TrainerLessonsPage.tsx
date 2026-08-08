@@ -164,8 +164,10 @@ export default function TrainerLessonsPage() {
         ? r.attendingCustomerIds.length
         : 1
       
-      const nominalSessions = 1
-      const actualSessions = Number(r.sessionAmount || attendeeCount || 1)
+      // 名目銷課堂數：依上課人數計算，例如 3 人一起上課 = 3 堂
+      const nominalSessions = Number(r.sessionAmount || attendeeCount || 1)
+      // 實際銷課堂數：一次團體課不論幾人上課皆算 1 堂
+      const actualSessions = 1
 
       if (categories[cType]) {
         categories[cType].nominal += nominalSessions
@@ -676,7 +678,7 @@ export default function TrainerLessonsPage() {
             { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700 border-blue-200', note: '一對一獨立銷課' },
             { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700 border-purple-200', note: '兩人同時出席，固定扣 1 堂' },
             { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700 border-amber-200', note: '同合約一對一獨立銷課' },
-            { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', note: '名目按次數計 (1次)，實際按出席人數計' },
+            { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', note: '名目依人數累計 (如3人=3堂)，實際一次團體課算 1 堂' },
           ]
 
           return (
@@ -701,8 +703,8 @@ export default function TrainerLessonsPage() {
                   <thead>
                     <tr className="border-b border-stone-100 bg-stone-50/70 text-stone-400 font-bold uppercase tracking-wider">
                       <th className="py-2.5 px-3">合約類別</th>
-                      <th className="py-2.5 px-3 text-center">上課次數（名目銷課堂數）</th>
-                      <th className="py-2.5 px-3 text-center">實際銷課堂數</th>
+                      <th className="py-2.5 px-3 text-center">名目銷課堂數 (按人數)</th>
+                      <th className="py-2.5 px-3 text-center">實際銷課堂數 (按次數)</th>
                       <th className="py-2.5 px-3 text-left">統計與計算說明</th>
                     </tr>
                   </thead>
@@ -717,7 +719,7 @@ export default function TrainerLessonsPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center font-bold font-mono text-stone-900 tabular-nums">
-                            {data.nominal} <span className="text-[10px] text-stone-400 font-normal">次</span>
+                            {data.nominal} <span className="text-[10px] text-stone-400 font-normal">堂</span>
                           </td>
                           <td className="py-3 px-3 text-center font-black font-mono text-orange-600 tabular-nums">
                             {data.actual} <span className="text-[10px] text-stone-400 font-normal">堂</span>
@@ -732,13 +734,13 @@ export default function TrainerLessonsPage() {
                     <tr className="bg-orange-50/40 font-bold border-t-2 border-orange-200/80">
                       <td className="py-3 px-3 text-stone-900 font-black">總計</td>
                       <td className="py-3 px-3 text-center font-black font-mono text-stone-900 tabular-nums">
-                        {bd.totalNominal} <span className="text-[10px] text-stone-500 font-normal">次</span>
+                        {bd.totalNominal} <span className="text-[10px] text-stone-500 font-normal">堂</span>
                       </td>
                       <td className="py-3 px-3 text-center font-black font-mono text-orange-600 text-sm tabular-nums">
                         {bd.totalActual} <span className="text-[10px] text-stone-500 font-normal">堂</span>
                       </td>
                       <td className="py-3 px-3 text-orange-800 text-[11px] font-semibold">
-                        名目共 {bd.totalNominal} 堂次，實際扣抵合計 {bd.totalActual} 堂數
+                        名目依人數累計共 {bd.totalNominal} 堂，實際開課扣抵 {bd.totalActual} 堂
                       </td>
                     </tr>
                   </tbody>
