@@ -217,9 +217,22 @@ export default function TrainerLessonsPage() {
       else if (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared')) cType = 'dual'
       else cType = 'single'
 
+      let nominalRem = rem
+      let actualRem = rem
+
+      if (cType === 'group') {
+        const memberCount = Math.max(
+          1,
+          c.groupMemberQuotas
+            ? Object.keys(c.groupMemberQuotas).length
+            : (Array.isArray(c.customerIds) && c.customerIds.length > 0 ? c.customerIds.length : (c.maxAttendees || 3))
+        )
+        nominalRem = memberCount * rem
+      }
+
       if (categories[cType]) {
-        categories[cType].nominal += rem
-        categories[cType].actual += rem
+        categories[cType].nominal += nominalRem
+        categories[cType].actual += actualRem
         categories[cType].count += 1
       }
     })
