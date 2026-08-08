@@ -208,7 +208,11 @@ export default function TrainerLessonsPage() {
 
     myContracts.forEach(c => {
       if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return
-      const rem = Number(c.remainingSessions || 0)
+      let rem = Number(c.remainingSessions || 0)
+      if (rem <= 0 && c.groupMemberQuotas && Object.keys(c.groupMemberQuotas).length > 0) {
+        const memberRems = Object.values(c.groupMemberQuotas).map((m: any) => Number(m?.remainingSessions || 0))
+        rem = Math.max(0, ...memberRems)
+      }
       if (rem <= 0) return
 
       let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
@@ -227,7 +231,10 @@ export default function TrainerLessonsPage() {
             ? Object.keys(c.groupMemberQuotas).length
             : (Array.isArray(c.customerIds) && c.customerIds.length > 0 ? c.customerIds.length : (c.maxAttendees || 3))
         )
+        // 名目剩餘：合約人數 x 剩餘堂數
         nominalRem = memberCount * rem
+        // 實際剩餘：一次團體課不論幾人上課皆算 1 堂
+        actualRem = rem
       }
 
       if (categories[cType]) {
