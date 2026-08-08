@@ -39,8 +39,23 @@ export function CustomerTable({
 }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedTrainerId, setSelectedTrainerId] = useState('all')
-  const [filterType, setFilterType] = useState<'all' | 'has-active' | 'no-active'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'single' | 'dual' | 'shared' | 'group' | 'multiple' | 'none'>('all')
   const [sortBy, setSortBy] = useState<'default' | 'remaining-desc' | 'remaining-asc' | 'historical-desc' | 'historical-asc' | 'contract-date' | 'end-date' | 'birthday'>('default')
+
+  const getContractCategory = useCallback((con: Contract, customerId: string) => {
+    if (con.contractType === 'group' || !!con.groupMemberQuotas) {
+      return 'group'
+    }
+    const isShared = con.contractType === 'shared' || (Array.isArray(con.customerIds) && con.customerIds.length >= 3 && con.contractType !== 'group')
+    if (isShared) {
+      return 'shared'
+    }
+    const isDual = con.contractType === 'dual' || (!!con.sharedWithCustomerId && con.contractType !== 'group' && con.contractType !== 'shared')
+    if (isDual) {
+      return 'dual'
+    }
+    return 'single'
+  }, [])
   const checkIsMember = useCallback((con: Contract, customerId: string) => {
     if (!con || !customerId) return false
     if (con.customerId === customerId) return true
@@ -238,11 +253,19 @@ export function CustomerTable({
       result = result.filter(c => c.trainerId === selectedTrainerId)
     }
 
-    // 3. Active contract status filter
-    if (filterType === 'has-active') {
-      result = result.filter(c => getCustomerOngoingContracts(c).length > 0)
-    } else if (filterType === 'no-active') {
-      result = result.filter(c => getCustomerOngoingContracts(c).length === 0)
+    // 3. Contract category filter
+    if (filterType !== 'all') {
+      result = result.filter(c => {
+        const ongoing = getCustomerOngoingContracts(c)
+        if (filterType === 'none') {
+          return ongoing.length === 0
+        }
+        if (filterType === 'multiple') {
+          return ongoing.length >= 2
+        }
+        if (ongoing.length === 0) return false
+        return ongoing.some(con => getContractCategory(con, c.id) === filterType)
+      })
     }
 
     // 3. Sorting logic
@@ -354,17 +377,21 @@ export function CustomerTable({
 
           {/* Filter Dropdown */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-400 font-bold shrink-0">篩選合約</span>
+            <span className="text-xs text-stone-400 font-bold shrink-0">合約類別</span>
             <FilterDropdown
               value={filterType}
               onChange={(v) => setFilterType(v as any)}
               options={[
-                { value: 'all', label: '全部學員' },
-                { value: 'has-active', label: '有有效合約' },
-                { value: 'no-active', label: '無有效合約/過期' },
+                { value: 'all', label: '全部合約類別' },
+                { value: 'single', label: '單人合約' },
+                { value: 'dual', label: '雙人合約' },
+                { value: 'shared', label: '共享合約' },
+                { value: 'group', label: '團體合約' },
+                { value: 'multiple', label: '複數合約' },
+                { value: 'none', label: '無進行中合約' },
               ]}
               icon={RiFilterLine}
-              label="合約狀態"
+              label="合約類別"
             />
           </div>
 
