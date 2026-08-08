@@ -24,7 +24,9 @@ import {
   RiCalendarLine,
   RiUserLine,
   RiFileTextLine,
-  RiArrowRightSLine
+  RiArrowRightSLine,
+  RiArrowDownSLine,
+  RiPieChartLine
 } from '@remixicon/react'
 import { Button } from '../ui/button'
 import { cn } from '@/lib/utils'
@@ -71,6 +73,9 @@ export function TrainerDetailsModal({
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+  // Breakdown expandable state
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState(false)
+
   // Get assigned students for this trainer
   const trainerStudents = useMemo(() => {
     if (!trainer) return []
@@ -116,6 +121,46 @@ export function TrainerDetailsModal({
       }
     })
   }, [filteredLessons, sortBy, sortOrder])
+
+  const breakdown = useMemo(() => {
+    const categories = {
+      single: { nominal: 0, actual: 0 },
+      dual:   { nominal: 0, actual: 0 },
+      shared: { nominal: 0, actual: 0 },
+      group:  { nominal: 0, actual: 0 },
+    }
+
+    filteredLessons.forEach(r => {
+      const contract = contracts.find(c => c.id === r.contractId)
+      let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
+      if (contract) {
+        if (contract.contractType === 'group' || !!contract.groupMemberQuotas) cType = 'group'
+        else if (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) cType = 'shared'
+        else if (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared')) cType = 'dual'
+        else cType = 'single'
+      } else {
+        const count = r.attendingCustomerIds?.length || 1
+        if (count > 2) cType = 'group'
+        else if (count === 2) cType = 'dual'
+        else cType = 'single'
+      }
+
+      const attendeeCount = Array.isArray(r.attendingCustomerIds) && r.attendingCustomerIds.length > 0
+        ? r.attendingCustomerIds.length
+        : 1
+      
+      const nominalSessions = 1
+      const actualSessions = Number(r.sessionAmount || attendeeCount || 1)
+
+      categories[cType].nominal += nominalSessions
+      categories[cType].actual += actualSessions
+    })
+
+    const totalNominal = Object.values(categories).reduce((sum, c) => sum + c.nominal, 0)
+    const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
+
+    return { categories, totalNominal, totalActual }
+  }, [filteredLessons, contracts])
 
   if (!trainer) return null
 
@@ -190,19 +235,92 @@ export function TrainerDetailsModal({
 
             {/* Metrics Row */}
             <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-stone-100">
-              {[
-                { label: selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數', value: trainer.totalUsedLessons || 0, unit: '堂' },
-                { label: '系統剩餘堂數', value: trainer.systemLessons || 0, unit: '堂' },
-                { label: '專屬學員人數', value: trainerStudents.length, unit: '人' },
-              ].map(({ label, value, unit }) => (
-                <div key={label} className="text-center">
-                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">{label}</p>
-                  <p className="text-lg font-black text-stone-900 tabular-nums">
-                    {value} <span className="text-xs font-semibold text-stone-400">{unit}</span>
+              <div
+                onClick={() => setIsBreakdownOpen(prev => !prev)}
+                className={cn(
+                  "text-center p-2 rounded-xl transition-all cursor-pointer relative group border select-none",
+                  isBreakdownOpen ? "bg-orange-50 border-orange-200" : "border-transparent hover:bg-stone-50"
+                )}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest">
+                    {selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數'}
                   </p>
+                  <RiArrowDownSLine className={cn("w-3 h-3 transition-transform text-orange-500", isBreakdownOpen && "rotate-180")} />
                 </div>
-              ))}
+                <p className="text-lg font-black text-stone-900 tabular-nums">
+                  {trainer.totalUsedLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+                <span className="text-[9px] text-orange-600 font-bold block mt-0.5">
+                  {isBreakdownOpen ? '收起 Breakdown' : 'Breakdown 展開'}
+                </span>
+              </div>
+
+              <div className="text-center p-2">
+                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">系統剩餘堂數</p>
+                <p className="text-lg font-black text-stone-900 tabular-nums">
+                  {trainer.systemLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+              </div>
+
+              <div className="text-center p-2">
+                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">專屬學員人數</p>
+                <p className="text-lg font-black text-stone-900 tabular-nums">
+                  {trainerStudents.length} <span className="text-xs font-semibold text-stone-400">人</span>
+                </p>
+              </div>
             </div>
+
+            {/* Breakdown Expanded Section */}
+            {isBreakdownOpen && (
+              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-stone-200/60 pb-2">
+                  <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                    <RiPieChartLine className="w-3.5 h-3.5 text-orange-500" />
+                    銷課合約類別 Breakdown ({selectedMonth === 'all' ? '全部記錄' : selectedMonth})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsBreakdownOpen(false)}
+                    className="text-stone-400 hover:text-stone-600 text-[10px] font-bold cursor-pointer"
+                  >
+                    關閉
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 text-xs">
+                  <div className="grid grid-cols-[1fr_80px_80px] gap-2 font-bold text-[10px] text-stone-400 uppercase border-b border-stone-200/40 pb-1">
+                    <span>合約類別</span>
+                    <span className="text-center">名目堂數</span>
+                    <span className="text-center">實際銷課</span>
+                  </div>
+                  {[
+                    { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700' },
+                    { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700' },
+                    { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700' },
+                    { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700' },
+                  ].map(cat => {
+                    const data = breakdown.categories[cat.key as keyof typeof breakdown.categories]
+                    return (
+                      <div key={cat.key} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs">
+                        <div>
+                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", cat.badgeCls)}>
+                            {cat.label}
+                          </span>
+                        </div>
+                        <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 次</span>
+                        <span className="text-center font-mono font-black text-orange-600">{data.actual} 堂</span>
+                      </div>
+                    )
+                  })}
+                  <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs pt-1.5 border-t border-stone-200 font-bold">
+                    <span className="text-stone-900">總計</span>
+                    <span className="text-center font-mono text-stone-900">{breakdown.totalNominal} 次</span>
+                    <span className="text-center font-mono text-orange-600 font-black">{breakdown.totalActual} 堂</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

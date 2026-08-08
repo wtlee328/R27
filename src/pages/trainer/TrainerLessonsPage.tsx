@@ -20,6 +20,8 @@ import {
   RiLoader4Line,
   RiLockLine,
   RiArrowUpDownLine,
+  RiArrowDownSLine,
+  RiPieChartLine,
 } from '@remixicon/react'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
@@ -126,6 +128,64 @@ export default function TrainerLessonsPage() {
     if (count === 2) return 'dual'
     return 'single'
   }, [venueContracts])
+
+  // Expandable Breakdown State for top metrics ('monthly' | 'yearly' | null)
+  const [expandedMetric, setExpandedMetric] = useState<'monthly' | 'yearly' | null>(null)
+
+  const monthlyRecords = useMemo(() => {
+    return myRecords.filter(r => {
+      const dateVal = r.sessionDate || (r as any).date
+      if (!dateVal) return false
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
+      return d.getFullYear() === metricsYear && (d.getMonth() + 1) === metricsMonth
+    })
+  }, [myRecords, metricsYear, metricsMonth])
+
+  const yearlyRecords = useMemo(() => {
+    return myRecords.filter(r => {
+      const dateVal = r.sessionDate || (r as any).date
+      if (!dateVal) return false
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
+      return d.getFullYear() === metricsYear
+    })
+  }, [myRecords, metricsYear])
+
+  const calculateBreakdown = useCallback((recordList: LessonRecord[]) => {
+    const categories = {
+      single: { nominal: 0, actual: 0, count: 0 },
+      dual:   { nominal: 0, actual: 0, count: 0 },
+      shared: { nominal: 0, actual: 0, count: 0 },
+      group:  { nominal: 0, actual: 0, count: 0 },
+    }
+
+    recordList.forEach(r => {
+      const cType = getRecordContractType(r) as 'single' | 'dual' | 'shared' | 'group'
+      const attendeeCount = Array.isArray(r.attendingCustomerIds) && r.attendingCustomerIds.length > 0
+        ? r.attendingCustomerIds.length
+        : 1
+      
+      const nominalSessions = 1
+      const actualSessions = Number(r.sessionAmount || attendeeCount || 1)
+
+      if (categories[cType]) {
+        categories[cType].nominal += nominalSessions
+        categories[cType].actual += actualSessions
+        categories[cType].count += 1
+      }
+    })
+
+    const totalNominal = Object.values(categories).reduce((sum, c) => sum + c.nominal, 0)
+    const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
+
+    return {
+      categories,
+      totalNominal,
+      totalActual,
+    }
+  }, [getRecordContractType])
+
+  const monthlyBreakdown = useMemo(() => calculateBreakdown(monthlyRecords), [calculateBreakdown, monthlyRecords])
+  const yearlyBreakdown = useMemo(() => calculateBreakdown(yearlyRecords), [calculateBreakdown, yearlyRecords])
 
   // Filter records by contract type
   const filteredRecords = useMemo(() => {
@@ -538,28 +598,155 @@ export default function TrainerLessonsPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-xs">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">本月堂數</p>
+          {/* 本月堂數 */}
+          <div
+            onClick={() => setExpandedMetric(prev => prev === 'monthly' ? null : 'monthly')}
+            className={cn(
+              "bg-white border rounded-2xl p-4 shadow-xs cursor-pointer transition-all relative group select-none",
+              expandedMetric === 'monthly'
+                ? "border-orange-400 ring-2 ring-orange-300/30 bg-orange-50/20"
+                : "border-stone-100 hover:border-orange-200"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">本月堂數</p>
+              <div className={cn(
+                "w-5 h-5 rounded-md flex items-center justify-center transition-all duration-200",
+                expandedMetric === 'monthly' ? "bg-orange-500 text-white rotate-180" : "bg-stone-100 text-stone-400 group-hover:bg-orange-100 group-hover:text-orange-600"
+              )}>
+                <RiArrowDownSLine className="w-3.5 h-3.5" />
+              </div>
+            </div>
             <p className="text-3xl font-black text-stone-900 font-mono mt-1 tabular-nums">
               {monthlyLessonsCount}
               <span className="text-xs font-semibold text-stone-400 ml-1">堂</span>
             </p>
+            <p className="text-[10px] text-orange-600 font-bold mt-1 flex items-center gap-1">
+              <span>{expandedMetric === 'monthly' ? '收起 Breakdown' : '點擊展開 Breakdown'}</span>
+            </p>
           </div>
-          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-xs">
-            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">年度累計</p>
+
+          {/* 年度累計 */}
+          <div
+            onClick={() => setExpandedMetric(prev => prev === 'yearly' ? null : 'yearly')}
+            className={cn(
+              "bg-white border rounded-2xl p-4 shadow-xs cursor-pointer transition-all relative group select-none",
+              expandedMetric === 'yearly'
+                ? "border-orange-400 ring-2 ring-orange-300/30 bg-orange-50/20"
+                : "border-stone-100 hover:border-orange-200"
+            )}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">年度累計</p>
+              <div className={cn(
+                "w-5 h-5 rounded-md flex items-center justify-center transition-all duration-200",
+                expandedMetric === 'yearly' ? "bg-orange-500 text-white rotate-180" : "bg-stone-100 text-stone-400 group-hover:bg-orange-100 group-hover:text-orange-600"
+              )}>
+                <RiArrowDownSLine className="w-3.5 h-3.5" />
+              </div>
+            </div>
             <p className="text-3xl font-black text-stone-900 font-mono mt-1 tabular-nums">
               {yearlyLessonsCount}
               <span className="text-xs font-semibold text-stone-400 ml-1">堂</span>
             </p>
+            <p className="text-[10px] text-orange-600 font-bold mt-1 flex items-center gap-1">
+              <span>{expandedMetric === 'yearly' ? '收起 Breakdown' : '點擊展開 Breakdown'}</span>
+            </p>
           </div>
+
+          {/* 剩餘堂數 */}
           <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-xs">
             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">剩餘堂數</p>
             <p className="text-3xl font-black text-emerald-600 font-mono mt-1 tabular-nums">
               {totalRemainingLessonsCount}
               <span className="text-xs font-semibold text-emerald-400 ml-1">堂</span>
             </p>
+            <p className="text-[10px] text-emerald-600/70 font-medium mt-1">進行中合約餘額</p>
           </div>
         </div>
+
+        {/* ── Breakdown Expanded Section ── */}
+        {expandedMetric && (() => {
+          const bd = expandedMetric === 'monthly' ? monthlyBreakdown : yearlyBreakdown
+          const titleText = expandedMetric === 'monthly'
+            ? `${metricsYear} 年 ${metricsMonth} 月 銷課合約類別 Breakdown`
+            : `${metricsYear} 年度 銷課合約類別 Breakdown`
+
+          const catConfigs = [
+            { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700 border-blue-200', note: '一對一獨立銷課' },
+            { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700 border-purple-200', note: '兩人同時出席，固定扣 1 堂' },
+            { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700 border-amber-200', note: '同合約一對一獨立銷課' },
+            { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700 border-emerald-200', note: '名目按次數計 (1次)，實際按出席人數計' },
+          ]
+
+          return (
+            <div className="bg-white border border-orange-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <RiPieChartLine className="w-5 h-5 text-orange-500" />
+                  <h3 className="text-sm font-bold text-stone-900">{titleText}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandedMetric(null)}
+                  className="text-stone-400 hover:text-stone-600 p-1 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  <RiCloseLine className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Breakdown Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-stone-100 bg-stone-50/70 text-stone-400 font-bold uppercase tracking-wider">
+                      <th className="py-2.5 px-3">合約類別</th>
+                      <th className="py-2.5 px-3 text-center">上課次數（名目銷課堂數）</th>
+                      <th className="py-2.5 px-3 text-center">實際銷課堂數</th>
+                      <th className="py-2.5 px-3 text-left">統計與計算說明</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-50 font-medium text-stone-800">
+                    {catConfigs.map(cat => {
+                      const data = bd.categories[cat.key as keyof typeof bd.categories]
+                      return (
+                        <tr key={cat.key} className="hover:bg-stone-50/50 transition-colors">
+                          <td className="py-3 px-3">
+                            <span className={cn("inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border", cat.badgeCls)}>
+                              {cat.label}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-bold font-mono text-stone-900 tabular-nums">
+                            {data.nominal} <span className="text-[10px] text-stone-400 font-normal">次</span>
+                          </td>
+                          <td className="py-3 px-3 text-center font-black font-mono text-orange-600 tabular-nums">
+                            {data.actual} <span className="text-[10px] text-stone-400 font-normal">堂</span>
+                          </td>
+                          <td className="py-3 px-3 text-stone-400 text-[11px]">
+                            {cat.note}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {/* Summary Row */}
+                    <tr className="bg-orange-50/40 font-bold border-t-2 border-orange-200/80">
+                      <td className="py-3 px-3 text-stone-900 font-black">總計</td>
+                      <td className="py-3 px-3 text-center font-black font-mono text-stone-900 tabular-nums">
+                        {bd.totalNominal} <span className="text-[10px] text-stone-500 font-normal">次</span>
+                      </td>
+                      <td className="py-3 px-3 text-center font-black font-mono text-orange-600 text-sm tabular-nums">
+                        {bd.totalActual} <span className="text-[10px] text-stone-500 font-normal">堂</span>
+                      </td>
+                      <td className="py-3 px-3 text-orange-800 text-[11px] font-semibold">
+                        名目共 {bd.totalNominal} 堂次，實際扣抵合計 {bd.totalActual} 堂數
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Records List ── */}
