@@ -606,21 +606,26 @@ export default function AnalyticsPage() {
                 {monthlyLessonsTrend.months.map((count, idx) => {
                   const monthNum = idx + 1
                   const isSelected = selectedMonth === monthNum
-                  const heightPct = Math.max(8, (count / monthlyLessonsTrend.maxVal) * 100)
+                  const maxVal = monthlyLessonsTrend.maxVal || 1
+                  const heightPct = count > 0 ? Math.max(4, (count / maxVal) * 100) : 0
 
                   return (
                     <div key={monthNum} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
                       <span className={`text-[10px] font-mono font-bold transition-all ${isSelected ? 'text-orange-600 font-black' : 'text-stone-400'}`}>
                         {count > 0 ? `${count}堂` : ''}
                       </span>
-                      <div
-                        className={`w-full rounded-t-sm transition-all duration-200 ${
-                          isSelected
-                            ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-sm shadow-orange-200'
-                            : 'bg-stone-950 group-hover:bg-stone-800'
-                        }`}
-                        style={{ height: `${heightPct}%` }}
-                      />
+                      {count > 0 ? (
+                        <div
+                          className={`w-full rounded-t-sm transition-all duration-200 ${
+                            isSelected
+                              ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-sm shadow-orange-200'
+                              : 'bg-stone-950 group-hover:bg-stone-800'
+                          }`}
+                          style={{ height: `${heightPct}%` }}
+                        />
+                      ) : (
+                        <div className="w-full rounded-t-sm bg-stone-200/60" style={{ height: '3px' }} />
+                      )}
                       <span className={`text-xs font-bold ${isSelected ? 'text-orange-600 font-black' : 'text-stone-600'}`}>
                         {monthNum}月
                       </span>
