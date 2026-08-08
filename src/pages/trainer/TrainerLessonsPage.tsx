@@ -1279,14 +1279,14 @@ export default function TrainerLessonsPage() {
                 )}
               </div>
 
-              {r.notes && (
-                <div>
-                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
-                  <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3">
-                    <p className="text-sm text-stone-700 leading-relaxed">{r.notes}</p>
-                  </div>
+              <div>
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
+                <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3">
+                  <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", r.notes ? "text-stone-700 font-medium" : "text-stone-400 italic")}>
+                    {r.notes || '無課程備註'}
+                  </p>
                 </div>
-              )}
+              </div>
 
               {r.attendingCustomerNames && r.attendingCustomerNames.length > 1 && (
                 <div>

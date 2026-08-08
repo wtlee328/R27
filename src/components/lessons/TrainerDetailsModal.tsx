@@ -589,14 +589,14 @@ export function TrainerDetailsModal({
                   </div>
 
                   {/* Notes */}
-                  {r.notes && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">備註事項</p>
-                      <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs text-stone-700 leading-relaxed">
-                        {r.notes}
-                      </div>
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">備註事項</p>
+                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-xs leading-relaxed">
+                      <p className={cn("whitespace-pre-wrap", r.notes ? "text-stone-700 font-medium" : "text-stone-400 italic")}>
+                        {r.notes || '無備註事項'}
+                      </p>
                     </div>
-                  )}
+                  </div>
 
                   {/* Actions */}
                   <div className="pt-4 border-t border-stone-100 flex gap-3">
