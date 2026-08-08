@@ -610,33 +610,44 @@ export default function AnalyticsPage() {
               </Badge>
             </CardHeader>
             <CardContent className="pt-6 pb-2">
-              <div className="h-44 flex items-end justify-between gap-2 border-b border-stone-200/80 pb-2">
+              <div className="h-48 flex items-end justify-between gap-2 border-b border-stone-200/80 pb-2">
                 {monthlyLessonsTrend.months.map((count, idx) => {
                   const monthNum = idx + 1
                   const isSelected = selectedMonth === monthNum
                   const maxVal = monthlyLessonsTrend.maxVal || 1
-                  const heightPct = count > 0 ? Math.max(4, (count / maxVal) * 100) : 0
+                  const heightPct = count > 0 ? (count / maxVal) * 100 : 0
 
                   return (
-                    <div key={monthNum} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
-                      <span className={`text-[10px] font-mono font-bold transition-all ${isSelected ? 'text-orange-600 font-black' : 'text-stone-400'}`}>
-                        {count > 0 ? `${count}堂` : ''}
-                      </span>
-                      {count > 0 ? (
-                        <div
-                          className={`w-full rounded-t-sm transition-all duration-200 ${
-                            isSelected
-                              ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-sm shadow-orange-200'
-                              : 'bg-stone-950 group-hover:bg-stone-800'
-                          }`}
-                          style={{ height: `${heightPct}%` }}
-                        />
-                      ) : (
-                        <div className="w-full rounded-t-sm bg-stone-200/60" style={{ height: '3px' }} />
-                      )}
-                      <span className={`text-xs font-bold ${isSelected ? 'text-orange-600 font-black' : 'text-stone-600'}`}>
-                        {monthNum}月
-                      </span>
+                    <div key={monthNum} className="flex-1 flex flex-col items-center group h-full">
+                      {/* Top label area */}
+                      <div className="h-5 flex items-center justify-center shrink-0">
+                        <span className={`text-[11px] font-mono font-bold transition-all ${isSelected ? 'text-orange-600 font-black' : 'text-stone-400'}`}>
+                          {count > 0 ? `${count}堂` : ''}
+                        </span>
+                      </div>
+
+                      {/* Bar track container */}
+                      <div className="w-full flex-1 flex items-end justify-center py-1">
+                        {count > 0 ? (
+                          <div
+                            className={`w-full rounded-t-md transition-all duration-200 ${
+                              isSelected
+                                ? 'bg-gradient-to-t from-orange-600 to-amber-500 shadow-sm shadow-orange-200'
+                                : 'bg-stone-900 group-hover:bg-stone-800'
+                            }`}
+                            style={{ height: `${Math.max(6, heightPct)}%` }}
+                          />
+                        ) : (
+                          <div className="w-full rounded-t-xs bg-stone-200/60 h-[3px]" />
+                        )}
+                      </div>
+
+                      {/* Bottom month label */}
+                      <div className="h-5 flex items-center justify-center shrink-0">
+                        <span className={`text-xs font-bold ${isSelected ? 'text-orange-600 font-black' : 'text-stone-600'}`}>
+                          {monthNum}月
+                        </span>
+                      </div>
                     </div>
                   )
                 })}
