@@ -491,128 +491,296 @@ export default function TrainerLessonsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ---- Header Section ---- */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 pb-28">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2.5">
             <RiCalendarCheckLine className="w-6 h-6 text-orange-500" />
             銷課紀錄
           </h1>
+          <p className="text-xs text-stone-400 font-medium mt-0.5">{currentTrainerName} 的銷課記錄</p>
         </div>
-        {!isRecording && (
-          <Button
-            onClick={() => setIsRecording(true)}
-            className="flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white rounded-xl shadow-sm text-sm px-5 h-10 cursor-pointer font-bold transition-all"
-          >
-            <RiAddLine className="h-4 w-4" />
-            新增銷課紀錄
-          </Button>
+        <button
+          onClick={() => setIsRecording(true)}
+          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white rounded-2xl shadow-md shadow-orange-200 text-sm px-5 h-11 cursor-pointer font-bold transition-all duration-200"
+        >
+          <RiAddLine className="h-4 w-4" />
+          新增銷課
+        </button>
+      </div>
+
+      {/* ── Stats Cards ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">數據總覽</span>
+          <div className="flex items-center gap-2">
+            <select
+              value={metricsYear}
+              onChange={(e) => setMetricsYear(Number(e.target.value))}
+              className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+            >
+              {[2024, 2025, 2026, 2027].map(y => (
+                <option key={y} value={y}>{y} 年</option>
+              ))}
+            </select>
+            <select
+              value={metricsMonth}
+              onChange={(e) => setMetricsMonth(Number(e.target.value))}
+              className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{m} 月</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-xs">
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">本月堂數</p>
+            <p className="text-3xl font-black text-stone-900 font-mono mt-1 tabular-nums">
+              {monthlyLessonsCount}
+              <span className="text-xs font-semibold text-stone-400 ml-1">堂</span>
+            </p>
+          </div>
+          <div className="bg-white border border-stone-100 rounded-2xl p-4 shadow-xs">
+            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">年度累計</p>
+            <p className="text-3xl font-black text-stone-900 font-mono mt-1 tabular-nums">
+              {yearlyLessonsCount}
+              <span className="text-xs font-semibold text-stone-400 ml-1">堂</span>
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-xs">
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wide">剩餘堂數</p>
+            <p className="text-3xl font-black text-emerald-600 font-mono mt-1 tabular-nums">
+              {totalRemainingLessonsCount}
+              <span className="text-xs font-semibold text-emerald-400 ml-1">堂</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Records List ── */}
+      <div className="space-y-3">
+        {/* List Header with filters */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">
+            銷課紀錄 ({sortedRecords.length})
+          </span>
+          <div className="flex items-center gap-2">
+            <select
+              value={contractTypeFilter}
+              onChange={(e) => setContractTypeFilter(e.target.value as any)}
+              className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-xs font-semibold text-stone-700 focus:outline-none cursor-pointer"
+            >
+              <option value="all">全部類型</option>
+              <option value="single">單人</option>
+              <option value="dual">雙人</option>
+              <option value="shared">共享</option>
+              <option value="group">團體</option>
+            </select>
+            <select
+              value={`${sortBy}-${sortOrder}`}
+              onChange={(e) => {
+                const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
+                setSortBy(field)
+                setSortOrder(order)
+              }}
+              className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-xs font-semibold text-stone-700 focus:outline-none cursor-pointer"
+            >
+              <option value="date-desc">最新在前</option>
+              <option value="date-asc">最舊在前</option>
+              <option value="name-asc">學員 A→Z</option>
+              <option value="name-desc">學員 Z→A</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Cards */}
+        {recordsLoading ? (
+          <div className="py-16 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
+        ) : sortedRecords.length > 0 ? (
+          <div className="space-y-2">
+            {sortedRecords.slice(0, 50).map((record) => {
+              const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '—'
+              const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
+                ? record.attendingCustomerNames.join('、')
+                : record.customerName
+              const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
+              const isSelected = selectedRecord?.id === record.id
+
+              const cType = getRecordContractType(record)
+              const badgeMap = {
+                group:  { label: '團體', cls: 'bg-emerald-100 text-emerald-700' },
+                shared: { label: '共享', cls: 'bg-amber-100 text-amber-700' },
+                dual:   { label: '雙人', cls: 'bg-purple-100 text-purple-700' },
+                single: { label: '單人', cls: 'bg-blue-100 text-blue-700' },
+              }
+              const badge = badgeMap[cType as keyof typeof badgeMap] || badgeMap.single
+
+              const targetCustId = record.customerId || (record.attendingCustomerIds && record.attendingCustomerIds[0])
+              const cumSessions = (records || []).filter(l =>
+                (l.customerId === targetCustId || (l.attendingCustomerIds && l.attendingCustomerIds.includes(targetCustId)))
+              ).reduce((sum, l) => {
+                const attendeeCount = Array.isArray(l.attendingCustomerIds) && l.attendingCustomerIds.length > 0 ? l.attendingCustomerIds.length : 1
+                if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+                  const custDed = l.deductions.find((d: any) => d.customerId === targetCustId)
+                  if (custDed) {
+                    const amt = typeof custDed.sessionAmount === 'number' ? custDed.sessionAmount : (typeof custDed.amount === 'number' ? custDed.amount : 0)
+                    if (amt > 0) {
+                      if (attendeeCount > 1 && amt === l.sessionAmount && l.sessionAmount > 1) {
+                        return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
+                      }
+                      return sum + amt
+                    }
+                  }
+                }
+                if (attendeeCount > 1 && typeof l.sessionAmount === 'number' && l.sessionAmount > 1) {
+                  return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
+                }
+                return sum + Number(l.sessionAmount || 1)
+              }, 0)
+
+              return (
+                <div
+                  key={record.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setIsPanelVisible(false)
+                      setTimeout(() => setSelectedRecord(null), 300)
+                    } else {
+                      setSelectedRecord(record)
+                      setIsPanelVisible(false)
+                      requestAnimationFrame(() => {
+                        requestAnimationFrame(() => setIsPanelVisible(true))
+                      })
+                    }
+                  }}
+                  className={cn(
+                    "bg-white rounded-2xl border p-4 cursor-pointer transition-all duration-200 active:scale-[0.99]",
+                    isSelected
+                      ? "border-orange-300 shadow-md shadow-orange-100 ring-1 ring-orange-300/50"
+                      : "border-stone-100 shadow-xs hover:border-stone-200 hover:shadow-sm"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-black text-orange-600">
+                          {(attendingNames || '—').charAt(0)}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-stone-900 text-sm truncate">{attendingNames}</div>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badge.cls}`}>
+                            {badge.label}
+                          </span>
+                          {isSubstituteRecord && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-700">代課</span>
+                          )}
+                          <span className="text-[10px] text-stone-400 font-medium">{trainerName}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end shrink-0">
+                      <span className="text-lg font-black text-orange-500 tabular-nums leading-none">
+                        -{record.sessionAmount}
+                        <span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span>
+                      </span>
+                      <span className="text-[10px] text-stone-400 mt-1">{formatRecordDate(record.sessionDate)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-stone-50 flex items-center justify-between">
+                    <span className="text-[11px] text-stone-400">累計已銷</span>
+                    <span className="text-xs font-bold text-stone-600 font-mono">{cumSessions} 堂</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="py-20 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-100 flex items-center justify-center mx-auto mb-4">
+              <RiCalendarCheckLine className="w-7 h-7 text-stone-300" />
+            </div>
+            <p className="text-sm font-semibold text-stone-400">尚無銷課紀錄</p>
+            <p className="text-xs text-stone-300 mt-1">點擊右上角「新增銷課」開始記錄</p>
+          </div>
         )}
       </div>
 
-      {/* ---- Top Metrics Cards ---- */}
-      {!isRecording && (
-        <div className="space-y-3.5">
-          {/* Year & Month Selectors */}
-          <div className="flex items-center justify-between flex-wrap gap-3 bg-white p-3 rounded-2xl border border-stone-200/80 shadow-xs">
-            <span className="text-xs font-bold text-stone-600 flex items-center gap-1.5">
-              <RiCalendarLine className="w-4 h-4 text-orange-500" />
-              數據統計時間範圍
-            </span>
-            <div className="flex items-center gap-2">
-              <select
-                value={metricsYear}
-                onChange={(e) => setMetricsYear(Number(e.target.value))}
-                className="h-8 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
-              >
-                {[2024, 2025, 2026, 2027].map(y => (
-                  <option key={y} value={y}>{y} 年</option>
-                ))}
-              </select>
-              <select
-                value={metricsMonth}
-                onChange={(e) => setMetricsMonth(Number(e.target.value))}
-                className="h-8 rounded-lg border border-stone-200 bg-stone-50 px-2.5 text-xs font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
-              >
-                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                  <option key={m} value={m}>{m} 月</option>
-                ))}
-              </select>
-            </div>
-          </div>
+      {/* ═══════════════════════════════════════════
+          Lesson Recording Drawer (Bottom Sheet)
+      ═══════════════════════════════════════════ */}
+      {/* Backdrop */}
+      <div
+        onClick={handleCancel}
+        style={{
+          opacity: isRecording ? 1 : 0,
+          pointerEvents: isRecording ? 'auto' : 'none',
+          transition: 'opacity 0.3s ease',
+        }}
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+      />
 
-          {/* Metrics Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* 月總堂數 */}
-            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-stone-400">
-                  {metricsYear}年{metricsMonth}月 銷課堂數
-                </p>
-                <p className="text-2xl font-black text-stone-900 font-mono mt-0.5 tabular-nums">
-                  {monthlyLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
-                <RiTimeLine className="w-5 h-5" />
-              </div>
-            </div>
-
-            {/* 年總堂數 */}
-            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-stone-400">
-                  {metricsYear} 年度 累計銷課堂數
-                </p>
-                <p className="text-2xl font-black text-stone-900 font-mono mt-0.5 tabular-nums">
-                  {yearlyLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-700 shrink-0">
-                <RiCalendarCheckLine className="w-5 h-5" />
-              </div>
-            </div>
-
-            {/* 總剩餘堂數 */}
-            <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-bold text-stone-400">
-                  專屬學員 總剩餘堂數
-                </p>
-                <p className="text-2xl font-black text-emerald-600 font-mono mt-0.5 tabular-nums">
-                  {totalRemainingLessonsCount} <span className="text-xs font-semibold text-stone-400">堂</span>
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                <RiFileTextLine className="w-5 h-5" />
-              </div>
-            </div>
-          </div>
+      {/* Drawer */}
+      <div
+        style={{
+          transform: isRecording ? 'translateY(0)' : 'translateY(100%)',
+          transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)',
+        }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl flex flex-col max-h-[92dvh]"
+      >
+        {/* Drag Handle */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-10 h-1 bg-stone-200 rounded-full" />
         </div>
-      )}
 
-      {isRecording ? (
-        /* ---- Recording Mode ---- */
-        <div className="space-y-5">
-          <div className="flex items-center justify-between border-b border-stone-200 pb-4 mb-1">
-            <button
-              onClick={handleBack}
-              className="text-stone-500 hover:text-stone-800 text-sm font-bold flex items-center gap-1 cursor-pointer transition-colors px-2 py-1 rounded-lg hover:bg-stone-100"
-            >
-              <RiArrowLeftLine className="w-4 h-4" />
-              <span>返回列表</span>
-            </button>
-            <span className="text-xs text-stone-500 font-extrabold bg-stone-100 px-3 py-1 rounded-full border border-stone-200/60">
-              步驟 {step} / 2
-            </span>
+        {/* Drawer Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stone-100 shrink-0">
+          <div className="flex items-center gap-3">
+            {step === 2 && (
+              <button
+                onClick={handleBack}
+                className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <RiArrowLeftLine className="w-4 h-4 text-stone-600" />
+              </button>
+            )}
+            <div>
+              <h2 className="text-base font-black text-stone-900">
+                {step === 1 ? '選擇學員' : `確認銷課 · ${selectedCustomer?.name}`}
+              </h2>
+              <p className="text-[11px] text-stone-400 font-medium mt-0.5">
+                {step === 1 ? '步驟 1 / 2' : '步驟 2 / 2'}
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleCancel}
+            className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <RiCloseLine className="w-4 h-4 text-stone-600" />
+          </button>
+        </div>
 
+        {/* Step Progress */}
+        <div className="flex gap-1.5 px-5 py-2 shrink-0">
+          <div className="h-1 flex-1 rounded-full bg-orange-500 transition-all" />
+          <div className={cn("h-1 flex-1 rounded-full transition-all duration-300", step === 2 ? "bg-orange-500" : "bg-stone-200")} />
+        </div>
+
+        {/* Drawer Body */}
+        <div className="flex-1 overflow-y-auto">
           {step === 1 ? (
-            /* ---- Step 1: Select Customer ---- */
-            <div className="bg-white border border-stone-200/90 rounded-2xl p-6 shadow-sm space-y-5">
+            /* ═══ Step 1: Select Customer ═══ */
+            <div className="px-5 pt-4 pb-6 space-y-4">
+
               {/* Mode Tabs */}
-              <div className="flex rounded-xl bg-stone-100/90 p-1 border border-stone-200/60">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -620,170 +788,170 @@ export default function TrainerLessonsPage() {
                     setSelectedSubstitutedTrainerId('')
                   }}
                   className={cn(
-                    "flex-1 py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border",
                     entryMode === 'regular'
-                      ? "bg-white text-stone-900 shadow-xs border border-stone-200/40"
-                      : "text-stone-500 hover:text-stone-800"
+                      ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                      : "bg-white text-stone-500 border-stone-200 hover:border-stone-300"
                   )}
                 >
-                  <RiUser3Line className="w-4 h-4 text-orange-500" />
-                  一般銷課 (我的學員)
+                  <RiUser3Line className="w-3.5 h-3.5" />
+                  一般銷課
                 </button>
                 <button
                   type="button"
                   onClick={() => setEntryMode('substitute')}
                   className={cn(
-                    "flex-1 py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5",
+                    "flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 border",
                     entryMode === 'substitute'
-                      ? "bg-white text-amber-700 shadow-xs border border-amber-200/40"
-                      : "text-stone-500 hover:text-stone-800"
+                      ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                      : "bg-white text-stone-500 border-stone-200 hover:border-stone-300"
                   )}
                 >
-                  <RiUserSharedLine className="w-4 h-4 text-amber-500" />
-                  代課銷課 (選擇代課教練)
+                  <RiUserSharedLine className="w-3.5 h-3.5" />
+                  代課銷課
                 </button>
               </div>
 
-              {/* Substitute Mode: Select Substituted Trainer First */}
+              {/* Substitute trainer selector */}
               {entryMode === 'substitute' && (
-                <div className="space-y-2 p-4 bg-amber-50/70 border border-amber-200/80 rounded-2xl">
-                  <Label className="text-amber-900 font-bold text-xs flex items-center gap-1.5">
-                    <RiUserSharedLine className="w-4 h-4 text-amber-600" />
-                    <span>選擇被代課的教練 *</span>
+                <div className="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl space-y-2">
+                  <Label className="text-amber-800 font-bold text-xs flex items-center gap-1.5">
+                    <RiUserSharedLine className="w-3.5 h-3.5" />
+                    選擇被代課的教練
                   </Label>
                   <select
                     value={selectedSubstitutedTrainerId}
                     onChange={(e) => setSelectedSubstitutedTrainerId(e.target.value)}
                     className="w-full bg-white border border-amber-300 text-stone-900 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-xs focus:ring-2 focus:ring-amber-500 cursor-pointer"
                   >
-                    <option value="">-- 請先選擇被代課的教練名稱 --</option>
+                    <option value="">— 請選擇被代課的教練 —</option>
                     {trainers.filter((t) => t.id !== currentTrainerId).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
               )}
 
-              {/* Search Input */}
-              <div className="space-y-2">
-                <Label className="text-stone-700 font-bold text-xs">搜尋學員</Label>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder={
-                      entryMode === 'substitute'
-                        ? "搜尋該教練的合約學員姓名或電話..."
-                        : "請輸入學員姓名或電話，或從下方列表選擇..."
-                    }
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="h-10 pl-10 bg-white border-stone-200 rounded-xl focus:border-brand-400 focus:ring-brand-400/20 text-xs"
-                    autoFocus
-                  />
-                  <RiSearchLine className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-                </div>
-              </div>
-
-              {/* Search Results / Customer List Display */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-stone-500 px-1">
-                  <span>
-                    {entryMode === 'substitute'
-                      ? selectedSubstitutedTrainerId
-                        ? `${trainers.find(t => t.id === selectedSubstitutedTrainerId)?.name || '該教練'} 的合約學員名單`
-                        : '請先選擇被代課教練'
-                      : customerSearch.trim() ? '搜尋結果' : '學員列表 (合約學員優先)'}
-                  </span>
-                  <span className="text-[11px] text-stone-400 font-normal">
-                    共 {filteredAndSortedCustomers.length} 位學員
-                  </span>
-                </div>
-
-                {entryMode === 'substitute' && !selectedSubstitutedTrainerId ? (
-                  <div className="text-center py-10 text-stone-400 text-xs bg-stone-50/80 rounded-2xl border border-dashed border-stone-200/90 flex flex-col items-center justify-center gap-2">
-                    <RiUserSharedLine className="w-6 h-6 text-amber-500/80" />
-                    <span>請先在上方選擇「被代課的教練」，系統將自動列出該教練之合約學員</span>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[360px] overflow-y-auto pr-1">
-                    {filteredAndSortedCustomers.length > 0 ? (
-                      filteredAndSortedCustomers.map((cust) => {
-                        const contractInfo = customerContractMap.get(cust.id)
-                        const hasActiveContract = contractInfo && contractInfo.remainingTotal > 0
-
-                        return (
-                          <button
-                            key={cust.id}
-                            onClick={() => handleSelectCustomer(cust)}
-                            className={cn(
-                              "flex items-center justify-between p-3.5 rounded-xl border transition-all text-left cursor-pointer group",
-                              hasActiveContract
-                                ? "bg-white border-orange-200/90 hover:bg-orange-50/60 hover:border-orange-400 shadow-2xs"
-                                : "bg-stone-50/80 border-stone-200/80 hover:bg-stone-100"
-                            )}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div
-                                className={cn(
-                                  "w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 transition-colors",
-                                  hasActiveContract
-                                    ? "bg-orange-100 text-orange-700 group-hover:bg-orange-500 group-hover:text-white"
-                                    : "bg-stone-200/60 text-stone-600"
-                                )}
-                              >
-                                {cust.name.slice(0, 1)}
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-bold text-stone-800 text-sm group-hover:text-stone-950 transition-colors truncate">
-                                    {cust.name}
-                                  </span>
-                                  {hasActiveContract && (
-                                    <span className="text-[10px] font-extrabold text-orange-700 bg-orange-100/80 border border-orange-200/80 rounded px-1.5 py-0.2 shrink-0">
-                                      剩餘 {contractInfo.remainingTotal} 堂
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs text-stone-400 font-mono mt-0.5 truncate">
-                                  {cust.phone || '無電話資料'}
-                                </div>
-                              </div>
-                            </div>
-                            <RiArrowRightSLine className="h-4 w-4 text-stone-400 group-hover:text-orange-500 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
-                          </button>
-                        )
-                      })
-                    ) : (
-                      <div className="col-span-1 sm:col-span-2 text-center py-12 text-stone-400 text-sm bg-stone-50 rounded-xl">
-                        {entryMode === 'substitute'
-                          ? '該教練目前無進行中之合約學員'
-                          : `找不到符合「${customerSearch}」的學員`}
-                      </div>
-                    )}
-                  </div>
+              {/* Search */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="搜尋學員姓名或電話..."
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="w-full h-11 pl-10 pr-4 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300/50 focus:border-orange-300 text-sm placeholder:text-stone-400"
+                  autoFocus
+                />
+                <RiSearchLine className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+                {customerSearch && (
+                  <button
+                    onClick={() => setCustomerSearch('')}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  >
+                    <RiCloseLine className="h-4 w-4" />
+                  </button>
                 )}
               </div>
+
+              {/* Customer List */}
+              {entryMode === 'substitute' && !selectedSubstitutedTrainerId ? (
+                <div className="py-12 text-center text-stone-400 text-xs space-y-2">
+                  <RiUserSharedLine className="w-8 h-8 text-amber-400 mx-auto" />
+                  <p>請先選擇「被代課的教練」</p>
+                </div>
+              ) : filteredAndSortedCustomers.length > 0 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[11px] text-stone-400 font-semibold">
+                      {entryMode === 'substitute' && selectedSubstitutedTrainerId
+                        ? `${trainers.find(t => t.id === selectedSubstitutedTrainerId)?.name} 的學員`
+                        : customerSearch.trim() ? '搜尋結果' : '我的學員'}
+                    </span>
+                    <span className="text-[11px] text-stone-400">{filteredAndSortedCustomers.length} 位</span>
+                  </div>
+                  {filteredAndSortedCustomers.map((cust) => {
+                    const contractInfo = customerContractMap.get(cust.id)
+                    const hasActiveContract = contractInfo && contractInfo.remainingTotal > 0
+
+                    return (
+                      <button
+                        key={cust.id}
+                        onClick={() => handleSelectCustomer(cust)}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-3.5 rounded-2xl border text-left cursor-pointer transition-all active:scale-[0.98] group",
+                          hasActiveContract
+                            ? "bg-white border-orange-100 hover:border-orange-300 hover:shadow-sm shadow-xs"
+                            : "bg-stone-50/60 border-stone-100 hover:bg-white hover:border-stone-200"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl font-black text-sm flex items-center justify-center shrink-0 transition-all",
+                          hasActiveContract
+                            ? "bg-orange-100 text-orange-600 group-hover:bg-orange-500 group-hover:text-white"
+                            : "bg-stone-200 text-stone-500"
+                        )}>
+                          {cust.name.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-stone-900 text-sm">{cust.name}</div>
+                          <div className="text-xs text-stone-400 mt-0.5">{cust.phone || '—'}</div>
+                        </div>
+                        {hasActiveContract && (
+                          <span className="shrink-0 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-200/80 rounded-lg px-2 py-1">
+                            剩 {contractInfo.remainingTotal} 堂
+                          </span>
+                        )}
+                        <RiArrowRightSLine className="h-4 w-4 text-stone-300 group-hover:text-orange-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-stone-400 text-sm space-y-1">
+                  <RiSearchLine className="w-7 h-7 text-stone-300 mx-auto" />
+                  <p className="font-medium">找不到相符學員</p>
+                </div>
+              )}
             </div>
           ) : (
-            /* ---- Step 2: Form Details ---- */
-            <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-sm space-y-5">
-              <div>
-                <span className="text-[10px] text-stone-400 font-semibold block uppercase tracking-wider">目前學員</span>
-                <span className="text-base font-bold text-stone-800 mt-0.5 block">{selectedCustomer?.name}</span>
+            /* ═══ Step 2: Form Details ═══ */
+            <div className="px-5 pt-4 pb-6 space-y-5">
+
+              {/* Student Info Banner */}
+              <div className="flex items-center gap-3 p-3.5 bg-orange-50 border border-orange-100 rounded-2xl">
+                <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-black text-white">
+                    {selectedCustomer?.name?.charAt(0) || '?'}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-black text-stone-900 text-sm">{selectedCustomer?.name}</p>
+                  <p className="text-xs text-stone-400">{selectedCustomer?.phone || '—'}</p>
+                </div>
               </div>
 
               {/* Select Contract */}
               <div className="space-y-2">
-                <Label className="text-stone-700 font-bold text-xs">選擇合約 *</Label>
+                <Label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest block">選擇合約</Label>
                 {contractsLoading ? (
-                  <div className="text-xs text-stone-400 animate-pulse">載入合約中...</div>
+                  <div className="py-6 text-center text-xs text-stone-400 animate-pulse">載入合約中...</div>
                 ) : contracts.length > 0 ? (
                   <div className="space-y-2">
                     {contracts.map((contract) => {
                       const isSelected = selectedContractId === contract.id
-                      const typeLabel = contract.contractType === 'group' ? '團體' : contract.contractType === 'shared' ? '共享' : contract.contractType === 'dual' ? '雙人' : '單人'
+                      const typeMap = { group: '團體', shared: '共享', dual: '雙人', single: '單人' }
+                      const typeLabel = typeMap[contract.contractType as keyof typeof typeMap] || '單人'
+                      const typeColorMap = {
+                        group:  'from-emerald-400 to-teal-400',
+                        shared: 'from-amber-400 to-orange-400',
+                        dual:   'from-purple-400 to-violet-400',
+                        single: 'from-blue-400 to-sky-400',
+                      }
+                      const typeColor = typeColorMap[contract.contractType as keyof typeof typeColorMap] || typeColorMap.single
+                      const pct = contract.totalSessions > 0
+                        ? Math.min(100, (contract.remainingSessions / contract.totalSessions) * 100)
+                        : 0
+
                       return (
                         <button
                           key={contract.id}
@@ -801,56 +969,77 @@ export default function TrainerLessonsPage() {
                               setSessionAmount(1)
                             }
                           }}
-                          className={`w-full flex items-center justify-between p-3 rounded-xl border text-left cursor-pointer transition-all ${
+                          className={cn(
+                            "w-full text-left rounded-2xl border p-3.5 cursor-pointer transition-all active:scale-[0.99]",
                             isSelected
-                              ? 'border-brand-500 bg-brand-50/30'
-                              : 'border-stone-200 hover:bg-stone-50'
-                          }`}
+                              ? "border-orange-400 bg-orange-50/50 shadow-sm ring-1 ring-orange-300/40"
+                              : "border-stone-100 bg-white hover:border-stone-200 hover:shadow-xs"
+                          )}
                         >
-                          <div>
-                            <div className="font-semibold text-xs text-stone-800">
-                              {contract.contractNo || '未命名合約'} ({typeLabel})
+                          <div className="flex items-start justify-between gap-2 mb-2.5">
+                            <div>
+                              <div className="font-bold text-stone-900 text-sm">{contract.contractNo || '未命名合約'}</div>
+                              <span className={`inline-block mt-0.5 text-[10px] font-bold text-white bg-gradient-to-r ${typeColor} px-2 py-0.5 rounded-md`}>
+                                {typeLabel}合約
+                              </span>
                             </div>
-                            <div className="text-[10px] text-stone-500 mt-1">
-                              剩餘堂數: <span className="font-bold text-brand-600">{contract.remainingSessions}</span> / {contract.totalSessions} 堂
+                            <div className="text-right shrink-0">
+                              <div className="text-xl font-black text-stone-900 tabular-nums leading-none">
+                                {contract.remainingSessions}
+                              </div>
+                              <div className="text-[10px] text-stone-400">/ {contract.totalSessions} 堂</div>
                             </div>
                           </div>
-                          {isSelected && <RiCheckLine className="h-4 w-4 text-brand-500 shrink-0" />}
+                          {/* Progress bar */}
+                          <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${typeColor} transition-all`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          {isSelected && (
+                            <div className="flex items-center justify-end mt-2">
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-orange-600">
+                                <RiCheckLine className="h-3 w-3" />
+                                已選擇
+                              </span>
+                            </div>
+                          )}
                         </button>
                       )
                     })}
                   </div>
                 ) : (
-                  <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
-                    <RiAlertLine className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>該學員沒有可用的有效合約，請聯絡管理員新增合約。</span>
+                  <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl p-4 flex items-center gap-2">
+                    <RiAlertLine className="h-4 w-4 shrink-0" />
+                    <span>該學員沒有可用的有效合約，請聯絡管理員新增。</span>
                   </div>
                 )}
               </div>
 
-              {/* Dual / Shared / Group Contract Attendees */}
+              {/* Contract-specific attendee info */}
               {selectedContract && (
                 <div className="space-y-2">
                   {selectedContract.contractType === 'dual' ? (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-stone-700 font-bold text-xs">雙人成員出席 (固定兩人同時出席) *</Label>
-                        <span className="text-[10px] text-stone-400 font-medium">固定兩人扣抵 1 堂</span>
+                    <div className="p-4 bg-purple-50 border border-purple-100 rounded-2xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-[11px] font-bold text-purple-700 uppercase tracking-widest">雙人出席成員</Label>
+                        <span className="text-[10px] font-bold text-purple-500 bg-purple-100 px-2 py-0.5 rounded-md">固定扣 1 堂</span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {dualPartners.map(partner => (
-                          <div key={partner.id} className="flex items-center gap-2.5 p-2.5 bg-brand-50/30 border border-brand-200/80 rounded-xl text-xs font-bold text-brand-900">
-                            <RiUser3Line className="w-4 h-4 text-brand-500 shrink-0" />
-                            <span>{partner.name}</span>
+                          <div key={partner.id} className="flex items-center gap-1.5 bg-white border border-purple-200 rounded-xl px-3 py-1.5">
+                            <RiUser3Line className="w-3.5 h-3.5 text-purple-500" />
+                            <span className="text-xs font-bold text-purple-900">{partner.name}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (selectedContract.contractType === 'group' || selectedContract.groupMemberQuotas) ? (
-                    <div className="space-y-1.5">
+                    <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-stone-700 font-bold text-xs">團體成員出席 *</Label>
-                        <span className="text-[10px] text-stone-400 font-medium">各學員獨立扣抵上課堂數</span>
+                        <Label className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest">勾選實際出席學員</Label>
+                        <span className="text-[10px] font-medium text-emerald-600">{attendingCustomerIds.length} 位出席</span>
                       </div>
                       <div className="space-y-1.5">
                         {groupMembers.map(member => {
@@ -858,11 +1047,12 @@ export default function TrainerLessonsPage() {
                           return (
                             <label
                               key={member.id}
-                              className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
                                 isAttending
-                                  ? 'bg-emerald-50/40 border-emerald-200 text-emerald-900'
-                                  : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
-                              }`}
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-white border border-emerald-100 text-stone-600 hover:border-emerald-200"
+                              )}
                             >
                               <input
                                 type="checkbox"
@@ -874,108 +1064,102 @@ export default function TrainerLessonsPage() {
                                     setAttendingCustomerIds(attendingCustomerIds.filter(id => id !== member.id))
                                   }
                                 }}
-                                className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                className="sr-only"
                               />
-                              <span>{member.name}</span>
+                              <div className={cn(
+                                "w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all",
+                                isAttending ? "bg-white border-white" : "border-stone-300"
+                              )}>
+                                {isAttending && <RiCheckLine className="w-3 h-3 text-emerald-600" />}
+                              </div>
+                              <span className="text-sm font-bold">{member.name}</span>
                             </label>
                           )
                         })}
                       </div>
                     </div>
                   ) : selectedContract.contractType === 'shared' ? (
-                    <div className="p-3.5 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <RiUserLine className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span className="font-semibold text-amber-900">共享合約：一對一獨立銷課 ({selectedCustomer?.name})</span>
+                    <div className="flex items-center gap-2.5 p-3.5 bg-amber-50 border border-amber-100 rounded-2xl">
+                      <RiUserLine className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-amber-900">共享合約 · 一對一獨立銷課</p>
+                        <p className="text-[10px] text-amber-600 mt-0.5">僅對 {selectedCustomer?.name} 進行銷課</p>
                       </div>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-                        獨立銷課
-                      </span>
                     </div>
                   ) : null}
                 </div>
               )}
 
-              {/* Trainer Display / Select */}
-              <div className="space-y-1.5">
-                <Label className="text-stone-700 font-bold text-xs">授課教練 *</Label>
+              {/* Trainer info */}
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest block">授課教練</Label>
                 {currentTrainerId ? (
-                  <div className="w-full bg-stone-50 border border-stone-200/90 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm font-bold shadow-2xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <RiUser3Line className="w-4 h-4 text-orange-500" />
-                      <span>{currentTrainerName}</span>
+                  <div className="flex items-center gap-2.5 p-3 bg-stone-50 border border-stone-200 rounded-xl">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                      <RiUser3Line className="w-4 h-4 text-orange-600" />
                     </div>
-                    <span className="text-[11px] text-stone-400 font-normal bg-white border border-stone-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <RiLockLine className="w-3 h-3 text-stone-400" />
-                      登入教練
+                    <span className="font-bold text-stone-900 text-sm flex-1">{currentTrainerName}</span>
+                    <span className="text-[10px] text-stone-400 flex items-center gap-1">
+                      <RiLockLine className="w-3 h-3" />登入教練
                     </span>
                   </div>
                 ) : trainersLoading ? (
-                  <div className="text-xs text-stone-400">載入教練名單中...</div>
+                  <div className="text-xs text-stone-400 animate-pulse p-3">載入教練中...</div>
                 ) : (
                   <select
-                    id="trainer"
                     value={selectedTrainerId}
                     onChange={(e) => setSelectedTrainerId(e.target.value)}
-                    required
-                    className="w-full bg-white border border-stone-200 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 cursor-pointer font-medium"
+                    className="w-full bg-white border border-stone-200 text-stone-900 px-3.5 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-300/40 cursor-pointer font-medium"
                   >
-                    <option value="">-- 請選擇教練名稱 --</option>
+                    <option value="">— 請選擇教練 —</option>
                     {trainers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 )}
                 {isSubstituteTeaching && (
-                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-xl p-3 flex items-center gap-2 mt-2">
-                    <RiInformationLine className="h-4 w-4 shrink-0 text-amber-600" />
-                    <span>目前授課教練為（{currentTrainerName}），與合約原教練（{contractPrimaryTrainer?.name || '主合約教練'}）不同，將自動建立為「代課紀錄」。</span>
+                  <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
+                    <RiInformationLine className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                    <span>與合約原教練（{contractPrimaryTrainer?.name || '—'}）不同，將建立為「代課紀錄」。</span>
                   </div>
                 )}
               </div>
 
-              {/* Date, Amount & Notes — desktop two-column */}
-              <div className="grid grid-cols-2 gap-5">
+              {/* Date & Sessions grid */}
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionDate" className="text-stone-700 font-bold text-xs">上課日期 *</Label>
+                  <Label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest block">上課日期</Label>
                   <Input
-                    id="sessionDate"
                     type="date"
                     value={sessionDate}
                     onChange={(e) => setSessionDate(e.target.value)}
-                    required
-                    className="h-11 bg-white border-stone-200 rounded-xl"
+                    className="h-11 bg-white border-stone-200 rounded-xl text-sm"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sessionAmount" className="text-stone-700 font-bold text-xs">
-                    {selectedContract?.contractType === 'group' ? '每人消耗堂數 *' : '扣堂數 *'}
+                  <Label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest block">
+                    {selectedContract?.contractType === 'group' ? '每人堂數' : '扣堂數'}
                   </Label>
                   <div className="relative">
                     {selectedContract?.contractType === 'dual' ? (
                       <Input
-                        id="sessionAmount"
                         type="number"
                         value={1}
                         disabled
-                        className="h-11 bg-stone-100 border-stone-200 rounded-xl text-stone-600 font-bold cursor-not-allowed pr-14"
+                        className="h-11 bg-stone-50 border-stone-200 rounded-xl text-stone-500 font-bold cursor-not-allowed pr-12"
                       />
                     ) : (
                       <Input
-                        id="sessionAmount"
                         type="number"
                         min="1"
                         max={selectedContract ? selectedContract.remainingSessions : 100}
                         value={sessionAmount}
                         onChange={(e) => setSessionAmount(Math.max(1, parseInt(e.target.value) || 1))}
-                        required
-                        className="h-11 bg-white border-stone-200 rounded-xl pr-14"
+                        className="h-11 bg-white border-stone-200 rounded-xl text-sm font-bold pr-12"
                       />
                     )}
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none font-medium">
-                      {selectedContract?.contractType === 'dual' ? '堂 (固定)' : selectedContract?.contractType === 'group' ? '堂 / 人' : '堂'}
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 pointer-events-none">
+                      {selectedContract?.contractType === 'dual' ? '固定' : selectedContract?.contractType === 'group' ? '/ 人' : '堂'}
                     </span>
                   </div>
                 </div>
@@ -983,409 +1167,192 @@ export default function TrainerLessonsPage() {
 
               {/* Notes */}
               <div className="space-y-1.5">
-                <Label htmlFor="notes" className="text-stone-700 font-bold text-xs">課程備註</Label>
+                <Label className="text-[11px] font-bold text-stone-500 uppercase tracking-widest block">課程備註</Label>
                 <Textarea
-                  id="notes"
-                  placeholder="可在此輸入課程筆記、學員身體狀況等..."
+                  placeholder="課程筆記、學員狀況... (選填)"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="bg-white border-stone-200 rounded-xl min-h-[100px]"
+                  className="bg-white border-stone-200 rounded-xl min-h-[80px] text-sm resize-none"
                 />
               </div>
 
+              {/* Error */}
               {submitError && (
-                <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl p-3 flex items-start gap-2">
-                  <RiAlertLine className="h-4.5 w-4.5 shrink-0" />
+                <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+                  <RiAlertLine className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>{submitError}</span>
                 </div>
               )}
-
-              {/* Submit Buttons */}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancel}
-                  className="flex-1 h-11 border-stone-200 rounded-xl text-stone-600 text-sm font-bold cursor-pointer"
-                  disabled={submitting}
-                >
-                  取消
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleSubmit}
-                  className="flex-1 h-11 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5"
-                  disabled={submitting || !selectedContractId || !selectedTrainerId}
-                >
-                  {submitting ? (
-                    <>
-                      <RiLoader4Line className="h-4 w-4 animate-spin" />
-                      <span>儲存中...</span>
-                    </>
-                  ) : (
-                    '確認銷課'
-                  )}
-                </Button>
-              </div>
             </div>
           )}
         </div>
-      ) : (
-        /* ---- History/List Mode ---- */
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-stone-800 flex items-center gap-2">
-                <RiTimeLine className="h-5 w-5 text-brand-500" />
-                最近銷課紀錄 ({sortedRecords.length})
-              </h2>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Contract Type Filter (合約類別篩選器) */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-stone-500 font-semibold flex items-center gap-1">
-                  <RiFileTextLine className="w-3.5 h-3.5" />
-                  合約類別：
-                </span>
-                <select
-                  value={contractTypeFilter}
-                  onChange={(e) => setContractTypeFilter(e.target.value as any)}
-                  className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
-                >
-                  <option value="all">全部合約類別</option>
-                  <option value="single">單人合約</option>
-                  <option value="dual">雙人合約</option>
-                  <option value="shared">共享合約</option>
-                  <option value="group">團體合約</option>
-                </select>
-              </div>
-
-              {/* Sorting Dropdown */}
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-stone-500 font-semibold flex items-center gap-1">
-                  <RiArrowUpDownLine className="w-3.5 h-3.5" />
-                  排序方式：
-                </span>
-                <select
-                  value={`${sortBy}-${sortOrder}`}
-                  onChange={(e) => {
-                    const [field, order] = e.target.value.split('-') as ['date' | 'name', 'asc' | 'desc']
-                    setSortBy(field)
-                    setSortOrder(order)
-                  }}
-                  className="h-8 rounded-lg border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer shadow-xs"
-                >
-                  <option value="date-desc">日期（由新到舊）</option>
-                  <option value="date-asc">日期（由舊到新）</option>
-                  <option value="name-asc">學生姓名（A → Z）</option>
-                  <option value="name-desc">學生姓名（Z → A）</option>
-                </select>
-              </div>
-            </div>
+        {/* Drawer Footer — only show on step 2 */}
+        {step === 2 && (
+          <div className="px-5 py-4 border-t border-stone-100 bg-white shrink-0">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={submitting || !selectedContractId || !selectedTrainerId}
+              className="w-full h-12 bg-orange-500 hover:bg-orange-600 disabled:bg-stone-200 disabled:text-stone-400 text-white font-black rounded-2xl text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-orange-200 disabled:shadow-none"
+            >
+              {submitting ? (
+                <>
+                  <RiLoader4Line className="h-4 w-4 animate-spin" />
+                  儲存中...
+                </>
+              ) : (
+                <>
+                  <RiCheckLine className="h-4 w-4" />
+                  確認銷課
+                </>
+              )}
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* Lesson Records List */}
-          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
-            {/* Table Header */}
-            <div className="grid grid-cols-[1.6fr_110px_1fr_1.1fr_1fr_80px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
+      {/* ═══════════════════════════════════════════
+          Record Detail Side Panel
+      ═══════════════════════════════════════════ */}
+      {selectedRecord && (() => {
+        const r = selectedRecord
+        const trainerName = trainers.find(t => t.id === r.trainerId)?.name || '—'
+        const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
+          ? r.attendingCustomerNames.join('、')
+          : r.customerName
+        const isSubstituteRecord = r.contractTrainerId && r.contractTrainerId !== r.trainerId
+        const contractTrainerName = r.contractTrainerId
+          ? trainers.find(t => t.id === r.contractTrainerId)?.name
+          : null
+        const contract = venueContracts.find(c => c.id === r.contractId)
+        const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
+        const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
+        const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
+
+        return (
+          <div
+            ref={panelRef}
+            style={{
+              transform: isPanelVisible ? 'translateX(0)' : 'translateX(100%)',
+              opacity: isPanelVisible ? 1 : 0,
+              transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease',
+            }}
+            className="fixed top-0 right-0 h-full w-full sm:w-[360px] bg-white border-l border-stone-200 shadow-2xl z-50 flex flex-col"
+          >
+            {/* Panel Header */}
+            <div className="px-5 py-5 border-b border-stone-100 bg-gradient-to-br from-stone-50 to-white flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">銷課紀錄</p>
+                <h3 className="text-lg font-black text-stone-900 leading-tight">{attendingNames}</h3>
+                {isSubstituteRecord && (
+                  <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
+                    代課紀錄
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => {
-                  if (sortBy === 'name') {
-                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
-                  } else {
-                    setSortBy('name')
-                    setSortOrder('asc')
-                  }
+                  setIsPanelVisible(false)
+                  setTimeout(() => setSelectedRecord(null), 300)
                 }}
-                className="flex items-center gap-1 hover:text-stone-800 text-left font-bold cursor-pointer"
+                className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
               >
-                <span>學員</span>
-                {sortBy === 'name' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
+                <RiCloseLine className="h-4 w-4 text-stone-500" />
               </button>
-              <span>合約類別</span>
-              <span>教練</span>
-              <span>累積已銷堂數</span>
-              <button
-                type="button"
-                onClick={() => {
-                  if (sortBy === 'date') {
-                    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
-                  } else {
-                    setSortBy('date')
-                    setSortOrder('desc')
-                  }
-                }}
-                className="flex items-center gap-1 hover:text-stone-800 text-left font-bold cursor-pointer"
-              >
-                <span>日期</span>
-                {sortBy === 'date' ? (sortOrder === 'asc' ? ' ↑' : ' ↓') : ''}
-              </button>
-              <span className="text-right">扣堂數</span>
             </div>
 
-            {recordsLoading ? (
-              <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
-            ) : sortedRecords.length > 0 ? (
-              <div className="divide-y divide-stone-100">
-                {sortedRecords.slice(0, 50).map((record) => {
-                  const trainerName = trainers.find(t => t.id === record.trainerId)?.name || '未指定教練'
-                  const attendingNames = record.attendingCustomerNames && record.attendingCustomerNames.length > 0
-                    ? record.attendingCustomerNames.join('、')
-                    : record.customerName
-                  const isSubstituteRecord = record.contractTrainerId && record.contractTrainerId !== record.trainerId
-                  const isSelected = selectedRecord?.id === record.id
-
-                  const cType = getRecordContractType(record)
-                  const badgeInfo = cType === 'group'
-                    ? { label: '團體合約', style: 'bg-emerald-50 text-emerald-700 border-emerald-200/80' }
-                    : cType === 'shared'
-                    ? { label: '共享合約', style: 'bg-amber-50 text-amber-700 border-amber-200/80' }
-                    : cType === 'dual'
-                    ? { label: '雙人合約', style: 'bg-purple-50 text-purple-700 border-purple-200/80' }
-                    : { label: '單人合約', style: 'bg-blue-50 text-blue-700 border-blue-200/80' }
-
-                  const targetCustId = record.customerId || (record.attendingCustomerIds && record.attendingCustomerIds[0])
-                  const cumSessions = (records || []).filter(l => 
-                    (l.customerId === targetCustId || (l.attendingCustomerIds && l.attendingCustomerIds.includes(targetCustId)))
-                  ).reduce((sum, l) => {
-                    const attendeeCount = Array.isArray(l.attendingCustomerIds) && l.attendingCustomerIds.length > 0 ? l.attendingCustomerIds.length : 1
-                    if (Array.isArray(l.deductions) && l.deductions.length > 0) {
-                      const custDed = l.deductions.find((d: any) => d.customerId === targetCustId)
-                      if (custDed) {
-                        const amt = typeof custDed.sessionAmount === 'number' ? custDed.sessionAmount : (typeof custDed.amount === 'number' ? custDed.amount : 0)
-                        if (amt > 0) {
-                          if (attendeeCount > 1 && amt === l.sessionAmount && l.sessionAmount > 1) {
-                            return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
-                          }
-                          return sum + amt
-                        }
-                      }
-                    }
-                    if (attendeeCount > 1 && typeof l.sessionAmount === 'number' && l.sessionAmount > 1) {
-                      return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
-                    }
-                    return sum + Number(l.sessionAmount || 1)
-                  }, 0)
-
-                  return (
-                    <div
-                      key={record.id}
-                      onClick={() => {
-                        if (isSelected) {
-                          setIsPanelVisible(false)
-                          setTimeout(() => setSelectedRecord(null), 300)
-                        } else {
-                          setSelectedRecord(record)
-                          setIsPanelVisible(false)
-                          requestAnimationFrame(() => {
-                            requestAnimationFrame(() => setIsPanelVisible(true))
-                          })
-                        }
-                      }}
-                      className={cn(
-                        "grid grid-cols-[1.6fr_110px_1fr_1.1fr_1fr_80px] gap-4 px-6 py-4 transition-all cursor-pointer items-center group",
-                        isSelected
-                          ? "bg-brand-50/60 border-l-2 border-brand-500"
-                          : "hover:bg-stone-50 border-l-2 border-transparent"
-                      )}
-                    >
-                      <span className={cn(
-                        "font-semibold text-sm truncate transition-colors",
-                        isSelected ? "text-brand-700" : "text-stone-800 group-hover:text-stone-900"
-                      )}>{attendingNames}</span>
-                      <div>
-                        <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full border inline-block", badgeInfo.style)}>
-                          {badgeInfo.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs bg-stone-100 text-stone-600 font-semibold px-2 py-1 rounded-lg inline-block w-fit">{trainerName}</span>
-                        {isSubstituteRecord && (
-                          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200/80 rounded px-1.5 py-0.5">
-                            代課
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold text-stone-700 font-mono">
-                        {cumSessions} 堂
-                      </span>
-                      <span className="text-sm text-stone-500 flex items-center gap-1.5">
-                        <RiCalendarLine className="h-3.5 w-3.5 text-stone-400" />
-                        {formatRecordDate(record.sessionDate)}
-                      </span>
-                      <div className="flex items-center justify-end gap-2">
-                        <span className={cn(
-                          "font-black text-base transition-colors",
-                          isSelected ? "text-brand-600" : "text-brand-600"
-                        )}>-{record.sessionAmount}<span className="text-xs font-semibold text-stone-400 ml-0.5">堂</span></span>
-                        <RiArrowRightSLine className={cn(
-                          "h-4 w-4 text-stone-300 transition-all duration-200",
-                          isSelected ? "rotate-90 text-brand-500" : "group-hover:translate-x-0.5"
-                        )} />
-                      </div>
-                    </div>
-                  )
-                })}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {/* Sessions hero */}
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 border border-orange-100 rounded-2xl p-5 text-center">
+                <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-2">扣堂數</p>
+                <p className="text-5xl font-black text-orange-500 tabular-nums leading-none">-{r.sessionAmount}</p>
+                <p className="text-xs text-orange-300 font-bold mt-2">堂</p>
               </div>
-            ) : (
-              <div className="text-center py-16 text-stone-400 text-sm">
-                尚無銷課紀錄
+
+              {/* Detail rows */}
+              <div className="bg-stone-50 rounded-2xl border border-stone-100 divide-y divide-stone-100 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-xs font-bold text-stone-400">上課日期</span>
+                  <span className="text-sm font-bold text-stone-800">
+                    {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-xs font-bold text-stone-400">上課時間</span>
+                  <span className="text-sm font-bold text-stone-800">
+                    {r.sessionDate ? format(r.sessionDate.toDate(), 'HH:mm') : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3.5">
+                  <span className="text-xs font-bold text-stone-400">授課教練</span>
+                  <span className="text-sm font-bold text-stone-800">{trainerName}</span>
+                </div>
+                {isSubstituteRecord && contractTrainerName && (
+                  <div className="flex items-center justify-between px-4 py-3.5">
+                    <span className="text-xs font-bold text-stone-400">原合約教練</span>
+                    <span className="text-sm font-bold text-amber-700">{contractTrainerName}</span>
+                  </div>
+                )}
+                {contract && (
+                  <div className="flex items-center justify-between px-4 py-3.5">
+                    <span className="text-xs font-bold text-stone-400">合約類型</span>
+                    <span className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold",
+                      isGroup ? "bg-emerald-100 text-emerald-700" :
+                      isShared ? "bg-amber-100 text-amber-700" :
+                      isDual ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                    )}>
+                      {isGroup ? '團體合約' : isShared ? '共享合約' : isDual ? '雙人合約' : '單人合約'}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Notes */}
+              {r.notes && (
+                <div>
+                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
+                  <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3">
+                    <p className="text-sm text-stone-700 leading-relaxed">{r.notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Attending list */}
+              {r.attendingCustomerNames && r.attendingCustomerNames.length > 1 && (
+                <div>
+                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">出席學員</p>
+                  <div className="flex flex-wrap gap-2">
+                    {r.attendingCustomerNames.map((name, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-700 font-bold text-xs px-3 py-1.5 rounded-full">
+                        <RiUserLine className="h-3 w-3" />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+        )
+      })()}
 
-          {/* Slide-in Detail Panel */}
-          {selectedRecord && (() => {
-            const r = selectedRecord
-            const trainerName = trainers.find(t => t.id === r.trainerId)?.name || '未指定教練'
-            const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
-              ? r.attendingCustomerNames.join('、')
-              : r.customerName
-            const isSubstituteRecord = r.contractTrainerId && r.contractTrainerId !== r.trainerId
-            const contractTrainerName = r.contractTrainerId
-              ? trainers.find(t => t.id === r.contractTrainerId)?.name
-              : null
-            const contract = venueContracts.find(c => c.id === r.contractId)
-            const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
-            const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
-            const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
-
-            return (
-              <div
-                ref={panelRef}
-                style={{
-                  transform: isPanelVisible ? 'translateX(0)' : 'translateX(100%)',
-                  opacity: isPanelVisible ? 1 : 0,
-                  transition: 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease',
-                }}
-                className="fixed top-0 right-0 h-full w-full sm:w-[380px] bg-white border-l border-stone-200 shadow-2xl z-50 flex flex-col"
-              >
-                {/* Panel Header */}
-                <div className="px-6 py-5 border-b border-stone-100 bg-stone-50 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">銷課紀錄細項</p>
-                    <h3 className="text-lg font-bold text-stone-900 leading-tight">{attendingNames}</h3>
-                    {isSubstituteRecord && (
-                      <span className="inline-flex items-center mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5">
-                        代課紀錄
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsPanelVisible(false)
-                      setTimeout(() => setSelectedRecord(null), 300)
-                    }}
-                    className="p-2 rounded-xl text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors shrink-0 mt-0.5"
-                  >
-                    <RiCloseLine className="h-4 w-4" />
-                  </button>
-                </div>
-
-                {/* Panel Content */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                  {/* Sessions Badge */}
-                  <div className="flex items-center justify-center">
-                    <div className="bg-brand-50 border border-brand-100 rounded-2xl px-8 py-4 text-center">
-                      <p className="text-[10px] font-black text-brand-400 uppercase tracking-widest mb-1">扣堂數</p>
-                      <p className="text-4xl font-black text-brand-600 tabular-nums">-{r.sessionAmount}</p>
-                      <p className="text-xs text-brand-400 font-bold mt-1">堂</p>
-                    </div>
-                  </div>
-
-                  {/* Detail Rows */}
-                  <div className="bg-stone-50 rounded-2xl border border-stone-100 divide-y divide-stone-100 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <span className="text-xs font-bold text-stone-400">上課日期</span>
-                      <span className="text-sm font-bold text-stone-800 tabular-nums">
-                        {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '—'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <span className="text-xs font-bold text-stone-400">上課時間</span>
-                      <span className="text-sm font-bold text-stone-800 tabular-nums">
-                        {r.sessionDate ? format(r.sessionDate.toDate(), 'HH:mm') : '—'}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between px-4 py-3.5">
-                      <span className="text-xs font-bold text-stone-400">授課教練</span>
-                      <span className="text-sm font-bold text-stone-800">{trainerName}</span>
-                    </div>
-                    {isSubstituteRecord && contractTrainerName && (
-                      <div className="flex items-center justify-between px-4 py-3.5">
-                        <span className="text-xs font-bold text-stone-400">原合約教練</span>
-                        <span className="text-sm font-bold text-amber-700">{contractTrainerName}</span>
-                      </div>
-                    )}
-                    {contract && (
-                      <div className="flex items-center justify-between px-4 py-3.5">
-                        <span className="text-xs font-bold text-stone-400">合約類型</span>
-                        <span className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border",
-                          isGroup ? "bg-emerald-100 text-emerald-700 border-emerald-200" :
-                          isShared ? "bg-sky-100 text-sky-700 border-sky-200" :
-                          isDual ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-blue-100 text-blue-700 border-blue-200"
-                        )}>
-                          {isGroup ? '👥 團體合約' : isShared ? '👥 共享合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
-                        </span>
-                      </div>
-                    )}
-                    {r.contractId && (
-                      <div className="flex items-center justify-between px-4 py-3.5">
-                        <span className="text-xs font-bold text-stone-400">合約 ID</span>
-                        <span className="text-xs font-mono text-stone-500 max-w-[160px] truncate">{r.contractId}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  {r.notes && (
-                    <div>
-                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
-                      <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3.5">
-                        <p className="text-sm text-stone-700 leading-relaxed">{r.notes}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Attending Customers (for dual contracts) */}
-                  {r.attendingCustomerNames && r.attendingCustomerNames.length > 1 && (
-                    <div>
-                      <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">出席學員</p>
-                      <div className="flex flex-wrap gap-2">
-                        {r.attendingCustomerNames.map((name, i) => (
-                          <span key={i} className="inline-flex items-center gap-1.5 bg-stone-100 text-stone-700 font-bold text-xs px-3 py-1.5 rounded-full">
-                            <RiUserLine className="h-3 w-3" />
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Backdrop for detail panel */}
-          {selectedRecord && (
-            <div
-              onClick={() => {
-                setIsPanelVisible(false)
-                setTimeout(() => setSelectedRecord(null), 300)
-              }}
-              style={{
-                opacity: isPanelVisible ? 1 : 0,
-                transition: 'opacity 0.3s ease',
-                pointerEvents: isPanelVisible ? 'auto' : 'none',
-              }}
-              className="fixed inset-0 bg-black/20 z-40"
-            />
-          )}
-        </div>
+      {/* Record panel backdrop */}
+      {selectedRecord && (
+        <div
+          onClick={() => {
+            setIsPanelVisible(false)
+            setTimeout(() => setSelectedRecord(null), 300)
+          }}
+          style={{
+            opacity: isPanelVisible ? 1 : 0,
+            transition: 'opacity 0.3s ease',
+            pointerEvents: isPanelVisible ? 'auto' : 'none',
+          }}
+          className="fixed inset-0 bg-black/20 z-40"
+        />
       )}
     </div>
   )
