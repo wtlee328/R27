@@ -237,93 +237,125 @@ export function TrainerDetailsModal({
             </div>
 
             {/* Metrics Row */}
-            <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-stone-100">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-4 border-t border-stone-100">
+              {/* Card 1: 本月/期間銷課 */}
               <div
-                onClick={() => setIsBreakdownOpen(prev => !prev)}
+                onClick={() => setExpandedMetric(prev => prev === 'period' ? null : 'period')}
                 className={cn(
-                  "text-center p-2 rounded-xl transition-all cursor-pointer relative group border select-none",
-                  isBreakdownOpen ? "bg-orange-50 border-orange-200" : "border-transparent hover:bg-stone-50"
+                  "text-center p-2.5 rounded-xl transition-all cursor-pointer relative group border select-none",
+                  expandedMetric === 'period' ? "bg-orange-50 border-orange-200 shadow-xs" : "border-stone-100 hover:border-orange-200 bg-white"
                 )}
               >
                 <div className="flex items-center justify-center gap-1">
-                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest">
-                    {selectedMonth === 'all' ? '累計已銷堂數' : '本月銷課堂數'}
+                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest truncate">
+                    {selectedMonth === 'all' ? '期間銷課' : '本月銷課'}
                   </p>
-                  <RiArrowDownSLine className={cn("w-3 h-3 transition-transform text-orange-500", isBreakdownOpen && "rotate-180")} />
+                  <RiArrowDownSLine className={cn("w-3 h-3 transition-transform text-orange-500 shrink-0", expandedMetric === 'period' && "rotate-180")} />
                 </div>
-                <p className="text-lg font-black text-stone-900 tabular-nums">
-                  {trainer.totalUsedLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
+                <p className="text-base font-black text-stone-900 tabular-nums mt-0.5">
+                  {periodBreakdown.totalActual} <span className="text-xs font-semibold text-stone-400">堂</span>
                 </p>
-                <span className="text-[9px] text-orange-600 font-bold block mt-0.5">
-                  {isBreakdownOpen ? '收起 Breakdown' : 'Breakdown 展開'}
+                <span className="text-[9px] text-orange-600 font-bold block mt-0.5 truncate">
+                  {expandedMetric === 'period' ? '收起 Breakdown' : '點擊展開'}
                 </span>
               </div>
 
-              <div className="text-center p-2">
-                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">系統剩餘堂數</p>
-                <p className="text-lg font-black text-stone-900 tabular-nums">
+              {/* Card 2: 教練累積銷課 */}
+              <div
+                onClick={() => setExpandedMetric(prev => prev === 'cumulative' ? null : 'cumulative')}
+                className={cn(
+                  "text-center p-2.5 rounded-xl transition-all cursor-pointer relative group border select-none",
+                  expandedMetric === 'cumulative' ? "bg-orange-50 border-orange-200 shadow-xs" : "border-stone-100 hover:border-orange-200 bg-white"
+                )}
+              >
+                <div className="flex items-center justify-center gap-1">
+                  <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest truncate">
+                    教練累積銷課
+                  </p>
+                  <RiArrowDownSLine className={cn("w-3 h-3 transition-transform text-orange-500 shrink-0", expandedMetric === 'cumulative' && "rotate-180")} />
+                </div>
+                <p className="text-base font-black text-stone-900 tabular-nums mt-0.5">
+                  {cumulativeBreakdown.totalActual} <span className="text-xs font-semibold text-stone-400">堂</span>
+                </p>
+                <span className="text-[9px] text-orange-600 font-bold block mt-0.5 truncate">
+                  {expandedMetric === 'cumulative' ? '收起 Breakdown' : '點擊展開'}
+                </span>
+              </div>
+
+              {/* Card 3: 系統剩餘堂數 */}
+              <div className="text-center p-2.5 rounded-xl border border-stone-100 bg-white">
+                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-0.5 truncate">系統剩餘堂數</p>
+                <p className="text-base font-black text-stone-900 tabular-nums">
                   {trainer.systemLessons || 0} <span className="text-xs font-semibold text-stone-400">堂</span>
                 </p>
               </div>
 
-              <div className="text-center p-2">
-                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">專屬學員人數</p>
-                <p className="text-lg font-black text-stone-900 tabular-nums">
-                  {trainerStudents.length} <span className="text-xs font-semibold text-stone-400">人</span>
+              {/* Card 4: 專屬學員人數 */}
+              <div className="text-center p-2.5 rounded-xl border border-stone-100 bg-white">
+                <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-0.5 truncate">專屬學員人數</p>
+                <p className="text-base font-black text-stone-900 tabular-nums">
+                  {trainerStudentIds.length} <span className="text-xs font-semibold text-stone-400">人</span>
                 </p>
               </div>
             </div>
 
             {/* Breakdown Expanded Section */}
-            {isBreakdownOpen && (
-              <div className="mt-3 bg-stone-50 border border-stone-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-stone-200/60 pb-2">
-                  <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                    <RiPieChartLine className="w-3.5 h-3.5 text-orange-500" />
-                    銷課合約類別 Breakdown ({selectedMonth === 'all' ? '全部記錄' : selectedMonth})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsBreakdownOpen(false)}
-                    className="text-stone-400 hover:text-stone-600 text-[10px] font-bold cursor-pointer"
-                  >
-                    關閉
-                  </button>
-                </div>
+            {expandedMetric && (() => {
+              const bd = expandedMetric === 'period' ? periodBreakdown : cumulativeBreakdown
+              const titleText = expandedMetric === 'period'
+                ? `${selectedMonth === 'all' ? '全期篩選' : selectedMonth} 銷課合約類別 Breakdown`
+                : '教練全期累積銷課合約類別 Breakdown'
 
-                <div className="space-y-1.5 text-xs">
-                  <div className="grid grid-cols-[1fr_80px_80px] gap-2 font-bold text-[10px] text-stone-400 uppercase border-b border-stone-200/40 pb-1">
-                    <span>合約類別</span>
-                    <span className="text-center">名目堂數</span>
-                    <span className="text-center">實際銷課</span>
+              return (
+                <div className="mt-3 bg-stone-50 border border-orange-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-stone-200/60 pb-2">
+                    <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <RiPieChartLine className="w-3.5 h-3.5 text-orange-500" />
+                      {titleText}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedMetric(null)}
+                      className="text-stone-400 hover:text-stone-600 text-[10px] font-bold cursor-pointer"
+                    >
+                      關閉
+                    </button>
                   </div>
-                  {[
-                    { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700' },
-                    { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700' },
-                    { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700' },
-                    { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700' },
-                  ].map(cat => {
-                    const data = breakdown.categories[cat.key as keyof typeof breakdown.categories]
-                    return (
-                      <div key={cat.key} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs">
-                        <div>
-                          <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", cat.badgeCls)}>
-                            {cat.label}
-                          </span>
+
+                  <div className="space-y-1.5 text-xs">
+                    <div className="grid grid-cols-[1fr_80px_80px] gap-2 font-bold text-[10px] text-stone-400 uppercase border-b border-stone-200/40 pb-1">
+                      <span>合約類別</span>
+                      <span className="text-center">名目堂數</span>
+                      <span className="text-center">實際銷課</span>
+                    </div>
+                    {[
+                      { key: 'single', label: '單人合約', badgeCls: 'bg-blue-100 text-blue-700' },
+                      { key: 'dual',   label: '雙人合約', badgeCls: 'bg-purple-100 text-purple-700' },
+                      { key: 'shared', label: '共享合約', badgeCls: 'bg-amber-100 text-amber-700' },
+                      { key: 'group',  label: '團體合約', badgeCls: 'bg-emerald-100 text-emerald-700' },
+                    ].map(cat => {
+                      const data = bd.categories[cat.key as keyof typeof bd.categories]
+                      return (
+                        <div key={cat.key} className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs">
+                          <div>
+                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded", cat.badgeCls)}>
+                              {cat.label}
+                            </span>
+                          </div>
+                          <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 次</span>
+                          <span className="text-center font-mono font-black text-orange-600">{data.actual} 堂</span>
                         </div>
-                        <span className="text-center font-mono font-bold text-stone-800">{data.nominal} 次</span>
-                        <span className="text-center font-mono font-black text-orange-600">{data.actual} 堂</span>
-                      </div>
-                    )
-                  })}
-                  <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs pt-1.5 border-t border-stone-200 font-bold">
-                    <span className="text-stone-900">總計</span>
-                    <span className="text-center font-mono text-stone-900">{breakdown.totalNominal} 次</span>
-                    <span className="text-center font-mono text-orange-600 font-black">{breakdown.totalActual} 堂</span>
+                      )
+                    })}
+                    <div className="grid grid-cols-[1fr_80px_80px] gap-2 items-center text-xs pt-1.5 border-t border-stone-200 font-bold">
+                      <span className="text-stone-900">總計</span>
+                      <span className="text-center font-mono text-stone-900">{bd.totalNominal} 次</span>
+                      <span className="text-center font-mono text-orange-600 font-black">{bd.totalActual} 堂</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
 
