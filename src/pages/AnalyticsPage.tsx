@@ -462,23 +462,31 @@ export default function AnalyticsPage() {
         return sum + Number(l.sessionAmount || 1)
       }, 0) + Number(cust.historicalSessions || 0)
 
-      // Dynamic weekly frequency calculation based on active timeframe span
+      // Dynamic weekly frequency: total recorded lessons / weeks since first lesson to today
       let frequency = 0
-      if (custLessons.length > 0) {
-        if (custLessons.length === 1) {
-          frequency = Number(totalLessonsCount.toFixed(1))
-        } else {
-          const earliestLessonDate = custLessonDates[custLessonDates.length - 1]
-          const latestLessonDate = custLessonDates[0]
-          const daysSpan = Math.max(1, Math.round((latestLessonDate.getTime() - earliestLessonDate.getTime()) / (1000 * 60 * 60 * 24)))
-          
-          if (daysSpan < 4) {
-            frequency = Number(totalLessonsCount.toFixed(1))
-          } else {
-            const weeksSpan = Math.max(1, daysSpan / 7)
-            frequency = Number((totalLessonsCount / weeksSpan).toFixed(1))
+      if (custLessonDates.length > 0) {
+        const earliestLessonDate = custLessonDates[custLessonDates.length - 1]
+        const daysFromFirstToNow = Math.max(1, Math.round((now.getTime() - earliestLessonDate.getTime()) / (1000 * 60 * 60 * 24)))
+        const weeksFromFirstToNow = Math.max(1, daysFromFirstToNow / 7)
+        // Use only lesson records count for numerator to correctly pair with the timeframe
+        const lessonsForFrequency = custLessons.reduce((sum, l) => {
+          const attendeeCount = Array.isArray(l.attendingCustomerIds) && l.attendingCustomerIds.length > 0 ? l.attendingCustomerIds.length : 1
+          if (Array.isArray(l.deductions) && l.deductions.length > 0) {
+            const custDed = l.deductions.find((d: any) => d.customerId === cust.id)
+            if (custDed) {
+              const amt = typeof custDed.sessionAmount === 'number' ? custDed.sessionAmount : (typeof custDed.amount === 'number' ? custDed.amount : 0)
+              if (amt > 0) {
+                if (attendeeCount > 1 && amt === l.sessionAmount && l.sessionAmount > 1) return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
+                return sum + amt
+              }
+            }
           }
-        }
+          if (attendeeCount > 1 && typeof l.sessionAmount === 'number' && l.sessionAmount > 1) {
+            return sum + Math.max(1, Math.round(l.sessionAmount / attendeeCount))
+          }
+          return sum + Number(l.sessionAmount || 1)
+        }, 0)
+        frequency = Number((lessonsForFrequency / weeksFromFirstToNow).toFixed(1))
       }
 
       return {
