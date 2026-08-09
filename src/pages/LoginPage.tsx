@@ -19,9 +19,9 @@ const PROFILE_CONFIG = [
     id: 'admin' as const,
     label: '管理員',
     sublabel: '全功能管理介面',
-    dotColor: 'bg-orange-400',
-    glowColor: 'rgba(251,146,60,0.18)',
-    glowColorStrong: 'rgba(251,146,60,0.30)',
+    dotColor: 'bg-white',
+    glowColor: 'rgba(255,255,255,0.15)',
+    glowColorStrong: 'rgba(255,255,255,0.35)',
   },
   {
     id: 'r27-trainer' as const,
