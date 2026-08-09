@@ -424,7 +424,17 @@ export default function AnalyticsPage() {
         c.sharedWithCustomerId === cust.id || 
         (c.customerIds && c.customerIds.includes(cust.id))
       )
-      const totalMonetary = custContracts.reduce((sum, c) => sum + Number(c.totalAmount || 0), 0)
+      const totalMonetary = custContracts.reduce((sum, c) => {
+        // 共享合約類別一律將 M (累計貢獻度) 記在主學員，合約中的副學員一律計為 0
+        const isSharedContract = c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')
+        if (isSharedContract) {
+          const primaryId = c.primaryCustomerId || c.customerId || (Array.isArray(c.customerIds) && c.customerIds.length > 0 ? c.customerIds[0] : '')
+          if (cust.id !== primaryId) {
+            return sum
+          }
+        }
+        return sum + Number(c.totalAmount || 0)
+      }, 0)
 
       const custLessons = (lessons || []).filter(
         (l) => (l.customerId === cust.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(cust.id))) && (l.sessionDate || l.date)
