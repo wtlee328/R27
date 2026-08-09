@@ -19,30 +19,70 @@ const PROFILE_CONFIG = [
     id: 'admin' as const,
     label: '管理員',
     sublabel: '全功能管理介面',
-    accent: 'border-l-orange-400',
-    accentBg: 'group-hover:bg-orange-500/5',
     dotColor: 'bg-orange-400',
-    iconLetter: '管',
+    glowColor: 'rgba(251,146,60,0.18)',
+    glowColorStrong: 'rgba(251,146,60,0.30)',
   },
   {
     id: 'r27-trainer' as const,
     label: 'R27 教練',
     sublabel: '銷課・體驗客・場租',
-    accent: 'border-l-orange-500',
-    accentBg: 'group-hover:bg-orange-500/5',
     dotColor: 'bg-orange-500',
-    iconLetter: 'R',
+    glowColor: 'rgba(249,115,22,0.18)',
+    glowColorStrong: 'rgba(249,115,22,0.30)',
   },
   {
     id: 'coffit-trainer' as const,
     label: 'Coffit 教練',
     sublabel: '銷課・體驗客・場租',
-    accent: 'border-l-sky-400',
-    accentBg: 'group-hover:bg-sky-500/5',
     dotColor: 'bg-sky-400',
-    iconLetter: 'C',
+    glowColor: 'rgba(56,189,248,0.15)',
+    glowColorStrong: 'rgba(56,189,248,0.28)',
   },
 ]
+
+type ProfileCfg = (typeof PROFILE_CONFIG)[number]
+
+function ProfileButton({ cfg, onClick }: { cfg: ProfileCfg; onClick: () => void }) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-stone-800/50 border border-stone-700/40 cursor-pointer group transition-all duration-300"
+      style={{
+        boxShadow: hovered
+          ? `0 0 0 1px ${cfg.glowColorStrong}, 0 0 18px 4px ${cfg.glowColor}, inset 0 0 12px 0px ${cfg.glowColor}`
+          : '0 0 0 1px transparent',
+        backgroundColor: hovered ? 'rgba(255,255,255,0.04)' : undefined,
+      }}
+    >
+      <div className="flex-1 text-left min-w-0">
+        <div
+          className="font-bold text-[13px] leading-tight transition-colors duration-200"
+          style={{ color: hovered ? '#ffffff' : '#d4d0ca' }}
+        >
+          {cfg.label}
+        </div>
+        <div
+          className="text-[11px] mt-0.5 transition-colors duration-200"
+          style={{ color: hovered ? '#a8a29e' : '#57534e' }}
+        >
+          {cfg.sublabel}
+        </div>
+      </div>
+      <ArrowRight
+        className="w-4 h-4 shrink-0 transition-all duration-200"
+        style={{
+          color: hovered ? '#a8a29e' : '#44403c',
+          transform: hovered ? 'translateX(2px)' : 'translateX(0)',
+        }}
+      />
+    </button>
+  )
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -158,21 +198,11 @@ export default function LoginPage() {
               </div>
               <div className="space-y-2">
                 {PROFILE_CONFIG.map((cfg) => (
-                  <button
+                  <ProfileButton
                     key={cfg.id}
+                    cfg={cfg}
                     onClick={() => handleSelectProfile(cfg.id)}
-                    className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl border-l-[3px] ${cfg.accent} bg-stone-800/50 hover:bg-stone-800/90 transition-all duration-200 cursor-pointer group`}
-                  >
-                    <div className="flex-1 text-left min-w-0">
-                      <div className="font-bold text-stone-200 text-[13px] leading-tight group-hover:text-white transition-colors">
-                        {cfg.label}
-                      </div>
-                      <div className="text-[11px] text-stone-500 mt-0.5 group-hover:text-stone-400 transition-colors">
-                        {cfg.sublabel}
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-stone-600 group-hover:text-stone-400 group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
-                  </button>
+                  />
                 ))}
               </div>
             </div>
