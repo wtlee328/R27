@@ -111,6 +111,7 @@ export function ContractFormModal({
   const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
   const [sharedMemberCount, setSharedMemberCount] = useState<number>(2)
   const [primaryMemberQuota, setPrimaryMemberQuota] = useState<number>(0)
+  const [joiningStudentSessions, setJoiningStudentSessions] = useState<number>(10)
   const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
     memberMode: 'existing' | 'new'
     existingCustomerId?: string
@@ -670,6 +671,7 @@ export function ContractFormModal({
     setLoading(true)
     try {
       if (data.bindExistingContractMode) {
+        ;(data as any).joiningStudentSessions = joiningStudentSessions
         if (!data.existingContractId) {
           alert('請選擇欲連結的現有合約！')
           setLoading(false)
@@ -1222,11 +1224,18 @@ export function ContractFormModal({
                             }
 
                             if (isGroup) {
+                              const pricePerSession = selectedContract.pricePerSession || (selectedContract.totalSessions > 0 ? Math.round((selectedContract.totalAmount || 0) / selectedContract.totalSessions) : 0)
+                              const addedAmount = Math.round(joiningStudentSessions * pricePerSession)
+                              const newTotalSessions = selectedContract.totalSessions + joiningStudentSessions
+                              const newRemainingSessions = selectedContract.remainingSessions + joiningStudentSessions
+                              const newTotalAmount = (selectedContract.totalAmount || 0) + addedAmount
+
                               return (
-                                <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 space-y-3 text-xs text-stone-700 shadow-xs animate-in fade-in duration-300">
-                                  <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                                <div className="mt-4 p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-3 text-xs text-stone-700 shadow-xs animate-in fade-in duration-300">
+                                  <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
                                     <h4 className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
-                                      <span>👥 團體合約綁定明細</span>
+                                      <RiTeamLine className="w-4 h-4 text-emerald-600" />
+                                      <span>👥 團體合約連結與新增學員說明</span>
                                     </h4>
                                     <span className={cn(
                                       "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
@@ -1237,15 +1246,52 @@ export function ContractFormModal({
                                       目前成員: {currentCount} / 6 人 ({isFull ? '已滿額' : `可再加入 ${6 - currentCount} 人`})
                                     </span>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium">
+                                  <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium bg-white/80 p-3 rounded-xl border border-emerald-100">
                                     <div>合約編號: <span className="font-mono font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span></div>
-                                    <div>總課堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span> (剩餘 {selectedContract.remainingSessions} 堂)</div>
-                                    <div>合約效期: <span className="font-bold text-stone-900">{selectedContract.startDate ? new Date((selectedContract.startDate as any).seconds ? (selectedContract.startDate as any).seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''} ~ {selectedContract.endDate ? new Date((selectedContract.endDate as any).seconds ? (selectedContract.endDate as any).seconds * 1000 : selectedContract.endDate).toLocaleDateString() : ''}</span></div>
-                                    <div>授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
+                                    <div>現有總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span> (剩餘 {selectedContract.remainingSessions} 堂)</div>
+                                    <div>每堂金額: <span className="font-bold text-emerald-800 font-mono">NT$ {pricePerSession.toLocaleString()} / 堂</span></div>
+                                    <div>現有總金額: <span className="font-bold text-stone-900 font-mono">NT$ {(selectedContract.totalAmount || 0).toLocaleString()}</span></div>
                                   </div>
-                                  <p className="text-[10px] text-emerald-800 font-medium pt-1 border-t border-emerald-200/60">
-                                    💡 提示：連結完成後，{customer.name} 將成為該合約第 {currentCount + 1} 位團體成員，初始堂數預設為 0 堂。合約狀態將更新為「待簽名」，供後續編輯合約時分配堂數與簽名。
-                                  </p>
+
+                                  {!isFull && (
+                                    <div className="p-3.5 bg-white rounded-xl border border-emerald-200 space-y-2">
+                                      <Label className="text-xs font-bold text-emerald-950 block">
+                                        設定學員 ({customer.name}) 新增分配堂數 *
+                                      </Label>
+                                      <div className="flex items-center gap-3">
+                                        <input
+                                          type="number"
+                                          min={0}
+                                          value={joiningStudentSessions}
+                                          onChange={(e) => {
+                                            const val = Math.max(0, parseInt(e.target.value) || 0)
+                                            setJoiningStudentSessions(val)
+                                            form.setValue('joiningStudentSessions' as any, val)
+                                          }}
+                                          className="h-9 w-32 rounded-xl border border-emerald-300 bg-emerald-50/30 px-3 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                        />
+                                        <span className="text-xs font-bold text-stone-600">堂</span>
+                                        <div className="text-[11px] text-emerald-800 font-semibold">
+                                          (新增金額: <span className="font-bold font-mono">NT$ {addedAmount.toLocaleString()}</span>)
+                                        </div>
+                                      </div>
+                                      <div className="text-[11px] text-stone-600 font-medium pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+                                        <span>更新後團體合約總堂數：<strong className="text-emerald-900 font-mono text-xs">{newTotalSessions} 堂</strong></span>
+                                        <span>更新後團體合約總金額：<strong className="text-emerald-900 font-mono text-xs">NT$ {newTotalAmount.toLocaleString()}</strong></span>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="p-3 bg-emerald-100/50 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-950 font-medium space-y-1.5">
+                                    <div className="font-bold text-emerald-900 flex items-center gap-1">
+                                      💡 團體合約分配與使用說明：
+                                    </div>
+                                    <ul className="list-disc pl-4 space-y-1 text-stone-700 leading-relaxed">
+                                      <li>連結完成後，學員 <strong className="text-stone-900">{customer.name}</strong> 將加入成為該團體合約第 {currentCount + 1} 位成員。</li>
+                                      <li>各學員於團體合約中擁有專屬配額堂數，修改學員堂數時，系統會比照每堂金額 (NT$ {pricePerSession}/堂) 同步更新團體合約之<strong>總堂數、剩餘堂數與總金額</strong>。</li>
+                                      <li>學員出席團體課銷課時，將同步扣抵該學員之個人配額與合約之剩餘堂數。</li>
+                                    </ul>
+                                  </div>
                                 </div>
                               )
                             }

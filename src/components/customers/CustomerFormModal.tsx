@@ -162,6 +162,7 @@ export function CustomerFormModal({
   // Group & Shared Contract State
   const [groupMemberCount, setGroupMemberCount] = useState<number>(2)
   const [sharedMemberCount, setSharedMemberCount] = useState<number>(2)
+  const [joiningStudentSessions, setJoiningStudentSessions] = useState<number>(10)
   const [additionalGroupMembers, setAdditionalGroupMembers] = useState<Array<{
     memberMode?: 'existing' | 'new'
     existingCustomerId?: string
@@ -792,6 +793,10 @@ export function CustomerFormModal({
     }
 
     if (isBindMode && selectedContract) {
+      if (data.contract) {
+        ;(data.contract as any).joiningStudentSessions = joiningStudentSessions
+      }
+      ;(data as any).joiningStudentSessions = joiningStudentSessions
       if (isCustomerAlreadyInContract(selectedContract)) {
         alert(`防呆警告：學員 ${form.getValues('name') || '此學員'} 已在此合約中，無法重複綁定加入！`)
         return
@@ -2173,11 +2178,18 @@ export function CustomerFormModal({
                                 const isFull = currentCount >= maxCap
 
                                 if (isGroup) {
+                                  const pricePerSession = selectedContract.pricePerSession || (selectedContract.totalSessions > 0 ? Math.round((selectedContract.totalAmount || 0) / selectedContract.totalSessions) : 0)
+                                  const addedAmount = Math.round(joiningStudentSessions * pricePerSession)
+                                  const newTotalSessions = selectedContract.totalSessions + joiningStudentSessions
+                                  const newRemainingSessions = selectedContract.remainingSessions + joiningStudentSessions
+                                  const newTotalAmount = (selectedContract.totalAmount || 0) + addedAmount
+
                                   return (
-                                    <div className="mt-4 p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
-                                      <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                                    <div className="mt-4 p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 space-y-3 text-xs text-stone-700 shadow-sm animate-in fade-in duration-300">
+                                      <div className="flex items-center justify-between border-b border-emerald-200/80 pb-2">
                                         <h4 className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
-                                          <span>👥 團體合約綁定明細</span>
+                                          <RiTeamLine className="w-4 h-4 text-emerald-600" />
+                                          <span>👥 團體合約連結與新增學員說明</span>
                                         </h4>
                                         <span className={cn(
                                           "px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
@@ -2187,6 +2199,13 @@ export function CustomerFormModal({
                                         )}>
                                           {isFull ? `成員滿額 (${currentCount}/6人)` : `現有成員: ${currentCount}/6人 (尚有 ${6 - currentCount} 個空位)`}
                                         </span>
+                                      </div>
+
+                                      <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium bg-white/80 p-3 rounded-xl border border-emerald-100">
+                                        <div>合約編號: <span className="font-mono font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span></div>
+                                        <div>現有總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span> (剩餘 {selectedContract.remainingSessions} 堂)</div>
+                                        <div>每堂金額: <span className="font-bold text-emerald-800 font-mono">NT$ {pricePerSession.toLocaleString()} / 堂</span></div>
+                                        <div>現有總金額: <span className="font-bold text-stone-900 font-mono">NT$ {(selectedContract.totalAmount || 0).toLocaleString()}</span></div>
                                       </div>
 
                                       {selectedContract.groupMemberQuotas && (

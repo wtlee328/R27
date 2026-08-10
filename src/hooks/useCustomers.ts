@@ -330,13 +330,29 @@ export function useCustomers() {
           contractUpdate.contractType = 'group'
           const existingQuotas = { ...(existingContractData.groupMemberQuotas || {}) }
           const targetCust = customers.find(c => c.id === customerId)
+
+          const addedSessions = Number((data as any).joiningStudentSessions || (data as any).allocatedSessions || 0)
+          const oldTotalSessions = Number(existingContractData.totalSessions || 0)
+          const oldRemainingSessions = Number(existingContractData.remainingSessions || 0)
+          const oldTotalAmount = Number(existingContractData.totalAmount || 0)
+
+          const pricePerSession = existingContractData.pricePerSession || (oldTotalSessions > 0 ? Math.round(oldTotalAmount / oldTotalSessions) : 0)
+          const addedAmount = Math.round(addedSessions * pricePerSession)
+
           existingQuotas[customerId] = {
             customerId,
             customerName: targetCust?.name || '學員',
-            totalSessions: 0,
-            remainingSessions: 0,
+            totalSessions: addedSessions,
+            remainingSessions: addedSessions,
           }
           contractUpdate.groupMemberQuotas = existingQuotas
+
+          if (addedSessions > 0) {
+            contractUpdate.totalSessions = oldTotalSessions + addedSessions
+            contractUpdate.remainingSessions = oldRemainingSessions + addedSessions
+            contractUpdate.totalAmount = oldTotalAmount + addedAmount
+            contractUpdate.pricePerSession = pricePerSession
+          }
           contractUpdate.status = 'pending_signature'
         } else if (isShared || existingContractData.contractType === 'shared') {
           contractUpdate.contractType = 'shared'
@@ -604,13 +620,29 @@ export function useCustomers() {
         if (isGroup) {
           contractUpdate.contractType = 'group'
           const existingQuotas = { ...(existingContractData.groupMemberQuotas || {}) }
+
+          const addedSessions = Number((data.contract as any)?.joiningStudentSessions || (data as any).joiningStudentSessions || (data as any).allocatedSessions || 0)
+          const oldTotalSessions = Number(existingContractData.totalSessions || 0)
+          const oldRemainingSessions = Number(existingContractData.remainingSessions || 0)
+          const oldTotalAmount = Number(existingContractData.totalAmount || 0)
+
+          const pricePerSession = existingContractData.pricePerSession || (oldTotalSessions > 0 ? Math.round(oldTotalAmount / oldTotalSessions) : 0)
+          const addedAmount = Math.round(addedSessions * pricePerSession)
+
           existingQuotas[customerId] = {
             customerId,
             customerName: data.name,
-            totalSessions: 0,
-            remainingSessions: 0,
+            totalSessions: addedSessions,
+            remainingSessions: addedSessions,
           }
           contractUpdate.groupMemberQuotas = existingQuotas
+
+          if (addedSessions > 0) {
+            contractUpdate.totalSessions = oldTotalSessions + addedSessions
+            contractUpdate.remainingSessions = oldRemainingSessions + addedSessions
+            contractUpdate.totalAmount = oldTotalAmount + addedAmount
+            contractUpdate.pricePerSession = pricePerSession
+          }
           contractUpdate.status = 'pending_signature'
         } else {
           contractUpdate.contractType = 'dual'
