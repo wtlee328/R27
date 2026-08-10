@@ -857,6 +857,7 @@ export function ContractFormModal({
 
         ;(data as any).groupMemberQuotas = allMemberQuotas
         ;(data as any).customerIds = allCustomerIds
+        ;(data as any).primaryCustomerId = customer!.id
       }
 
       if (!data.remainingSessions || data.remainingSessions <= 0) {

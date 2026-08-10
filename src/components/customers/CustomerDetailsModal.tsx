@@ -542,6 +542,17 @@ export function CustomerDetailsModal({
                                 <RiTeamLine className="w-3 h-3" /> 團體課
                               </span>
                             )}
+                            {(isContractShared || isContractDual || contract.contractType === 'group') && (
+                              (contract.primaryCustomerId === customer.id || contract.customerId === customer.id) ? (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-200">
+                                  主學員
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                                  副學員
+                                </span>
+                              )
+                            )}
                           </div>
                           <div className="flex items-center gap-3 text-[11px] text-stone-400">
                             <span className="font-mono">

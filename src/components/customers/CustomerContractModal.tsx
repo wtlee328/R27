@@ -721,14 +721,25 @@ export function CustomerContractModal({
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      {Object.values(contract.groupMemberQuotas).map((gm, i) => (
-                        <div key={gm.customerId || i} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
-                          <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
-                          <span className="font-mono font-bold text-emerald-800">
-                            每人總堂數：{gm.totalSessions} 堂
-                          </span>
-                        </div>
-                      ))}
+                      {Object.values(contract.groupMemberQuotas).map((gm, i) => {
+                        const primaryId = contract.primaryCustomerId || contract.customerId
+                        const isPrimary = gm.customerId === primaryId || (i === 0 && !contract.primaryCustomerId && !contract.customerId)
+                        return (
+                          <div key={gm.customerId || i} className="p-2 bg-white rounded-lg border border-emerald-100 flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-stone-800 flex items-center gap-1">
+                              👤 {gm.customerName}
+                              {isPrimary && (
+                                <span className="text-[9px] bg-orange-100 text-orange-800 border border-orange-200 px-1 py-0.2 rounded font-extrabold">
+                                  主學員
+                                </span>
+                              )}
+                            </span>
+                            <span className="font-mono font-bold text-emerald-800">
+                              每人總堂數：{gm.totalSessions} 堂
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )}
