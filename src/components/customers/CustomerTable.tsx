@@ -59,6 +59,7 @@ export function CustomerTable({
   const checkIsMember = useCallback((con: Contract, customerId: string) => {
     if (!con || !customerId) return false
     if (con.customerId === customerId) return true
+    if (con.primaryCustomerId === customerId) return true
     if (con.sharedWithCustomerId === customerId) return true
     if (Array.isArray(con.customerIds) && con.customerIds.includes(customerId)) return true
     if (con.groupMemberQuotas && Boolean(con.groupMemberQuotas[customerId])) return true
