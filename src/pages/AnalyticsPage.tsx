@@ -445,6 +445,14 @@ export default function AnalyticsPage() {
             return sum
           }
         }
+
+        // 3. 雙人合約 (Dual Contract)：累計貢獻度每人直接 / 2
+        const isDualContract = c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'group' && c.contractType !== 'shared')
+        if (isDualContract) {
+          return sum + Math.round(Number(c.totalAmount || 0) / 2)
+        }
+
+        // 4. 個人合約等其餘類別
         return sum + Number(c.totalAmount || 0)
       }, 0)
 
