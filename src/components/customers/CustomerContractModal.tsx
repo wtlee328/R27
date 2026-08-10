@@ -705,9 +705,9 @@ export function CustomerContractModal({
                   {contract?.contractType === 'group' ? (
                     <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">👥 團體課合約模式 ({Object.keys(contract.groupMemberQuotas || {}).length || contract.customerIds?.length || 1} 人)</span>
                   ) : contract?.contractType === 'shared' ? (
-                    <span className="text-[10px] text-blue-600 font-bold">共享合約模式</span>
-                  ) : partner ? (
-                    <span className="text-[10px] text-orange-600 font-bold">雙人合約模式</span>
+                    <span className="text-[10px] text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded border border-blue-200">🤝 共享合約模式 ({contract.customerIds?.length || 1} 人)</span>
+                  ) : (contract?.contractType === 'dual' || partner || contract?.sharedWithCustomerId) ? (
+                    <span className="text-[10px] text-orange-700 font-bold bg-orange-50 px-2 py-0.5 rounded border border-orange-200">👥 雙人合約模式</span>
                   ) : null}
                 </h3>
                 
