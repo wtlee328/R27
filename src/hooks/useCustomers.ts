@@ -42,32 +42,43 @@ export function useCustomers() {
       const customersRef = collection(db, 'customers')
       let custData: Customer[] = []
 
-      // 1. Fetch Customers in current center
-      const qCust = query(
-        customersRef,
-        where('centerId', '==', centerId),
-        orderBy('createdAt', 'desc')
+      // 1. Fetch Customers in current center (with fallback & auto-repair for missing centerId)
+      const snap = await getDocs(customersRef)
+      custData = await Promise.all(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter((c: any) => !c.centerId || c.centerId === centerId)
+          .map(async (cust: any) => {
+            if (!cust.centerId) {
+              try {
+                await updateDoc(doc(db, 'customers', cust.id), { centerId })
+                cust.centerId = centerId
+              } catch (e) {}
+            }
+            return cust as Customer
+          })
       )
-      const snap = await getDocs(qCust)
-      custData = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Customer[]
 
       setCustomers(custData)
 
-      // 2. Fetch Contracts in current center
+      // 2. Fetch Contracts in current center (with fallback & auto-repair for missing centerId)
       const contractsRef = collection(db, 'contracts')
-      const qCont = query(contractsRef, where('centerId', '==', centerId))
-
-      const contSnapshot = await getDocs(qCont)
-      const contData = contSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Contract[]
+      const contSnapshot = await getDocs(contractsRef)
+      const contData = contSnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((c: any) => !c.centerId || c.centerId === centerId) as Contract[]
 
       // Data integrity check & auto-repair for group contracts and session caps
       const fixedContData = await Promise.all(
         contData.map(async (c) => {
           let isRepaired = false
           const updates: any = {}
+
+          if (!c.centerId) {
+            updates.centerId = centerId
+            c.centerId = centerId
+            isRepaired = true
+          }
 
           // Auto repair 1: Group contract type and customerIds restoration
           const quotaKeys = c.groupMemberQuotas ? Object.keys(c.groupMemberQuotas) : []
