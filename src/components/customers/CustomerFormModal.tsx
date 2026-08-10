@@ -2200,50 +2200,67 @@ export function CustomerFormModal({
                                           {isFull ? `成員滿額 (${currentCount}/6人)` : `現有成員: ${currentCount}/6人 (尚有 ${6 - currentCount} 個空位)`}
                                         </span>
                                       </div>
-
-                                      <div className="grid grid-cols-2 gap-2 text-stone-600 font-medium bg-white/80 p-3 rounded-xl border border-emerald-100">
-                                        <div>合約編號: <span className="font-mono font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.contractNo || selectedContract.id.substring(0, 8)}</span></div>
-                                        <div>現有總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span> (剩餘 {selectedContract.remainingSessions} 堂)</div>
-                                        <div>每堂金額: <span className="font-bold text-emerald-800 font-mono">NT$ {pricePerSession.toLocaleString()} / 堂</span></div>
-                                        <div>現有總金額: <span className="font-bold text-stone-900 font-mono">NT$ {(selectedContract.totalAmount || 0).toLocaleString()}</span></div>
-                                      </div>
-
-                                      {selectedContract.groupMemberQuotas && (
-                                        <div className="space-y-1.5 bg-white/80 p-3 rounded-xl border border-emerald-100">
-                                          <div className="text-[11px] font-bold text-emerald-900 mb-1">現有合約團員名單：</div>
-                                          <div className="grid grid-cols-2 gap-1.5">
-                                            {Object.values(selectedContract.groupMemberQuotas as Record<string, any>).map((gm: any, i: number) => (
-                                              <div key={i} className="px-2 py-1 bg-emerald-50 rounded border border-emerald-200/60 flex justify-between text-[10px]">
-                                                <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
-                                                <span className="font-mono text-emerald-700 font-bold">{gm.remainingSessions}/{gm.totalSessions}堂</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-
                                       {!isFull && (
-                                        <div className="p-2.5 bg-emerald-100/70 text-emerald-900 rounded-xl text-[11px] font-bold border border-emerald-200 flex items-center gap-1.5">
-                                          <span>✨ 新學員「{form.watch('name') || '新學員'}」將新增綁定為第 {currentCount + 1} 位團體成員。</span>
-                                        </div>
-                                      )}
+                                         <div className="p-3.5 bg-white rounded-xl border border-emerald-200 space-y-2">
+                                           <Label className="text-xs font-bold text-emerald-950 block">
+                                             設定新學員 ({form.watch('name') || '新學員'}) 新增分配堂數 *
+                                           </Label>
+                                           <div className="flex items-center gap-3">
+                                             <input
+                                               type="number"
+                                               min={0}
+                                               value={joiningStudentSessions}
+                                               onChange={(e) => {
+                                                 const val = Math.max(0, parseInt(e.target.value) || 0)
+                                                 setJoiningStudentSessions(val)
+                                               }}
+                                               className="h-9 w-32 rounded-xl border border-emerald-300 bg-emerald-50/30 px-3 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                             />
+                                             <span className="text-xs font-bold text-stone-600">堂</span>
+                                             <div className="text-[11px] text-emerald-800 font-semibold">
+                                               (新增金額: <span className="font-bold font-mono">NT$ {addedAmount.toLocaleString()}</span>)
+                                             </div>
+                                           </div>
+                                           <div className="text-[11px] text-stone-600 font-medium pt-2 border-t border-stone-100 flex flex-wrap items-center justify-between gap-2">
+                                             <span>更新後團體合約總堂數：<strong className="text-emerald-900 font-mono text-xs">{newTotalSessions} 堂</strong></span>
+                                             <span>更新後團體合約總金額：<strong className="text-emerald-900 font-mono text-xs">NT$ {newTotalAmount.toLocaleString()}</strong></span>
+                                           </div>
+                                         </div>
+                                       )}
 
-                                      {isFull && (
-                                        <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
-                                          <RiAlertLine className="w-4 h-4 shrink-0" />
-                                          <span>此團體合約成員人數已達上限 (6人)，無法再新增綁定！</span>
-                                        </div>
-                                      )}
+                                       {isFull && (
+                                         <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-[11px] font-bold border border-red-200 flex items-center gap-1.5">
+                                           <RiAlertLine className="w-4 h-4 shrink-0" />
+                                           <span>此團體合約成員人數已達上限 (6人)，無法再新增綁定！</span>
+                                         </div>
+                                       )}
 
-                                      <div className="grid grid-cols-2 gap-y-1.5 gap-x-4 pt-1 text-[11px] text-stone-600">
-                                        <div>合約編號: <span className="font-bold text-stone-900">{selectedContract.contractNumber || selectedContract.id}</span></div>
-                                        <div>主授課教練: <span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract.trainerId)?.name || selectedContract.trainerId || '未指定'}</span></div>
-                                        <div>團體總堂數: <span className="font-bold text-stone-900">{selectedContract.totalSessions} 堂</span></div>
-                                        <div>團體剩餘堂數: <span className="font-bold text-stone-900">{selectedContract.remainingSessions} 堂</span></div>
-                                      </div>
-                                    </div>
-                                  )
-                                }
+                                       <div className="p-3 bg-emerald-100/50 rounded-xl border border-emerald-200/80 text-[11px] text-emerald-950 font-medium space-y-1.5">
+                                         <div className="font-bold text-emerald-900 flex items-center gap-1">
+                                           💡 團體合約分配與使用說明：
+                                         </div>
+                                         <ul className="list-disc pl-4 space-y-1 text-stone-700 leading-relaxed">
+                                           <li>連結完成後，新學員 <strong className="text-stone-900">{form.watch('name') || '新學員'}</strong> 將加入成為該團體合約第 {currentCount + 1} 位成員。</li>
+                                           <li>各學員於團體合約中擁有專屬配額堂數，修改學員堂數時，系統會比照每堂金額 (NT$ {pricePerSession}/堂) 同步更新團體合約之<strong>總堂數、剩餘堂數與總金額</strong>。</li>
+                                           <li>學員出席團體課銷課時，將同步扣抵該學員之個人配額與合約之剩餘堂數。</li>
+                                         </ul>
+                                       </div>
+                                       {selectedContract.groupMemberQuotas && (
+                                         <div className="space-y-1.5 bg-white/80 p-3 rounded-xl border border-emerald-100">
+                                           <div className="text-[11px] font-bold text-emerald-900 mb-1">現有合約團員名單：</div>
+                                           <div className="grid grid-cols-2 gap-1.5">
+                                             {Object.values(selectedContract.groupMemberQuotas as Record<string, any>).map((gm: any, i: number) => (
+                                               <div key={i} className="px-2 py-1 bg-emerald-50 rounded border border-emerald-200/60 flex justify-between text-[10px]">
+                                                 <span className="font-bold text-stone-800">👤 {gm.customerName}</span>
+                                                 <span className="font-mono text-emerald-700 font-bold">{gm.remainingSessions}/{gm.totalSessions}堂</span>
+                                               </div>
+                                             ))}
+                                           </div>
+                                         </div>
+                                       )}
+                                     </div>
+                                   )
+                                 }
 
                                 if (isShared) {
                                   return (
@@ -2898,7 +2915,7 @@ export function CustomerFormModal({
                               name: form.watch('name'),
                               idNumber: form.watch('idNumber'),
                               dobStr: (() => {
-                                const d = formatROCDate(form.watch('dateOfBirth'))
+                            const d = formatROCDate(form.watch('dateOfBirth'))
                                 return d.y ? `${d.y}/${d.m}/${d.d}` : ''
                               })(),
                               phone: form.watch('phone'),
@@ -2975,20 +2992,45 @@ export function CustomerFormModal({
                                       </div>
                                     </div>
 
-                                    <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-xl space-y-2 text-xs">
-                                      <p className="font-bold">⚠️ 連結共享合約說明：</p>
-                                      <p>本同意書旨在確認新學員 <span className="font-bold underline">{primaryInfo.name}</span> 加入並連結原屬於學員 <span className="font-bold underline">{partnerNameStr}</span> 之現有合約（合約編號：{selectedContract?.contractNumber || selectedContract?.id}）。</p>
-                                      <p>新學員簽署後，該合約將轉為「雙人共享合約」，雙方可共同使用合約內剩餘之 {selectedContract?.remainingSessions} 堂課程，並共同遵守原合約之所有條款與請假、退費規定。</p>
-                                    </div>
+                                    {selectedContract?.contractType === 'group' ? (
+                                      <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl space-y-2 text-xs">
+                                        <p className="font-bold text-emerald-950">👥 連結團體合約說明：</p>
+                                        <p>本同意書旨在確認新學員 <span className="font-bold underline">{primaryInfo.name}</span> 加入並連結原屬於學員 <span className="font-bold underline">{partnerNameStr}</span> 之現有團體合約（合約編號：{selectedContract?.contractNumber || selectedContract?.id}）。</p>
+                                        <p>學員簽署後，將加入該團體合約並新增分配 <span className="font-bold text-emerald-950">{joiningStudentSessions} 堂</span> 個人配額，系統已自動按每堂金額 (NT$ {(selectedContract?.pricePerSession || (selectedContract?.totalSessions ? Math.round((selectedContract.totalAmount || 0) / selectedContract.totalSessions) : 0)).toLocaleString()}/堂) 同步更新合約總堂數、剩餘堂數與總金額。</p>
+                                      </div>
+                                    ) : selectedContract?.contractType === 'shared' ? (
+                                      <div className="p-4 bg-blue-50 border border-blue-200 text-blue-900 rounded-xl space-y-2 text-xs">
+                                        <p className="font-bold text-blue-950">👥 連結共享合約說明：</p>
+                                        <p>本同意書旨在確認新學員 <span className="font-bold underline">{primaryInfo.name}</span> 加入並連結原屬於學員 <span className="font-bold underline">{partnerNameStr}</span> 之現有共享合約（合約編號：{selectedContract?.contractNumber || selectedContract?.id}）。</p>
+                                        <p>新學員簽署後，將成為該共享合約成員之一，全體成員共享合約內剩餘之 {selectedContract?.remainingSessions} 堂課程。</p>
+                                      </div>
+                                    ) : (
+                                      <div className="p-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl space-y-2 text-xs">
+                                        <p className="font-bold text-amber-950">👥 連結雙人合約說明：</p>
+                                        <p>本同意書旨在確認新學員 <span className="font-bold underline">{primaryInfo.name}</span> 加入並連結原屬於學員 <span className="font-bold underline">{partnerNameStr}</span> 之現有合約（合約編號：{selectedContract?.contractNumber || selectedContract?.id}）。</p>
+                                        <p>新學員簽署後，該合約將轉為「雙人合約」，雙方共同持用該合約內剩餘之 {selectedContract?.remainingSessions} 堂課程，並共同遵守原合約之所有條款與請假、退費規定。</p>
+                                      </div>
+                                    )}
 
                                     <div className="space-y-3">
                                       <h3 className="font-bold text-stone-900 text-xs border-b border-stone-300 pb-1">現有合約內容</h3>
                                       <div className="grid grid-cols-2 gap-y-1.5 text-stone-600 text-[10px]">
                                         <div>原合約持有人：<span className="font-bold text-stone-900">{partnerNameStr}</span></div>
                                         <div>新加入持有人：<span className="font-bold text-stone-900">{primaryInfo.name}</span></div>
-                                        <div>合約總堂數：<span className="font-bold text-stone-900">{selectedContract?.totalSessions} 堂</span></div>
-                                        <div>剩餘堂數：<span className="font-bold text-stone-900">{selectedContract?.remainingSessions} 堂</span></div>
-                                        <div>合約總金額：<span className="font-bold text-stone-900">NT$ {selectedContract?.totalAmount.toLocaleString()}</span></div>
+                                        {selectedContract?.contractType === 'group' ? (
+                                          <>
+                                            <div>原合約總堂數：<span className="font-bold text-stone-900">{selectedContract?.totalSessions} 堂</span></div>
+                                            <div>新成員分配堂數：<span className="font-bold text-emerald-800">{joiningStudentSessions} 堂</span></div>
+                                            <div>更新後總堂數：<span className="font-bold text-stone-900">{(selectedContract?.totalSessions || 0) + joiningStudentSessions} 堂</span></div>
+                                            <div>更新後總金額：<span className="font-bold text-stone-900">NT$ {((selectedContract?.totalAmount || 0) + Math.round(joiningStudentSessions * (selectedContract?.pricePerSession || (selectedContract?.totalSessions ? Math.round((selectedContract.totalAmount || 0) / selectedContract.totalSessions) : 0)))).toLocaleString()}</span></div>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <div>合約總堂數：<span className="font-bold text-stone-900">{selectedContract?.totalSessions} 堂</span></div>
+                                            <div>剩餘堂數：<span className="font-bold text-stone-900">{selectedContract?.remainingSessions} 堂</span></div>
+                                            <div>合約總金額：<span className="font-bold text-stone-900">NT$ {selectedContract?.totalAmount.toLocaleString()}</span></div>
+                                          </>
+                                        )}
                                         <div>授課教練：<span className="font-bold text-stone-900">{trainers.find(t => t.id === selectedContract?.trainerId)?.name || '未指定'}</span></div>
                                         <div className="col-span-2">合約期間：<span className="font-bold text-stone-900">
                                           {selectedContract?.startDate ? new Date(selectedContract.startDate.seconds ? selectedContract.startDate.seconds * 1000 : selectedContract.startDate).toLocaleDateString() : ''}
@@ -2998,12 +3040,21 @@ export function CustomerFormModal({
                                       </div>
                                     </div>
 
-                                    <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
-                                      <p className="font-bold text-stone-900">學員共同簽約同意條款</p>
-                                      <p>1. 雙方同意本合約之堂數為共享額度，任一方上課皆會扣除剩餘堂數。</p>
-                                      <p>2. 雙方已充分閱讀並同意 {brandName} 私人教練服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
-                                      <p>3. 簽署本同意書後，本合約變更立即生效，雙方不得有異議。</p>
-                                    </div>
+                                    {selectedContract?.contractType === 'group' ? (
+                                      <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
+                                        <p className="font-bold text-stone-900">團體合約成員共同簽約同意條款</p>
+                                        <p>1. 各成員於團體合約中擁有獨立專屬之堂數配額，出席上課時將由個人配額與合約剩餘堂數同步扣抵。</p>
+                                        <p>2. 各成員已充分閱讀並同意 {brandName} 私人教練/團體課程服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
+                                        <p>3. 簽署本同意書後，本合約變更立即生效，全體成員不得有異議。</p>
+                                      </div>
+                                    ) : (
+                                      <div className="border-t border-stone-300 pt-4 space-y-3.5 text-[11px] text-stone-600">
+                                        <p className="font-bold text-stone-900">學員共同簽約同意條款</p>
+                                        <p>1. 雙方同意本合約之堂數為共享額度，任一方上課皆會扣除剩餘堂數。</p>
+                                        <p>2. 雙方已充分閱讀並同意 {brandName} 私人教練服務定型化契約之各項條款（包含退費、請假規則、過期處理等）。</p>
+                                        <p>3. 簽署本同意書後，本合約變更立即生效，雙方不得有異議。</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )
