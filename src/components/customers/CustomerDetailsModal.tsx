@@ -112,9 +112,15 @@ export function CustomerDetailsModal({
 
   const getCustomerRemainingSessionsInContract = (con: Contract, customerId: string) => {
     if (con.contractType === 'group' && con.groupMemberQuotas?.[customerId]) {
-      return con.groupMemberQuotas[customerId].remainingSessions
+      const quota = con.groupMemberQuotas[customerId]
+      if (typeof quota === 'object' && quota !== null && typeof quota.remainingSessions === 'number') {
+        return quota.remainingSessions
+      }
+      if (typeof quota === 'number') {
+        return quota
+      }
     }
-    return con.remainingSessions
+    return con.remainingSessions || 0
   }
 
   const checkIsMember = (con: Contract, customerId: string) => {
@@ -271,24 +277,36 @@ export function CustomerDetailsModal({
                 const activePartnerName = activePartnerId ? partnerNames[activePartnerId] : null
                 const isUnsigned = !activeContract.signatureDataUrl || (isDual && !activeContract.secondarySignatureDataUrl)
                 
-                let myRemaining = activeContract.remainingSessions
-                let myTotal = activeContract.totalSessions
+                let myRemaining = activeContract.remainingSessions || 0
+                let myTotal = activeContract.totalSessions || 0
                 if (isGroup && activeContract.groupMemberQuotas && activeContract.groupMemberQuotas[customer.id]) {
-                  myRemaining = activeContract.groupMemberQuotas[customer.id].remainingSessions
-                  myTotal = activeContract.groupMemberQuotas[customer.id].totalSessions
+                  const q = activeContract.groupMemberQuotas[customer.id]
+                  if (typeof q === 'object' && q !== null) {
+                    myRemaining = typeof q.remainingSessions === 'number' ? q.remainingSessions : myRemaining
+                    myTotal = typeof q.totalSessions === 'number' ? q.totalSessions : myTotal
+                  } else if (typeof q === 'number') {
+                    myRemaining = q
+                    myTotal = q
+                  }
                 }
 
                 if (hasMultiple && ongoingContracts.length > 0) {
                   const multiSum = ongoingContracts.reduce((acc, con) => {
-                    let rem = con.remainingSessions
-                    let tot = con.totalSessions
+                    let rem = con.remainingSessions || 0
+                    let tot = con.totalSessions || 0
                     if (con.contractType === 'group' && con.groupMemberQuotas && con.groupMemberQuotas[customer.id]) {
-                      rem = con.groupMemberQuotas[customer.id].remainingSessions
-                      tot = con.groupMemberQuotas[customer.id].totalSessions
+                      const q = con.groupMemberQuotas[customer.id]
+                      if (typeof q === 'object' && q !== null) {
+                        rem = typeof q.remainingSessions === 'number' ? q.remainingSessions : rem
+                        tot = typeof q.totalSessions === 'number' ? q.totalSessions : tot
+                      } else if (typeof q === 'number') {
+                        rem = q
+                        tot = q
+                      }
                     }
                     return {
-                      remaining: acc.remaining + rem,
-                      total: acc.total + tot
+                      remaining: acc.remaining + (isNaN(rem) ? 0 : rem),
+                      total: acc.total + (isNaN(tot) ? 0 : tot)
                     }
                   }, { remaining: 0, total: 0 })
 
