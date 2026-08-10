@@ -68,9 +68,15 @@ export function CustomerTable({
 
   const getCustomerRemainingSessionsInContract = useCallback((con: Contract, customerId: string) => {
     if (con.contractType === 'group' && con.groupMemberQuotas?.[customerId]) {
-      return con.groupMemberQuotas[customerId].remainingSessions
+      const q = con.groupMemberQuotas[customerId]
+      if (typeof q === 'object' && q !== null && typeof q.remainingSessions === 'number') {
+        return q.remainingSessions
+      }
+      if (typeof q === 'number') {
+        return q
+      }
     }
-    return con.remainingSessions
+    return con.remainingSessions || 0
   }, [])
 
   const getCustomerOngoingContracts = useCallback((c: Customer) => {
@@ -129,29 +135,40 @@ export function CustomerTable({
       }
     }
 
-    const isShared = activeContract ? (activeContract.contractType === 'shared' || (Array.isArray(activeContract.customerIds) && activeContract.customerIds.length >= 3)) : false
+    const isShared = activeContract ? (activeContract.contractType === 'shared') : false
     const isDual = activeContract ? (!isShared && (activeContract.contractType === 'dual' || (!!activeContract.sharedWithCustomerId && activeContract.contractType !== 'group' && activeContract.contractType !== 'shared'))) : false
     const isUnsigned = activeContract ? (activeContract.status === 'pending_signature' || 
       !activeContract.signatureDataUrl || 
       (isDual && !activeContract.secondarySignatureDataUrl)) : false
 
     let remaining = activeContract ? getCustomerRemainingSessionsInContract(activeContract, c.id) : 0
-    let total = activeContract ? activeContract.totalSessions : 0
+    let total = activeContract ? activeContract.totalSessions || 0 : 0
     if (activeContract && activeContract.contractType === 'group' && activeContract.groupMemberQuotas?.[c.id]) {
-      total = activeContract.groupMemberQuotas[c.id].totalSessions
+      const q = activeContract.groupMemberQuotas[c.id]
+      if (typeof q === 'object' && q !== null && typeof q.totalSessions === 'number') {
+        total = q.totalSessions
+      } else if (typeof q === 'number') {
+        total = q
+      }
     }
 
     if (hasMultiple && customerOngoingContracts.length > 0) {
       const multiSum = customerOngoingContracts.reduce((acc, con) => {
         let rem = getCustomerRemainingSessionsInContract(con, c.id)
-        let tot = con.totalSessions
+        let tot = con.totalSessions || 0
         if (con.contractType === 'group' && con.groupMemberQuotas?.[c.id]) {
-          rem = con.groupMemberQuotas[c.id].remainingSessions
-          tot = con.groupMemberQuotas[c.id].totalSessions
+          const q = con.groupMemberQuotas[c.id]
+          if (typeof q === 'object' && q !== null) {
+            rem = typeof q.remainingSessions === 'number' ? q.remainingSessions : rem
+            tot = typeof q.totalSessions === 'number' ? q.totalSessions : tot
+          } else if (typeof q === 'number') {
+            rem = q
+            tot = q
+          }
         }
         return {
-          remaining: acc.remaining + rem,
-          total: acc.total + tot
+          remaining: acc.remaining + (isNaN(rem) ? 0 : rem),
+          total: acc.total + (isNaN(tot) ? 0 : tot)
         }
       }, { remaining: 0, total: 0 })
 
