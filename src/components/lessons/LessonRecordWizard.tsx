@@ -671,10 +671,23 @@ export function LessonRecordWizard({
                   >
                     <option value="" disabled>請選擇授課教練</option>
                     {trainers.map((t) => {
-                      const isContractTrainer = selectedContract && (
-                        selectedContract.trainerId === t.id ||
-                        (selectedContract as any).secondaryTrainerId === t.id
-                      )
+                      const assignedContractTrainerId = (() => {
+                        if (!selectedContract) return null
+                        if (selectedContract.contractType === 'shared' && selectedContract.studentTrainers?.[selectedCustomerId]) {
+                          return selectedContract.studentTrainers[selectedCustomerId]
+                        }
+                        if (selectedContract.contractType === 'dual') {
+                          const isPrimary = selectedCustomerId === (selectedContract.customerId || selectedContract.primaryCustomerId)
+                          if (!isPrimary && selectedContract.secondaryTrainerId) {
+                            return selectedContract.secondaryTrainerId
+                          }
+                          if (selectedContract.studentTrainers?.[selectedCustomerId]) {
+                            return selectedContract.studentTrainers[selectedCustomerId]
+                          }
+                        }
+                        return selectedContract.trainerId
+                      })()
+                      const isContractTrainer = selectedContract && assignedContractTrainerId === t.id
                       return (
                         <option key={t.id} value={t.id}>
                           {t.name}{!isContractTrainer && selectedContract ? ' (代課)' : ''}

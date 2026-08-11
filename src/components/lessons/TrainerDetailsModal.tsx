@@ -505,7 +505,16 @@ export function TrainerDetailsModal({
                     ? Math.round(r.sessionAmount * perSessionPrice)
                     : 0
                   const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
-                  const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
+                  const assignedContractTrainerId = contract
+                    ? (contract.contractType === 'shared' && contract.studentTrainers?.[r.customerId]
+                        ? contract.studentTrainers[r.customerId]
+                        : (contract.contractType === 'dual' && r.customerId !== (contract.customerId || contract.primaryCustomerId) && contract.secondaryTrainerId
+                            ? contract.secondaryTrainerId
+                            : contract.trainerId))
+                    : null
+                  const isSubstitute = (r as any).contractTrainerId
+                    ? (r as any).contractTrainerId !== r.trainerId
+                    : (assignedContractTrainerId ? assignedContractTrainerId !== r.trainerId : false)
                   const isSelected = selectedRecord?.id === r.id
                   const attendingNames = r.attendingCustomerNames && r.attendingCustomerNames.length > 0
                     ? r.attendingCustomerNames.join(' & ')

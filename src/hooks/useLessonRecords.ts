@@ -206,7 +206,22 @@ export function useLessonRecords() {
 
         const primaryContractSnap = contractSnapsMap.get(data.contractId)
         const contractData = primaryContractSnap?.exists() ? primaryContractSnap.data() : null
-        const contractTrainerId = contractData ? contractData.trainerId : null
+        const contractTrainerId = (() => {
+          if (!contractData) return null
+          if (contractData.contractType === 'shared' && contractData.studentTrainers?.[data.customerId]) {
+            return contractData.studentTrainers[data.customerId]
+          }
+          if (contractData.contractType === 'dual') {
+            const isPrimary = data.customerId === (contractData.customerId || contractData.primaryCustomerId)
+            if (!isPrimary && contractData.secondaryTrainerId) {
+              return contractData.secondaryTrainerId
+            }
+            if (contractData.studentTrainers?.[data.customerId]) {
+              return contractData.studentTrainers[data.customerId]
+            }
+          }
+          return contractData.trainerId || null
+        })()
         const finalTrainerId = data.trainerId || contractTrainerId || user.uid
 
         const isDualContract = contractData?.contractType === 'dual'
@@ -534,7 +549,24 @@ export function useLessonRecords() {
           return snap?.exists() ? snap.data().name : ''
         })
 
-        const contractTrainerId = contractSnap?.exists() ? contractSnap.data().trainerId : null
+        const contractData = contractSnap?.exists() ? contractSnap.data() : null
+        const contractTrainerId = (() => {
+          if (!contractData) return null
+          if (contractData.contractType === 'shared' && contractData.studentTrainers?.[data.customerId || oldData.customerId]) {
+            return contractData.studentTrainers[data.customerId || oldData.customerId]
+          }
+          if (contractData.contractType === 'dual') {
+            const targetCustId = data.customerId || oldData.customerId
+            const isPrimary = targetCustId === (contractData.customerId || contractData.primaryCustomerId)
+            if (!isPrimary && contractData.secondaryTrainerId) {
+              return contractData.secondaryTrainerId
+            }
+            if (contractData.studentTrainers?.[targetCustId]) {
+              return contractData.studentTrainers[targetCustId]
+            }
+          }
+          return contractData.trainerId || null
+        })()
         const finalTrainerId = data.trainerId || contractTrainerId || oldData.trainerId || user.uid
 
         const updateData = {
