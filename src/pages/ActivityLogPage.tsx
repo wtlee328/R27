@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
+import { ensureDate } from '@/lib/utils'
 import { Database, Search, Filter, Calendar, User, Info, ArrowDown, ArrowUp, Building2 } from 'lucide-react'
 import { RiHistoryLine } from '@remixicon/react'
 import { useActivityLogs } from '@/hooks/useActivityLogs'
@@ -37,7 +38,7 @@ export default function ActivityLogPage() {
 
   const formatLogDate = (timestamp: any) => {
     if (!timestamp) return ''
-    return format(timestamp.toDate(), 'yyyy/MM/dd HH:mm:ss')
+    return format(ensureDate(timestamp), 'yyyy/MM/dd HH:mm:ss')
   }
 
   const getCenterBadge = (cId?: string) => {

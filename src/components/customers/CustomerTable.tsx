@@ -336,8 +336,8 @@ export function CustomerTable({
         if (!a.dateOfBirth && !b.dateOfBirth) return 0
         if (!a.dateOfBirth) return 1
         if (!b.dateOfBirth) return -1
-        const dobA = a.dateOfBirth.toDate()
-        const dobB = b.dateOfBirth.toDate()
+        const dobA = ensureDate(a.dateOfBirth)
+        const dobB = ensureDate(b.dateOfBirth)
         
         if (dobA.getMonth() !== dobB.getMonth()) {
           return dobA.getMonth() - dobB.getMonth()
@@ -588,7 +588,7 @@ export function CustomerTable({
                             ? (activeContract.status === 'expired' ? "text-red-500 font-semibold" : "text-stone-700") 
                             : "text-stone-400 italic"
                         )}>
-                          {activeContract ? format(activeContract.endDate.toDate(), 'yyyy/MM/dd') : '無有效合約'}
+                          {activeContract ? formatDate(activeContract.endDate) : '無有效合約'}
                         </p>
                       </div>
                     </div>

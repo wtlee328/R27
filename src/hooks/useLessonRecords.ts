@@ -92,13 +92,13 @@ export function useLessonRecords() {
               deductions: repairedDeductions,
               sessionAmount: r.deductions.length,
               updatedAt: serverTimestamp()
-            })
+            }).catch(e => console.warn('Auto repair record error:', e))
 
             // Also repair contract member quotas if contractId is available
             if (r.contractId) {
               const contractRef = doc(db, 'contracts', r.contractId)
-              const cSnap = await getDoc(contractRef)
-              if (cSnap.exists()) {
+              const cSnap = await getDoc(contractRef).catch(() => null)
+              if (cSnap && cSnap.exists()) {
                 const cData = cSnap.data() as Contract
                 if (cData.contractType === 'group' && cData.groupMemberQuotas) {
                   const updatedQuotas = { ...cData.groupMemberQuotas }
@@ -106,19 +106,27 @@ export function useLessonRecords() {
                   const overDeducted = r.deductions.length - 1
                   r.deductions.forEach(d => {
                     const q = updatedQuotas[d.customerId]
-                    if (q) {
-                      updatedQuotas[d.customerId] = {
-                        ...q,
-                        remainingSessions: Math.min(q.totalSessions, q.remainingSessions + overDeducted)
+                    if (q !== undefined && q !== null) {
+                      if (typeof q === 'object') {
+                        const total = typeof q.totalSessions === 'number' ? q.totalSessions : (cData.totalSessions || 0)
+                        const rem = typeof q.remainingSessions === 'number' ? q.remainingSessions : 0
+                        updatedQuotas[d.customerId] = {
+                          ...q,
+                          remainingSessions: Math.min(total, rem + overDeducted)
+                        }
+                        quotaChanged = true
+                      } else if (typeof q === 'number') {
+                        const total = cData.totalSessions || 0
+                        updatedQuotas[d.customerId] = Math.min(total, q + overDeducted)
+                        quotaChanged = true
                       }
-                      quotaChanged = true
                     }
                   })
                   if (quotaChanged) {
                     await updateDoc(contractRef, {
                       groupMemberQuotas: updatedQuotas,
                       updatedAt: serverTimestamp()
-                    })
+                    }).catch(e => console.warn('Auto repair contract quota error:', e))
                   }
                 }
               }
@@ -168,8 +176,8 @@ export function useLessonRecords() {
 
     try {
       const result = await runTransaction(db, async (transaction) => {
-        const uniqueContractIds = Array.from(new Set(rawDeductions.map(d => d.contractId).concat(data.contractId ? [data.contractId] : [])))
-        const uniqueCustomerIds = Array.from(new Set(attendeeIds.concat(rawDeductions.map(d => d.customerId))))
+        const uniqueContractIds = Array.from(new Set(rawDeductions.map(d => d.contractId).concat(data.contractId ? [data.contractId] : []).filter((cid): cid is string => Boolean(cid))))
+        const uniqueCustomerIds = Array.from(new Set(attendeeIds.concat(rawDeductions.map(d => d.customerId)).filter((uid): uid is string => Boolean(uid))))
 
         const contractRefsMap = new Map<string, any>()
         uniqueContractIds.forEach(cid => contractRefsMap.set(cid, doc(db, 'contracts', cid)))
@@ -228,9 +236,11 @@ export function useLessonRecords() {
 
         const deductionsByContract = new Map<string, StudentDeduction[]>()
         finalDeductions.forEach(d => {
-          const list = deductionsByContract.get(d.contractId) || []
-          list.push(d)
-          deductionsByContract.set(d.contractId, list)
+          if (d.contractId) {
+            const list = deductionsByContract.get(d.contractId) || []
+            list.push(d)
+            deductionsByContract.set(d.contractId, list)
+          }
         })
 
         for (const [cid, deds] of deductionsByContract.entries()) {
@@ -238,7 +248,7 @@ export function useLessonRecords() {
           if (!cSnap || !cSnap.exists()) continue
           const cData = cSnap.data() as Contract
 
-          let totalDeductedAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
+          let totalDeductedAmount = deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
           if (cData.contractType === 'dual') {
             totalDeductedAmount = 1
           } else if (cData.contractType === 'shared') {
@@ -249,15 +259,22 @@ export function useLessonRecords() {
             const updatedQuotas = { ...cData.groupMemberQuotas }
             deds.forEach(d => {
               const currentQuota = updatedQuotas[d.customerId]
-              if (currentQuota) {
-                updatedQuotas[d.customerId] = {
-                  ...currentQuota,
-                  remainingSessions: Math.max(0, currentQuota.remainingSessions - d.sessionAmount)
+              const amountToDeduct = Number(d.sessionAmount) || 1
+              if (currentQuota !== undefined && currentQuota !== null) {
+                if (typeof currentQuota === 'object') {
+                  const memberRem = typeof currentQuota.remainingSessions === 'number' ? currentQuota.remainingSessions : 0
+                  updatedQuotas[d.customerId] = {
+                    ...currentQuota,
+                    remainingSessions: Math.max(0, memberRem - amountToDeduct)
+                  }
+                } else if (typeof currentQuota === 'number') {
+                  updatedQuotas[d.customerId] = Math.max(0, currentQuota - amountToDeduct)
                 }
               }
             })
 
-            const newTotalRemaining = Math.max(0, cData.remainingSessions - totalDeductedAmount)
+            const currentRemaining = Number(cData.remainingSessions) || 0
+            const newTotalRemaining = Math.max(0, currentRemaining - totalDeductedAmount)
             const isCompleted = newTotalRemaining === 0
             transaction.update(contractRefsMap.get(cid), {
               remainingSessions: newTotalRemaining,
@@ -266,7 +283,8 @@ export function useLessonRecords() {
               updatedAt: serverTimestamp()
             })
           } else {
-            const newTotalRemaining = Math.max(0, cData.remainingSessions - totalDeductedAmount)
+            const currentRemaining = Number(cData.remainingSessions) || 0
+            const newTotalRemaining = Math.max(0, currentRemaining - totalDeductedAmount)
             const isCompleted = newTotalRemaining === 0
             transaction.update(contractRefsMap.get(cid), {
               remainingSessions: newTotalRemaining,
@@ -275,8 +293,6 @@ export function useLessonRecords() {
             })
           }
         }
-
-
 
         return {
           finalTrainerId,
@@ -309,132 +325,160 @@ export function useLessonRecords() {
   const deleteRecord = async (id: string) => {
     try {
       const recordRef = doc(db, 'lessonRecords', id)
-      
-      const result = await runTransaction(db, async (transaction) => {
-        const recordSnap = await transaction.get(recordRef)
-        if (!recordSnap.exists()) return null
-        
-        const recordData = recordSnap.data() as LessonRecord
-        const deductions: StudentDeduction[] = (recordData.deductions && recordData.deductions.length > 0)
-          ? recordData.deductions
-          : [{
-              customerId: recordData.customerId,
-              customerName: recordData.customerName,
-              contractId: recordData.contractId,
-              sessionAmount: recordData.sessionAmount
-            }]
+      let recordDataForLog: LessonRecord | null = null
+      let trainerNameForLog = '未知教練'
 
-        const uniqueContractIds = Array.from(new Set(
-          deductions.map(d => d.contractId).concat(recordData.contractId ? [recordData.contractId] : []).filter((id): id is string => Boolean(id))
-        ))
-        const uniqueCustomerIds = Array.from(new Set(
-          deductions.map(d => d.customerId).concat(recordData.customerId ? [recordData.customerId] : []).filter((id): id is string => Boolean(id))
-        ))
+      try {
+        const result = await runTransaction(db, async (transaction) => {
+          const recordSnap = await transaction.get(recordRef)
+          if (!recordSnap.exists()) return null
 
-        const contractRefsMap = new Map<string, any>()
-        uniqueContractIds.forEach(cid => {
-          if (cid) contractRefsMap.set(cid, doc(db, 'contracts', cid))
-        })
+          const recordData = recordSnap.data() as LessonRecord
+          recordDataForLog = recordData
 
-        const customerRefsMap = new Map<string, any>()
-        uniqueCustomerIds.forEach(uid => {
-          if (uid) customerRefsMap.set(uid, doc(db, 'customers', uid))
-        })
+          const deductions: StudentDeduction[] = (recordData.deductions && recordData.deductions.length > 0)
+            ? recordData.deductions
+            : [{
+                customerId: recordData.customerId,
+                customerName: recordData.customerName,
+                contractId: recordData.contractId,
+                sessionAmount: recordData.sessionAmount
+              }]
 
-        // 1. ALL READS FIRST
-        const contractSnapsMap = new Map<string, any>()
-        for (const [cid, pref] of contractRefsMap.entries()) {
-          const snap = await transaction.get(pref)
-          contractSnapsMap.set(cid, snap)
-        }
+          const uniqueContractIds = Array.from(new Set(
+            deductions.map(d => d.contractId).concat(recordData.contractId ? [recordData.contractId] : []).filter((cid): cid is string => Boolean(cid))
+          ))
+          const uniqueCustomerIds = Array.from(new Set(
+            deductions.map(d => d.customerId).concat(recordData.customerId ? [recordData.customerId] : []).filter((uid): uid is string => Boolean(uid))
+          ))
 
-        const customerSnapsMap = new Map<string, any>()
-        for (const [uid, uref] of customerRefsMap.entries()) {
-          const snap = await transaction.get(uref)
-          customerSnapsMap.set(uid, snap)
-        }
+          const contractRefsMap = new Map<string, any>()
+          uniqueContractIds.forEach(cid => {
+            if (cid) contractRefsMap.set(cid, doc(db, 'contracts', cid))
+          })
 
-        let trainerName = '未知教練'
-        if (recordData.trainerId) {
-          const trainerRef = doc(db, 'trainers', recordData.trainerId)
-          const trainerSnap = await transaction.get(trainerRef)
-          if (trainerSnap.exists()) {
-            trainerName = trainerSnap.data().name || '未知教練'
-          }
-        }
+          const customerRefsMap = new Map<string, any>()
+          uniqueCustomerIds.forEach(uid => {
+            if (uid) customerRefsMap.set(uid, doc(db, 'customers', uid))
+          })
 
-        // 2. ALL WRITES LATER
-        const deductionsByContract = new Map<string, StudentDeduction[]>()
-        deductions.forEach(d => {
-          const list = deductionsByContract.get(d.contractId) || []
-          list.push(d)
-          deductionsByContract.set(d.contractId, list)
-        })
-
-        for (const [cid, deds] of deductionsByContract.entries()) {
-          const cSnap = contractSnapsMap.get(cid)
-          if (!cSnap || !cSnap.exists()) continue
-          const cData = cSnap.data() as Contract
-
-          let totalRestoredAmount = deds.reduce((sum, item) => sum + item.sessionAmount, 0)
-          if (cData.contractType === 'dual') {
-            totalRestoredAmount = 1
-          } else if (cData.contractType === 'shared') {
-            totalRestoredAmount = recordData.sessionAmount || 1
+          // 1. ALL READS FIRST
+          const contractSnapsMap = new Map<string, any>()
+          for (const [cid, pref] of contractRefsMap.entries()) {
+            try {
+              const snap = await transaction.get(pref)
+              contractSnapsMap.set(cid, snap)
+            } catch (e) {
+              console.warn(`Contract ${cid} read failed in transaction`, e)
+            }
           }
 
-          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
-            const updatedQuotas = { ...cData.groupMemberQuotas }
-            deds.forEach(d => {
-              const currentQuota = updatedQuotas[d.customerId]
-              if (currentQuota) {
-                updatedQuotas[d.customerId] = {
-                  ...currentQuota,
-                  remainingSessions: Math.min(currentQuota.totalSessions, currentQuota.remainingSessions + d.sessionAmount)
-                }
+          const customerSnapsMap = new Map<string, any>()
+          for (const [uid, uref] of customerRefsMap.entries()) {
+            try {
+              const snap = await transaction.get(uref)
+              customerSnapsMap.set(uid, snap)
+            } catch (e) {
+              console.warn(`Customer ${uid} read failed in transaction`, e)
+            }
+          }
+
+          if (recordData.trainerId) {
+            try {
+              const trainerRef = doc(db, 'trainers', recordData.trainerId)
+              const trainerSnap = await transaction.get(trainerRef)
+              if (trainerSnap.exists()) {
+                trainerNameForLog = trainerSnap.data().name || '未知教練'
               }
-            })
-
-            const newTotalRemaining = Math.min(cData.totalSessions, cData.remainingSessions + totalRestoredAmount)
-            const newStatus = cData.status === 'completed' && newTotalRemaining > 0 ? 'active' : cData.status
-            transaction.update(contractRefsMap.get(cid), {
-              remainingSessions: newTotalRemaining,
-              groupMemberQuotas: updatedQuotas,
-              status: newStatus,
-              updatedAt: serverTimestamp()
-            })
-          } else {
-            const newTotalRemaining = Math.min(cData.totalSessions, cData.remainingSessions + totalRestoredAmount)
-            const newStatus = cData.status === 'completed' && newTotalRemaining > 0 ? 'active' : cData.status
-            transaction.update(contractRefsMap.get(cid), {
-              remainingSessions: newTotalRemaining,
-              status: newStatus,
-              updatedAt: serverTimestamp()
-            })
+            } catch (e) {
+              console.warn('Trainer read failed in transaction', e)
+            }
           }
-        }
 
+          // 2. ALL WRITES LATER
+          const deductionsByContract = new Map<string, StudentDeduction[]>()
+          deductions.forEach(d => {
+            if (d.contractId) {
+              const list = deductionsByContract.get(d.contractId) || []
+              list.push(d)
+              deductionsByContract.set(d.contractId, list)
+            }
+          })
 
+          for (const [cid, deds] of deductionsByContract.entries()) {
+            const cSnap = contractSnapsMap.get(cid)
+            if (!cSnap || !cSnap.exists()) continue
+            const cData = cSnap.data() as Contract
 
-        transaction.delete(recordRef)
+            let totalRestoredAmount = deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
+            if (cData.contractType === 'dual') {
+              totalRestoredAmount = 1
+            } else if (cData.contractType === 'shared') {
+              totalRestoredAmount = Number(recordData.sessionAmount) || 1
+            }
 
-        return {
-          recordData,
-          trainerName
-        }
-      })
+            const totalSessions = Number(cData.totalSessions) || 0
+            const currentRemaining = Number(cData.remainingSessions) || 0
+            const newTotalRemaining = totalSessions > 0 ? Math.min(totalSessions, currentRemaining + totalRestoredAmount) : (currentRemaining + totalRestoredAmount)
+            const newStatus = cData.status === 'completed' && newTotalRemaining > 0 ? 'active' : cData.status
 
-      if (result) {
+            if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+              const updatedQuotas = { ...cData.groupMemberQuotas }
+              deds.forEach(d => {
+                const currentQuota = updatedQuotas[d.customerId]
+                const amountToRestore = Number(d.sessionAmount) || 1
+                if (currentQuota !== undefined && currentQuota !== null) {
+                  if (typeof currentQuota === 'object') {
+                    const memberTotal = typeof currentQuota.totalSessions === 'number' ? currentQuota.totalSessions : totalSessions
+                    const memberRem = typeof currentQuota.remainingSessions === 'number' ? currentQuota.remainingSessions : 0
+                    updatedQuotas[d.customerId] = {
+                      ...currentQuota,
+                      remainingSessions: memberTotal > 0 ? Math.min(memberTotal, memberRem + amountToRestore) : (memberRem + amountToRestore)
+                    }
+                  } else if (typeof currentQuota === 'number') {
+                    updatedQuotas[d.customerId] = totalSessions > 0 ? Math.min(totalSessions, currentQuota + amountToRestore) : (currentQuota + amountToRestore)
+                  }
+                }
+              })
+
+              transaction.update(contractRefsMap.get(cid), {
+                remainingSessions: newTotalRemaining,
+                groupMemberQuotas: updatedQuotas,
+                status: newStatus,
+                updatedAt: serverTimestamp()
+              })
+            } else {
+              transaction.update(contractRefsMap.get(cid), {
+                remainingSessions: newTotalRemaining,
+                status: newStatus,
+                updatedAt: serverTimestamp()
+              })
+            }
+          }
+
+          transaction.delete(recordRef)
+          return true
+        })
+
+        if (!result) return
+      } catch (txErr) {
+        console.warn('Transaction failed while deleting record, falling back to direct deleteDoc:', txErr)
+        // Fallback: direct delete doc if contract transaction fails (e.g. orphaned/deleted contract)
+        await deleteDoc(recordRef)
+      }
+
+      if (recordDataForLog) {
+        const logData: LessonRecord = recordDataForLog
         await logActivity({
           centerId,
-          trainerId: result.recordData.trainerId,
-          trainerName: result.trainerName,
+          trainerId: logData.trainerId,
+          trainerName: trainerNameForLog,
           action: 'delete',
           module: 'lessonRecords',
           recordId: id,
-          recordSummary: `刪除銷課: ${result.recordData.attendingCustomerNames?.join('、') || result.recordData.customerName} - ${result.recordData.sessionAmount}堂`,
-          previousValue: result.recordData
-        })
+          recordSummary: `刪除銷課: ${logData.attendingCustomerNames?.join('、') || logData.customerName || '未知學員'} - ${logData.sessionAmount || 1}堂`,
+          previousValue: logData
+        }).catch(e => console.warn('Failed to log deletion activity:', e))
       }
 
       await fetchRecords()

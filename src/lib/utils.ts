@@ -21,27 +21,23 @@ export function ensureDate(d: any): Date {
   return new Date()
 }
 
-export function tsToDate(ts: Timestamp): Date {
-  return ts.toDate()
+export function tsToDate(ts: any): Date {
+  return ensureDate(ts)
 }
 
-export function formatDate(ts: Timestamp | null | undefined, fmt = 'yyyy/MM/dd'): string {
-  if (!ts) return '—'
-  return format(ts.toDate(), fmt, { locale: zhTW })
+export function formatDate(val: any, fmt = 'yyyy/MM/dd'): string {
+  if (!val) return '—'
+  try {
+    const d = ensureDate(val)
+    return format(d, fmt, { locale: zhTW })
+  } catch {
+    return '—'
+  }
 }
 
 export function formatMinguoDate(val: Timestamp | Date | string | null | undefined, formatStyle: 'full' | 'slash' = 'full'): string {
   if (!val) return '未提供'
-  let d: Date
-  if (val && typeof (val as any).toDate === 'function') {
-    d = (val as Timestamp).toDate()
-  } else if (val instanceof Date) {
-    d = val
-  } else if (typeof val === 'string') {
-    d = new Date(val)
-  } else {
-    return '未提供'
-  }
+  const d = ensureDate(val)
   if (isNaN(d.getTime())) return '未提供'
   const rocYear = d.getFullYear() - 1911
   const month = String(d.getMonth() + 1).padStart(2, '0')
@@ -53,16 +49,16 @@ export function formatMinguoDate(val: Timestamp | Date | string | null | undefin
   return `民國 ${rocYear} 年 ${month} 月 ${day} 日`
 }
 
-export function formatMonth(ts: Timestamp): string {
-  return format(ts.toDate(), 'yyyy年M月', { locale: zhTW })
+export function formatMonth(ts: any): string {
+  return format(ensureDate(ts), 'yyyy年M月', { locale: zhTW })
 }
 
-export function daysUntil(ts: Timestamp): number {
-  return differenceInDays(ts.toDate(), new Date())
+export function daysUntil(ts: any): number {
+  return differenceInDays(ensureDate(ts), new Date())
 }
 
-export function isBirthdayThisMonth(ts: Timestamp): boolean {
-  const date = ts.toDate()
+export function isBirthdayThisMonth(ts: any): boolean {
+  const date = ensureDate(ts)
   return date.getMonth() === new Date().getMonth()
 }
 

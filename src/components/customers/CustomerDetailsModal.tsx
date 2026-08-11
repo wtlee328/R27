@@ -375,9 +375,7 @@ export function CustomerDetailsModal({
                           'text-[10px] font-bold',
                           isLightBg ? 'text-stone-700' : 'text-white/70'
                         )}>
-                          建立 {activeContract.createdAt instanceof Timestamp
-                            ? format(activeContract.createdAt.toDate(), 'yyyy/MM/dd')
-                            : '-'}
+                          建立 {activeContract.createdAt ? formatDate(activeContract.createdAt) : '-'}
                         </span>
                       </div>
 
@@ -405,9 +403,7 @@ export function CustomerDetailsModal({
                         <div>
                           <p className={cn('text-[9px] font-black uppercase tracking-widest mb-0.5', isLightBg ? 'text-stone-700' : 'text-white/60')}>合約到期</p>
                           <p className={cn('text-sm font-bold tabular-nums', isLightBg ? 'text-stone-900' : 'text-white')}>
-                            {activeContract.endDate instanceof Timestamp
-                              ? format(activeContract.endDate.toDate(), 'yyyy/MM/dd')
-                              : '未知'}
+                            {activeContract.endDate ? formatDate(activeContract.endDate) : '未知'}
                           </p>
                         </div>
                         <div className="flex justify-end items-end">
@@ -574,9 +570,9 @@ export function CustomerDetailsModal({
                           </div>
                           <div className="flex items-center gap-3 text-[11px] text-stone-400">
                             <span className="font-mono">
-                              {contract.startDate instanceof Timestamp ? format(contract.startDate.toDate(), 'yyyy/MM/dd') : '...'} 
+                              {formatDate(contract.startDate)} 
                               {' ~ '}
-                              {contract.endDate instanceof Timestamp ? format(contract.endDate.toDate(), 'yyyy/MM/dd') : '...'}
+                              {formatDate(contract.endDate)}
                             </span>
                             {partnerName && <span className="text-orange-500 font-bold">共享: {partnerName}</span>}
                           </div>

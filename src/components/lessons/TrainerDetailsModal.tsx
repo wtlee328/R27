@@ -8,6 +8,7 @@ import {
 } from '../ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { format } from 'date-fns'
+import { ensureDate } from '../../lib/utils'
 import type { Customer, Contract, LessonRecord, Trainer } from '../../types'
 import { 
   RiGroupLine, 
@@ -96,7 +97,7 @@ export function TrainerDetailsModal({
   const filteredLessons = useMemo(() => {
     return selectedMonth === 'all'
       ? trainerLessons
-      : trainerLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+      : trainerLessons.filter(lr => lr.sessionDate && format(ensureDate(lr.sessionDate), 'yyyy/MM') === selectedMonth)
   }, [trainerLessons, selectedMonth])
 
   const sortedFilteredLessons = useMemo(() => {
@@ -548,10 +549,10 @@ export function TrainerDetailsModal({
                       {/* Date column */}
                       <div className="shrink-0 text-center">
                         <p className={cn('text-[10px] font-black uppercase tracking-wider', isSelected ? 'text-stone-400' : 'text-stone-400')}>
-                          {r.sessionDate ? format(r.sessionDate.toDate(), 'MM/dd') : '-'}
+                          {r.sessionDate ? format(ensureDate(r.sessionDate), 'MM/dd') : '-'}
                         </p>
                         <p className={cn('text-[9px] font-mono', isSelected ? 'text-stone-500' : 'text-stone-300')}>
-                          {r.sessionDate ? format(r.sessionDate.toDate(), 'HH:mm') : ''}
+                          {r.sessionDate ? format(ensureDate(r.sessionDate), 'HH:mm') : ''}
                         </p>
                       </div>
 
@@ -796,7 +797,9 @@ export function TrainerDetailsModal({
                     </div>
                     <div className="bg-stone-50 border border-stone-100 rounded-2xl p-4 text-center">
                       <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-1">認列金額</p>
-                      <p className="text-2xl font-black text-stone-900 tabular-nums">{contract ? `NT$ ${(fee).toLocaleString()}` : '-'}</p>
+                      <p className="text-2xl font-black text-stone-900 tabular-nums">
+                        {(contract || fee > 0 || (r as any).recognizedAmount > 0) ? `NT$ ${(fee || (r as any).recognizedAmount || 0).toLocaleString()}` : '-'}
+                      </p>
                     </div>
                   </div>
 
@@ -807,7 +810,7 @@ export function TrainerDetailsModal({
                         <RiCalendarLine className="w-4 h-4 text-stone-400" /> 上課日期
                       </span>
                       <span className="font-bold text-stone-900 font-mono">
-                        {r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd HH:mm') : '—'}
+                        {r.sessionDate ? format(ensureDate(r.sessionDate), 'yyyy/MM/dd HH:mm') : '—'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-3.5">
@@ -829,6 +832,10 @@ export function TrainerDetailsModal({
                             isDual ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-blue-100 text-blue-700 border-blue-200"
                           )}>
                             {isGroup ? '👥 團體合約' : isShared ? '👥 共享合約' : isDual ? '👥 雙人合約' : '👤 單人合約'}
+                          </span>
+                        ) : (Array.isArray(r.deductions) && r.deductions.length > 1) ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border bg-emerald-100 text-emerald-700 border-emerald-200">
+                            👥 多人/團體銷課
                           </span>
                         ) : '無合約資訊'}
                       </span>

@@ -245,7 +245,7 @@ export function useCustomers() {
     const currentMonth = new Date().getMonth() // 0-11
     return customers.filter(customer => {
       if (!customer.dateOfBirth) return false
-      const dob = customer.dateOfBirth.toDate()
+      const dob = ensureDate(customer.dateOfBirth)
       return dob.getMonth() === currentMonth
     }).length
   }, [customers])

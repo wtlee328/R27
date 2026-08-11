@@ -29,7 +29,7 @@ import { useCustomers } from '../hooks/useCustomers'
 import type { LessonRecordFormValues, TrainerFormValues } from '../lib/validators'
 import type { LessonRecord } from '../types'
 import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
+import { cn, ensureDate } from '@/lib/utils'
 import { Input } from '../components/ui/input'
 import { 
   Dialog, 
@@ -77,7 +77,7 @@ export default function LessonsPage() {
     
     ;(records || []).forEach(r => {
       if (r.sessionDate) {
-        monthsSet.add(format(r.sessionDate.toDate(), 'yyyy/MM'))
+        monthsSet.add(format(ensureDate(r.sessionDate), 'yyyy/MM'))
       }
     })
     
@@ -117,7 +117,7 @@ export default function LessonsPage() {
 
       const filteredLessonsForMonth = selectedMonth === 'all'
         ? taughtLessons
-        : taughtLessons.filter(lr => lr.sessionDate && format(lr.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+        : taughtLessons.filter(lr => lr.sessionDate && format(ensureDate(lr.sessionDate), 'yyyy/MM') === selectedMonth)
 
       const usedLessons = filteredLessonsForMonth.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
 
@@ -219,7 +219,7 @@ export default function LessonsPage() {
 
   const selectedMonthRecords = selectedMonth === 'all'
     ? records
-    : records.filter(r => r.sessionDate && format(r.sessionDate.toDate(), 'yyyy/MM') === selectedMonth)
+    : records.filter(r => r.sessionDate && format(ensureDate(r.sessionDate), 'yyyy/MM') === selectedMonth)
 
   const selectedMonthConsumed = selectedMonthRecords.reduce(
     (sum, r) => sum + Number(r.sessionAmount || 0), 
