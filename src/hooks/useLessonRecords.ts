@@ -324,14 +324,22 @@ export function useLessonRecords() {
               sessionAmount: recordData.sessionAmount
             }]
 
-        const uniqueContractIds = Array.from(new Set(deductions.map(d => d.contractId).concat(recordData.contractId ? [recordData.contractId] : [])))
-        const uniqueCustomerIds = Array.from(new Set(deductions.map(d => d.customerId)))
+        const uniqueContractIds = Array.from(new Set(
+          deductions.map(d => d.contractId).concat(recordData.contractId ? [recordData.contractId] : []).filter((id): id is string => Boolean(id))
+        ))
+        const uniqueCustomerIds = Array.from(new Set(
+          deductions.map(d => d.customerId).concat(recordData.customerId ? [recordData.customerId] : []).filter((id): id is string => Boolean(id))
+        ))
 
         const contractRefsMap = new Map<string, any>()
-        uniqueContractIds.forEach(cid => contractRefsMap.set(cid, doc(db, 'contracts', cid)))
+        uniqueContractIds.forEach(cid => {
+          if (cid) contractRefsMap.set(cid, doc(db, 'contracts', cid))
+        })
 
         const customerRefsMap = new Map<string, any>()
-        uniqueCustomerIds.forEach(uid => customerRefsMap.set(uid, doc(db, 'customers', uid)))
+        uniqueCustomerIds.forEach(uid => {
+          if (uid) customerRefsMap.set(uid, doc(db, 'customers', uid))
+        })
 
         // 1. ALL READS FIRST
         const contractSnapsMap = new Map<string, any>()
@@ -346,9 +354,14 @@ export function useLessonRecords() {
           customerSnapsMap.set(uid, snap)
         }
 
-        const trainerRef = doc(db, 'trainers', recordData.trainerId)
-        const trainerSnap = await transaction.get(trainerRef)
-        const trainerName = trainerSnap.exists() ? trainerSnap.data().name : '未知教練'
+        let trainerName = '未知教練'
+        if (recordData.trainerId) {
+          const trainerRef = doc(db, 'trainers', recordData.trainerId)
+          const trainerSnap = await transaction.get(trainerRef)
+          if (trainerSnap.exists()) {
+            trainerName = trainerSnap.data().name || '未知教練'
+          }
+        }
 
         // 2. ALL WRITES LATER
         const deductionsByContract = new Map<string, StudentDeduction[]>()

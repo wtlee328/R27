@@ -496,7 +496,13 @@ export function TrainerDetailsModal({
                 sortedFilteredLessons.map((r) => {
                   const contract = contracts.find(c => c.id === r.contractId)
                   const perSessionPrice = contract && contract.totalSessions > 0 ? (contract.totalAmount / contract.totalSessions) : (contract?.pricePerSession || 0)
-                  const fee = contract ? Math.round(r.sessionAmount * perSessionPrice) : 0
+                  const fee = typeof (r as any).recognizedAmount === 'number' && (r as any).recognizedAmount > 0
+                    ? (r as any).recognizedAmount
+                    : typeof (r as any).unitPriceAtDeduction === 'number' && (r as any).unitPriceAtDeduction > 0
+                    ? Math.round(r.sessionAmount * (r as any).unitPriceAtDeduction)
+                    : contract
+                    ? Math.round(r.sessionAmount * perSessionPrice)
+                    : 0
                   const teachingTrainerName = trainers.find(tr => tr.id === r.trainerId)?.name || '未知'
                   const isSubstitute = contract && (contract.trainerId !== r.trainerId && contract.secondaryTrainerId !== r.trainerId)
                   const isSelected = selectedRecord?.id === r.id
@@ -589,7 +595,7 @@ export function TrainerDetailsModal({
                           -{r.sessionAmount}<span className={cn('text-xs font-semibold ml-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>堂</span>
                         </p>
                         <p className={cn('text-[10px] font-bold tabular-nums', isSelected ? 'text-stone-400' : 'text-stone-400')}>
-                          {contract ? `NT$ ${fee.toLocaleString()}` : '-'}
+                          {fee > 0 ? `NT$ ${fee.toLocaleString()}` : contract ? 'NT$ 0' : '-'}
                         </p>
                       </div>
 
