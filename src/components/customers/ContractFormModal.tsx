@@ -811,10 +811,21 @@ export function ContractFormModal({
 
         for (let i = 0; i < additionalGroupMembers.length; i++) {
           const m = additionalGroupMembers[i]
+          const groupTrainerId = data.trainerId || customer?.trainerId || ''
           if (m.memberMode === 'existing' && m.existingCustomerId) {
             createdMemberIds.push(m.existingCustomerId)
             createdMemberNames.push(m.name || `團員${i + 2}`)
             createdMemberQuotas.push(m.allocatedSessions)
+            if (groupTrainerId) {
+              try {
+                await updateDoc(doc(db, 'customers', m.existingCustomerId), {
+                  trainerId: groupTrainerId,
+                  updatedAt: serverTimestamp(),
+                })
+              } catch (err) {
+                console.error('Failed to sync existing group member trainer:', err)
+              }
+            }
           } else {
             const mCustomer = {
               name: m.name || `團員${i + 2}`,
@@ -827,7 +838,7 @@ export function ContractFormModal({
               source: m.source || 'existing',
               emergencyContact: m.emergencyContact,
               medicalHistory: m.medicalHistory,
-              trainerId: data.trainerId || customer?.trainerId,
+              trainerId: groupTrainerId,
               centerId,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),

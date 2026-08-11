@@ -525,6 +525,22 @@ export function useCustomers() {
       }
     }
 
+    // Sync all members' trainers if group contract
+    if (isGroup && data.trainerId && Array.isArray(customerIds)) {
+      for (const mCustId of customerIds) {
+        if (mCustId) {
+          try {
+            await updateDoc(doc(db, 'customers', mCustId), {
+              trainerId: data.trainerId,
+              updatedAt: serverTimestamp()
+            })
+          } catch (err) {
+            console.error(`Failed to sync group member ${mCustId} trainer:`, err)
+          }
+        }
+      }
+    }
+
     await fetchAllData()
     return docRef.id
   }

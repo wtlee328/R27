@@ -838,10 +838,21 @@ export function CustomerFormModal({
 
         for (let i = 0; i < additionalGroupMembers.length; i++) {
           const m = additionalGroupMembers[i]
+          const groupTrainerId = data.contract.trainerId || ''
           if (m.memberMode === 'existing' && m.existingCustomerId) {
             createdMemberIds.push(m.existingCustomerId)
             createdMemberNames.push(m.name || `團員${i + 2}`)
             createdMemberQuotas.push(m.allocatedSessions)
+            if (groupTrainerId) {
+              try {
+                await updateDoc(doc(db, 'customers', m.existingCustomerId), {
+                  trainerId: groupTrainerId,
+                  updatedAt: serverTimestamp(),
+                })
+              } catch (err) {
+                console.error('Failed to update existing group member trainer:', err)
+              }
+            }
           } else {
             if (!m.name || !m.phone) {
               alert(`請填寫學員 ${i + 2} 的姓名與電話！`)
@@ -862,6 +873,7 @@ export function CustomerFormModal({
               medicalHistory: m.medicalHistory,
               historicalSessions: 0,
               status: 'active',
+              trainerId: groupTrainerId,
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             })
