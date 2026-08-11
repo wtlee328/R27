@@ -508,6 +508,23 @@ export function useCustomers() {
       }
     }
 
+    // Sync all members' trainers if shared contract
+    if (isShared && (data as any).studentTrainers) {
+      const studentTrainersMap: Record<string, string> = (data as any).studentTrainers
+      for (const [mCustId, mTrainerId] of Object.entries(studentTrainersMap)) {
+        if (mCustId && mTrainerId) {
+          try {
+            await updateDoc(doc(db, 'customers', mCustId), {
+              trainerId: mTrainerId,
+              updatedAt: serverTimestamp()
+            })
+          } catch (err) {
+            console.error(`Failed to sync shared member ${mCustId} trainer:`, err)
+          }
+        }
+      }
+    }
+
     await fetchAllData()
     return docRef.id
   }
@@ -691,6 +708,14 @@ export function useCustomers() {
             customerIds = data.contract.customerIds || [customerId]
             if (!customerIds.includes(customerId)) {
               customerIds.unshift(customerId)
+            }
+            if (isShared) {
+              if (!data.contract.studentTrainers) {
+                data.contract.studentTrainers = {}
+              }
+              if (customerId && data.contract.trainerId) {
+                data.contract.studentTrainers[customerId] = data.contract.trainerId
+              }
             }
             if (data.contract.groupMemberQuotas) {
               const primaryQuota = (data as any)._primaryMemberQuota || Math.floor(totalSessions / customerIds.length)

@@ -922,8 +922,20 @@ export function CustomerFormModal({
           const m = additionalGroupMembers[i]
           if (!m) continue
           let memberId = ''
+          const memberTrainerId = (m as any).assignedTrainerId || data.contract.trainerId || ''
+
           if (m.memberMode === 'existing' && m.existingCustomerId) {
             memberId = m.existingCustomerId
+            if (memberTrainerId) {
+              try {
+                await updateDoc(doc(db, 'customers', memberId), {
+                  trainerId: memberTrainerId,
+                  updatedAt: serverTimestamp(),
+                })
+              } catch (err) {
+                console.error('Failed to sync existing member trainer:', err)
+              }
+            }
           } else {
             if (!m.name || !m.phone) {
               alert(`請填寫成員 ${i + 2} 的姓名與電話！`)
@@ -944,22 +956,22 @@ export function CustomerFormModal({
               medicalHistory: m.medicalHistory,
               historicalSessions: 0,
               status: 'active',
+              trainerId: memberTrainerId || data.contract.trainerId || '',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             })
             memberId = docRef.id
           }
           createdMemberIds.push(memberId)
-          if (m.assignedTrainerId) {
-            studentTrainersMap[memberId] = m.assignedTrainerId
+          if (memberTrainerId) {
+            studentTrainersMap[memberId] = memberTrainerId
           }
         }
 
-        const isFromExistingCustomer = !!initialCustomer || !!initialData?.name
         const primaryCustId = initialCustomer?.id || (initialData as any)?.id
         const allCustomerIds: string[] = []
 
-        if (isFromExistingCustomer && primaryCustId) {
+        if (primaryCustId) {
           allCustomerIds.push(primaryCustId)
           if (data.contract.trainerId) {
             studentTrainersMap[primaryCustId] = data.contract.trainerId
