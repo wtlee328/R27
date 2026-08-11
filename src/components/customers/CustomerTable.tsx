@@ -20,7 +20,7 @@ import {
 import { Badge } from '../ui/badge'
 import { Input } from '../ui/input'
 import { FilterDropdown } from '../shared/FilterDropdown'
-import { cn, formatMinguoDate } from '@/lib/utils'
+import { cn, formatMinguoDate, formatDate, ensureDate } from '@/lib/utils'
 
 export function CustomerTable({ 
   customers,

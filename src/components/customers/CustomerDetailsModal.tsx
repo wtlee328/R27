@@ -8,6 +8,7 @@ import {
 } from '../ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { format } from 'date-fns'
+import { cn, formatMinguoDate, formatDate, ensureDate } from '@/lib/utils'
 import { Timestamp, doc, getDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { Customer, Contract } from '../../types'
@@ -35,7 +36,6 @@ import {
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
 import { useCustomers } from '../../hooks/useCustomers'
-import { cn, formatMinguoDate } from '@/lib/utils'
 
 interface CustomerDetailsModalProps {
   open: boolean
