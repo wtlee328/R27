@@ -304,16 +304,19 @@ export function LessonRecordWizard({
     }
   }, [initialData, form, selectedContract, isDualContract])
 
-  // Pre-select contract trainer when a contract is selected (only for new records)
+  // Pre-select contract trainer when a contract or customer is selected (only for new records)
   useEffect(() => {
     if (!initialData && selectedContract) {
-      if (effectiveTrainerId) {
+      const studentSpecificTrainer = selectedContract.studentTrainers?.[selectedCustomerId]
+      if (studentSpecificTrainer) {
+        form.setValue('trainerId', studentSpecificTrainer)
+      } else if (effectiveTrainerId) {
         form.setValue('trainerId', effectiveTrainerId)
       } else {
         form.setValue('trainerId', selectedContract.trainerId || '')
       }
     }
-  }, [selectedContract, initialData, form, effectiveTrainerId])
+  }, [selectedContract, selectedCustomerId, initialData, form, effectiveTrainerId])
 
   // Validation & Safeguard Check (防呆機制)
   const validationError = useMemo(() => {

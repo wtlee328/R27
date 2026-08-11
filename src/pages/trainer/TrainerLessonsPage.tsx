@@ -452,7 +452,10 @@ export default function TrainerLessonsPage() {
       // Find the first contract with remaining sessions
       const activeContract = contracts.find(c => c.remainingSessions > 0) || contracts[0]
       setSelectedContractId(activeContract.id)
-      if (currentTrainerId) {
+      const studentAssignedTrainer = activeContract.studentTrainers?.[selectedCustomerId]
+      if (studentAssignedTrainer) {
+        setSelectedTrainerId(studentAssignedTrainer)
+      } else if (currentTrainerId) {
         setSelectedTrainerId(currentTrainerId)
       } else if (activeContract.trainerId) {
         setSelectedTrainerId(activeContract.trainerId)
@@ -460,7 +463,7 @@ export default function TrainerLessonsPage() {
     } else if (currentTrainerId) {
       setSelectedTrainerId(currentTrainerId)
     }
-  }, [contracts, currentTrainerId])
+  }, [contracts, currentTrainerId, selectedCustomerId])
 
   const handleBack = () => {
     if (step === 2) {
