@@ -508,15 +508,53 @@ export function useLessonRecords() {
       const recordRef = doc(db, 'lessonRecords', id)
       
       await runTransaction(db, async (transaction) => {
-        // READS FIRST
+        // ── 1. READS FIRST ──
         const recordSnap = await transaction.get(recordRef)
         if (!recordSnap.exists()) throw new Error('找不到該筆紀錄')
         
         const oldData = recordSnap.data() as any
-        
-        const contractRef = data.contractId ? doc(db, 'contracts', data.contractId) : null
-        const contractSnap = contractRef ? await transaction.get(contractRef) : null
+        const oldDeductions: StudentDeduction[] = Array.isArray(oldData.deductions) && oldData.deductions.length > 0
+          ? oldData.deductions
+          : [{
+              customerId: oldData.customerId,
+              customerName: oldData.customerName || '',
+              contractId: oldData.contractId,
+              sessionAmount: oldData.sessionAmount || 1,
+            }]
 
+        // Collect all contract IDs that need to be read (both old and new)
+        const oldContractIds = oldDeductions.map(d => d.contractId).filter(Boolean) as string[]
+        if (oldData.contractId && !oldContractIds.includes(oldData.contractId)) {
+          oldContractIds.push(oldData.contractId)
+        }
+
+        const newPrimaryContractId = data.contractId
+        const newDeductions: StudentDeduction[] = Array.isArray((data as any).deductions) && (data as any).deductions.length > 0
+          ? (data as any).deductions
+          : [{
+              customerId: data.customerId,
+              customerName: data.customerName || '',
+              contractId: data.contractId,
+              sessionAmount: data.sessionAmount || 1,
+            }]
+
+        const newContractIds = newDeductions.map(d => d.contractId).filter(Boolean) as string[]
+        if (newPrimaryContractId && !newContractIds.includes(newPrimaryContractId)) {
+          newContractIds.push(newPrimaryContractId)
+        }
+
+        const allContractIds = Array.from(new Set([...oldContractIds, ...newContractIds]))
+        const contractRefsMap = new Map<string, any>()
+        const contractSnapsMap = new Map<string, any>()
+
+        for (const cid of allContractIds) {
+          const cRef = doc(db, 'contracts', cid)
+          contractRefsMap.set(cid, cRef)
+          const cSnap = await transaction.get(cRef)
+          contractSnapsMap.set(cid, cSnap)
+        }
+
+        // Collect all customer IDs (both old and new)
         const oldAttendeeIds = oldData.attendingCustomerIds && oldData.attendingCustomerIds.length > 0
           ? oldData.attendingCustomerIds
           : [oldData.customerId]
@@ -529,55 +567,183 @@ export function useLessonRecords() {
         const attendeeRefs = uniqueAttendeeIds.map(aId => doc(db, 'customers', aId))
         const attendeeSnaps = await Promise.all(attendeeRefs.map(ref => transaction.get(ref)))
 
-        // WRITES LATER
-        const diff = data.sessionAmount - oldData.sessionAmount
+        const customerSnapsMap = new Map<string, any>()
+        uniqueAttendeeIds.forEach((aId, idx) => {
+          customerSnapsMap.set(aId, attendeeSnaps[idx])
+        })
 
-        if (diff !== 0) {
-          if (contractRef && contractSnap?.exists()) {
-            transaction.update(contractRef, {
-              remainingSessions: increment(-diff),
-              updatedAt: serverTimestamp()
+        // ── 2. COMPUTE CONTRACT SESSION REFUNDS & DEDUCTIONS ──
+        const contractNetChanges = new Map<string, number>()
+        const groupQuotaChanges = new Map<string, Record<string, number>>()
+
+        const trackContractChange = (cid: string, delta: number) => {
+          const current = contractNetChanges.get(cid) || 0
+          contractNetChanges.set(cid, current + delta)
+        }
+
+        const trackQuotaChange = (cid: string, custId: string, delta: number) => {
+          let quotas = groupQuotaChanges.get(cid)
+          if (!quotas) {
+            quotas = {}
+            groupQuotaChanges.set(cid, quotas)
+          }
+          quotas[custId] = (quotas[custId] || 0) + delta
+        }
+
+        // Refund old contract sessions
+        for (const cid of oldContractIds) {
+          const cSnap = contractSnapsMap.get(cid)
+          if (!cSnap || !cSnap.exists()) continue
+          const cData = cSnap.data() as Contract
+          const deds = oldDeductions.filter(d => d.contractId === cid)
+
+          let refundAmount = deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
+          if (cData.contractType === 'dual') {
+            refundAmount = 1
+          } else if (cData.contractType === 'shared') {
+            refundAmount = Number(oldData.sessionAmount) || 1
+          }
+          trackContractChange(cid, +refundAmount)
+
+          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+            deds.forEach(d => {
+              const amountToRestore = Number(d.sessionAmount) || 1
+              trackQuotaChange(cid, d.customerId, +amountToRestore)
             })
           }
         }
 
+        // Deduct new contract sessions
+        const newPrimaryContractSnap = contractSnapsMap.get(newPrimaryContractId)
+        const newPrimaryContractData = newPrimaryContractSnap?.exists() ? (newPrimaryContractSnap.data() as Contract) : null
+        const isNewDualContract = newPrimaryContractData?.contractType === 'dual'
+        const effectiveNewSessionAmount = isNewDualContract ? 1 : (data.sessionAmount || 1)
 
+        for (const cid of newContractIds) {
+          const cSnap = contractSnapsMap.get(cid)
+          if (!cSnap || !cSnap.exists()) continue
+          const cData = cSnap.data() as Contract
 
+          let deductAmount = effectiveNewSessionAmount
+          if (cData.contractType === 'dual') {
+            deductAmount = 1
+          }
+
+          trackContractChange(cid, -deductAmount)
+
+          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+            newAttendeeIds.forEach(aId => {
+              trackQuotaChange(cid, aId, -effectiveNewSessionAmount)
+            })
+          }
+        }
+
+        // ── 3. APPLY CONTRACT UPDATES (WRITES) ──
+        for (const [cid, netDelta] of contractNetChanges.entries()) {
+          const cSnap = contractSnapsMap.get(cid)
+          const cRef = contractRefsMap.get(cid)
+          if (!cSnap || !cSnap.exists() || !cRef) continue
+          const cData = cSnap.data() as Contract
+
+          const totalSessions = Number(cData.totalSessions) || 0
+          const currentRemaining = Number(cData.remainingSessions) || 0
+          const rawNewRemaining = currentRemaining + netDelta
+          const newTotalRemaining = totalSessions > 0 ? Math.min(totalSessions, Math.max(0, rawNewRemaining)) : Math.max(0, rawNewRemaining)
+
+          let newStatus = cData.status
+          if (newTotalRemaining <= 0 && cData.status !== 'cancelled') {
+            newStatus = 'completed'
+          } else if (cData.status === 'completed' && newTotalRemaining > 0) {
+            const isUnsigned = !cData.signatureDataUrl || (cData.contractType === 'dual' && !cData.secondarySignatureDataUrl)
+            newStatus = isUnsigned ? 'pending_signature' : 'active'
+          }
+
+          const contractUpdates: any = {
+            remainingSessions: newTotalRemaining,
+            status: newStatus,
+            updatedAt: serverTimestamp(),
+          }
+
+          if (cData.contractType === 'group' && cData.groupMemberQuotas) {
+            const quotaDeltas = groupQuotaChanges.get(cid) || {}
+            const updatedQuotas = { ...cData.groupMemberQuotas }
+
+            for (const [mCustId, qDelta] of Object.entries(quotaDeltas)) {
+              const currentQuota = updatedQuotas[mCustId]
+              if (currentQuota !== undefined && currentQuota !== null) {
+                if (typeof currentQuota === 'object') {
+                  const memberTotal = typeof currentQuota.totalSessions === 'number' ? currentQuota.totalSessions : totalSessions
+                  const memberRem = typeof currentQuota.remainingSessions === 'number' ? currentQuota.remainingSessions : 0
+                  const rawMemberRem = memberRem + qDelta
+                  updatedQuotas[mCustId] = {
+                    ...currentQuota,
+                    remainingSessions: memberTotal > 0 ? Math.min(memberTotal, Math.max(0, rawMemberRem)) : Math.max(0, rawMemberRem)
+                  }
+                } else if (typeof currentQuota === 'number') {
+                  const rawMemberRem = currentQuota + qDelta
+                  updatedQuotas[mCustId] = totalSessions > 0 ? Math.min(totalSessions, Math.max(0, rawMemberRem)) : Math.max(0, rawMemberRem)
+                }
+              }
+            }
+            contractUpdates.groupMemberQuotas = updatedQuotas
+          }
+
+          transaction.update(cRef, contractUpdates)
+        }
+
+        // ── 4. COMPUTE NEW LESSON RECORD FIELDS & UPDATE RECORD ──
         const attendeeNames = newAttendeeIds.map(id => {
-          const idx = uniqueAttendeeIds.indexOf(id)
-          const snap = attendeeSnaps[idx]
+          const snap = customerSnapsMap.get(id)
           return snap?.exists() ? snap.data().name : ''
         })
 
-        const contractData = contractSnap?.exists() ? contractSnap.data() : null
-        const contractTrainerId = (() => {
-          if (!contractData) return null
-          if (contractData.contractType === 'shared' && contractData.studentTrainers?.[data.customerId || oldData.customerId]) {
-            return contractData.studentTrainers[data.customerId || oldData.customerId]
+        const correctContractTrainerId = (() => {
+          if (!newPrimaryContractData) return null
+          if (newPrimaryContractData.contractType === 'shared' && newPrimaryContractData.studentTrainers?.[data.customerId]) {
+            return newPrimaryContractData.studentTrainers[data.customerId]
           }
-          if (contractData.contractType === 'dual') {
-            const targetCustId = data.customerId || oldData.customerId
-            const isPrimary = targetCustId === (contractData.customerId || contractData.primaryCustomerId)
-            if (!isPrimary && contractData.secondaryTrainerId) {
-              return contractData.secondaryTrainerId
+          if (newPrimaryContractData.contractType === 'dual') {
+            const isPrimary = data.customerId === (newPrimaryContractData.customerId || newPrimaryContractData.primaryCustomerId)
+            if (!isPrimary && newPrimaryContractData.secondaryTrainerId) {
+              return newPrimaryContractData.secondaryTrainerId
             }
-            if (contractData.studentTrainers?.[targetCustId]) {
-              return contractData.studentTrainers[targetCustId]
+            if (newPrimaryContractData.studentTrainers?.[data.customerId]) {
+              return newPrimaryContractData.studentTrainers[data.customerId]
             }
           }
-          return contractData.trainerId || null
+          return newPrimaryContractData.trainerId || null
         })()
-        const finalTrainerId = data.trainerId || contractTrainerId || oldData.trainerId || user.uid
 
-        const updateData = {
+        const finalTrainerId = data.trainerId || correctContractTrainerId || oldData.trainerId || user.uid
+
+        const unitPriceAtDeduction = newPrimaryContractData
+          ? (newPrimaryContractData.totalSessions > 0
+              ? Math.round((newPrimaryContractData.totalAmount || 0) / newPrimaryContractData.totalSessions)
+              : (newPrimaryContractData.pricePerSession || 0))
+          : (oldData.unitPriceAtDeduction || 0)
+        const recognizedAmount = Math.round(effectiveSessionAmount * unitPriceAtDeduction)
+
+        const newFinalDeductions: StudentDeduction[] = newAttendeeIds.map((aId, idx) => ({
+          customerId: aId,
+          customerName: attendeeNames[idx] || '',
+          contractId: data.contractId,
+          sessionAmount: effectiveSessionAmount,
+        }))
+
+        const updateData: any = {
           ...data,
+          sessionAmount: effectiveSessionAmount,
+          deductions: newFinalDeductions,
           trainerId: finalTrainerId,
-          contractTrainerId: contractTrainerId || finalTrainerId,
+          contractTrainerId: correctContractTrainerId || finalTrainerId,
           attendingCustomerIds: newAttendeeIds,
           attendingCustomerNames: attendeeNames,
+          unitPriceAtDeduction,
+          recognizedAmount,
           sessionDate: Timestamp.fromDate(data.sessionDate),
           updatedAt: serverTimestamp(),
         }
+
         transaction.update(recordRef, updateData)
       })
 
