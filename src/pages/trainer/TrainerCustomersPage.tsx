@@ -403,36 +403,40 @@ export default function TrainerCustomersPage() {
               const paid = contract.paidAmount || 0
               const total = contract.totalAmount || 0
               const remaining = total - paid
+              const progressPct = total > 0 ? Math.round((paid / total) * 100) : 0
 
               return (
                 <div 
                   key={contract.id} 
                   className={cn(
-                    "py-3.5 px-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all border",
+                    "py-3 px-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all border",
                     isOverdue
-                      ? "bg-red-50/40 border-red-200/80 shadow-2xs"
+                      ? "bg-red-50/40 border-red-200/80"
                       : isDueSoon
-                      ? "bg-amber-50/40 border-amber-200/80 shadow-2xs"
-                      : "bg-white border-stone-100 hover:border-stone-200"
+                      ? "bg-amber-50/40 border-amber-200/80"
+                      : "bg-stone-50/60 border-stone-100 hover:border-stone-200"
                   )}
                 >
-                  {/* 1. 客戶與合約資訊 */}
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-10 h-10 rounded-2xl bg-stone-900 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                  {/* LEFT: 客戶資訊 */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={cn(
+                      "w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0",
+                      isOverdue ? "bg-red-600 text-white" : isDueSoon ? "bg-amber-500 text-white" : "bg-stone-800 text-white"
+                    )}>
                       {customer?.name?.charAt(0) || '學'}
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-stone-900 text-sm truncate">{customer?.name || '未知學員'}</span>
+                        <span className="font-bold text-stone-900 text-sm">{customer?.name || '未知學員'}</span>
                         <span className="text-xs text-stone-400 font-mono">{customer?.phone}</span>
                         {contract.contractNo && (
-                          <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                          <span className="text-[10px] font-mono text-stone-400 bg-white px-1.5 py-0.5 rounded-md border border-stone-200">
                             {contract.contractNo}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-stone-400 mt-0.5">
-                        合約建立：
+                      <p className="text-[11px] text-stone-400 mt-0.5">
+                        建立：
                         {contract.createdAt ? (
                           contract.createdAt instanceof Timestamp
                             ? format(contract.createdAt.toDate(), 'yyyy/MM/dd')
@@ -446,58 +450,76 @@ export default function TrainerCustomersPage() {
                     </div>
                   </div>
 
-                  {/* 2. 最近繳費到期日與警示 (Newly Added Column) */}
-                  <div className="flex items-center gap-6 self-end md:self-auto flex-wrap">
-                    <div className="text-left md:text-center shrink-0">
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-0.5">最近到期日</p>
+                  {/* RIGHT: 到期日 + 進度 + 按鈕 */}
+                  <div className="flex items-center gap-3 self-end md:self-auto shrink-0">
+
+                    {/* 到期日區塊 */}
+                    <div className={cn(
+                      "px-3 py-2 rounded-xl text-center min-w-[110px]",
+                      isOverdue ? "bg-red-100/70 border border-red-200" :
+                      isDueSoon ? "bg-amber-100/70 border border-amber-200" :
+                      "bg-white border border-stone-200"
+                    )}>
+                      <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5 text-stone-400">最近到期日</p>
                       {nearestDueDate ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn(
-                            "text-xs font-mono font-bold",
-                            isOverdue ? "text-red-600" : isDueSoon ? "text-amber-700" : "text-stone-700"
+                        <>
+                          <p className={cn(
+                            "text-xs font-mono font-black leading-tight",
+                            isOverdue ? "text-red-700" : isDueSoon ? "text-amber-800" : "text-stone-800"
                           )}>
                             {format(nearestDueDate, 'yyyy/MM/dd')}
-                          </span>
-                          {isOverdue && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full animate-pulse">
-                              <RiAlertLine className="w-3 h-3" />
-                              逾期 {Math.abs(diffDays!)} 天
-                            </span>
-                          )}
-                          {isDueSoon && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
-                              <RiTimeLine className="w-3 h-3" />
-                              {diffDays === 0 ? '今日到期' : `${diffDays} 天內到期`}
-                            </span>
-                          )}
-                        </div>
+                          </p>
+                          <p className={cn(
+                            "text-[10px] font-bold mt-0.5",
+                            isOverdue ? "text-red-600" : isDueSoon ? "text-amber-700" : "text-stone-400"
+                          )}>
+                            {isOverdue
+                              ? `⚠ 已逾期 ${Math.abs(diffDays!)} 天`
+                              : isDueSoon
+                              ? (diffDays === 0 ? '今日到期' : `${diffDays} 天後到期`)
+                              : `${diffDays} 天後`}
+                          </p>
+                        </>
                       ) : (
-                        <span className="text-xs text-stone-400 italic">未設定到期日</span>
+                        <p className="text-[10px] text-stone-400 italic">未設定</p>
                       )}
                     </div>
 
-                    {/* 3. 金額與操作按鈕 */}
-                    <div className="text-right shrink-0">
-                      <div className="text-xs font-bold text-stone-900">
-                        已繳 <span className="text-emerald-600">NT$ {paid.toLocaleString()}</span> / 總額 NT$ {total.toLocaleString()}
+                    {/* 金額與進度條區塊 */}
+                    <div className="min-w-[130px]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-stone-500 font-semibold">繳款進度</span>
+                        <span className="text-[10px] font-black text-stone-700">{progressPct}%</span>
                       </div>
-                      <div className="text-xs text-orange-600 font-extrabold mt-0.5">
-                        剩餘未繳：NT$ {remaining.toLocaleString()}
+                      <div className="w-full bg-stone-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="h-1.5 rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-[10px] text-stone-400">已繳</span>
+                        <span className="text-[10px] font-black text-emerald-600">NT$ {paid.toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-stone-400">待繳</span>
+                        <span className="text-[10px] font-black text-orange-600">NT$ {remaining.toLocaleString()}</span>
                       </div>
                     </div>
 
+                    {/* 按鈕 */}
                     <Button
                       size="sm"
-                      variant="outline"
                       onClick={() => {
                         setSelectedInstallmentContract(contract)
                         setSelectedInstallmentCustomer(customer || null)
                         setIsInstallmentManagerOpen(true)
                       }}
                       className={cn(
-                        "text-xs font-bold rounded-xl border-stone-200 transition-all shadow-2xs",
-                        isOverdue ? "bg-red-600 text-white hover:bg-red-700 border-red-600" :
-                        isDueSoon ? "bg-amber-600 text-white hover:bg-amber-700 border-amber-600" : "hover:bg-stone-50"
+                        "text-xs font-bold rounded-xl h-9 px-3 transition-all shrink-0",
+                        isOverdue ? "bg-red-600 hover:bg-red-700 text-white border-0" :
+                        isDueSoon ? "bg-amber-500 hover:bg-amber-600 text-white border-0" :
+                        "bg-stone-800 hover:bg-stone-900 text-white border-0"
                       )}
                     >
                       管理收款
