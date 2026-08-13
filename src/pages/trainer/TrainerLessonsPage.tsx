@@ -109,6 +109,10 @@ export default function TrainerLessonsPage() {
   // Contract type filter state (all, single, dual, shared, group)
   const [contractTypeFilter, setContractTypeFilter] = useState<'all' | 'single' | 'dual' | 'shared' | 'group'>('all')
 
+  // Notes filter & search state
+  const [notesFilter, setNotesFilter] = useState<'all' | 'has_notes' | 'no_notes'>('all')
+  const [notesSearchQuery, setNotesSearchQuery] = useState('')
+
   // Sorting states for lesson records (Date, Student Name)
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -254,14 +258,28 @@ export default function TrainerLessonsPage() {
     }
   }, [customers, venueContracts, currentTrainerId])
 
-  // Filter records by contract type
+  // Filter records by contract type, notes filter, and notes search query
   const filteredRecords = useMemo(() => {
     return myRecords.filter(r => {
-      if (contractTypeFilter === 'all') return true
-      const cType = getRecordContractType(r)
-      return cType === contractTypeFilter
+      if (contractTypeFilter !== 'all') {
+        const cType = getRecordContractType(r)
+        if (cType !== contractTypeFilter) return false
+      }
+
+      if (notesFilter === 'has_notes') {
+        if (!r.notes || !r.notes.trim()) return false
+      } else if (notesFilter === 'no_notes') {
+        if (r.notes && r.notes.trim()) return false
+      }
+
+      if (notesSearchQuery.trim()) {
+        const q = notesSearchQuery.trim().toLowerCase()
+        if (!r.notes || !r.notes.toLowerCase().includes(q)) return false
+      }
+
+      return true
     })
-  }, [myRecords, contractTypeFilter, getRecordContractType])
+  }, [myRecords, contractTypeFilter, notesFilter, notesSearchQuery, getRecordContractType])
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a, b) => {
@@ -850,18 +868,53 @@ export default function TrainerLessonsPage() {
           <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">
             銷課紀錄 ({sortedRecords.length})
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 合約類型篩選 */}
             <select
               value={contractTypeFilter}
               onChange={(e) => setContractTypeFilter(e.target.value as any)}
-              className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-xs font-semibold text-stone-700 focus:outline-none cursor-pointer"
+              className="h-7.5 rounded-xl border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all cursor-pointer"
             >
-              <option value="all">全部類型</option>
+              <option value="all">類型：全部</option>
               <option value="single">單人</option>
               <option value="dual">雙人</option>
               <option value="shared">共享</option>
               <option value="group">團體</option>
             </select>
+
+            {/* 備註狀態篩選 */}
+            <select
+              value={notesFilter}
+              onChange={(e) => setNotesFilter(e.target.value as any)}
+              className="h-7.5 rounded-xl border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all cursor-pointer"
+            >
+              <option value="all">備註：全部</option>
+              <option value="has_notes">僅有備註</option>
+              <option value="no_notes">僅無備註</option>
+            </select>
+
+            {/* 備註搜尋輸入框 */}
+            <div className="relative w-44">
+              <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="搜尋備註事項..."
+                value={notesSearchQuery}
+                onChange={(e) => setNotesSearchQuery(e.target.value)}
+                className="w-full h-7.5 pl-8 pr-7 text-xs font-medium bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
+              />
+              {notesSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setNotesSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+                >
+                  <RiCloseLine className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* 排序方式 */}
             <select
               value={`${sortBy}-${sortOrder}`}
               onChange={(e) => {
@@ -869,7 +922,7 @@ export default function TrainerLessonsPage() {
                 setSortBy(field)
                 setSortOrder(order)
               }}
-              className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-xs font-semibold text-stone-700 focus:outline-none cursor-pointer"
+              className="h-7.5 rounded-xl border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all cursor-pointer"
             >
               <option value="date-desc">最新在前</option>
               <option value="date-asc">最舊在前</option>
@@ -884,7 +937,7 @@ export default function TrainerLessonsPage() {
         ) : sortedRecords.length > 0 ? (
           <div className="bg-white border border-stone-100 rounded-2xl shadow-xs overflow-hidden divide-y divide-stone-50">
             {/* Table header */}
-            <div className="grid grid-cols-[2fr_90px_100px_90px_140px_70px] gap-4 px-5 py-3 bg-stone-50/80 border-b border-stone-100">
+            <div className="grid grid-cols-[1.8fr_75px_85px_2fr_75px_120px_60px] gap-4 px-5 py-3 bg-stone-50/80 border-b border-stone-100">
               <button
                 type="button"
                 onClick={() => { if (sortBy === 'name') setSortOrder(p => p === 'asc' ? 'desc' : 'asc'); else { setSortBy('name'); setSortOrder('asc') } }}
@@ -894,6 +947,7 @@ export default function TrainerLessonsPage() {
               </button>
               <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">合約</span>
               <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">教練</span>
+              <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">備註事項</span>
               <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wide">累計</span>
               <button
                 type="button"
@@ -961,7 +1015,7 @@ export default function TrainerLessonsPage() {
                     }
                   }}
                   className={cn(
-                    "grid grid-cols-[2fr_90px_100px_90px_140px_70px] gap-4 px-5 py-3.5 items-center cursor-pointer transition-all group border-l-2",
+                    "grid grid-cols-[1.8fr_75px_85px_2fr_75px_120px_60px] gap-4 px-5 py-3.5 items-center cursor-pointer transition-all group border-l-2",
                     isSelected
                       ? "bg-orange-50/60 border-l-orange-400"
                       : "hover:bg-stone-50/80 border-l-transparent"
@@ -982,6 +1036,19 @@ export default function TrainerLessonsPage() {
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${badge.cls}`}>{badge.label}</span>
                   </div>
                   <span className="text-xs text-stone-500 font-medium truncate">{trainerName}</span>
+                  
+                  {/* 備註事項欄位 */}
+                  <div className="min-w-0 flex items-center gap-1.5" title={record.notes || ''}>
+                    {record.notes ? (
+                      <>
+                        <RiChat1Line className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <span className="text-xs text-stone-700 font-medium truncate">{record.notes}</span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-stone-300 font-normal italic">—</span>
+                    )}
+                  </div>
+
                   <span className="text-xs font-bold text-stone-600 font-mono">{cumSessions} 堂</span>
                   <span className="text-xs text-stone-400">{formatRecordDate(record.sessionDate)}</span>
                   <div className="flex items-center justify-end">

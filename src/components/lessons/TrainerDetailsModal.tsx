@@ -74,6 +74,10 @@ export function TrainerDetailsModal({
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
+  // Notes filter & search state
+  const [notesFilter, setNotesFilter] = useState<'all' | 'has_notes' | 'no_notes'>('all')
+  const [notesSearchQuery, setNotesSearchQuery] = useState('')
+
   // Breakdown expandable state ('period' | 'cumulative' | 'remaining' | null)
   const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | 'remaining' | null>(null)
 
@@ -93,12 +97,24 @@ export function TrainerDetailsModal({
     return records.filter(lr => lr.trainerId === trainer.id)
   }, [records, trainer])
 
-  // Filter lessons by selected month if needed
+  // Filter lessons by selected month, notes filter, and notes search query
   const filteredLessons = useMemo(() => {
-    return selectedMonth === 'all'
-      ? trainerLessons
-      : trainerLessons.filter(lr => lr.sessionDate && format(ensureDate(lr.sessionDate), 'yyyy/MM') === selectedMonth)
-  }, [trainerLessons, selectedMonth])
+    return trainerLessons.filter(lr => {
+      if (selectedMonth !== 'all') {
+        if (!lr.sessionDate || format(ensureDate(lr.sessionDate), 'yyyy/MM') !== selectedMonth) return false
+      }
+      if (notesFilter === 'has_notes') {
+        if (!lr.notes || !lr.notes.trim()) return false
+      } else if (notesFilter === 'no_notes') {
+        if (lr.notes && lr.notes.trim()) return false
+      }
+      if (notesSearchQuery.trim()) {
+        const q = notesSearchQuery.trim().toLowerCase()
+        if (!lr.notes || !lr.notes.toLowerCase().includes(q)) return false
+      }
+      return true
+    })
+  }, [trainerLessons, selectedMonth, notesFilter, notesSearchQuery])
 
   const sortedFilteredLessons = useMemo(() => {
     return [...filteredLessons].sort((a, b) => {
@@ -467,7 +483,40 @@ export function TrainerDetailsModal({
             </TabsList>
 
             {activeTab === 'history' && (
-              <div className="flex items-center gap-1.5 text-xs py-1">
+              <div className="flex items-center gap-2 text-xs py-2 px-6 bg-stone-50/50 border-b border-stone-100 flex-wrap">
+                {/* 備註狀態篩選 */}
+                <select
+                  value={notesFilter}
+                  onChange={(e) => setNotesFilter(e.target.value as any)}
+                  className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-[11px] font-semibold text-stone-700 focus:outline-none cursor-pointer"
+                >
+                  <option value="all">備註：全部</option>
+                  <option value="has_notes">僅有備註</option>
+                  <option value="no_notes">僅無備註</option>
+                </select>
+
+                {/* 備註關鍵字搜尋 */}
+                <div className="relative flex-1 min-w-[120px]">
+                  <RiSearchLine className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="搜尋備註關鍵字..."
+                    value={notesSearchQuery}
+                    onChange={(e) => setNotesSearchQuery(e.target.value)}
+                    className="w-full h-7 pl-7 pr-6 text-[11px] font-medium bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-300"
+                  />
+                  {notesSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setNotesSearchQuery('')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                    >
+                      <RiCloseLine className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* 排序方式 */}
                 <select
                   value={`${sortBy}-${sortOrder}`}
                   onChange={(e) => {
@@ -475,12 +524,12 @@ export function TrainerDetailsModal({
                     setSortBy(field)
                     setSortOrder(order)
                   }}
-                  className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-[11px] font-semibold text-stone-700 focus:outline-none focus:ring-1 focus:ring-stone-400 cursor-pointer"
+                  className="h-7 rounded-lg border border-stone-200 bg-white px-2 text-[11px] font-semibold text-stone-700 focus:outline-none focus:ring-1 focus:ring-stone-400 cursor-pointer"
                 >
-                  <option value="date-desc">日期（由新到舊）</option>
-                  <option value="date-asc">日期（由舊到新）</option>
-                  <option value="name-asc">學生姓名（A → Z）</option>
-                  <option value="name-desc">學生姓名（Z → A）</option>
+                  <option value="date-desc">日期 (新→舊)</option>
+                  <option value="date-asc">日期 (舊→新)</option>
+                  <option value="name-asc">學員 (A→Z)</option>
+                  <option value="name-desc">學員 (Z→A)</option>
                 </select>
               </div>
             )}
@@ -549,70 +598,83 @@ export function TrainerDetailsModal({
                         }
                       }}
                       className={cn(
-                        'flex items-center gap-4 p-4 rounded-2xl border cursor-pointer group transition-all',
+                        'flex flex-col p-4 rounded-2xl border cursor-pointer group transition-all space-y-2',
                         isSelected
                           ? 'bg-stone-900 border-stone-800'
                           : 'bg-white border-stone-100 hover:border-stone-300 hover:shadow-sm'
                       )}
                     >
-                      {/* Date column */}
-                      <div className="shrink-0 text-center">
-                        <p className={cn('text-[10px] font-black uppercase tracking-wider', isSelected ? 'text-stone-400' : 'text-stone-400')}>
-                          {r.sessionDate ? format(ensureDate(r.sessionDate), 'MM/dd') : '-'}
-                        </p>
-                        <p className={cn('text-[9px] font-mono', isSelected ? 'text-stone-500' : 'text-stone-300')}>
-                          {r.sessionDate ? format(ensureDate(r.sessionDate), 'HH:mm') : ''}
-                        </p>
-                      </div>
-
-                      {/* Divider */}
-                      <div className={cn('w-px h-8 shrink-0', isSelected ? 'bg-stone-700' : 'bg-stone-100')} />
-
-                      {/* Main info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={cn('font-bold text-sm truncate', isSelected ? 'text-white' : 'text-stone-900')}>
-                            {attendingNames}
-                          </span>
-                          {isSubstitute && (
-                            <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">代課</span>
-                          )}
-                          {(() => {
-                            const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
-                            const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
-                            const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
-                            return contract ? (
-                              <span className={cn(
-                                "text-[9px] font-black rounded-full px-2 py-0.5 flex items-center gap-0.5 border",
-                                isGroup ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
-                                isShared ? "text-sky-700 bg-sky-50 border-sky-100" :
-                                isDual ? "text-orange-600 bg-orange-50 border-orange-100" : "text-blue-600 bg-blue-50 border-blue-100"
-                              )}>
-                                <RiGroupLine className="w-2.5 h-2.5" />
-                                {isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'}
-                              </span>
-                            ) : null
-                          })()}
+                      <div className="flex items-center gap-4">
+                        {/* Date column */}
+                        <div className="shrink-0 text-center">
+                          <p className={cn('text-[10px] font-black uppercase tracking-wider', isSelected ? 'text-stone-400' : 'text-stone-400')}>
+                            {r.sessionDate ? format(ensureDate(r.sessionDate), 'MM/dd') : '-'}
+                          </p>
+                          <p className={cn('text-[9px] font-mono', isSelected ? 'text-stone-500' : 'text-stone-300')}>
+                            {r.sessionDate ? format(ensureDate(r.sessionDate), 'HH/mm') : ''}
+                          </p>
                         </div>
-                        <p className={cn('text-xs mt-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>
-                          {teachingTrainerName}
-                        </p>
+
+                        {/* Divider */}
+                        <div className={cn('w-px h-8 shrink-0', isSelected ? 'bg-stone-700' : 'bg-stone-100')} />
+
+                        {/* Main info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={cn('font-bold text-sm truncate', isSelected ? 'text-white' : 'text-stone-900')}>
+                              {attendingNames}
+                            </span>
+                            {isSubstitute && (
+                              <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">代課</span>
+                            )}
+                            {(() => {
+                              const isGroup = contract ? (contract.contractType === 'group' || !!contract.groupMemberQuotas) : false
+                              const isShared = contract ? (contract.contractType === 'shared' || (Array.isArray(contract.customerIds) && contract.customerIds.length >= 3 && contract.contractType !== 'group')) : false
+                              const isDual = contract ? (!isGroup && !isShared && (contract.contractType === 'dual' || (!!contract.sharedWithCustomerId && contract.contractType !== 'shared'))) : false
+                              return contract ? (
+                                <span className={cn(
+                                  "text-[9px] font-black rounded-full px-2 py-0.5 flex items-center gap-0.5 border",
+                                  isGroup ? "text-emerald-700 bg-emerald-50 border-emerald-100" :
+                                  isShared ? "text-sky-700 bg-sky-50 border-sky-100" :
+                                  isDual ? "text-orange-600 bg-orange-50 border-orange-100" : "text-blue-600 bg-blue-50 border-blue-100"
+                                )}>
+                                  <RiGroupLine className="w-2.5 h-2.5" />
+                                  {isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'}
+                                </span>
+                              ) : null
+                            })()}
+                          </div>
+                          <p className={cn('text-xs mt-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>
+                            {teachingTrainerName}
+                          </p>
+                        </div>
+
+                        {/* Right stats */}
+                        <div className="shrink-0 text-right space-y-0.5">
+                          <p className={cn('text-base font-black tabular-nums', isSelected ? 'text-white' : 'text-stone-900')}>
+                            -{r.sessionAmount}<span className={cn('text-xs font-semibold ml-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>堂</span>
+                          </p>
+                          <p className={cn('text-[10px] font-bold tabular-nums', isSelected ? 'text-stone-400' : 'text-stone-400')}>
+                            {fee > 0 ? `NT$ ${fee.toLocaleString()}` : contract ? 'NT$ 0' : '-'}
+                          </p>
+                        </div>
+
+                        <RiArrowRightSLine className={cn(
+                          'w-4 h-4 shrink-0 transition-all duration-200',
+                          isSelected ? 'text-stone-500 rotate-90' : 'text-stone-300 group-hover:translate-x-0.5 group-hover:text-stone-600'
+                        )} />
                       </div>
 
-                      {/* Right stats */}
-                      <div className="shrink-0 text-right space-y-0.5">
-                        <p className={cn('text-base font-black tabular-nums', isSelected ? 'text-white' : 'text-stone-900')}>
-                          -{r.sessionAmount}<span className={cn('text-xs font-semibold ml-0.5', isSelected ? 'text-stone-400' : 'text-stone-400')}>堂</span>
-                        </p>
-                        <p className={cn('text-[10px] font-bold tabular-nums', isSelected ? 'text-stone-400' : 'text-stone-400')}>
-                          {fee > 0 ? `NT$ ${fee.toLocaleString()}` : contract ? 'NT$ 0' : '-'}
-                        </p>
-                      </div>
-
-                      <RiArrowRightSLine className={cn(
-                        'w-4 h-4 shrink-0 transition-all duration-200',
-                        isSelected ? 'text-stone-500 rotate-90' : 'text-stone-300 group-hover:translate-x-0.5 group-hover:text-stone-600'
-                      )} />
+                      {/* Notes row */}
+                      {r.notes && (
+                        <div className={cn(
+                          'pt-2 border-t flex items-center gap-1.5 text-xs font-medium',
+                          isSelected ? 'border-stone-800 text-stone-300' : 'border-stone-100 text-stone-600'
+                        )}>
+                          <RiChat1Line className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">{r.notes}</span>
+                        </div>
+                      )}
                     </div>
                   )
                 })
