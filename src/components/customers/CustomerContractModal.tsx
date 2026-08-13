@@ -187,19 +187,20 @@ export function CustomerContractModal({
   // Sync edit state
   React.useEffect(() => {
     if (contract && open && customer) {
-      const primaryMember = allContractMembers[0] || customer
+      const truePrimaryId = contract.primaryCustomerId || contract.customerId || (Array.isArray(contract.customerIds) && contract.customerIds.length > 0 ? contract.customerIds[0] : customer.id)
+      const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
+      const primaryMember = membersList.find(m => m.id === truePrimaryId) || membersList[0] || customer
+      const partnerMember = membersList.find(m => m.id !== primaryMember.id) || membersList[1] || partner || null
+
       const primaryTrainer = contract.studentTrainers?.[primaryMember.id] || contract.trainerId || primaryMember.trainerId || ''
       setEditTrainerId(primaryTrainer)
 
-      const partnerId = partner?.id || (allContractMembers.length > 1 ? allContractMembers[1].id : null)
-      const partnerTrainer = contract.secondaryTrainerId || (partnerId ? contract.studentTrainers?.[partnerId] : null) || partner?.trainerId || (allContractMembers.length > 1 ? allContractMembers[1].trainerId : null) || primaryTrainer
-
+      const partnerTrainer = (partnerMember ? contract.studentTrainers?.[partnerMember.id] : null) || contract.secondaryTrainerId || partnerMember?.trainerId || primaryTrainer
       setEditSecondaryTrainerId(partnerTrainer)
 
       const initialMemberTrainers: Record<string, string> = { ...(contract.studentTrainers || {}) }
-      const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
       membersList.forEach((m, idx) => {
-        const tId = contract.studentTrainers?.[m.id] || (idx === 0 ? primaryTrainer : (idx === 1 ? partnerTrainer : (m.trainerId || primaryTrainer)))
+        const tId = contract.studentTrainers?.[m.id] || (m.id === primaryMember.id ? primaryTrainer : (partnerMember && m.id === partnerMember.id ? partnerTrainer : (m.trainerId || primaryTrainer)))
         if (tId) {
           initialMemberTrainers[m.id] = tId
         }
@@ -253,7 +254,7 @@ export function CustomerContractModal({
       setIsEditing(false)
       setIsDeleting(false)
     }
-  }, [contract, open, customer])
+  }, [contract, open, customer, allContractMembers])
 
   // Sync partner fields once loaded
   React.useEffect(() => {
@@ -516,69 +517,63 @@ export function CustomerContractModal({
         }
       }
 
-      // Sync Customer A's trainer if updated
-      if (editTrainerId) {
-        try {
-          await updateDoc(doc(db, 'customers', customer.id), {
-            trainerId: editTrainerId,
-            updatedAt: serverTimestamp(),
-          })
-          customer.trainerId = editTrainerId
-        } catch (err) {
-          console.error('Failed to sync Customer A trainer:', err)
+      // Unified Trainer Sync across all contract types
+      const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
+      const truePrimaryId = contract.primaryCustomerId || contract.customerId || (Array.isArray(contract.customerIds) && contract.customerIds.length > 0 ? contract.customerIds[0] : customer.id)
+      const primaryMember = membersList.find(m => m.id === truePrimaryId) || membersList[0] || customer
+      const partnerMember = membersList.find(m => m.id !== primaryMember.id) || membersList[1] || partner || null
+
+      const updatedStudentTrainers: Record<string, string> = { ...(contract.studentTrainers || {}) }
+
+      membersList.forEach((m, idx) => {
+        let assignedId = editMemberTrainers[m.id]
+        if (!assignedId) {
+          if (m.id === primaryMember.id || idx === 0) {
+            assignedId = editTrainerId
+          } else if (partnerMember && m.id === partnerMember.id) {
+            assignedId = editSecondaryTrainerId || editTrainerId
+          } else {
+            assignedId = editTrainerId
+          }
         }
+        if (assignedId) {
+          updatedStudentTrainers[m.id] = assignedId
+        }
+      })
+
+      const finalPrimaryTrainer = editTrainerId || updatedStudentTrainers[primaryMember.id] || contract.trainerId
+      const finalSecondaryTrainer = partnerMember
+        ? (editSecondaryTrainerId || updatedStudentTrainers[partnerMember.id] || finalPrimaryTrainer)
+        : (editSecondaryTrainerId || null)
+
+      updateData.trainerId = finalPrimaryTrainer
+      updateData.secondaryTrainerId = finalSecondaryTrainer
+      updateData.studentTrainers = updatedStudentTrainers
+
+      if (contract) {
+        contract.trainerId = finalPrimaryTrainer
+        contract.secondaryTrainerId = finalSecondaryTrainer
+        contract.studentTrainers = updatedStudentTrainers
       }
 
-      // Sync Member Trainers for Shared / Group contract
-      const isSharedOrGroup = contract.contractType === 'shared' || contract.contractType === 'group'
-      if (isSharedOrGroup) {
-        const updatedStudentTrainers: Record<string, string> = { ...(contract.studentTrainers || {}) }
-        const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
-        membersList.forEach((m, idx) => {
-          const assignedId = idx === 0 ? editTrainerId : (idx === 1 ? (editSecondaryTrainerId || editTrainerId) : (editMemberTrainers[m.id] || editTrainerId))
-          if (assignedId) {
-            updatedStudentTrainers[m.id] = assignedId
-          }
-        })
-        updateData.studentTrainers = updatedStudentTrainers
-        if (contract) contract.studentTrainers = updatedStudentTrainers
+      // Update Firestore contracts document
+      await updateDoc(doc(db, 'contracts', contract.id), updateData)
 
-        await Promise.all(membersList.map(async (m, idx) => {
-          const assignedId = idx === 0 ? editTrainerId : (idx === 1 ? (editSecondaryTrainerId || editTrainerId) : (editMemberTrainers[m.id] || editTrainerId))
-          if (assignedId && m.id) {
-            try {
-              await updateDoc(doc(db, 'customers', m.id), {
-                trainerId: assignedId,
-                updatedAt: serverTimestamp(),
-              })
-              m.trainerId = assignedId
-            } catch (err) {
-              console.error(`Failed to sync trainer for member ${m.id}:`, err)
-            }
-          }
-        }))
-      }
-
-      // Sync Customer B's trainer if dual contract
-      const isDual = !isSharedOrGroup && (contract.contractType === 'dual' || !!contract.sharedWithCustomerId)
-      const partnerId = contract.customerIds && contract.customerIds.length > 1
-        ? contract.customerIds.find(id => id !== customer.id)
-        : contract.sharedWithCustomerId
-
-      if (isDual && partnerId && !isSharedOrGroup) {
-        const syncTrainerId = editSecondaryTrainerId || editTrainerId
-        if (syncTrainerId) {
+      // Sync profile documents in Firestore (`customers` collection) for ALL members in contract
+      await Promise.all(membersList.map(async (m) => {
+        const memberTrainerId = updatedStudentTrainers[m.id]
+        if (memberTrainerId && m.id) {
           try {
-            await updateDoc(doc(db, 'customers', partnerId), {
-              trainerId: syncTrainerId,
+            await updateDoc(doc(db, 'customers', m.id), {
+              trainerId: memberTrainerId,
               updatedAt: serverTimestamp(),
             })
-            if (partner) partner.trainerId = syncTrainerId
+            m.trainerId = memberTrainerId
           } catch (err) {
-            console.error('Failed to sync Customer B trainer:', err)
+            console.error(`Failed to sync trainer for member ${m.id}:`, err)
           }
         }
-      }
+      }))
 
       setIsEditing(false)
       isSigAClearedRef.current = false
