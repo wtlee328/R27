@@ -22,6 +22,7 @@ import { useTrainerProfileStore } from '../stores/trainerProfileStore'
 import type { LessonRecord, StudentDeduction, Contract } from '../types'
 import type { LessonRecordFormValues } from '../lib/validators'
 import { logActivity } from '../lib/activityLogger'
+import { ensureDate } from '../lib/utils'
 
 export function useLessonRecords() {
   const [records, setRecords] = useState<LessonRecord[]>([])
@@ -714,6 +715,8 @@ export function useLessonRecords() {
           return newPrimaryContractData.trainerId || null
         })()
 
+        const effectiveSessionAmount = effectiveNewSessionAmount
+
         const finalTrainerId = data.trainerId || correctContractTrainerId || oldData.trainerId || user.uid
 
         const unitPriceAtDeduction = newPrimaryContractData
@@ -732,6 +735,7 @@ export function useLessonRecords() {
 
         const updateData: any = {
           ...data,
+          customerName: attendeeNames[0] || data.customerName || oldData.customerName || '',
           sessionAmount: effectiveSessionAmount,
           deductions: newFinalDeductions,
           trainerId: finalTrainerId,
@@ -740,7 +744,7 @@ export function useLessonRecords() {
           attendingCustomerNames: attendeeNames,
           unitPriceAtDeduction,
           recognizedAmount,
-          sessionDate: Timestamp.fromDate(data.sessionDate),
+          sessionDate: Timestamp.fromDate(ensureDate(data.sessionDate)),
           updatedAt: serverTimestamp(),
         }
 
