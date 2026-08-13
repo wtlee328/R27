@@ -1060,55 +1060,14 @@ export function CustomerFormModal({
       return (
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="space-y-1 pb-4 border-b border-stone-100 dark:border-stone-800">
-            <h2 className="text-xl font-bold text-stone-900 dark:text-white">學員 {memberNum} 資料與綁定</h2>
-            <p className="text-stone-400 dark:text-stone-500 text-sm">請設定合約第 {memberNum} 位學員的綁定方式與基本資訊。</p>
-          </div>
-
-          <div className="space-y-2 p-4 bg-stone-50 dark:bg-stone-800/60 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
-            <Label className="text-stone-700 dark:text-stone-300 font-semibold block text-xs">學員 {memberNum} 綁定方式 *</Label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? { ...m, memberMode: 'existing', existingCustomerId: '' } : m))
-                }}
-                className={cn(
-                  "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                  isExistingMode
-                    ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
-                    : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-300"
-                )}
-              >
-                <RiLinkM className="w-4 h-4" />
-                連結系統現有學員
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAdditionalGroupMembers(prev => prev.map((m, idx) => idx === memberArrIdx ? {
-                    ...m,
-                    memberMode: 'new',
-                    existingCustomerId: undefined,
-                    name: '',
-                    idNumber: '',
-                    phone: '',
-                    email: '',
-                    dateOfBirth: new Date().toISOString().split('T')[0],
-                    emergencyContact: { name: '', relation: '', phone: '' },
-                    medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                  } : m))
-                }}
-                className={cn(
-                  "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                  !isExistingMode
-                    ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
-                    : "bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-500 hover:border-stone-300"
-                )}
-              >
-                <RiUserAddLine className="w-4 h-4" />
-                新增全新學員
-              </button>
-            </div>
+            <h2 className="text-xl font-bold text-stone-900 dark:text-white">
+              {isExistingMode ? `學員 ${memberNum} 資料與綁定` : `新增學員 ${memberNum} 基本資料`}
+            </h2>
+            <p className="text-stone-400 dark:text-stone-500 text-sm">
+              {isExistingMode
+                ? `請選擇合約第 ${memberNum} 位現有學員。`
+                : `請填寫合約第 ${memberNum} 位全新學員的基本資訊與緊急聯絡人。`}
+            </p>
           </div>
 
           {isExistingMode ? (

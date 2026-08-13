@@ -2164,59 +2164,10 @@ export function ContractFormModal({
                             </h2>
                             <p className="text-stone-500 text-sm">
                               {isExistingMode
-                                ? `請確認團體課第 ${memberNum} 位學員的綁定資訊。`
-                                : `請填寫團體課第 ${memberNum} 位全新學員的基本資訊與緊急聯絡人。`}
+                                ? `請選擇合約第 ${memberNum} 位現有學員。`
+                                : `請填寫合約第 ${memberNum} 位全新學員的基本資訊與緊急聯絡人。`}
                             </p>
                           </div>
-
-                          {/* Member Mode Switcher (Shown only if in existing mode) */}
-                          {isExistingMode && (
-                            <div className="space-y-2 p-4 bg-stone-50/80 rounded-2xl border border-stone-200/60">
-                              <Label className="text-stone-700 font-semibold block text-xs">學員 {memberNum} 綁定方式 *</Label>
-                              <div className="flex gap-3">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateMember({ memberMode: 'existing', existingCustomerId: '' })
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                                    isExistingMode
-                                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
-                                      : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
-                                  )}
-                                >
-                                  <RiLinkM className="w-4 h-4" />
-                                  連結系統現有學員
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    updateMember({
-                                      memberMode: 'new',
-                                      existingCustomerId: undefined,
-                                      name: '',
-                                      idNumber: '',
-                                      phone: '',
-                                      email: '',
-                                      dateOfBirth: new Date().toISOString().split('T')[0],
-                                      emergencyContact: { name: '', relation: '', phone: '' },
-                                      medicalHistory: { chronicConditions: [], injuries: [], notes: '' },
-                                    })
-                                  }}
-                                  className={cn(
-                                    "flex-1 py-2.5 px-3 rounded-xl border-2 font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5",
-                                    !isExistingMode
-                                      ? "bg-emerald-600 border-emerald-600 text-white shadow-md"
-                                      : "bg-white border-stone-200 text-stone-500 hover:border-stone-300"
-                                  )}
-                                >
-                                  <RiUserAddLine className="w-4 h-4" />
-                                  新增全新學員
-                                </button>
-                              </div>
-                            </div>
-                          )}
 
                           {isExistingMode ? (
                             <div className="p-5 bg-emerald-50/40 border border-emerald-100 rounded-2xl space-y-4 animate-in fade-in duration-300">
