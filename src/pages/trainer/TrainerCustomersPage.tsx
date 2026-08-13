@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import { Users, FileText, Cake, PlusCircle } from 'lucide-react'
-import { RiGroupLine } from '@remixicon/react'
+import { format } from 'date-fns'
+import { Timestamp } from 'firebase/firestore'
+import { RiGroupLine, RiBankCardLine, RiAlertLine, RiTimeLine } from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
 import { CustomerTable } from '@/components/customers/CustomerTable'
@@ -13,6 +15,7 @@ import { useCustomers } from '@/hooks/useCustomers'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useAuthStore } from '@/stores/authStore'
 import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
+import { ensureDate, cn } from '@/lib/utils'
 import type { CombinedCustomerContractValues, ContractFormValues } from '@/lib/validators'
 import type { Customer, Contract } from '@/types'
 
@@ -177,15 +180,59 @@ export default function TrainerCustomersPage() {
     }
   }
 
-  // Pending installment contracts (unpaid installments)
+  // Helper to extract nearest unpaid installment due date and calculate warning state
+  const getNearestInstallmentInfo = (contract: Contract) => {
+    const installments = contract.installments || []
+    const unpaid = installments.filter((inst: any) => inst.status !== 'paid' && inst.dueDate)
+    
+    if (unpaid.length === 0) {
+      return { nearestDueDate: null, nearestAmount: 0, diffDays: null, isOverdue: false, isDueSoon: false }
+    }
+
+    const sorted = [...unpaid].sort((a: any, b: any) => {
+      const timeA = ensureDate(a.dueDate).getTime()
+      const timeB = ensureDate(b.dueDate).getTime()
+      return timeA - timeB
+    })
+
+    const nearest = sorted[0]
+    const nearestDueDate = ensureDate(nearest.dueDate)
+    
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const target = new Date(nearestDueDate.getFullYear(), nearestDueDate.getMonth(), nearestDueDate.getDate())
+    const diffDays = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    const isOverdue = diffDays < 0
+    const isDueSoon = diffDays >= 0 && diffDays <= 5
+
+    return {
+      nearestDueDate,
+      nearestAmount: nearest.amount || 0,
+      diffDays,
+      isOverdue,
+      isDueSoon,
+    }
+  }
+
+  // Pending installment contracts (unpaid installments), sorted by nearest due date
   const pendingInstallmentItems = useMemo(() => {
     const pendingContracts = myContracts.filter(c => 
       c.paymentType === 'installments' && 
       (c.paidAmount || 0) < (c.totalAmount || 0)
     )
-    return pendingContracts.map(contract => {
+    const items = pendingContracts.map(contract => {
       const customer = myCustomers.find(cust => cust.id === contract.customerId || contract.customerIds?.includes(cust.id))
-      return { contract, customer }
+      const dueInfo = getNearestInstallmentInfo(contract)
+      return { contract, customer, ...dueInfo }
+    })
+
+    // 預設依據「最近到期日」由近至遠/已逾期者在前排序
+    return items.sort((a, b) => {
+      if (!a.nearestDueDate && !b.nearestDueDate) return 0
+      if (!a.nearestDueDate) return 1
+      if (!b.nearestDueDate) return -1
+      return a.nearestDueDate.getTime() - b.nearestDueDate.getTime()
     })
   }, [myContracts, myCustomers])
 
@@ -320,18 +367,146 @@ export default function TrainerCustomersPage() {
       </div>
 
       {/* Pending collection alert bar */}
-      {!loading && pendingCollectionCount > 0 && (
+      {!loading && pendingCollectionCount > 0 && activeFilter !== 'pending_collection' && (
         <div 
           onClick={() => setActiveFilter('pending_collection')}
-          className={`flex items-center justify-between p-4 rounded-xl border border-amber-200 bg-amber-50/50 cursor-pointer hover:bg-amber-50 transition-colors ${
-            activeFilter === 'pending_collection' ? 'ring-2 ring-amber-500' : ''
-          }`}
+          className="flex items-center justify-between p-4 rounded-2xl border border-amber-200/80 bg-amber-50/60 cursor-pointer hover:bg-amber-50 transition-colors shadow-2xs"
         >
-          <div className="flex items-center gap-2 text-amber-800 text-sm font-semibold">
-            <span className="flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            <span>提醒：您有 {pendingCollectionCount} 筆待收款的合約期數</span>
+          <div className="flex items-center gap-2.5 text-amber-900 text-sm font-bold">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span>提醒：您有 {pendingCollectionCount} 筆分期待收款合約</span>
           </div>
-          <span className="text-xs text-amber-600 font-bold hover:underline">點此查看名單 →</span>
+          <span className="text-xs text-amber-700 font-extrabold hover:underline">點此查看詳情與最近到期日 →</span>
+        </div>
+      )}
+
+      {/* Installment Payment Management Section for Trainer */}
+      {activeFilter === 'pending_collection' && pendingInstallmentItems.length > 0 && (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                <RiBankCardLine className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-stone-900">分期收款管理</h2>
+                <p className="text-xs text-stone-500">追蹤並管理未結清合約（已預設依據最近繳費到期日排序）</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200">
+              待收合約: {pendingInstallmentItems.length} 件
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {pendingInstallmentItems.map(({ contract, customer, nearestDueDate, diffDays, isOverdue, isDueSoon }) => {
+              const paid = contract.paidAmount || 0
+              const total = contract.totalAmount || 0
+              const remaining = total - paid
+
+              return (
+                <div 
+                  key={contract.id} 
+                  className={cn(
+                    "py-3.5 px-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all border",
+                    isOverdue
+                      ? "bg-red-50/40 border-red-200/80 shadow-2xs"
+                      : isDueSoon
+                      ? "bg-amber-50/40 border-amber-200/80 shadow-2xs"
+                      : "bg-white border-stone-100 hover:border-stone-200"
+                  )}
+                >
+                  {/* 1. 客戶與合約資訊 */}
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 rounded-2xl bg-stone-900 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+                      {customer?.name?.charAt(0) || '學'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-stone-900 text-sm truncate">{customer?.name || '未知學員'}</span>
+                        <span className="text-xs text-stone-400 font-mono">{customer?.phone}</span>
+                        {contract.contractNo && (
+                          <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full border border-stone-200">
+                            {contract.contractNo}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        合約建立：
+                        {contract.createdAt ? (
+                          contract.createdAt instanceof Timestamp
+                            ? format(contract.createdAt.toDate(), 'yyyy/MM/dd')
+                            : (contract.createdAt as any)?.seconds
+                              ? format(new Date((contract.createdAt as any).seconds * 1000), 'yyyy/MM/dd')
+                              : typeof contract.createdAt === 'string' || contract.createdAt instanceof Date
+                                ? format(new Date(contract.createdAt), 'yyyy/MM/dd')
+                                : '未知'
+                        ) : '未知'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 2. 最近繳費到期日與警示 (Newly Added Column) */}
+                  <div className="flex items-center gap-6 self-end md:self-auto flex-wrap">
+                    <div className="text-left md:text-center shrink-0">
+                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-0.5">最近到期日</p>
+                      {nearestDueDate ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className={cn(
+                            "text-xs font-mono font-bold",
+                            isOverdue ? "text-red-600" : isDueSoon ? "text-amber-700" : "text-stone-700"
+                          )}>
+                            {format(nearestDueDate, 'yyyy/MM/dd')}
+                          </span>
+                          {isOverdue && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full animate-pulse">
+                              <RiAlertLine className="w-3 h-3" />
+                              逾期 {Math.abs(diffDays!)} 天
+                            </span>
+                          )}
+                          {isDueSoon && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                              <RiTimeLine className="w-3 h-3" />
+                              {diffDays === 0 ? '今日到期' : `${diffDays} 天內到期`}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-stone-400 italic">未設定到期日</span>
+                      )}
+                    </div>
+
+                    {/* 3. 金額與操作按鈕 */}
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-bold text-stone-900">
+                        已繳 <span className="text-emerald-600">NT$ {paid.toLocaleString()}</span> / 總額 NT$ {total.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-orange-600 font-extrabold mt-0.5">
+                        剩餘未繳：NT$ {remaining.toLocaleString()}
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedInstallmentContract(contract)
+                        setSelectedInstallmentCustomer(customer || null)
+                        setIsInstallmentManagerOpen(true)
+                      }}
+                      className={cn(
+                        "text-xs font-bold rounded-xl border-stone-200 transition-all shadow-2xs",
+                        isOverdue ? "bg-red-600 text-white hover:bg-red-700 border-red-600" :
+                        isDueSoon ? "bg-amber-600 text-white hover:bg-amber-700 border-amber-600" : "hover:bg-stone-50"
+                      )}
+                    >
+                      管理收款
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
