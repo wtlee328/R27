@@ -80,6 +80,14 @@ export function TrainerDetailsModal({
   const [notesFilter, setNotesFilter] = useState<'all' | 'has_notes' | 'no_notes'>('all')
   const [notesSearchQuery, setNotesSearchQuery] = useState('')
 
+  // Reset filter and search when modal closes or trainer changes
+  React.useEffect(() => {
+    if (!open) {
+      setNotesFilter('all')
+      setNotesSearchQuery('')
+    }
+  }, [open, trainer?.id])
+
   // Breakdown expandable state ('period' | 'cumulative' | 'remaining' | null)
   const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | 'remaining' | null>(null)
 
