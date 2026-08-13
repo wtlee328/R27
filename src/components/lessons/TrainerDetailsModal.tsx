@@ -27,7 +27,9 @@ import {
   RiFileTextLine,
   RiArrowRightSLine,
   RiArrowDownSLine,
-  RiPieChartLine
+  RiPieChartLine,
+  RiSearchLine,
+  RiChat1Line
 } from '@remixicon/react'
 import { Button } from '../ui/button'
 import { cn } from '@/lib/utils'

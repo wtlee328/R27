@@ -22,6 +22,7 @@ import {
   RiArrowUpDownLine,
   RiArrowDownSLine,
   RiPieChartLine,
+  RiChat1Line,
 } from '@remixicon/react'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
