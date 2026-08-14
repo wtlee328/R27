@@ -489,15 +489,24 @@ export function PrepaidLessonsTable({
         >
           {isBreakdownExpanded && (
             <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5 animate-in fade-in duration-200">
-              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細</div>
-              {summaryMetrics.categoryList.map((cat) => (
-                <div key={cat.key} className="flex items-center justify-between text-xs">
-                  <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
-                  <span className="font-bold text-blue-600 text-[11px] font-mono">
-                    {cat.realizedSessions} 堂
-                  </span>
-                </div>
-              ))}
+              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細 (銷課與均堂價)</div>
+              {summaryMetrics.categoryList.map((cat) => {
+                const catAvgPrice = cat.realizedSessions > 0
+                  ? Math.round(cat.realizedRevenue / cat.realizedSessions)
+                  : 0
+
+                return (
+                  <div key={cat.key} className="flex items-center justify-between text-xs">
+                    <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
+                    <span className="font-bold text-blue-600 text-[11px] font-mono">
+                      {cat.realizedSessions} 堂
+                      <span className="text-[9px] text-stone-400 font-normal ml-1">
+                        (均 $ {catAvgPrice.toLocaleString()})
+                      </span>
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </StatCard>
