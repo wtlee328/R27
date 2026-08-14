@@ -12,6 +12,7 @@ interface StatCardProps {
   className?: string
   onClick?: () => void
   isActive?: boolean
+  children?: React.ReactNode
 }
 
 export function StatCard({
@@ -24,6 +25,7 @@ export function StatCard({
   className,
   onClick,
   isActive,
+  children,
 }: StatCardProps) {
   const isClickable = !!onClick
   // Unified font size across all cards for clean visual alignment
@@ -85,6 +87,8 @@ export function StatCard({
           {subtitle}
         </p>
       )}
+
+      {children}
     </div>
   )
 }

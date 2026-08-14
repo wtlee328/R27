@@ -12,6 +12,9 @@ import {
   RiUser3Line,
   RiExchangeLine,
   RiArrowUpLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
+  RiPieChartLine,
 } from '@remixicon/react'
 import { StatCard } from '../shared/StatCard'
 import { FilterDropdown } from '../shared/FilterDropdown'
@@ -44,6 +47,7 @@ export function PrepaidLessonsTable({
 
   const [activeTab, setActiveTab] = useState<DetailTab>('contracts')
   const [searchTerm, setSearchTerm] = useState('')
+  const [isBreakdownExpanded, setIsBreakdownExpanded] = useState(false)
 
   const customerMap = useMemo(() => {
     const map = new Map<string, Customer>()
@@ -123,6 +127,13 @@ export function PrepaidLessonsTable({
     }
   }
 
+  const getContractCategoryKey = (c: Contract): 'single' | 'dual' | 'shared' | 'group' => {
+    if (c.contractType === 'shared') return 'shared'
+    if (c.contractType === 'group') return 'group'
+    if (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared' && c.contractType !== 'group')) return 'dual'
+    return 'single'
+  }
+
   const summaryMetrics = useMemo(() => {
     let newContractsTotalValue = 0
     let lumpSumTotal = 0
@@ -130,16 +141,29 @@ export function PrepaidLessonsTable({
     let pendingInstallmentsTotal = 0
     let totalCollectedAmount = 0
 
+    const catMetrics = {
+      single: { key: 'single', label: '單人合約', colorDot: 'bg-emerald-500', newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
+      dual:   { key: 'dual',   label: '雙人合約', colorDot: 'bg-amber-500',   newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
+      shared: { key: 'shared', label: '共享合約', colorDot: 'bg-indigo-500',  newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
+      group:  { key: 'group',  label: '團體合約', colorDot: 'bg-purple-500',  newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
+    }
+
     ;(periodContracts || []).forEach((c) => {
+      const catKey = getContractCategoryKey(c)
       const { total, paid, isInstallment, lumpSumAmount, installmentPaidAmount } = getContractPaymentInfo(c)
       newContractsTotalValue += total
       totalCollectedAmount += paid
 
+      catMetrics[catKey].newAmount += total
+      catMetrics[catKey].newContractsCount += 1
+
       if (isInstallment) {
         installmentPaidTotal += installmentPaidAmount
         pendingInstallmentsTotal += Math.max(0, total - paid)
+        catMetrics[catKey].installmentPaid += installmentPaidAmount
       } else {
         lumpSumTotal += lumpSumAmount
+        catMetrics[catKey].lumpSum += lumpSumAmount
       }
     })
 
@@ -153,13 +177,20 @@ export function PrepaidLessonsTable({
 
       deductions.forEach(d => {
         const c = contractMap.get(d.contractId)
+        const catKey = c ? getContractCategoryKey(c) : 'single'
         const sessions = Number(d.sessionAmount || 1)
         totalSessionsUsed += sessions
+        catMetrics[catKey].realizedSessions += sessions
+
         if (c && Number(c.totalSessions) > 0) {
           const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
-          realizedRevenueTotal += sessions * avgPrice
+          const rev = sessions * avgPrice
+          realizedRevenueTotal += rev
+          catMetrics[catKey].realizedRevenue += rev
         } else {
-          realizedRevenueTotal += sessions * 1500
+          const rev = sessions * 1500
+          realizedRevenueTotal += rev
+          catMetrics[catKey].realizedRevenue += rev
         }
       })
     })
@@ -168,12 +199,17 @@ export function PrepaidLessonsTable({
     let remainingSessionsCount = 0
 
     ;(contracts || []).forEach((c) => {
+      const catKey = getContractCategoryKey(c)
       const rem = Number(c.remainingSessions || 0)
       const tot = Number(c.totalSessions || 0)
       if (rem > 0 && tot > 0) {
         const avgPrice = Number(c.totalAmount || 0) / tot
-        unearnedLiabilityBalance += rem * avgPrice
+        const liab = rem * avgPrice
+        unearnedLiabilityBalance += liab
         remainingSessionsCount += rem
+
+        catMetrics[catKey].liabilityBalance += liab
+        catMetrics[catKey].remainingSessions += rem
       }
     })
 
@@ -204,6 +240,20 @@ export function PrepaidLessonsTable({
 
     const allTimeNetCollectedMinusRealized = allTimeCollected - allTimeRealized
 
+    const categoryList = [
+      catMetrics.single,
+      catMetrics.dual,
+      catMetrics.shared,
+      catMetrics.group,
+    ].map(cat => ({
+      ...cat,
+      newAmount: Math.round(cat.newAmount),
+      lumpSum: Math.round(cat.lumpSum),
+      installmentPaid: Math.round(cat.installmentPaid),
+      realizedRevenue: Math.round(cat.realizedRevenue),
+      liabilityBalance: Math.round(cat.liabilityBalance),
+    }))
+
     return {
       newContractsTotalValue: Math.round(newContractsTotalValue),
       lumpSumTotal: Math.round(lumpSumTotal),
@@ -217,6 +267,7 @@ export function PrepaidLessonsTable({
       totalSessionsUsed,
       unearnedLiabilityBalance: Math.round(unearnedLiabilityBalance),
       remainingSessionsCount,
+      categoryList,
     }
   }, [periodContracts, periodLessonRecords, contractMap, contracts, records])
 
@@ -348,6 +399,37 @@ export function PrepaidLessonsTable({
         )}
       </div>
 
+      {/* ── Stat Cards Header with Expand / Collapse Toggle ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2">
+          <RiPieChartLine className="w-4 h-4 text-orange-500" />
+          <h3 className="text-xs font-black text-stone-800">預收與銷課核心指標</h3>
+          <span className="text-[10px] text-stone-400 font-medium">({periodLabel})</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsBreakdownExpanded(prev => !prev)}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shadow-2xs border self-start sm:self-auto",
+            isBreakdownExpanded
+              ? "bg-stone-900 text-white border-stone-900 hover:bg-stone-800"
+              : "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 hover:border-orange-300"
+          )}
+        >
+          {isBreakdownExpanded ? (
+            <>
+              <RiArrowUpSLine className="w-4 h-4" />
+              收合類別 Breakdown
+            </>
+          ) : (
+            <>
+              <RiArrowDownSLine className="w-4 h-4 text-orange-600 animate-bounce" />
+              展開合約類別 Breakdown
+            </>
+          )}
+        </button>
+      </div>
+
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard
@@ -357,7 +439,23 @@ export function PrepaidLessonsTable({
           iconColor="text-orange-600"
           iconBg="bg-orange-50"
           subtitle={`一次付清 $${summaryMetrics.lumpSumTotal.toLocaleString()} · 分期 $${summaryMetrics.installmentPaidTotal.toLocaleString()}`}
-        />
+        >
+          {isBreakdownExpanded && (
+            <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5 animate-in fade-in duration-200">
+              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細</div>
+              {summaryMetrics.categoryList.map((cat) => (
+                <div key={cat.key} className="flex items-center justify-between text-xs">
+                  <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
+                  <span className="font-bold text-stone-800 text-[11px] font-mono">
+                    NT$ {cat.newAmount.toLocaleString()}
+                    <span className="text-[9px] text-stone-400 font-normal ml-0.5">({cat.newContractsCount}筆)</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </StatCard>
+
         <StatCard
           title={`銷課認列金額`}
           value={`NT$ ${summaryMetrics.realizedRevenueTotal.toLocaleString()}`}
@@ -365,7 +463,22 @@ export function PrepaidLessonsTable({
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
           subtitle={`已履約 ${summaryMetrics.totalSessionsUsed} 堂課`}
-        />
+        >
+          {isBreakdownExpanded && (
+            <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5 animate-in fade-in duration-200">
+              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細</div>
+              {summaryMetrics.categoryList.map((cat) => (
+                <div key={cat.key} className="flex items-center justify-between text-xs">
+                  <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
+                  <span className="font-bold text-emerald-600 text-[11px] font-mono">
+                    NT$ {cat.realizedRevenue.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </StatCard>
+
         <StatCard
           title={`銷課堂數`}
           value={`${summaryMetrics.totalSessionsUsed} 堂`}
@@ -373,7 +486,22 @@ export function PrepaidLessonsTable({
           iconColor="text-blue-600"
           iconBg="bg-blue-50"
           subtitle={`均堂價 NT$ ${summaryMetrics.totalSessionsUsed > 0 ? Math.round(summaryMetrics.realizedRevenueTotal / summaryMetrics.totalSessionsUsed).toLocaleString() : '0'}`}
-        />
+        >
+          {isBreakdownExpanded && (
+            <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5 animate-in fade-in duration-200">
+              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細</div>
+              {summaryMetrics.categoryList.map((cat) => (
+                <div key={cat.key} className="flex items-center justify-between text-xs">
+                  <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
+                  <span className="font-bold text-blue-600 text-[11px] font-mono">
+                    {cat.realizedSessions} 堂
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </StatCard>
+
         <StatCard
           title={`預收學費負債餘額`}
           value={`NT$ ${summaryMetrics.unearnedLiabilityBalance.toLocaleString()}`}
@@ -381,7 +509,23 @@ export function PrepaidLessonsTable({
           iconColor="text-amber-600"
           iconBg="bg-amber-50"
           subtitle={`剩餘 ${summaryMetrics.remainingSessionsCount} 堂待履約`}
-        />
+        >
+          {isBreakdownExpanded && (
+            <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5 animate-in fade-in duration-200">
+              <div className="text-[9px] font-bold text-stone-400 uppercase tracking-wider mb-1">合約類別明細</div>
+              {summaryMetrics.categoryList.map((cat) => (
+                <div key={cat.key} className="flex items-center justify-between text-xs">
+                  <span className="text-stone-500 text-[11px] font-medium">{cat.label}</span>
+                  <span className="font-bold text-amber-600 text-[11px] font-mono">
+                    NT$ {cat.liabilityBalance.toLocaleString()}
+                    <span className="text-[9px] text-stone-400 font-normal ml-0.5">({cat.remainingSessions}堂)</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </StatCard>
+
         <StatCard
           title={`總已收款項扣銷課金額`}
           value={`NT$ ${summaryMetrics.netCollectedMinusRealized.toLocaleString()}`}
@@ -391,6 +535,89 @@ export function PrepaidLessonsTable({
           subtitle={`全期實收 $${summaryMetrics.allTimeCollected.toLocaleString()} - 銷課 $${summaryMetrics.allTimeRealized.toLocaleString()}`}
         />
       </div>
+
+      {/* ── Expanded Category Breakdown Table ── */}
+      {isBreakdownExpanded && (
+        <div className="bg-white p-5 rounded-2xl border border-stone-200/90 shadow-xs space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold shadow-2xs">
+                <RiTable2 className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-stone-900">合約類別 Breakdown 數據分析表</h4>
+                <p className="text-[10px] text-stone-400">依據單人、雙人、共享與團體合約完整拆解四大權責財務指標</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-stone-500 bg-stone-100 px-3 py-1 rounded-full border border-stone-200/60">
+              統計期間：{periodLabel}
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-stone-50/90 text-stone-500 font-bold border-b border-stone-200/60">
+                  <th className="py-2.5 px-4 rounded-l-xl">合約類別</th>
+                  <th className="py-2.5 px-4 text-right">1. 新簽預收總額 (筆數)</th>
+                  <th className="py-2.5 px-4 text-right">2. 銷課認列金額</th>
+                  <th className="py-2.5 px-4 text-right">3. 銷課堂數</th>
+                  <th className="py-2.5 px-4 text-right">4. 預收學費負債餘額 (待履約堂數)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {summaryMetrics.categoryList.map((cat) => {
+                  const newPct = summaryMetrics.newContractsTotalValue > 0
+                    ? Math.round((cat.newAmount / summaryMetrics.newContractsTotalValue) * 100)
+                    : 0
+
+                  return (
+                    <tr key={cat.key} className="hover:bg-stone-50/60 transition-colors">
+                      <td className="py-3 px-4 font-bold text-stone-900 flex items-center gap-2">
+                        <span className={cn("w-2.5 h-2.5 rounded-full shrink-0", cat.colorDot)} />
+                        {cat.label}
+                        <span className="text-[10px] font-mono text-stone-400">({newPct}%)</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-stone-800">
+                        NT$ {cat.newAmount.toLocaleString()}
+                        <span className="text-[10px] font-normal text-stone-400 ml-1">({cat.newContractsCount} 筆)</span>
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600">
+                        NT$ {cat.realizedRevenue.toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-blue-600">
+                        {cat.realizedSessions} 堂
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono font-bold text-amber-600">
+                        NT$ {cat.liabilityBalance.toLocaleString()}
+                        <span className="text-[10px] font-normal text-stone-400 ml-1">({cat.remainingSessions} 堂)</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-stone-100/80 font-black text-stone-900 border-t border-stone-200">
+                  <td className="py-2.5 px-4 rounded-l-xl">全類別合計 (Total)</td>
+                  <td className="py-2.5 px-4 text-right font-mono">
+                    NT$ {summaryMetrics.newContractsTotalValue.toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-4 text-right font-mono text-emerald-700">
+                    NT$ {summaryMetrics.realizedRevenueTotal.toLocaleString()}
+                  </td>
+                  <td className="py-2.5 px-4 text-right font-mono text-blue-700">
+                    {summaryMetrics.totalSessionsUsed} 堂
+                  </td>
+                  <td className="py-2.5 px-4 text-right font-mono text-amber-700 rounded-r-xl">
+                    NT$ {summaryMetrics.unearnedLiabilityBalance.toLocaleString()}
+                    <span className="text-[10px] font-normal text-stone-500 ml-1">({summaryMetrics.remainingSessionsCount} 堂)</span>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* ── Main Panel ── */}
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_1px_4px_0_rgba(0,0,0,0.04)] overflow-hidden">
