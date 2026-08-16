@@ -547,47 +547,53 @@ export default function BackupPage() {
         logItem.status = 'loading'
         setExportLogs([...updatedLogs])
 
-        const colRef = collection(db, logItem.collection)
-        const snap = await getDocs(colRef)
+        try {
+          const colRef = collection(db, logItem.collection)
+          const snap = await getDocs(colRef)
 
-        // Filter by scope safely
-        const dataList = snap.docs
-          .map(d => {
-            const data = d.data()
-            return {
-              id: d.id,
-              centerId: data.centerId || 'r27',
-              ...data
-            }
-          })
-          .filter(item => {
-            if (selectedScope === 'all') return true
-            if (selectedScope === 'r27') return !item.centerId || item.centerId === 'r27'
-            return item.centerId === selectedScope
-          })
+          // Filter by scope safely
+          const dataList = snap.docs
+            .map(d => {
+              const data = d.data()
+              return {
+                id: d.id,
+                centerId: data.centerId || 'r27',
+                ...data
+              }
+            })
+            .filter(item => {
+              if (selectedScope === 'all') return true
+              if (selectedScope === 'r27') return !item.centerId || item.centerId === 'r27'
+              return item.centerId === selectedScope
+            })
 
-        logItem.count = dataList.length
-        logItem.status = dataList.length > 0 ? 'success' : 'empty'
+          logItem.count = dataList.length
+          logItem.status = dataList.length > 0 ? 'success' : 'empty'
 
-        const MODULE_CSV_FILENAMES: Record<string, string> = {
-          customers: '客戶檔案',
-          lessonRecords: '教練銷課紀錄',
-          contracts: '會計管理_合約',
-          cashFlowRecords: '會計管理_收支金流',
-          trainers: '教練檔案',
-          users: '使用者帳號',
-          trialRecords: '體驗客資料',
-          venueRentals: '場租管理明細',
-          renterCustomers: '場租學員資料',
-          activityLogs: '系統操作記錄',
-          notifications: '系統通知消息',
-        }
+          const MODULE_CSV_FILENAMES: Record<string, string> = {
+            customers: '客戶檔案',
+            lessonRecords: '教練銷課紀錄',
+            contracts: '會計管理_合約',
+            cashFlowRecords: '會計管理_收支金流',
+            trainers: '教練檔案',
+            users: '使用者帳號',
+            trialRecords: '體驗客資料',
+            venueRentals: '場租管理明細',
+            renterCustomers: '場租學員資料',
+            activityLogs: '系統操作記錄',
+            notifications: '系統通知消息',
+          }
 
-        if (dataList.length > 0) {
-          jsonFolder?.file(`${logItem.collection}.json`, JSON.stringify(dataList, null, 2))
-          const csvContent = jsonToFriendlyCsv(logItem.collection, dataList, trainerMap, customerMap)
-          const csvFilename = MODULE_CSV_FILENAMES[logItem.collection] || logItem.collection
-          csvFolder?.file(`${csvFilename}.csv`, '\ufeff' + csvContent)
+          if (dataList.length > 0) {
+            jsonFolder?.file(`${logItem.collection}.json`, JSON.stringify(dataList, null, 2))
+            const csvContent = jsonToFriendlyCsv(logItem.collection, dataList, trainerMap, customerMap)
+            const csvFilename = MODULE_CSV_FILENAMES[logItem.collection] || logItem.collection
+            csvFolder?.file(`${csvFilename}.csv`, '\ufeff' + csvContent)
+          }
+        } catch (colErr: any) {
+          console.warn(`Permission or fetch error on ${logItem.collection}:`, colErr)
+          logItem.status = 'error'
+          logItem.message = colErr?.message || '無權限存取'
         }
 
         completedSteps++
