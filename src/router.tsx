@@ -6,23 +6,46 @@ import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { ProtectedTrainerRoute } from '@/components/shared/ProtectedTrainerRoute'
 import { PageLoading } from '@/components/shared/PageLoading'
 
+// Safe lazy import with auto-reload for cache busting / post-deployment chunk mismatch
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    const pageHasBeenForceRefreshed = window.sessionStorage.getItem('r27-chunk-force-refreshed') === 'true'
+
+    try {
+      const component = await componentImport()
+      window.sessionStorage.setItem('r27-chunk-force-refreshed', 'false')
+      return component
+    } catch (error: any) {
+      if (!pageHasBeenForceRefreshed) {
+        console.warn('Chunk import failed, refreshing page for latest bundle version...', error)
+        window.sessionStorage.setItem('r27-chunk-force-refreshed', 'true')
+        window.location.reload()
+        return { default: (() => null) as unknown as T }
+      }
+      throw error
+    }
+  })
+}
+
 // Lazy loaded page components
-const LoginPage = lazy(() => import('@/pages/LoginPage'))
-const CustomersPage = lazy(() => import('@/pages/CustomersPage'))
-const LessonsPage = lazy(() => import('@/pages/LessonsPage'))
-const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'))
-const FinancePage = lazy(() => import('@/pages/FinancePage'))
-const TrialsPage = lazy(() => import('@/pages/TrialsPage'))
-const VenuePage = lazy(() => import('@/pages/VenuePage'))
-const BackupPage = lazy(() => import('@/pages/BackupPage'))
-const ActivityLogPage = lazy(() => import('@/pages/ActivityLogPage'))
-const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
-const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
-const TrainerSelectPage = lazy(() => import('@/pages/trainer/TrainerSelectPage'))
-const TrainerCustomersPage = lazy(() => import('@/pages/trainer/TrainerCustomersPage'))
-const TrainerLessonsPage = lazy(() => import('@/pages/trainer/TrainerLessonsPage'))
-const TrainerTrialsPage = lazy(() => import('@/pages/trainer/TrainerTrialsPage'))
-const TrainerVenuePage = lazy(() => import('@/pages/trainer/TrainerVenuePage'))
+const LoginPage = lazyWithRetry(() => import('@/pages/LoginPage'))
+const CustomersPage = lazyWithRetry(() => import('@/pages/CustomersPage'))
+const LessonsPage = lazyWithRetry(() => import('@/pages/LessonsPage'))
+const AnalyticsPage = lazyWithRetry(() => import('@/pages/AnalyticsPage'))
+const FinancePage = lazyWithRetry(() => import('@/pages/FinancePage'))
+const TrialsPage = lazyWithRetry(() => import('@/pages/TrialsPage'))
+const VenuePage = lazyWithRetry(() => import('@/pages/VenuePage'))
+const BackupPage = lazyWithRetry(() => import('@/pages/BackupPage'))
+const ActivityLogPage = lazyWithRetry(() => import('@/pages/ActivityLogPage'))
+const SettingsPage = lazyWithRetry(() => import('@/pages/SettingsPage'))
+const ProfilePage = lazyWithRetry(() => import('@/pages/ProfilePage'))
+const TrainerSelectPage = lazyWithRetry(() => import('@/pages/trainer/TrainerSelectPage'))
+const TrainerCustomersPage = lazyWithRetry(() => import('@/pages/trainer/TrainerCustomersPage'))
+const TrainerLessonsPage = lazyWithRetry(() => import('@/pages/trainer/TrainerLessonsPage'))
+const TrainerTrialsPage = lazyWithRetry(() => import('@/pages/trainer/TrainerTrialsPage'))
+const TrainerVenuePage = lazyWithRetry(() => import('@/pages/trainer/TrainerVenuePage'))
 
 function LazyWrap({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PageLoading />}>{children}</Suspense>
