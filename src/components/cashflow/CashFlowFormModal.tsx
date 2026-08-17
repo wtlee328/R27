@@ -107,7 +107,7 @@ function AccountSelectInput({
   value: string
   onChange: (val: string) => void
 }) {
-  const presetAccounts = ['公司存款', '現金', '銀行存款']
+  const presetAccounts = ['預收款帳號', '公司存款', '現金', '銀行存款']
   const isPreset = presetAccounts.includes(value)
   const [isCustom, setIsCustom] = useState(!isPreset && value !== '')
   const [customVal, setCustomVal] = useState(!isPreset ? value : '')
@@ -136,7 +136,7 @@ function AccountSelectInput({
     <div className="space-y-1.5">
       <Label className="text-stone-700 font-bold text-xs">資金帳戶 / 管道</Label>
       <select
-        value={isCustom ? '__CUSTOM__' : (value || '公司存款')}
+        value={isCustom ? '__CUSTOM__' : (value || '預收款帳號')}
         onChange={handleSelectChange}
         className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-bold focus:outline-none focus:ring-2 focus:ring-stone-900/10 cursor-pointer"
       >
@@ -179,7 +179,7 @@ export function CashFlowFormModal({
       type: 'income',
       category: '',
       amount: 0,
-      account: '公司存款',
+      account: '預收款帳號',
       description: '',
       notes: '',
       source: 'manual',
@@ -196,7 +196,7 @@ export function CashFlowFormModal({
         type: initialData?.type || 'income',
         category: initialData?.category || '',
         amount: initialData?.amount || 0,
-        account: initialData?.account || '公司存款',
+        account: initialData?.account || '預收款帳號',
         description: initialData?.description || '',
         notes: initialData?.notes || '',
         source: initialData?.source || 'manual',
@@ -287,7 +287,7 @@ export function CashFlowFormModal({
             </div>
 
             <AccountSelectInput
-              value={form.watch('account') || '公司存款'}
+              value={form.watch('account') || '預收款帳號'}
               onChange={(val) => form.setValue('account', val)}
             />
           </div>

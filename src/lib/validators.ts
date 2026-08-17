@@ -251,7 +251,7 @@ export const cashFlowFormSchema = z.object({
   type: z.enum(['income', 'expense'], { required_error: '請選擇交易類型' }),
   category: z.string().min(1, '請選擇或輸入會計科目'),
   amount: z.coerce.number().min(1, '金額必須大於 0'),
-  account: z.string().optional().default('公司存款'),
+  account: z.string().optional().default('預收款帳號'),
   description: z.string().min(1, '請輸入摘要'),
   notes: z.string().optional().default(''),
   source: z.enum(['manual', 'venue_rental', 'csv_import', 'lesson']).optional().default('manual'),
