@@ -144,6 +144,7 @@ export default function BackupPage() {
 
   // Google Drive Settings & OAuth Token State
   const [syncToGDrive, setSyncToGDrive] = useState(false)
+  const [downloadLocalCopy, setDownloadLocalCopy] = useState(true)
   const [gdriveFolderId, setGdriveFolderId] = useState('R27_Coffit_Backups')
   const [backupSchedule, setBackupSchedule] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
   const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(null)
@@ -739,19 +740,26 @@ export default function BackupPage() {
           }
         }
       }
-
-      const downloadUrl = URL.createObjectURL(zipBlob)
-      const link = document.createElement('a')
-      link.href = downloadUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(downloadUrl)
+      if (downloadLocalCopy || !syncToGDrive) {
+        const downloadUrl = URL.createObjectURL(zipBlob)
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = filename
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(downloadUrl)
+      }
 
       setExportProgress(100)
       setExportStatus('success')
-      toast.success('備份包下載完成！')
+      if (syncToGDrive && lastUploadedDriveFile) {
+        toast.success(downloadLocalCopy ? '備份已成功上傳至 Google Drive 並下載本地副本！' : '備份已成功上傳至 Google Drive！')
+      } else if (syncToGDrive) {
+        toast.success('備份完成！')
+      } else {
+        toast.success('備份包下載完成！')
+      }
     } catch (err: any) {
       console.error(err)
       setExportErrorMsg(err.message || '備份過程中發生未知錯誤')
@@ -1117,7 +1125,7 @@ export default function BackupPage() {
                 <div className="flex items-center justify-between pt-1">
                   <div>
                     <Label htmlFor="gdrive-sync" className="text-stone-800 font-bold text-xs block">同步上傳至 Google Drive</Label>
-                    <span className="text-[10px] text-stone-400 font-medium">備份完成後將同時把壓縮檔案上傳至您的雲端資料夾</span>
+                    <span className="text-[10px] text-stone-400 font-medium">備份完成後將同時把壓縮檔案推送到您的雲端資料夾</span>
                   </div>
                   <input
                     type="checkbox"
@@ -1130,6 +1138,21 @@ export default function BackupPage() {
                         setSyncToGDrive(e.target.checked)
                       }
                     }}
+                    className="w-9 h-5 bg-stone-200 checked:bg-brand-500 rounded-full transition-colors cursor-pointer appearance-none relative before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform"
+                  />
+                </div>
+
+                {/* Local Copy Download Toggle */}
+                <div className="flex items-center justify-between pt-1">
+                  <div>
+                    <Label htmlFor="local-download-copy" className="text-stone-800 font-bold text-xs block">同時下載本機副本 (.zip)</Label>
+                    <span className="text-[10px] text-stone-400 font-medium">在瀏覽器自動下載一份壓縮包到電腦本地下載區</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    id="local-download-copy"
+                    checked={downloadLocalCopy}
+                    onChange={(e) => setDownloadLocalCopy(e.target.checked)}
                     className="w-9 h-5 bg-stone-200 checked:bg-brand-500 rounded-full transition-colors cursor-pointer appearance-none relative before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform"
                   />
                 </div>
@@ -1194,10 +1217,16 @@ export default function BackupPage() {
                   <span className="text-stone-400 font-medium">輸出格式</span>
                   <span className="font-bold text-brand-400">JSON (還原結構) + CSV (Excel 表)</span>
                 </div>
-                <div className="flex justify-between pb-1">
+                <div className="flex justify-between border-b border-stone-800 pb-2.5">
                   <span className="text-stone-400 font-medium">Google Drive 同步</span>
                   <span className={`font-bold ${syncToGDrive ? 'text-emerald-400' : 'text-stone-500'}`}>
-                    {syncToGDrive ? (isGoogleConnected ? '已啟用 (已授權)' : '已勾選 (執行時授權)') : '未啟用'}
+                    {syncToGDrive ? (isGoogleConnected ? `已啟用 (${gdriveFolderId})` : '已勾選 (執行時授權)') : '未啟用'}
+                  </span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="text-stone-400 font-medium">本機檔案下載</span>
+                  <span className={`font-bold ${downloadLocalCopy ? 'text-white' : 'text-stone-500'}`}>
+                    {downloadLocalCopy ? '是 (.zip 下載)' : '否 (僅雲端同步)'}
                   </span>
                 </div>
               </div>
@@ -1223,7 +1252,13 @@ export default function BackupPage() {
                 ) : (
                   <>
                     <Play className="h-4 w-4 text-white" />
-                    <span>{syncToGDrive ? '開始備份並同步至 Google Drive' : '開始備份並下載 ZIP 檔案'}</span>
+                    <span>
+                      {syncToGDrive && downloadLocalCopy
+                        ? '開始備份（同步至 Google Drive 並下載本地副本）'
+                        : syncToGDrive
+                        ? '開始備份（僅同步至 Google Drive）'
+                        : '開始備份並下載 ZIP 檔案'}
+                    </span>
                   </>
                 )}
               </button>
