@@ -1,30 +1,37 @@
+import React, { lazy, Suspense } from 'react'
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { TrainerLayout } from '@/components/layout/TrainerLayout'
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute'
 import { ProtectedTrainerRoute } from '@/components/shared/ProtectedTrainerRoute'
-import LoginPage from '@/pages/LoginPage'
-import CustomersPage from '@/pages/CustomersPage'
-import LessonsPage from '@/pages/LessonsPage'
-import FinancePage from '@/pages/FinancePage'
-import TrialsPage from '@/pages/TrialsPage'
-import VenuePage from '@/pages/VenuePage'
-import BackupPage from '@/pages/BackupPage'
-import SettingsPage from '@/pages/SettingsPage'
-import ProfilePage from '@/pages/ProfilePage'
-import ActivityLogPage from '@/pages/ActivityLogPage'
-import TrainerLessonsPage from '@/pages/trainer/TrainerLessonsPage'
-import TrainerTrialsPage from '@/pages/trainer/TrainerTrialsPage'
-import TrainerVenuePage from '@/pages/trainer/TrainerVenuePage'
-import TrainerSelectPage from '@/pages/trainer/TrainerSelectPage'
-import TrainerCustomersPage from '@/pages/trainer/TrainerCustomersPage'
+import { PageLoading } from '@/components/shared/PageLoading'
 
-import AnalyticsPage from '@/pages/AnalyticsPage'
+// Lazy loaded page components
+const LoginPage = lazy(() => import('@/pages/LoginPage'))
+const CustomersPage = lazy(() => import('@/pages/CustomersPage'))
+const LessonsPage = lazy(() => import('@/pages/LessonsPage'))
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'))
+const FinancePage = lazy(() => import('@/pages/FinancePage'))
+const TrialsPage = lazy(() => import('@/pages/TrialsPage'))
+const VenuePage = lazy(() => import('@/pages/VenuePage'))
+const BackupPage = lazy(() => import('@/pages/BackupPage'))
+const ActivityLogPage = lazy(() => import('@/pages/ActivityLogPage'))
+const SettingsPage = lazy(() => import('@/pages/SettingsPage'))
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'))
+const TrainerSelectPage = lazy(() => import('@/pages/trainer/TrainerSelectPage'))
+const TrainerCustomersPage = lazy(() => import('@/pages/trainer/TrainerCustomersPage'))
+const TrainerLessonsPage = lazy(() => import('@/pages/trainer/TrainerLessonsPage'))
+const TrainerTrialsPage = lazy(() => import('@/pages/trainer/TrainerTrialsPage'))
+const TrainerVenuePage = lazy(() => import('@/pages/trainer/TrainerVenuePage'))
+
+function LazyWrap({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageLoading />}>{children}</Suspense>
+}
 
 const router = createBrowserRouter([
   {
     path: '/login',
-    element: <LoginPage />,
+    element: <LazyWrap><LoginPage /></LazyWrap>,
   },
   {
     path: '/',
@@ -34,26 +41,26 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true,          element: <CustomersPage /> },
-      { path: 'lessons',      element: <LessonsPage /> },
-      { path: 'analytics',       element: <ProtectedRoute requiredRole="admin"><AnalyticsPage /></ProtectedRoute> },
-      { path: 'finance',         element: <ProtectedRoute requiredRole="admin"><FinancePage /></ProtectedRoute> },
+      { index: true,          element: <LazyWrap><CustomersPage /></LazyWrap> },
+      { path: 'lessons',      element: <LazyWrap><LessonsPage /></LazyWrap> },
+      { path: 'analytics',       element: <ProtectedRoute requiredRole="admin"><LazyWrap><AnalyticsPage /></LazyWrap></ProtectedRoute> },
+      { path: 'finance',         element: <ProtectedRoute requiredRole="admin"><LazyWrap><FinancePage /></LazyWrap></ProtectedRoute> },
       { path: 'prepaid-lessons', element: <Navigate to="/finance" replace /> },
       { path: 'cash-flow',       element: <Navigate to="/finance" replace /> },
       { path: 'profit-loss',  element: <Navigate to="/finance" replace /> },
-      { path: 'trials',       element: <TrialsPage /> },
-      { path: 'venue',        element: <ProtectedRoute requiredRole="admin"><VenuePage /></ProtectedRoute> },
-      { path: 'backup',       element: <ProtectedRoute requiredRole="admin"><BackupPage /></ProtectedRoute> },
-      { path: 'activity-log', element: <ProtectedRoute requiredRole="admin"><ActivityLogPage /></ProtectedRoute> },
-      { path: 'settings',     element: <SettingsPage /> },
-      { path: 'profile',      element: <ProfilePage /> },
+      { path: 'trials',       element: <LazyWrap><TrialsPage /></LazyWrap> },
+      { path: 'venue',        element: <ProtectedRoute requiredRole="admin"><LazyWrap><VenuePage /></LazyWrap></ProtectedRoute> },
+      { path: 'backup',       element: <ProtectedRoute requiredRole="admin"><LazyWrap><BackupPage /></LazyWrap></ProtectedRoute> },
+      { path: 'activity-log', element: <ProtectedRoute requiredRole="admin"><LazyWrap><ActivityLogPage /></LazyWrap></ProtectedRoute> },
+      { path: 'settings',     element: <LazyWrap><SettingsPage /></LazyWrap> },
+      { path: 'profile',      element: <LazyWrap><ProfilePage /></LazyWrap> },
     ],
   },
   {
     path: '/trainer/select',
     element: (
       <ProtectedTrainerRoute>
-        <TrainerSelectPage />
+        <LazyWrap><TrainerSelectPage /></LazyWrap>
       </ProtectedTrainerRoute>
     ),
   },
@@ -66,10 +73,10 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true,        element: <Navigate to="/trainer/customers" replace /> },
-      { path: 'customers',  element: <TrainerCustomersPage /> },
-      { path: 'lessons',    element: <TrainerLessonsPage /> },
-      { path: 'trials',     element: <TrainerTrialsPage /> },
-      { path: 'venue',      element: <TrainerVenuePage /> },
+      { path: 'customers',  element: <LazyWrap><TrainerCustomersPage /></LazyWrap> },
+      { path: 'lessons',    element: <LazyWrap><TrainerLessonsPage /></LazyWrap> },
+      { path: 'trials',     element: <LazyWrap><TrainerTrialsPage /></LazyWrap> },
+      { path: 'venue',      element: <LazyWrap><TrainerVenuePage /></LazyWrap> },
     ],
   },
 ])
