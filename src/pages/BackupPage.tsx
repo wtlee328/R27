@@ -15,7 +15,12 @@ import {
   FileUp,
   Layers,
   ShieldAlert,
-  RotateCcw
+  RotateCcw,
+  ExternalLink,
+  Key,
+  Check,
+  LogOut,
+  Settings
 } from 'lucide-react'
 import { collection, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore'
 import { db } from '../lib/firebase'
@@ -23,6 +28,23 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import JSZip from 'jszip'
 import { Label } from '../components/ui/label'
+import {
+  requestGoogleDriveToken,
+  findOrCreateFolder,
+  uploadFileToGoogleDrive,
+  getStoredGoogleClientId,
+  setStoredGoogleClientId,
+} from '../lib/googleDrive'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 type ScopeType = 'all' | 'r27' | 'coffit'
 
@@ -120,10 +142,16 @@ export default function BackupPage() {
     notifications: true,
   })
 
-  // Google Drive Placeholder settings
+  // Google Drive Settings & OAuth Token State
   const [syncToGDrive, setSyncToGDrive] = useState(false)
   const [gdriveFolderId, setGdriveFolderId] = useState('R27_Coffit_Backups')
   const [backupSchedule, setBackupSchedule] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
+  const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(null)
+  const [googleClientId, setGoogleClientId] = useState<string>(() => getStoredGoogleClientId())
+  const [clientIdInput, setClientIdInput] = useState<string>('')
+  const [showClientIdModal, setShowClientIdModal] = useState<boolean>(false)
+  const [isAuthorizing, setIsAuthorizing] = useState<boolean>(false)
+  const [lastUploadedDriveFile, setLastUploadedDriveFile] = useState<{ id: string; name: string; webViewLink?: string } | null>(null)
 
   // Export Run status
   const [exportStatus, setExportStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle')
@@ -475,10 +503,51 @@ export default function BackupPage() {
     return csvRows.join('\n')
   }
 
-  // Google Drive Placeholder API
-  const uploadBackupToGoogleDrive = async (zipBlob: Blob, folderName: string): Promise<boolean> => {
-    console.log(`[API STUB] Preparing upload of ${zipBlob.size} bytes to Google Drive folder: ${folderName}`)
-    return new Promise((resolve) => setTimeout(() => resolve(true), 1500))
+  // Google Drive Connection Handlers
+  const isGoogleConnected = Boolean(googleToken && googleToken.expiresAt > Date.now())
+
+  const handleConnectGoogleDrive = async (overrideClientId?: string) => {
+    const cId = overrideClientId || googleClientId
+    if (!cId || cId.trim() === '') {
+      setClientIdInput(cId || '')
+      setShowClientIdModal(true)
+      return
+    }
+
+    setIsAuthorizing(true)
+    try {
+      const res = await requestGoogleDriveToken(cId)
+      setGoogleToken({
+        accessToken: res.accessToken,
+        expiresAt: Date.now() + res.expiresIn * 1000,
+      })
+      setSyncToGDrive(true)
+      toast.success('Google Drive 授權成功！已為您啟用雲端同步備份。')
+      setShowClientIdModal(false)
+    } catch (err: any) {
+      console.error('Google authorization error:', err)
+      toast.error(`Google 授權失敗：${err.message || '未知錯誤'}`)
+    } finally {
+      setIsAuthorizing(false)
+    }
+  }
+
+  const handleDisconnectGoogleDrive = () => {
+    setGoogleToken(null)
+    setSyncToGDrive(false)
+    setLastUploadedDriveFile(null)
+    toast.info('已中斷 Google Drive 連結')
+  }
+
+  const handleSaveClientId = () => {
+    if (!clientIdInput.trim()) {
+      toast.error('請輸入有效的 Client ID')
+      return
+    }
+    setStoredGoogleClientId(clientIdInput.trim())
+    setGoogleClientId(clientIdInput.trim())
+    toast.success('已儲存 Google Client ID 設定')
+    handleConnectGoogleDrive(clientIdInput.trim())
   }
 
   // Start backup export process
@@ -491,6 +560,7 @@ export default function BackupPage() {
     setExportStatus('running')
     setExportProgress(0)
     setExportErrorMsg(null)
+    setLastUploadedDriveFile(null)
 
     const initialLogs: BackupLog[] = []
     Object.entries(selectedModules).forEach(([modKey, isChecked]) => {
@@ -604,15 +674,71 @@ export default function BackupPage() {
       }
 
       const zipBlob = await zip.generateAsync({ type: 'blob' })
-      setExportProgress(90)
-
-      if (syncToGDrive) {
-        await uploadBackupToGoogleDrive(zipBlob, gdriveFolderId)
-      }
+      setExportProgress(85)
 
       const dateStr = format(new Date(), 'yyyyMMdd_HHmmss')
       const scopeLabel = selectedScope === 'all' ? '全部場館' : selectedScope === 'r27' ? 'R27_Fitness' : 'Coffit_訓練中心'
       const filename = `系統備份_${scopeLabel}_${dateStr}.zip`
+
+      if (syncToGDrive) {
+        let token = googleToken?.accessToken
+        const isTokenExpired = !googleToken || googleToken.expiresAt <= Date.now()
+        
+        if (isTokenExpired) {
+          if (!googleClientId) {
+            toast.error('請先設定 Google Client ID 以同步至 Google Drive')
+            setShowClientIdModal(true)
+          } else {
+            try {
+              const authRes = await requestGoogleDriveToken(googleClientId)
+              token = authRes.accessToken
+              setGoogleToken({
+                accessToken: authRes.accessToken,
+                expiresAt: Date.now() + authRes.expiresIn * 1000,
+              })
+            } catch (authErr: any) {
+              toast.error(`無法取得 Google Drive 授權：${authErr.message}`)
+            }
+          }
+        }
+
+        if (token) {
+          try {
+            setExportProgress(90)
+            const folderId = await findOrCreateFolder(token, gdriveFolderId || 'R27_Coffit_Backups')
+            const driveFile = await uploadFileToGoogleDrive({
+              accessToken: token,
+              folderId,
+              fileName: filename,
+              mimeType: 'application/zip',
+              blob: zipBlob,
+            })
+            setLastUploadedDriveFile(driveFile)
+            setExportLogs(prev => [
+              ...prev,
+              {
+                collection: 'Google Drive 雲端同步',
+                count: 1,
+                status: 'success',
+                message: `已同步至 Google Drive (${driveFile.name})`,
+              },
+            ])
+            toast.success('備份已同步上傳至 Google Drive！')
+          } catch (uploadErr: any) {
+            console.error('Google Drive sync error:', uploadErr)
+            setExportLogs(prev => [
+              ...prev,
+              {
+                collection: 'Google Drive 雲端同步',
+                count: 0,
+                status: 'error',
+                message: uploadErr.message || '上傳失敗',
+              },
+            ])
+            toast.error(`Google Drive 同步失敗：${uploadErr.message}`)
+          }
+        }
+      }
 
       const downloadUrl = URL.createObjectURL(zipBlob)
       const link = document.createElement('a')
@@ -888,19 +1014,107 @@ export default function BackupPage() {
               </div>
             </div>
 
-            {/* Step 3: Google Drive Sync Placeholder */}
+            {/* Step 3: Google Drive Cloud Sync */}
             <div className="bg-white p-6 rounded-[2rem] border border-stone-200 shadow-sm space-y-4">
-              <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
-                <span className="bg-stone-100 text-stone-700 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                <Cloud className="w-4 h-4 text-stone-400" />
-                <h3 className="font-bold text-stone-800 text-sm">雲端儲存空間同步與自動排程</h3>
-                <span className="text-[9px] bg-amber-50 border border-amber-200 text-amber-600 px-2 py-0.5 rounded-full font-bold ml-auto select-none">
-                  結構預留
-                </span>
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="bg-stone-100 text-stone-700 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                  <Cloud className="w-4 h-4 text-stone-600" />
+                  <h3 className="font-bold text-stone-800 text-sm">Google Drive 雲端儲存空間同步</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isGoogleConnected ? (
+                    <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      已連結 Google
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-stone-100 border border-stone-200 text-stone-500 px-2 py-0.5 rounded-full font-bold">
+                      未授權
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                {/* Google Connection Box */}
+                {!isGoogleConnected ? (
+                  <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-stone-800">登入 Google 雲端硬碟帳號</p>
+                        <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
+                          透過 Google 官方 OAuth 授權，備份完成後將直接把 ZIP 壓縮檔推送到您的 Google Drive 資料夾。
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleConnectGoogleDrive()}
+                        disabled={isAuthorizing}
+                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {isAuthorizing ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>正在請求授權...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Cloud className="w-3.5 h-3.5 text-brand-400" />
+                            <span>連結 Google 帳號授權</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClientIdInput(googleClientId || '')
+                          setShowClientIdModal(true)
+                        }}
+                        className="px-3 py-2 bg-white hover:bg-stone-100 border border-stone-200 text-stone-600 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+                        title="設定 Google OAuth Client ID"
+                      >
+                        <Settings className="w-3.5 h-3.5 text-stone-400" />
+                        <span>API 設定</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                          G
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-stone-800">Google Drive 授權已就緒</p>
+                          <p className="text-[10px] text-stone-400">已具備寫入備份檔案至雲端硬碟權限</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleConnectGoogleDrive()}
+                          className="text-[10px] text-stone-500 hover:text-stone-800 px-2 py-1 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 font-medium transition-colors"
+                        >
+                          重新授權
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDisconnectGoogleDrive}
+                          className="text-[10px] text-red-500 hover:text-red-700 px-2 py-1 bg-white border border-red-100 rounded-lg hover:bg-red-50 font-medium transition-colors"
+                        >
+                          中斷連結
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Toggle & Folder Settings */}
+                <div className="flex items-center justify-between pt-1">
                   <div>
                     <Label htmlFor="gdrive-sync" className="text-stone-800 font-bold text-xs block">同步上傳至 Google Drive</Label>
                     <span className="text-[10px] text-stone-400 font-medium">備份完成後將同時把壓縮檔案上傳至您的雲端資料夾</span>
@@ -909,27 +1123,34 @@ export default function BackupPage() {
                     type="checkbox"
                     id="gdrive-sync"
                     checked={syncToGDrive}
-                    onChange={(e) => setSyncToGDrive(e.target.checked)}
+                    onChange={(e) => {
+                      if (e.target.checked && !isGoogleConnected) {
+                        handleConnectGoogleDrive()
+                      } else {
+                        setSyncToGDrive(e.target.checked)
+                      }
+                    }}
                     className="w-9 h-5 bg-stone-200 checked:bg-brand-500 rounded-full transition-colors cursor-pointer appearance-none relative before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform"
                   />
                 </div>
 
                 {syncToGDrive && (
                   <div className="space-y-1.5 animate-in fade-in duration-200">
-                    <Label htmlFor="gdrive-folder" className="text-stone-700 font-bold text-xs">Google Drive 資料夾名稱</Label>
+                    <Label htmlFor="gdrive-folder" className="text-stone-700 font-bold text-xs">Google Drive 目標資料夾名稱</Label>
                     <input
                       type="text"
                       id="gdrive-folder"
                       value={gdriveFolderId}
                       onChange={(e) => setGdriveFolderId(e.target.value)}
                       className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-medium focus:ring-2 focus:ring-brand-500/20 outline-none"
-                      placeholder="請輸入雲端目錄名稱"
+                      placeholder="例如：R27_Coffit_Backups"
                     />
+                    <p className="text-[10px] text-stone-400">系統會在您的 Google 雲端硬碟根目錄尋找或自動建立此名稱之資料夾。</p>
                   </div>
                 )}
 
                 <div className="space-y-1.5 pt-2 border-t border-stone-100">
-                  <Label htmlFor="backup-schedule" className="text-stone-700 font-bold text-xs block">設定自動排程備份</Label>
+                  <Label htmlFor="backup-schedule" className="text-stone-700 font-bold text-xs block">設定自動排程備份頻率</Label>
                   <div className="flex gap-2">
                     <select
                       id="backup-schedule"
@@ -974,9 +1195,9 @@ export default function BackupPage() {
                   <span className="font-bold text-brand-400">JSON (還原結構) + CSV (Excel 表)</span>
                 </div>
                 <div className="flex justify-between pb-1">
-                  <span className="text-stone-400 font-medium">雲端同步</span>
-                  <span className={`font-bold ${syncToGDrive ? 'text-green-400' : 'text-stone-500'}`}>
-                    {syncToGDrive ? '啟用 (預留結構)' : '未啟用'}
+                  <span className="text-stone-400 font-medium">Google Drive 同步</span>
+                  <span className={`font-bold ${syncToGDrive ? 'text-emerald-400' : 'text-stone-500'}`}>
+                    {syncToGDrive ? (isGoogleConnected ? '已啟用 (已授權)' : '已勾選 (執行時授權)') : '未啟用'}
                   </span>
                 </div>
               </div>
@@ -984,7 +1205,7 @@ export default function BackupPage() {
               <div className="flex gap-2.5 p-3 rounded-2xl bg-stone-800 border border-stone-700/50 text-[10px] text-stone-300 leading-relaxed">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                 <div>
-                  備份產生的 ZIP 壓縮檔內含 <strong>json/</strong> 與 <strong>csv/</strong> 目錄。JSON 檔完整保留單人、雙人、共享、團體合約等最新資料結構，可透過右上方「資料還原與匯入」重新匯入系統。
+                  備份產生的 ZIP 壓縮檔內含 <strong>json/</strong> 與 <strong>csv/</strong> 目錄。JSON 檔完整保留合約、堂數等最新資料結構，可隨時重新匯入系統。
                 </div>
               </div>
 
@@ -997,16 +1218,42 @@ export default function BackupPage() {
                 {exportStatus === 'running' ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin text-white" />
-                    <span>正在擷取資料庫並壓縮中 ({exportProgress}%)</span>
+                    <span>正在擷取資料庫並備份中 ({exportProgress}%)</span>
                   </>
                 ) : (
                   <>
                     <Play className="h-4 w-4 text-white" />
-                    <span>開始備份並下載 ZIP 檔案</span>
+                    <span>{syncToGDrive ? '開始備份並同步至 Google Drive' : '開始備份並下載 ZIP 檔案'}</span>
                   </>
                 )}
               </button>
             </div>
+
+            {/* Google Drive Upload Success Result Box */}
+            {lastUploadedDriveFile && (
+              <div className="p-4 rounded-[2rem] bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-xs font-bold">Google Drive 同步成功</span>
+                </div>
+                <p className="text-[11px] text-stone-600 font-mono break-all pl-6">
+                  {lastUploadedDriveFile.name}
+                </p>
+                {lastUploadedDriveFile.webViewLink && (
+                  <div className="pl-6 pt-1">
+                    <a
+                      href={lastUploadedDriveFile.webViewLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
+                    >
+                      <span>在 Google 雲端硬碟中檢視</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Progress / Logs Table */}
             {exportStatus !== 'idle' && (
@@ -1041,7 +1288,7 @@ export default function BackupPage() {
                     <div key={log.collection + index} className="flex items-center justify-between text-xs py-1.5 border-b border-stone-50 last:border-0">
                       <div className="flex items-center gap-2">
                         <FileText className="w-3.5 h-3.5 text-stone-400" />
-                        <span className="font-mono text-stone-600">{log.collection}</span>
+                        <span className="font-mono text-stone-600">{COLLECTION_DISPLAY_NAMES[log.collection] || log.collection}</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
@@ -1049,12 +1296,12 @@ export default function BackupPage() {
                         {log.status === 'loading' && (
                           <div className="flex items-center gap-1">
                             <RefreshCw className="h-3 w-3 animate-spin text-brand-500" />
-                            <span className="text-[10px] text-brand-500 font-bold">讀取中</span>
+                            <span className="text-[10px] text-brand-500 font-bold">處理中</span>
                           </div>
                         )}
                         {log.status === 'success' && (
                           <span className="text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-bold">
-                            完成 ({log.count} 筆)
+                            {log.message || `完成 (${log.count} 筆)`}
                           </span>
                         )}
                         {log.status === 'empty' && (
@@ -1064,7 +1311,7 @@ export default function BackupPage() {
                         )}
                         {log.status === 'error' && (
                           <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-bold">
-                            失敗
+                            {log.message || '失敗'}
                           </span>
                         )}
                       </div>
@@ -1232,6 +1479,65 @@ export default function BackupPage() {
           </div>
         </div>
       )}
+
+      {/* Google OAuth Client ID Configuration Modal */}
+      <Dialog open={showClientIdModal} onOpenChange={setShowClientIdModal}>
+        <DialogContent className="max-w-md bg-white border border-stone-200 shadow-2xl rounded-2xl p-6">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-stone-900 font-black text-base flex items-center gap-2">
+              <Key className="w-4 h-4 text-brand-500" />
+              設定 Google OAuth Client ID
+            </DialogTitle>
+            <DialogDescription className="text-stone-500 text-xs leading-relaxed">
+              若要讓系統能直接將備份檔案傳送至您的 Google Drive，需要設定 Google Cloud 的 OAuth 2.0 Web Client ID。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="p-3 bg-stone-50 rounded-xl border border-stone-200 text-[11px] text-stone-600 space-y-1.5 leading-relaxed">
+              <p className="font-bold text-stone-800">如何取得 Google Client ID：</p>
+              <ol className="list-decimal list-inside space-y-1 text-stone-600">
+                <li>至 <span className="font-mono text-brand-600">console.cloud.google.com</span> 選擇專案。</li>
+                <li>前往「憑證 (Credentials)」建立「OAuth 2.0 Client ID (網頁應用程式)」。</li>
+                <li>於已授權的 JavaScript 來源加入您的網站網址。</li>
+                <li>複製 Client ID 並貼在下方欄位。</li>
+              </ol>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="client-id-input" className="text-stone-700 font-bold text-xs">
+                Google OAuth Client ID *
+              </Label>
+              <Input
+                id="client-id-input"
+                type="text"
+                placeholder="例如：xxxxxx.apps.googleusercontent.com"
+                value={clientIdInput}
+                onChange={(e) => setClientIdInput(e.target.value)}
+                className="h-10 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 justify-end pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowClientIdModal(false)}
+              className="text-xs"
+            >
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveClientId}
+              className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold"
+            >
+              儲存並開始授權
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
