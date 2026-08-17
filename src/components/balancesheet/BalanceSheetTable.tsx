@@ -23,6 +23,72 @@ interface BalanceSheetTableProps {
   currentPnlNet?: number
 }
 
+// ─── Line item component ───
+interface LineItemProps {
+  label: string
+  value: string
+  sub?: string
+  badge?: string
+  accent?: 'orange' | 'amber' | 'emerald' | 'stone'
+  icon?: React.ReactNode
+}
+
+function LineItem({
+  label,
+  value,
+  sub,
+  badge,
+  accent,
+  icon,
+}: LineItemProps) {
+  const accentMap = {
+    orange: 'bg-orange-50 border-orange-100',
+    amber: 'bg-amber-50 border-amber-100',
+    emerald: 'bg-emerald-50 border-emerald-100',
+    stone: 'bg-stone-50 border-stone-100',
+  }
+  const badgeMap = {
+    orange: 'bg-orange-100 text-orange-800',
+    amber: 'bg-amber-100 text-amber-800',
+    emerald: 'bg-emerald-100 text-emerald-800',
+    stone: 'bg-stone-200 text-stone-600',
+  }
+  const valMap = {
+    orange: 'text-orange-700',
+    amber: 'text-amber-700',
+    emerald: 'text-emerald-700',
+    stone: 'text-stone-700',
+  }
+  return (
+    <div className={cn(
+      'flex items-center justify-between py-2.5 px-3.5 rounded-xl border transition-colors',
+      accent ? accentMap[accent] : 'bg-stone-50/70 border-stone-100'
+    )}>
+      <div className="flex items-center gap-2 min-w-0">
+        {icon && <span className={cn('shrink-0', accent ? valMap[accent] : 'text-stone-400')}>{icon}</span>}
+        <div className="min-w-0">
+          <span className="text-xs font-semibold text-stone-800 leading-tight">{label}</span>
+          {sub && <p className="text-[10px] text-stone-400 mt-0.5">{sub}</p>}
+        </div>
+        {badge && (
+          <span className={cn(
+            'shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-md tracking-wide uppercase',
+            accent ? badgeMap[accent] : 'bg-stone-200 text-stone-600'
+          )}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <span className={cn(
+        'font-black text-sm tabular-nums shrink-0 ml-4',
+        accent ? valMap[accent] : 'text-stone-800'
+      )}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
 export function BalanceSheetTable({
   contracts,
   records,
@@ -124,70 +190,6 @@ export function BalanceSheetTable({
   const totalEquity = totalAssets - totalLiabilities
   const capitalBalance = totalEquity - pnlBreakdown.netIncome
   const isBalanced = Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1
-
-  // ─── Line item component ───
-  const LineItem = ({
-    label,
-    value,
-    sub,
-    badge,
-    accent,
-    icon,
-  }: {
-    label: string
-    value: string
-    sub?: string
-    badge?: string
-    accent?: 'orange' | 'amber' | 'emerald' | 'stone'
-    icon?: React.ReactNode
-  }) => {
-    const accentMap = {
-      orange: 'bg-orange-50 border-orange-100',
-      amber: 'bg-amber-50 border-amber-100',
-      emerald: 'bg-emerald-50 border-emerald-100',
-      stone: 'bg-stone-50 border-stone-100',
-    }
-    const badgeMap = {
-      orange: 'bg-orange-100 text-orange-800',
-      amber: 'bg-amber-100 text-amber-800',
-      emerald: 'bg-emerald-100 text-emerald-800',
-      stone: 'bg-stone-200 text-stone-600',
-    }
-    const valMap = {
-      orange: 'text-orange-700',
-      amber: 'text-amber-700',
-      emerald: 'text-emerald-700',
-      stone: 'text-stone-700',
-    }
-    return (
-      <div className={cn(
-        'flex items-center justify-between py-2.5 px-3.5 rounded-xl border transition-colors',
-        accent ? accentMap[accent] : 'bg-stone-50/70 border-stone-100'
-      )}>
-        <div className="flex items-center gap-2 min-w-0">
-          {icon && <span className={cn('shrink-0', accent ? valMap[accent] : 'text-stone-400')}>{icon}</span>}
-          <div className="min-w-0">
-            <span className="text-xs font-semibold text-stone-800 leading-tight">{label}</span>
-            {sub && <p className="text-[10px] text-stone-400 mt-0.5">{sub}</p>}
-          </div>
-          {badge && (
-            <span className={cn(
-              'shrink-0 text-[9px] font-black px-1.5 py-0.5 rounded-md tracking-wide uppercase',
-              accent ? badgeMap[accent] : 'bg-stone-200 text-stone-600'
-            )}>
-              {badge}
-            </span>
-          )}
-        </div>
-        <span className={cn(
-          'font-black text-sm tabular-nums shrink-0 ml-4',
-          accent ? valMap[accent] : 'text-stone-800'
-        )}>
-          {value}
-        </span>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">

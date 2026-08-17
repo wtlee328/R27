@@ -220,7 +220,7 @@ export default function TrainerLessonsPage() {
       }
       if (rem <= 0) return
 
-      let cType: 'single' | 'dual' | 'shared' | 'group' = 'single'
+      let cType: 'single' | 'dual' | 'shared' | 'group'
       if (c.contractType === 'group' || !!c.groupMemberQuotas) cType = 'group'
       else if (c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')) cType = 'shared'
       else if (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared')) cType = 'dual'

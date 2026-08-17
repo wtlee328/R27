@@ -208,7 +208,7 @@ export default function BackupPage() {
       return String(cid)
     }
 
-    let headers: string[] = []
+    let headers: string[]
     let mapper: (row: any) => Record<string, any>
 
     switch (colName) {
@@ -442,7 +442,7 @@ export default function BackupPage() {
         })
         break
 
-      default:
+      default: {
         const keys = Array.from(new Set(data.flatMap(item => Object.keys(item)))).filter(k => k !== 'id')
         headers = ['id', ...keys]
         mapper = (row) => {
@@ -452,6 +452,8 @@ export default function BackupPage() {
           })
           return item
         }
+        break
+      }
     }
 
     const csvRows = []

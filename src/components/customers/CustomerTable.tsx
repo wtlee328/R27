@@ -219,7 +219,7 @@ export function CustomerTable({
   }, [contracts, checkIsMember])
 
   const getCustomerHistoricalSessions = useCallback((c: Customer) => {
-    let systemSessions = 0
+    let systemSessions: number
     if (lessons && lessons.length > 0) {
       const custLessons = lessons.filter(
         l => (l.customerId === c.id || (l.attendingCustomerIds && l.attendingCustomerIds.includes(c.id))) && (l.sessionDate || l.date)

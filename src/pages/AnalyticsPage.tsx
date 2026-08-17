@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
     ;(contracts || []).forEach((c) => {
       const isEnded = c.status === 'completed' || c.status === 'expired' || Number(c.remainingSessions || 0) === 0 || c.status === 'expiring'
 
-      let isTimeframeMatch = false
+      let isTimeframeMatch: boolean
       const dateVal = c.endDate || c.createdAt || c.startDate || c.updatedAt
       if (dateVal) {
         const d = (dateVal as any).toDate ? (dateVal as any).toDate() : new Date(dateVal as any)

@@ -489,34 +489,6 @@ export function CustomerContractModal({
       
       await updateDoc(contractRef, updateData)
 
-      if (contract) {
-        contract.totalSessions = Number(editTotalSessions)
-        contract.remainingSessions = finalRemainingSessions
-        contract.status = newStatus as any
-        contract.totalAmount = Number(editTotalAmount)
-        contract.pricePerSession = computedPricePerSession
-        contract.paidAmount = finalPaidAmount
-        contract.startDate = ensureDate(editStartDate)
-        contract.endDate = ensureDate(editEndDate)
-        contract.paymentType = editPaymentType
-        contract.installmentCount = editPaymentType === 'installments' ? editInstallments.length : 1
-        contract.installments = finalInstallments
-        contract.trainerId = editTrainerId
-        contract.secondaryTrainerId = editSecondaryTrainerId
-        contract.contractNo = editContractNo
-        contract.reviewYear = Number(editReviewYear)
-        contract.reviewMonth = Number(editReviewMonth)
-        contract.reviewDay = Number(editReviewDay)
-        contract.coachRatio = Number(editCoachRatio)
-        contract.monthlyDueDay = Number(editMonthlyDueDay)
-        contract.monthlyDueAmount = Number(editMonthlyDueAmount)
-        contract.signatureDataUrl = effectiveSigA
-        contract.secondarySignatureDataUrl = effectiveSigB
-        if (updatedGroupMemberQuotas) {
-          contract.groupMemberQuotas = updatedGroupMemberQuotas
-        }
-      }
-
       // Unified Trainer Sync across all contract types
       const membersList = allContractMembers.length > 0 ? allContractMembers : [customer]
       const truePrimaryId = contract.primaryCustomerId || contract.customerId || (Array.isArray(contract.customerIds) && contract.customerIds.length > 0 ? contract.customerIds[0] : customer.id)
@@ -528,12 +500,12 @@ export function CustomerContractModal({
       membersList.forEach((m, idx) => {
         let assignedId = editMemberTrainers[m.id]
         if (!assignedId) {
-          if (m.id === primaryMember.id || idx === 0) {
+          if (contract.contractType === 'single') {
             assignedId = editTrainerId
-          } else if (partnerMember && m.id === partnerMember.id) {
-            assignedId = editSecondaryTrainerId || editTrainerId
+          } else if (contract.contractType === 'dual') {
+            assignedId = m.id === primaryMember.id ? editTrainerId : (editSecondaryTrainerId || editTrainerId)
           } else {
-            assignedId = editTrainerId
+            assignedId = (idx === 0 ? editTrainerId : (editSecondaryTrainerId || editTrainerId))
           }
         }
         if (assignedId) {
@@ -550,12 +522,6 @@ export function CustomerContractModal({
       updateData.secondaryTrainerId = finalSecondaryTrainer
       updateData.studentTrainers = updatedStudentTrainers
 
-      if (contract) {
-        contract.trainerId = finalPrimaryTrainer
-        contract.secondaryTrainerId = finalSecondaryTrainer
-        contract.studentTrainers = updatedStudentTrainers
-      }
-
       // Update Firestore contracts document
       await updateDoc(doc(db, 'contracts', contract.id), updateData)
 
@@ -568,7 +534,6 @@ export function CustomerContractModal({
               trainerId: memberTrainerId,
               updatedAt: serverTimestamp(),
             })
-            m.trainerId = memberTrainerId
           } catch (err) {
             console.error(`Failed to sync trainer for member ${m.id}:`, err)
           }

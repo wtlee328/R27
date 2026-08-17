@@ -718,7 +718,7 @@ export function LessonRecordWizard({
 
                 <div className="rounded-xl border border-stone-100 overflow-hidden bg-stone-50/40 divide-y divide-stone-100/80">
                   {groupCustomers.map((member, idx) => {
-                    const isAttending = (form.watch('attendingCustomerIds') || []).includes(member.id)
+                    const isAttending = (watchedAttendingIds || []).includes(member.id)
                     const memberContracts = contracts.filter(c => {
                       const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
                       const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id

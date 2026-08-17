@@ -31,7 +31,6 @@ export function useTrainers() {
   const [trainers, setTrainers] = useState<TrainerWithMetrics[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [migrationRunning, setMigrationRunning] = useState(false)
   const { centerId } = useCenterStore()
   const { user } = useAuthStore()
   const activeCenterId = user?.isSharedTrainerAccount ? (user.centerId || 'r27') : centerId
@@ -65,8 +64,6 @@ export function useTrainers() {
         getDocs(query(contractsRef, where('centerId', '==', activeCenterId))),
         getDocs(query(lessonRecordsRef, where('centerId', '==', activeCenterId))),
       ])
-
-
 
       const trainersList = trainersSnap.docs.map((doc) => ({
         id: doc.id,
@@ -122,109 +119,7 @@ export function useTrainers() {
     } finally {
       setLoading(false)
     }
-  }, [centerId])
-
-  async function runMigration() {
-    setMigrationRunning(true)
-    try {
-      const mockTrainers = [
-        { id: 'trainer-a', name: '教練 A', email: 'trainera@r27.com', phone: '0911-111-111' },
-        { id: 'trainer-b', name: '教練 B', email: 'trainerb@r27.com', phone: '0922-222-222' },
-        { id: 'trainer-c', name: '教練 C', email: 'trainerc@r27.com', phone: '0933-333-333' },
-      ]
-
-      // 1. Create trainers if they don't exist
-      const trainersRef = collection(db, 'trainers')
-      const trainersSnap = await getDocs(trainersRef)
-      if (trainersSnap.empty) {
-        const batch = writeBatch(db)
-        for (const trainer of mockTrainers) {
-          const docRef = doc(db, 'trainers', trainer.id)
-          batch.set(docRef, {
-            name: trainer.name,
-            email: trainer.email,
-            phone: trainer.phone,
-            centerId: 'r27',
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          })
-        }
-        await batch.commit()
-      }
-
-      // 2. Fetch all collections to assign randomly
-      const customersRef = collection(db, 'customers')
-      const contractsRef = collection(db, 'contracts')
-      const lessonRecordsRef = collection(db, 'lessonRecords')
-
-      const [customersSnap, contractsSnap, lessonRecordsSnap] = await Promise.all([
-        getDocs(customersRef),
-        getDocs(contractsRef),
-        getDocs(lessonRecordsRef),
-      ])
-
-      const trainerIds = mockTrainers.map((t) => t.id)
-      const batch = writeBatch(db)
-      let ops = 0
-      const customerTrainerMap: Record<string, string> = {}
-
-      // Assign students
-      customersSnap.docs.forEach((cDoc) => {
-        const data = cDoc.data()
-        let assignedTrainerId = data.trainerId
-        if (!assignedTrainerId || !trainerIds.includes(assignedTrainerId)) {
-          assignedTrainerId = trainerIds[Math.floor(Math.random() * trainerIds.length)]
-          const cRef = doc(db, 'customers', cDoc.id)
-          batch.update(cRef, {
-            trainerId: assignedTrainerId,
-            updatedAt: serverTimestamp(),
-          })
-          ops++
-        }
-        customerTrainerMap[cDoc.id] = assignedTrainerId
-      })
-
-      // Sync contracts
-      contractsSnap.docs.forEach((conDoc) => {
-        const data = conDoc.data()
-        const primaryId = data.primaryCustomerId || data.customerId
-        const targetTrainerId = customerTrainerMap[primaryId]
-        if (targetTrainerId && data.trainerId !== targetTrainerId) {
-          const conRef = doc(db, 'contracts', conDoc.id)
-          batch.update(conRef, {
-            trainerId: targetTrainerId,
-            updatedAt: serverTimestamp(),
-          })
-          ops++
-        }
-      })
-
-      // Sync lesson records
-      lessonRecordsSnap.docs.forEach((lrDoc) => {
-        const data = lrDoc.data()
-        const targetTrainerId = customerTrainerMap[data.customerId]
-        if (targetTrainerId && data.trainerId !== targetTrainerId) {
-          const lrRef = doc(db, 'lessonRecords', lrDoc.id)
-          batch.update(lrRef, {
-            trainerId: targetTrainerId,
-            updatedAt: serverTimestamp(),
-          })
-          ops++
-        }
-      })
-
-      if (ops > 0) {
-        await batch.commit()
-      }
-
-      await fetchTrainersData()
-    } catch (err: any) {
-      console.error('Error during trainer database migration:', err)
-      setError(err.message || '資料庫遷移失敗')
-    } finally {
-      setMigrationRunning(false)
-    }
-  }
+  }, [activeCenterId, user])
 
   const addTrainer = async (trainerData: { name: string; email: string; phone: string }) => {
     try {
@@ -302,10 +197,13 @@ export function useTrainers() {
 
       // 4. Log activity
       await logActivity({
-        action: 'delete_trainer',
-        targetType: 'trainer',
-        targetId: trainerId,
-        details: `刪除教練 ${trainerName} (受影響學員: ${custSnap.size} 人, 合約: ${primaryContSnap.size + secondaryContSnap.size} 筆, 移交教練: ${newTrainerId || '未指定'})`,
+        centerId: activeCenterId as any,
+        trainerId,
+        trainerName,
+        action: 'delete',
+        module: 'customers',
+        recordId: trainerId,
+        recordSummary: `刪除教練: ${trainerName} (受影響學員: ${custSnap.size} 人, 合約: ${primaryContSnap.size + secondaryContSnap.size} 筆, 移交教練: ${newTrainerId || '未指定'})`,
       })
 
       // 5. Refresh data
@@ -324,8 +222,6 @@ export function useTrainers() {
     trainers,
     loading,
     error,
-    migrationRunning,
-    runMigration,
     addTrainer,
     deleteTrainer,
     refresh: fetchTrainersData,

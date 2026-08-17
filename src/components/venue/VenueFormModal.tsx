@@ -110,15 +110,17 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
 
   const isEditMode = !!initialData
 
+  const watchedDate = form.watch('date')
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md p-6 bg-white rounded-2xl border-none shadow-2xl">
-        <DialogHeader className="border-b border-stone-100 pb-3 mb-2">
-          <DialogTitle className="text-base font-bold text-stone-800">
-            {isEditMode ? '編輯場租紀錄' : '填寫場租預約'}
+      <DialogContent className="max-w-md bg-white border border-stone-200 shadow-2xl rounded-2xl p-6">
+        <DialogHeader className="mb-2">
+          <DialogTitle className="text-stone-900 font-black text-lg">
+            {initialData ? '編輯場租預約' : '新增場租預約'}
           </DialogTitle>
-          <DialogDescription className="text-xs text-stone-400 font-medium">
-            {isEditMode ? '修改此場租紀錄的資料與收費明細。' : '建立後，系統將自動於現金流量表產生對應的場租收入。'}
+          <DialogDescription className="text-stone-500 text-xs">
+            {initialData ? '修改此筆場租預約明細' : '登記並預約教練或學員之場地租借時段'}
           </DialogDescription>
         </DialogHeader>
 
@@ -130,7 +132,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
               type="date"
               id="date"
               className="h-10 bg-white border-stone-200 rounded-xl text-sm"
-              value={formatDateForInput(form.watch('date'))}
+              value={formatDateForInput(watchedDate)}
               onChange={(e) => {
                 const val = e.target.value
                 if (val) {

@@ -72,8 +72,8 @@ export function useVenueRentals() {
   const logRentalActivity = async (action: 'create' | 'update' | 'delete', recordId: string, summary: string, newValue?: any, previousValue?: any) => {
     if (!user) return
     try {
-      let operatorName = selectedTrainerName || user.displayName || '教練'
-      let operatorId = selectedTrainerId || user.uid
+      const operatorName = selectedTrainerName || user.displayName || '教練'
+      const operatorId = selectedTrainerId || user.uid
 
       await logActivity({
         centerId: centerId as any,

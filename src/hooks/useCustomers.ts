@@ -53,7 +53,9 @@ export function useCustomers() {
               try {
                 await updateDoc(doc(db, 'customers', cust.id), { centerId })
                 cust.centerId = centerId
-              } catch (e) {}
+              } catch (e) {
+                console.warn(`Failed to backfill centerId for customer ${cust.id}:`, e)
+              }
             }
             return cust as Customer
           })

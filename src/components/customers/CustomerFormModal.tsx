@@ -1103,7 +1103,7 @@ export function CustomerFormModal({
                         source: selectedCust.source || 'existing',
                         emergencyContact: selectedCust.emergencyContact || { name: '', relation: '', phone: '' },
                         medicalHistory: selectedCust.medicalHistory || { chronicConditions: [], injuries: [], notes: '' },
-                        assignedTrainerId: m.assignedTrainerId || selectedCust.trainerId || form.watch('contract.trainerId') || '',
+                        assignedTrainerId: m.assignedTrainerId || selectedCust.trainerId || form.getValues('contract.trainerId') || '',
                       } : m))
                     } else {
                       setAdditionalGroupMembers(prev => prev.map((item, i) => i === memberArrIdx ? { ...item, memberMode: 'existing', existingCustomerId: '', name: '' } : item))
