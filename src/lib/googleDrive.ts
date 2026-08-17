@@ -25,6 +25,8 @@ declare global {
 
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file'
 const STORAGE_KEY_CLIENT_ID = 'r27_google_client_id'
+const STORAGE_KEY_TOKEN = 'r27_google_drive_token'
+const STORAGE_KEY_TOKEN_EXPIRES = 'r27_google_drive_token_expires'
 
 export function getStoredGoogleClientId(): string {
   const envId = import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -39,6 +41,39 @@ export function setStoredGoogleClientId(clientId: string): void {
     localStorage.removeItem(STORAGE_KEY_CLIENT_ID)
   } else {
     localStorage.setItem(STORAGE_KEY_CLIENT_ID, clientId.trim())
+  }
+}
+
+export function getStoredGoogleDriveToken(): { accessToken: string; expiresAt: number } | null {
+  try {
+    const token = localStorage.getItem(STORAGE_KEY_TOKEN)
+    const expiresAt = Number(localStorage.getItem(STORAGE_KEY_TOKEN_EXPIRES))
+    // Valid if has token and still has at least 30 seconds remaining
+    if (token && expiresAt && expiresAt > Date.now() + 30000) {
+      return { accessToken: token, expiresAt }
+    }
+  } catch (e) {
+    console.warn('Could not read stored Google Drive token:', e)
+  }
+  return null
+}
+
+export function setStoredGoogleDriveToken(token: string, expiresInSeconds: number): void {
+  try {
+    const expiresAt = Date.now() + expiresInSeconds * 1000
+    localStorage.setItem(STORAGE_KEY_TOKEN, token)
+    localStorage.setItem(STORAGE_KEY_TOKEN_EXPIRES, String(expiresAt))
+  } catch (e) {
+    console.warn('Could not save Google Drive token:', e)
+  }
+}
+
+export function clearStoredGoogleDriveToken(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY_TOKEN)
+    localStorage.removeItem(STORAGE_KEY_TOKEN_EXPIRES)
+  } catch (e) {
+    console.warn('Could not clear Google Drive token:', e)
   }
 }
 
@@ -72,7 +107,10 @@ export function loadGisScript(): Promise<void> {
 /**
  * Requests OAuth2 Access Token for Google Drive
  */
-export async function requestGoogleDriveToken(clientId: string): Promise<{ accessToken: string; expiresIn: number }> {
+export async function requestGoogleDriveToken(
+  clientId: string,
+  promptOption: '' | 'consent' | 'select_account' = 'consent'
+): Promise<{ accessToken: string; expiresIn: number }> {
   if (!clientId || clientId.trim() === '') {
     throw new Error('請先配置 Google OAuth Client ID')
   }
@@ -89,9 +127,12 @@ export async function requestGoogleDriveToken(clientId: string): Promise<{ acces
             reject(new Error(tokenResponse.error_description || tokenResponse.error || 'Google 授權失敗'))
             return
           }
+          const accessToken = tokenResponse.access_token
+          const expiresIn = Number(tokenResponse.expires_in) || 3599
+          setStoredGoogleDriveToken(accessToken, expiresIn)
           resolve({
-            accessToken: tokenResponse.access_token,
-            expiresIn: Number(tokenResponse.expires_in) || 3599,
+            accessToken,
+            expiresIn,
           })
         },
         error_callback: (err: any) => {
@@ -99,7 +140,7 @@ export async function requestGoogleDriveToken(clientId: string): Promise<{ acces
         },
       })
 
-      client.requestAccessToken({ prompt: 'consent' })
+      client.requestAccessToken(promptOption ? { prompt: promptOption } : undefined)
     } catch (err: any) {
       reject(new Error(err?.message || '初始化 Google 授權用戶端時發生錯誤'))
     }

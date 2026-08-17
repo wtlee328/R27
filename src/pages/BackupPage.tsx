@@ -34,6 +34,8 @@ import {
   uploadFileToGoogleDrive,
   getStoredGoogleClientId,
   setStoredGoogleClientId,
+  getStoredGoogleDriveToken,
+  clearStoredGoogleDriveToken,
 } from '../lib/googleDrive'
 import {
   Dialog,
@@ -143,11 +145,12 @@ export default function BackupPage() {
   })
 
   // Google Drive Settings & OAuth Token State
-  const [syncToGDrive, setSyncToGDrive] = useState(false)
+  const initialSavedToken = useMemo(() => getStoredGoogleDriveToken(), [])
+  const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(initialSavedToken)
+  const [syncToGDrive, setSyncToGDrive] = useState(() => Boolean(initialSavedToken))
   const [downloadLocalCopy, setDownloadLocalCopy] = useState(true)
   const [gdriveFolderId, setGdriveFolderId] = useState('R27_Coffit_Backups')
   const [backupSchedule, setBackupSchedule] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
-  const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(null)
   const [googleClientId, setGoogleClientId] = useState<string>(() => getStoredGoogleClientId())
   const [clientIdInput, setClientIdInput] = useState<string>('')
   const [showClientIdModal, setShowClientIdModal] = useState<boolean>(false)
@@ -534,10 +537,11 @@ export default function BackupPage() {
   }
 
   const handleDisconnectGoogleDrive = () => {
+    clearStoredGoogleDriveToken()
     setGoogleToken(null)
     setSyncToGDrive(false)
     setLastUploadedDriveFile(null)
-    toast.info('已中斷 Google Drive 連結')
+    toast.info('已中斷 Google Drive 連結並清除授權')
   }
 
   const handleSaveClientId = () => {
