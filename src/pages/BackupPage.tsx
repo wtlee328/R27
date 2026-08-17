@@ -47,6 +47,7 @@ import {
 } from '../components/ui/dialog'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
+import { useAutoBackupScheduler } from '../hooks/useAutoBackupScheduler'
 
 type ScopeType = 'all' | 'r27' | 'coffit'
 
@@ -144,13 +145,20 @@ export default function BackupPage() {
     notifications: true,
   })
 
+  // Auto Backup Scheduler Hook
+  const {
+    config: autoConfig,
+    isRunning: isAutoBackupRunning,
+    updateFrequency,
+    triggerTestScheduledBackup,
+  } = useAutoBackupScheduler()
+
   // Google Drive Settings & OAuth Token State
   const initialSavedToken = useMemo(() => getStoredGoogleDriveToken(), [])
   const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(initialSavedToken)
   const [syncToGDrive, setSyncToGDrive] = useState(() => Boolean(initialSavedToken))
   const [downloadLocalCopy, setDownloadLocalCopy] = useState(true)
   const [gdriveFolderId, setGdriveFolderId] = useState('R27_Coffit_Backups')
-  const [backupSchedule, setBackupSchedule] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
   const [googleClientId, setGoogleClientId] = useState<string>(() => getStoredGoogleClientId())
   const [clientIdInput, setClientIdInput] = useState<string>('')
   const [showClientIdModal, setShowClientIdModal] = useState<boolean>(false)
@@ -1176,21 +1184,72 @@ export default function BackupPage() {
                   </div>
                 )}
 
-                <div className="space-y-1.5 pt-2 border-t border-stone-100">
-                  <Label htmlFor="backup-schedule" className="text-stone-700 font-bold text-xs block">設定自動排程備份頻率</Label>
+                <div className="space-y-3 pt-2 border-t border-stone-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="backup-schedule" className="text-stone-700 font-bold text-xs block">設定自動排程備份頻率</Label>
+                      <span className="text-[10px] text-stone-400 font-medium">系統將於背景自動執行完整備份並推播結果至通知中心</span>
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <select
                       id="backup-schedule"
-                      value={backupSchedule}
-                      onChange={(e) => setBackupSchedule(e.target.value as any)}
-                      className="flex-1 bg-white border border-stone-200 text-stone-800 px-3 py-2 rounded-xl text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer font-bold h-9 outline-none"
+                      value={autoConfig.frequency}
+                      onChange={(e) => updateFrequency(e.target.value as any)}
+                      className="flex-1 bg-white border border-stone-200 text-stone-800 px-3 py-2 rounded-xl text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer font-bold h-10 outline-none"
                     >
                       <option value="none">無 (僅手動備份)</option>
-                      <option value="daily">每日自動備份 (每晚 02:00)</option>
-                      <option value="weekly">每週自動備份 (每週日凌晨)</option>
-                      <option value="monthly">每月自動備份 (每月 1 號凌晨)</option>
+                      <option value="daily">每日自動備份 (每 24 小時自動執行)</option>
+                      <option value="weekly">每週自動備份 (每 7 天自動執行)</option>
+                      <option value="monthly">每月自動備份 (每 30 天自動執行)</option>
                     </select>
                   </div>
+
+                  {autoConfig.frequency !== 'none' && (
+                    <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5 text-xs animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between text-stone-600">
+                        <span className="font-medium text-[11px]">上次排程執行：</span>
+                        <span className="font-mono font-bold text-stone-800 text-[11px]">
+                          {autoConfig.lastRunTimestamp
+                            ? format(new Date(autoConfig.lastRunTimestamp), 'yyyy/MM/dd HH:mm:ss')
+                            : '尚未觸發'}
+                        </span>
+                      </div>
+                      {autoConfig.lastStatus && (
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-stone-500">上次執行狀態：</span>
+                          <span className={`font-bold px-2 py-0.5 rounded-md ${
+                            autoConfig.lastStatus === 'success'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {autoConfig.lastStatus === 'success' ? '✅ 備份成功' : '❌ 備份失敗'}
+                          </span>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-stone-400">執行成功或失敗皆會即時推播至通知中心</span>
+                        <button
+                          type="button"
+                          onClick={() => triggerTestScheduledBackup()}
+                          disabled={isAutoBackupRunning}
+                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
+                        >
+                          {isAutoBackupRunning ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>執行中...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play className="w-3 h-3 text-brand-400" />
+                              <span>立即測試排程備份與通知</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1220,6 +1279,18 @@ export default function BackupPage() {
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">
                   <span className="text-stone-400 font-medium">輸出格式</span>
                   <span className="font-bold text-brand-400">JSON (還原結構) + CSV (Excel 表)</span>
+                </div>
+                <div className="flex justify-between border-b border-stone-800 pb-2.5">
+                  <span className="text-stone-400 font-medium">自動排程頻率</span>
+                  <span className={`font-bold ${autoConfig.frequency !== 'none' ? 'text-brand-400' : 'text-stone-500'}`}>
+                    {autoConfig.frequency === 'daily'
+                      ? '每日自動備份'
+                      : autoConfig.frequency === 'weekly'
+                      ? '每週自動備份'
+                      : autoConfig.frequency === 'monthly'
+                      ? '每月自動備份'
+                      : '無 (僅手動)'}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">
                   <span className="text-stone-400 font-medium">Google Drive 同步</span>

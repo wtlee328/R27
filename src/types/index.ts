@@ -222,7 +222,13 @@ export interface MonthFilter {
 }
 
 // ─── Notifications ─────────────────────────────────────────────
-export type NotificationType = 'installment_due' | 'installment_overdue' | 'contract_expiring' | 'general'
+export type NotificationType =
+  | 'installment_due'
+  | 'installment_overdue'
+  | 'contract_expiring'
+  | 'backup_success'
+  | 'backup_failed'
+  | 'general'
 
 export interface AppNotification {
   id: string

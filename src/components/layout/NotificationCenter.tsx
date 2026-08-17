@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, BellRing, CheckCheck, Clock, AlertTriangle, X } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Clock, AlertTriangle, X, CheckCircle2, AlertOctagon, Database } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 import type { AppNotification } from '@/types'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,12 @@ function timeAgo(timestamp: any): string {
 }
 
 function NotificationIcon({ type }: { type: AppNotification['type'] }) {
+  if (type === 'backup_success') {
+    return <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+  }
+  if (type === 'backup_failed') {
+    return <AlertOctagon className="h-4 w-4 text-red-500 shrink-0" />
+  }
   if (type === 'installment_overdue') {
     return <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
   }
@@ -67,7 +73,10 @@ export function NotificationCenter() {
     if (!notif.isRead) {
       await markAsRead(notif.id)
     }
-    if (notif.customerId) {
+    if (notif.type === 'backup_success' || notif.type === 'backup_failed') {
+      navigate('/backup')
+      setOpen(false)
+    } else if (notif.customerId) {
       navigate('/')
       setOpen(false)
     }

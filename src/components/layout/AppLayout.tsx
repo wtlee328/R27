@@ -1,9 +1,11 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { Navbar } from './Navbar'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAutoBackupScheduler } from '@/hooks/useAutoBackupScheduler'
 
 export function AppLayout() {
   const location = useLocation()
+  useAutoBackupScheduler()
 
   return (
     <div className="min-h-screen bg-white">
