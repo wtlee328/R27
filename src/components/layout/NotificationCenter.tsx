@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, BellRing, CheckCheck, Clock, AlertTriangle, X, Trash2 } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Clock, AlertTriangle, X } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 import type { AppNotification } from '@/types'
 import { cn } from '@/lib/utils'
@@ -137,17 +137,6 @@ export function NotificationCenter() {
                   全部已讀
                 </button>
               )}
-              {notifications.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleClearAll}
-                  className="flex items-center gap-1 text-[11px] text-stone-400 hover:text-red-400 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
-                  title="清除所有通知"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  清除全部
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -194,7 +183,7 @@ export function NotificationCenter() {
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0 pr-6">
+                      <div className="flex-1 min-w-0 pr-12">
                         <div className="flex items-start justify-between gap-2">
                           <p className={cn(
                             'text-[13px] font-medium leading-snug',
@@ -215,15 +204,15 @@ export function NotificationCenter() {
                         </p>
                       </div>
 
-                      {/* Top-right individual Dismiss 'X' Button */}
+                      {/* Top-right individual "清除" Text Button */}
                       <button
                         type="button"
                         onClick={(e) => handleDeleteNotification(e, notif.id)}
-                        className="absolute top-3 right-3 p-1 rounded-md text-stone-500 hover:text-stone-200 hover:bg-white/10 transition-colors opacity-70 group-hover:opacity-100 shrink-0"
+                        className="absolute top-3 right-3 text-[11px] text-stone-500 hover:text-red-400 hover:bg-red-500/10 px-1.5 py-0.5 rounded transition-all opacity-80 group-hover:opacity-100 shrink-0 font-medium"
                         title="清除此通知"
                         aria-label="清除此通知"
                       >
-                        <X className="h-3.5 w-3.5" />
+                        清除
                       </button>
                     </div>
                   </li>
