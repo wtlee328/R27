@@ -6,6 +6,7 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   getDocs,
   serverTimestamp,
@@ -202,6 +203,42 @@ export function useNotifications() {
     }
   }, [notifications])
 
+  const deleteNotification = useCallback(async (notificationId: string) => {
+    try {
+      const notifRef = doc(db, 'notifications', notificationId)
+      await deleteDoc(notifRef)
+    } catch (err) {
+      console.error('Error deleting notification:', err)
+    }
+  }, [])
+
+  const clearAllNotifications = useCallback(async () => {
+    try {
+      if (!notifications.length) return
+      const batch = writeBatch(db)
+      notifications.forEach(n => {
+        batch.delete(doc(db, 'notifications', n.id))
+      })
+      await batch.commit()
+    } catch (err) {
+      console.error('Error clearing all notifications:', err)
+    }
+  }, [notifications])
+
+  const clearReadNotifications = useCallback(async () => {
+    try {
+      const readNotifs = notifications.filter(n => n.isRead)
+      if (!readNotifs.length) return
+      const batch = writeBatch(db)
+      readNotifs.forEach(n => {
+        batch.delete(doc(db, 'notifications', n.id))
+      })
+      await batch.commit()
+    } catch (err) {
+      console.error('Error clearing read notifications:', err)
+    }
+  }, [notifications])
+
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   return {
@@ -210,5 +247,8 @@ export function useNotifications() {
     loading,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    clearReadNotifications,
   }
 }

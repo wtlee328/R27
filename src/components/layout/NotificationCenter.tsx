@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, BellRing, Check, CheckCheck, Clock, AlertTriangle, X } from 'lucide-react'
+import { Bell, BellRing, CheckCheck, Clock, AlertTriangle, X, Trash2 } from 'lucide-react'
 import { useNotifications } from '@/hooks/useNotifications'
 import type { AppNotification } from '@/types'
 import { cn } from '@/lib/utils'
@@ -37,7 +37,15 @@ export function NotificationCenter() {
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const navigate = useNavigate()
-  const { notifications, unreadCount, loading, markAsRead, markAllAsRead } = useNotifications()
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAllNotifications,
+  } = useNotifications()
 
   // Close on outside click
   useEffect(() => {
@@ -65,13 +73,25 @@ export function NotificationCenter() {
     }
   }
 
+  async function handleDeleteNotification(e: React.MouseEvent, notificationId: string) {
+    e.stopPropagation()
+    await deleteNotification(notificationId)
+  }
+
+  async function handleClearAll() {
+    if (notifications.length === 0) return
+    if (window.confirm('確定要清除所有通知嗎？')) {
+      await clearAllNotifications()
+    }
+  }
+
   return (
     <div className="relative">
       {/* Bell Button */}
       <button
         ref={buttonRef}
         onClick={() => setOpen(prev => !prev)}
-        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-stone-600 hover:text-stone-950 hover:bg-stone-100 transition-all duration-200"
+        className="relative flex items-center justify-center h-9 w-9 rounded-lg text-stone-600 hover:text-stone-950 hover:bg-stone-100 dark:text-stone-300 dark:hover:text-white dark:hover:bg-stone-800 transition-all duration-200"
         aria-label="通知中心"
       >
         {unreadCount > 0 ? (
@@ -108,16 +128,31 @@ export function NotificationCenter() {
             <div className="flex items-center gap-1">
               {unreadCount > 0 && (
                 <button
+                  type="button"
                   onClick={markAllAsRead}
                   className="flex items-center gap-1 text-[11px] text-stone-400 hover:text-brand-400 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
+                  title="全部標為已讀"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   全部已讀
                 </button>
               )}
+              {notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="flex items-center gap-1 text-[11px] text-stone-400 hover:text-red-400 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
+                  title="清除所有通知"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  清除全部
+                </button>
+              )}
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="p-1 text-stone-500 hover:text-stone-300 transition-colors rounded-md hover:bg-white/5"
+                title="關閉"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -140,11 +175,11 @@ export function NotificationCenter() {
             ) : (
               <ul className="divide-y divide-white/5">
                 {notifications.map(notif => (
-                  <li key={notif.id}>
-                    <button
+                  <li key={notif.id} className="relative group">
+                    <div
                       onClick={() => handleNotificationClick(notif)}
                       className={cn(
-                        'w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors hover:bg-white/5',
+                        'w-full text-left px-4 py-3.5 flex items-start gap-3 transition-colors hover:bg-white/5 cursor-pointer',
                         !notif.isRead && 'bg-brand-500/5'
                       )}
                     >
@@ -159,7 +194,7 @@ export function NotificationCenter() {
                       </div>
 
                       {/* Content */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 pr-6">
                         <div className="flex items-start justify-between gap-2">
                           <p className={cn(
                             'text-[13px] font-medium leading-snug',
@@ -179,7 +214,18 @@ export function NotificationCenter() {
                           {timeAgo(notif.createdAt)}
                         </p>
                       </div>
-                    </button>
+
+                      {/* Top-right individual Dismiss 'X' Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteNotification(e, notif.id)}
+                        className="absolute top-3 right-3 p-1 rounded-md text-stone-500 hover:text-stone-200 hover:bg-white/10 transition-colors opacity-70 group-hover:opacity-100 shrink-0"
+                        title="清除此通知"
+                        aria-label="清除此通知"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -188,10 +234,17 @@ export function NotificationCenter() {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-2.5 border-t border-white/10 bg-stone-950/50">
-              <p className="text-center text-[11px] text-stone-600">
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-white/10 bg-stone-950/50">
+              <p className="text-[11px] text-stone-500">
                 共 {notifications.length} 則通知 · {unreadCount} 則未讀
               </p>
+              <button
+                type="button"
+                onClick={handleClearAll}
+                className="text-[11px] text-stone-400 hover:text-red-400 transition-colors hover:underline"
+              >
+                清除所有通知
+              </button>
             </div>
           )}
         </div>
