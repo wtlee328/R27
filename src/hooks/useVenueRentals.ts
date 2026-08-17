@@ -181,7 +181,10 @@ export function useVenueRentals() {
         const cashFlowUpdate = {
           date: Timestamp.fromDate(data.date),
           amount: data.amount,
+          account: '預收款帳號',
+          debitCategory: '預收款帳號',
           debitAmount: data.amount,
+          creditCategory: '場租收入',
           creditAmount: data.amount,
           description: `場租收入 - ${finalRenterName}`,
           notes: data.notes || '',

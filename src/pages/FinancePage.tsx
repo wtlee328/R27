@@ -37,7 +37,7 @@ export default function FinancePage() {
     const legacyFields =
       data.type === 'income'
         ? {
-            debitCategory: data.account || '公司存款',
+            debitCategory: data.account || '預收款帳號',
             debitAmount: data.amount,
             creditCategory: data.category,
             creditAmount: data.amount,
@@ -45,7 +45,7 @@ export default function FinancePage() {
         : {
             debitCategory: data.category,
             debitAmount: data.amount,
-            creditCategory: data.account || '公司存款',
+            creditCategory: data.account || '預收款帳號',
             creditAmount: data.amount,
           }
 

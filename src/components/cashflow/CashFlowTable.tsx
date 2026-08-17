@@ -13,20 +13,32 @@ interface CashFlowTableProps {
 }
 
 export function normalizeCashFlowRecord(r: CashFlowRecord) {
+  const isVenueRental = r.source === 'venue_rental' || r.category === '場租收入'
+
+  // Helper to check if a category is a cash/bank/prepaid asset account
+  const isCashOrBank = (cat?: string) =>
+    cat && ['現金', '銀行存款', '公司存款', '預收款', '預收款帳號'].some((a) => cat.includes(a))
+
   // If record already has new schema fields (type, category, amount)
   if (r.type && r.category && typeof r.amount === 'number') {
+    let resolvedAccount = r.account
+    if (!resolvedAccount) {
+      if (isVenueRental) {
+        resolvedAccount = '預收款帳號'
+      } else if (r.debitCategory && isCashOrBank(r.debitCategory)) {
+        resolvedAccount = r.debitCategory
+      } else {
+        resolvedAccount = '預收款帳號'
+      }
+    }
     return {
       ...r,
       type: r.type,
       category: r.category,
       amount: r.amount,
-      account: r.account || '公司存款',
+      account: resolvedAccount,
     }
   }
-
-  // Helper to check if a category is a cash/bank asset
-  const isCashOrBank = (cat?: string) =>
-    cat && ['現金', '銀行存款', '公司存款'].some((a) => cat.includes(a))
 
   // Legacy schema fallback (debitCategory/creditCategory/debitAmount/creditAmount)
   const isDebitCash = isCashOrBank(r.debitCategory)
@@ -38,7 +50,7 @@ export function normalizeCashFlowRecord(r: CashFlowRecord) {
       type: 'income' as const,
       category: r.creditCategory || r.debitCategory || '未知科目',
       amount: r.creditAmount || r.debitAmount || 0,
-      account: r.debitCategory || '公司存款',
+      account: r.account || r.debitCategory || (isVenueRental ? '預收款帳號' : '預收款帳號'),
     }
   } else if (isCreditCash && !isDebitCash) {
     return {
@@ -46,7 +58,7 @@ export function normalizeCashFlowRecord(r: CashFlowRecord) {
       type: 'expense' as const,
       category: r.debitCategory || r.creditCategory || '未知科目',
       amount: r.debitAmount || r.creditAmount || 0,
-      account: r.creditCategory || '公司存款',
+      account: r.account || r.creditCategory || (isVenueRental ? '預收款帳號' : '預收款帳號'),
     }
   } else {
     const isExpenseCategory = [
@@ -58,7 +70,7 @@ export function normalizeCashFlowRecord(r: CashFlowRecord) {
       type: isExpenseCategory ? ('expense' as const) : ('income' as const),
       category: r.debitCategory || r.creditCategory || '一般收支',
       amount: r.debitAmount || r.creditAmount || 0,
-      account: '公司存款',
+      account: r.account || (r.debitCategory && isCashOrBank(r.debitCategory) ? r.debitCategory : (isVenueRental ? '預收款帳號' : '預收款帳號')),
     }
   }
 }
