@@ -9,25 +9,36 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             (request.auth.token.role == 'admin' ||
+              request.auth.token.admin == true ||
+              (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
     }
 
     function isTrainer() {
       return isAuthenticated() &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer';
+             (request.auth.token.role == 'trainer' ||
+              (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer'));
     }
 
     function hasAccess(centerId) {
       return isAdmin() || 
              (isTrainer() && 
+              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
               get(/databases/$(database)/documents/users/$(request.auth.uid)).data.centerId == centerId);
     }
 
     // Users collection
     match /users/{userId} {
       allow read, list: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAdmin() || request.auth.uid == userId;
+      // Users can only create their own document with default 'trainer' role, unless already admin
+      allow create: if isAuthenticated() && request.auth.uid == userId &&
+                      (!('role' in request.resource.data) || request.resource.data.role == 'trainer' || isAdmin());
+      // Users cannot elevate their own role or isSuperAdmin status
+      allow update: if isAdmin() ||
+                      (isAuthenticated() && request.auth.uid == userId &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isSuperAdmin']));
       allow delete: if isAdmin();
     }
 

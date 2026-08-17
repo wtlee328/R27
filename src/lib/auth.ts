@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   updatePassword,
@@ -32,15 +31,22 @@ export function useAuthListener() {
         const userRef = doc(db, COLLECTIONS.USERS, firebaseUser.uid)
         const userSnap = await getDoc(userRef)
 
+        // Check Custom Claims from Firebase Auth Token
+        const idTokenResult = await firebaseUser.getIdTokenResult()
+        const tokenRole = (idTokenResult.claims.role as UserRole) || (idTokenResult.claims.admin ? 'admin' : undefined)
+
         let appUser: AppUser
 
         if (userSnap.exists()) {
-          appUser = { uid: firebaseUser.uid, ...userSnap.data() } as AppUser
+          const userData = userSnap.data()
+          appUser = {
+            uid: firebaseUser.uid,
+            ...userData,
+            // Custom Claims take highest precedence if set
+            role: tokenRole || (userData.role as UserRole) || 'trainer',
+          } as AppUser
         } else {
           // First login — create user doc
-          const adminEmails = ['wtlee328@gmail.com', 'admin@r27.com', 'lins92142t@gmail.com']
-          const isAdminEmail = adminEmails.includes(firebaseUser.email ?? '')
-          
           // Check if this is a shared trainer account
           const trainerEmailMap: Record<string, string> = {
             'trainer-r27@r27app.com': 'r27',
@@ -62,12 +68,13 @@ export function useAuthListener() {
               updatedAt: serverTimestamp(),
             }
           } else {
-            // Admin or individual account
-            const role = isAdminEmail ? 'admin' : 'trainer'
+            // Admin or trainer (default role is trainer unless authorized via custom claims)
+            const role: UserRole = tokenRole || 'trainer'
             newUser = {
               email: firebaseUser.email ?? '',
               displayName: firebaseUser.displayName ?? firebaseUser.email ?? '',
               role,
+              centerId: 'r27',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             }
@@ -93,11 +100,6 @@ export function useAuthListener() {
 // ─── Sign in ──────────────────────────────────────────────────
 export async function signIn(email: string, password: string) {
   return signInWithEmailAndPassword(auth, email, password)
-}
-
-// ─── Sign up ──────────────────────────────────────────────────
-export async function signUp(email: string, password: string) {
-  return createUserWithEmailAndPassword(auth, email, password)
 }
 
 // ─── Sign out ─────────────────────────────────────────────────

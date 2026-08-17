@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Eye, EyeOff, Loader2, ChevronLeft, ArrowRight } from 'lucide-react'
-import { signIn, signUp } from '@/lib/auth'
+import { signIn } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -93,7 +93,6 @@ export default function LoginPage() {
   const [profile, setProfile] = useState<LoginProfile>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isRegister, setIsRegister] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -125,18 +124,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const loginEmail = profile === 'admin' ? email : (TRAINER_EMAIL_MAP[profile!] || '')
-      if (isRegister && profile === 'admin') {
-        await signUp(loginEmail, password)
-      } else {
-        await signIn(loginEmail, password)
-      }
+      await signIn(loginEmail, password)
     } catch (err: any) {
       console.error('Auth error:', err)
-      if (isRegister) {
-        setError(err.code === 'auth/email-already-in-use' ? '此電子郵件已被註冊。' : '註冊失敗，請稍後再試。')
-      } else {
-        setError('密碼錯誤，請重試。')
-      }
+      setError('帳號或密碼錯誤，請重試。')
       setLoading(false)
     }
   }
@@ -211,7 +202,7 @@ export default function LoginPage() {
             <div className="p-6">
               <button
                 type="button"
-                onClick={() => { setProfile(null); setError(null); setIsRegister(false) }}
+                onClick={() => { setProfile(null); setError(null) }}
                 className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-300 transition-colors mb-5 -mt-1 cursor-pointer font-medium"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -226,11 +217,11 @@ export default function LoginPage() {
                     <div className={`w-2 h-2 rounded-full ${cfg?.dotColor ?? 'bg-stone-400'} shrink-0`} />
                     <div>
                       <h2 className="text-sm font-bold text-stone-200">
-                        {profile === 'admin' ? (isRegister ? '建立管理員帳號' : '管理員登入') : `${cfg?.label} 登入`}
+                        {profile === 'admin' ? '管理員登入' : `${cfg?.label} 登入`}
                       </h2>
                       <p className="text-[11px] text-stone-500 mt-0.5">
                         {profile === 'admin'
-                          ? (isRegister ? '註冊後即可開始管理' : '登入您的管理員帳號以繼續')
+                          ? '請輸入管理員帳號與密碼以繼續'
                           : '請輸入教練密碼以繼續'
                         }
                       </p>
@@ -242,7 +233,7 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 {profile === 'admin' && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-stone-400 text-xs font-medium">電子郵件</Label>
+                    <Label htmlFor="email" className="text-stone-400 text-xs font-medium">管理員電子郵件</Label>
                     <Input
                       id="email"
                       type="email"
@@ -279,7 +270,6 @@ export default function LoginPage() {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  {isRegister && <p className="text-[10px] text-stone-500 mt-1">密碼長度建議至少 6 個字元</p>}
                 </div>
 
                 {error && (
@@ -295,23 +285,11 @@ export default function LoginPage() {
                   {loading ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      {isRegister ? '註冊中...' : '登入中...'}
+                      登入中...
                     </>
-                  ) : (isRegister ? '註冊' : '登入')}
+                  ) : '登入'}
                 </Button>
               </form>
-
-              {profile === 'admin' && (
-                <div className="mt-5 pt-5 border-t border-stone-800 text-center">
-                  <button
-                    type="button"
-                    onClick={() => { setIsRegister(!isRegister); setError(null) }}
-                    className="text-xs text-stone-500 hover:text-stone-300 transition-colors font-medium cursor-pointer"
-                  >
-                    {isRegister ? '已經有帳號了？點此登入' : '還沒有帳號？點此註冊管理員帳號'}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
