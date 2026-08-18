@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+functions/lib
+serviceAccount*.json
+service-account*.json
+*.secret.json
 
 # Editor directories and files
 .vscode/*
