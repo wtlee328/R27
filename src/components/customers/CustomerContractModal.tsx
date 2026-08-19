@@ -38,6 +38,37 @@ const toDateString = (d: any) => {
   return parsed.toISOString().split('T')[0]
 }
 
+const extractSignatureDataUrl = (canvasRef: any): string | null => {
+  if (!canvasRef) return null
+  try {
+    const canvasObj = canvasRef as any
+    const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
+    if (isEmpty) return null
+
+    if (typeof canvasObj.toDataURL === 'function') {
+      return canvasObj.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getCanvas === 'function') {
+      const c = canvasObj.getCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+    if (canvasObj._canvas && typeof canvasObj._canvas.toDataURL === 'function') {
+      return canvasObj._canvas.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getTrimmedCanvas === 'function') {
+      const c = canvasObj.getTrimmedCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+  } catch (err) {
+    console.error('Error extracting signature canvas:', err)
+  }
+  return null
+}
+
 export function CustomerContractModal({
   open,
   onOpenChange,
@@ -48,6 +79,14 @@ export function CustomerContractModal({
 }: CustomerContractModalProps) {
   const [partner, setPartner] = React.useState<Customer | null>(null)
   const [allContractMembers, setAllContractMembers] = React.useState<Customer[]>([])
+  const [activeContract, setActiveContract] = React.useState<Contract | null>(contract)
+
+  React.useEffect(() => {
+    setActiveContract(contract)
+  }, [contract, open])
+
+  const currentContract = activeContract || contract
+
   const sigCanvas = React.useRef<any>(null)
   const secondarySigCanvas = React.useRef<any>(null)
   const isSigAClearedRef = React.useRef(false)
@@ -56,7 +95,7 @@ export function CustomerContractModal({
   // Admin & Editing states
   const { isAdmin, isTrainer } = useAuthStore()
   const { centerId } = useCenterStore()
-  const contractCenterId = contract?.centerId || centerId
+  const contractCenterId = currentContract?.centerId || contract?.centerId || centerId
   const brandName = contractCenterId === 'coffit' ? 'Coffit' : 'R27 Fitness'
   const brandNameStation = contractCenterId === 'coffit' ? 'Coffit Station' : 'R27 Fitness Station'
   const brandNameAbbr = contractCenterId === 'coffit' ? 'Coffit' : 'R27健身站'
@@ -379,36 +418,11 @@ export function CustomerContractModal({
         }))
       }
 
-      let finalSigA: string | null = null
-      if (sigCanvas.current) {
-        try {
-          const canvasObj = sigCanvas.current as any
-          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
-          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
-            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
-            finalSigA = rawCanvas.toDataURL('image/png')
-          }
-        } catch (err) {
-          console.error('Error getting sigCanvas A:', err)
-        }
-      }
+      const finalSigA = extractSignatureDataUrl(sigCanvas.current)
+      const finalSigB = extractSignatureDataUrl(secondarySigCanvas.current)
 
-      let finalSigB: string | null = null
-      if (secondarySigCanvas.current) {
-        try {
-          const canvasObj = secondarySigCanvas.current as any
-          const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
-          if (!isEmpty && typeof canvasObj.getCanvas === 'function') {
-            const rawCanvas: HTMLCanvasElement = canvasObj.getCanvas()
-            finalSigB = rawCanvas.toDataURL('image/png')
-          }
-        } catch (err) {
-          console.error('Error getting sigCanvas B:', err)
-        }
-      }
-
-      const effectiveSigA = finalSigA || (isSigAClearedRef.current ? null : (contract?.signatureDataUrl || null))
-      const effectiveSigB = finalSigB || (isSigBClearedRef.current ? null : (contract?.secondarySignatureDataUrl || null))
+      const effectiveSigA = finalSigA || (isSigAClearedRef.current ? null : (currentContract?.signatureDataUrl || null))
+      const effectiveSigB = finalSigB || (isSigBClearedRef.current ? null : (currentContract?.secondarySignatureDataUrl || null))
 
       const isDualContract = contract?.contractType === 'dual' || (contract as any)?.isDual || (!!contract?.sharedWithCustomerId && contract?.contractType !== 'group' && contract?.contractType !== 'shared')
       const hasRequiredSignatures = Boolean(effectiveSigA) && (!isDualContract || Boolean(effectiveSigB))
@@ -540,6 +554,16 @@ export function CustomerContractModal({
         }
       }))
 
+      setActiveContract((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updateData,
+              signatureDataUrl: effectiveSigA,
+              secondarySignatureDataUrl: effectiveSigB,
+            }
+          : null
+      )
       setIsEditing(false)
       isSigAClearedRef.current = false
       isSigBClearedRef.current = false
@@ -648,8 +672,8 @@ export function CustomerContractModal({
                 <div className="flex justify-end items-center gap-4 pt-1.5">
                   <span className="font-black text-stone-700">簽名確認：</span>
                   <div className="w-40 h-10 border-b border-stone-400 flex items-center justify-center">
-                    {contract?.signatureDataUrl ? (
-                      <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                    {currentContract?.signatureDataUrl ? (
+                      <img src={currentContract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain mix-blend-multiply" />
                     ) : (
                       <span className="text-stone-300 italic text-[10px]">(請於合約末端簽署)</span>
                     )}
@@ -712,11 +736,11 @@ export function CustomerContractModal({
                 
                 {/* 甲方: 所有合約學員清單 */}
                 {(allContractMembers.length > 0 ? allContractMembers : [customer]).map((m, idx) => {
-                  const isDualMemberB = contract?.contractType === 'dual' && idx === 1
+                  const isDualMemberB = (currentContract?.contractType === 'dual' || contract?.contractType === 'dual') && idx === 1
                   const requiresSignature = idx === 0 || isDualMemberB
                   const isSigned = isDualMemberB
-                    ? Boolean(contract?.secondarySignatureDataUrl)
-                    : Boolean(contract?.signatureDataUrl)
+                    ? Boolean(currentContract?.secondarySignatureDataUrl)
+                    : Boolean(currentContract?.signatureDataUrl)
 
                   const memberLabel = (allContractMembers.length > 1 || partner)
                     ? ` - 學員 ${String.fromCharCode(65 + idx)}${idx === 0 ? ' (主學員)' : ` (成員 ${idx + 1})`}`
@@ -1247,8 +1271,8 @@ export function CustomerContractModal({
                         </div>
                       ) : (
                         <div className="w-full h-14 border-b border-stone-300 flex items-center justify-end">
-                          {contract?.signatureDataUrl ? (
-                            <img src={contract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain" />
+                          {currentContract?.signatureDataUrl ? (
+                            <img src={currentContract.signatureDataUrl} alt="Signature A" className="max-h-full max-w-full object-contain" />
                           ) : (
                             <span className="text-amber-600 font-bold italic text-[9px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 animate-pulse truncate">
                               ( 待線上簽署 )
@@ -1259,7 +1283,7 @@ export function CustomerContractModal({
                     </div>
 
                     {/* Secondary Signature — dual contract only */}
-                    {contract?.contractType === 'dual' && partner && (
+                    {(currentContract?.contractType === 'dual' || contract?.contractType === 'dual') && partner && (
                       <div className="space-y-1.5 text-left flex-1 min-w-[160px] max-w-[220px]">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[10px] text-orange-600 font-bold uppercase tracking-widest truncate">甲方學員 B 簽名</p>
@@ -1291,8 +1315,8 @@ export function CustomerContractModal({
                           </div>
                         ) : (
                           <div className="w-full h-14 border-b border-stone-300 flex items-center justify-end">
-                            {contract?.secondarySignatureDataUrl ? (
-                              <img src={contract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain" />
+                            {currentContract?.secondarySignatureDataUrl ? (
+                              <img src={currentContract.secondarySignatureDataUrl} alt="Signature B" className="max-h-full max-w-full object-contain" />
                             ) : (
                               <span className="text-amber-600 font-bold italic text-[9px] bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 animate-pulse truncate">
                                 ( 待線上簽署 )

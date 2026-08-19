@@ -38,8 +38,39 @@ import { contractFormSchema, type ContractFormValues } from '../../lib/validator
 import { cn } from '@/lib/utils'
 import { MinguoDatePickerInput } from '../shared/MinguoDatePickerInput'
 import { SearchableCustomerSelect } from '../shared/SearchableCustomerSelect'
-import type { Customer, Contract } from '../../types'
 import { useCenterStore } from '@/stores/centerStore'
+
+const extractSignatureDataUrl = (canvasRef: any): string | null => {
+  if (!canvasRef) return null
+  try {
+    const canvasObj = canvasRef as any
+    const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
+    if (isEmpty) return null
+
+    if (typeof canvasObj.toDataURL === 'function') {
+      return canvasObj.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getCanvas === 'function') {
+      const c = canvasObj.getCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+    if (canvasObj._canvas && typeof canvasObj._canvas.toDataURL === 'function') {
+      return canvasObj._canvas.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getTrimmedCanvas === 'function') {
+      const c = canvasObj.getTrimmedCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+  } catch (err) {
+    console.error('Error extracting signature canvas:', err)
+  }
+  return null
+}
+
 function addOneYearToDateString(dateVal: string | Date): string {
   if (!dateVal) return ''
   let d: Date
@@ -687,33 +718,26 @@ export function ContractFormModal({
           setLoading(false)
           return
         }
-        if (sigCanvas.current) {
-          const canvas = sigCanvas.current as any
-          if (!canvas.isEmpty()) {
-            const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-            if (isSingleBinding) {
-              data.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
-            } else {
-              data.signatureDataUrl = rawCanvas.toDataURL('image/png')
-            }
+        const sigA = extractSignatureDataUrl(sigCanvas.current)
+        if (sigA) {
+          if (isSingleBinding) {
+            data.secondarySignatureDataUrl = sigA
+          } else {
+            data.signatureDataUrl = sigA
           }
         }
         await onSubmit(data)
         onOpenChange(false)
         return
       }
-      if (sigCanvas.current) {
-        const canvas = sigCanvas.current as any
-        if (!canvas.isEmpty()) {
-          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-          data.signatureDataUrl = rawCanvas.toDataURL('image/png')
-        }
+      const sigA = extractSignatureDataUrl(sigCanvas.current)
+      if (sigA) {
+        data.signatureDataUrl = sigA
       }
-      if (secondarySigCanvas.current && data.contractType === 'dual') {
-        const canvas = secondarySigCanvas.current as any
-        if (!canvas.isEmpty()) {
-          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-          data.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
+      if (data.contractType === 'dual') {
+        const sigB = extractSignatureDataUrl(secondarySigCanvas.current)
+        if (sigB) {
+          data.secondarySignatureDataUrl = sigB
         }
       }
 

@@ -73,6 +73,37 @@ function addOneYearToDateString(dateVal: string | Date): string {
   return `${y}-${m}-${dd}`
 }
 
+const extractSignatureDataUrl = (canvasRef: any): string | null => {
+  if (!canvasRef) return null
+  try {
+    const canvasObj = canvasRef as any
+    const isEmpty = typeof canvasObj.isEmpty === 'function' ? canvasObj.isEmpty() : true
+    if (isEmpty) return null
+
+    if (typeof canvasObj.toDataURL === 'function') {
+      return canvasObj.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getCanvas === 'function') {
+      const c = canvasObj.getCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+    if (canvasObj._canvas && typeof canvasObj._canvas.toDataURL === 'function') {
+      return canvasObj._canvas.toDataURL('image/png')
+    }
+    if (typeof canvasObj.getTrimmedCanvas === 'function') {
+      const c = canvasObj.getTrimmedCanvas()
+      if (c && typeof c.toDataURL === 'function') {
+        return c.toDataURL('image/png')
+      }
+    }
+  } catch (err) {
+    console.error('Error extracting signature canvas:', err)
+  }
+  return null
+}
+
 interface CustomerFormModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -1008,28 +1039,18 @@ export function CustomerFormModal({
 
     setLoading(true)
     try {
-      // Use getCanvas() to bypass getTrimmedCanvas() which has a broken
-      // CJS/ESM dep (trim-canvas) in Vite production builds
-      if (sigCanvas.current) {
-        const canvas = sigCanvas.current as any
-        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
-        if (!isEmpty) {
-          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-          if (isBindMode) {
-            data.contract!.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
-          } else {
-            data.contract!.signatureDataUrl = rawCanvas.toDataURL('image/png')
-          }
+      const sigA = extractSignatureDataUrl(sigCanvas.current)
+      if (sigA && data.contract) {
+        if (isBindMode) {
+          data.contract.secondarySignatureDataUrl = sigA
+        } else {
+          data.contract.signatureDataUrl = sigA
         }
       }
 
-      if (secondarySigCanvas.current) {
-        const canvas = secondarySigCanvas.current as any
-        const isEmpty = typeof canvas.isEmpty === 'function' ? canvas.isEmpty() : true
-        if (!isEmpty) {
-          const rawCanvas: HTMLCanvasElement = canvas.getCanvas()
-          data.contract!.secondarySignatureDataUrl = rawCanvas.toDataURL('image/png')
-        }
+      const sigB = extractSignatureDataUrl(secondarySigCanvas.current)
+      if (sigB && data.contract) {
+        data.contract.secondarySignatureDataUrl = sigB
       }
 
       await onSubmit(data)
