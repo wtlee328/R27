@@ -130,7 +130,7 @@ const restoreTimestamps = (obj: any): any => {
 }
 
 export default function BackupPage() {
-  const [activeTab, setActiveTab] = useState<'export' | 'import'>('export')
+  const [activeTab, setActiveTab] = useState<'cloud' | 'custom' | 'import'>('cloud')
 
   // Export Settings
   const [selectedScope, setSelectedScope] = useState<ScopeType>('all')
@@ -1055,15 +1055,26 @@ export default function BackupPage() {
         {/* Tab Switcher */}
         <div className="flex p-1 bg-stone-100/90 rounded-2xl border border-stone-200/60 self-start md:self-auto">
           <button
-            onClick={() => setActiveTab('export')}
+            onClick={() => setActiveTab('cloud')}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-              activeTab === 'export'
+              activeTab === 'cloud'
+                ? 'bg-stone-900 text-white shadow-sm'
+                : 'text-stone-500 hover:text-stone-900'
+            }`}
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            雲端自動備份與歷史
+          </button>
+          <button
+            onClick={() => setActiveTab('custom')}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              activeTab === 'custom'
                 ? 'bg-stone-900 text-white shadow-sm'
                 : 'text-stone-500 hover:text-stone-900'
             }`}
           >
             <Download className="w-3.5 h-3.5" />
-            一鍵資料備份與下載
+            自訂模組手動匯出
           </button>
           <button
             onClick={() => setActiveTab('import')}
@@ -1079,17 +1090,299 @@ export default function BackupPage() {
         </div>
       </div>
 
-      {/* ── Active Tab 1: Export Backup ── */}
-      {activeTab === 'export' && (
+      {/* ── Active Tab 1: Cloud Automated Backups & History (Default Overview) ── */}
+      {activeTab === 'cloud' && (
         <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Form: Scope & Modules */}
-            <div className="lg:col-span-7 space-y-6">
+          {/* Top Hero Banner */}
+          <div className="bg-stone-900 text-white p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+
+            <div className="space-y-3 max-w-xl relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[11px] font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                每日凌晨 02:00 自動排程備份：已啟用 (Cloud Scheduler)
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
+                全系統雲端自動備份中心
+              </h2>
+              <p className="text-xs text-stone-300 leading-relaxed">
+                系統每天凌晨自動為您封存客戶、銷課、合約、金流等 11 個資料庫模組（2,700+ 筆資料）至 Firebase 雲端空間。您亦可隨時手動觸發立即建立最新存檔，或一鍵同步至 Google Drive。
+              </p>
+
+              <div className="flex flex-wrap items-center gap-4 pt-1 text-[11px] text-stone-400">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-stone-400" />
+                  <span>最新備份：</span>
+                  <span className="font-bold text-white font-mono">
+                    {serverBackups[0]?.createdAt?.toDate
+                      ? format(serverBackups[0].createdAt.toDate(), 'yyyy/MM/dd HH:mm')
+                      : '已就緒'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-stone-400" />
+                  <span>最新筆數：</span>
+                  <span className="font-bold text-brand-400 font-mono">
+                    {serverBackups[0]?.totalRecordCount
+                      ? `${Number(serverBackups[0].totalRecordCount).toLocaleString()} 筆`
+                      : '全模組'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Cloud className="w-3.5 h-3.5 text-stone-400" />
+                  <span>Google Drive：</span>
+                  <span className={`font-bold ${isGoogleConnected ? 'text-emerald-400' : 'text-stone-400'}`}>
+                    {isGoogleConnected ? '已授權連結' : '未連結'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Prominent Primary Action Button */}
+            <div className="relative z-10 shrink-0">
+              <Button
+                size="lg"
+                onClick={handleTriggerServerBackupNow}
+                disabled={isTriggeringServerBackup}
+                className="w-full md:w-auto px-6 py-6 bg-brand-500 hover:bg-brand-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-brand-500/25 gap-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {isTriggeringServerBackup ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <span>正在建立雲端備份包 (約需 15 秒)...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 text-white" />
+                    <span>⚡️ 立即手動建立最新備份</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Backup Archives Table */}
+          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-stone-900 text-base">雲端備份歷史紀錄存檔庫</h3>
+                  <p className="text-xs text-stone-500">
+                    點擊「下載 ZIP」可直接下載至電腦；點擊「同步至 Google Drive」可將該份備份推送到您的 Google 雲端資料夾
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadServerBackups}
+                disabled={loadingServerBackups}
+                className="rounded-xl text-xs font-bold gap-1.5 h-9 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingServerBackups ? 'animate-spin' : ''}`} />
+                <span>重新整理清單</span>
+              </Button>
+            </div>
+
+            {loadingServerBackups ? (
+              <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-2">
+                <RefreshCw className="w-6 h-6 animate-spin text-stone-300" />
+                <span className="text-xs font-medium">正在載入雲端備份紀錄...</span>
+              </div>
+            ) : serverBackups.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center bg-stone-50/60 rounded-2xl border border-dashed border-stone-200">
+                <Database className="w-8 h-8 text-stone-300 mb-2" />
+                <p className="text-xs font-bold text-stone-600">目前尚無備份紀錄</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">點擊上方「立即手動建立最新備份」即可建立第一筆雲端存檔！</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="text-stone-400 font-bold border-b border-stone-100">
+                      <th className="pb-3 px-2 font-medium">備份時間</th>
+                      <th className="pb-3 px-2 font-medium">檔案名稱</th>
+                      <th className="pb-3 px-2 font-medium">資料筆數</th>
+                      <th className="pb-3 px-2 font-medium">檔案大小</th>
+                      <th className="pb-3 px-2 font-medium">備份模式</th>
+                      <th className="pb-3 px-2 font-medium text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-50">
+                    {serverBackups.map((item) => (
+                      <tr key={item.id} className="hover:bg-stone-50/60 transition-colors">
+                        <td className="py-3 px-2 font-mono font-bold text-stone-800">
+                          {item.createdAt?.toDate ? format(item.createdAt.toDate(), 'yyyy/MM/dd HH:mm:ss') : item.id}
+                        </td>
+                        <td className="py-3 px-2 font-mono text-stone-600 max-w-[220px] truncate">
+                          {item.fileName}
+                        </td>
+                        <td className="py-3 px-2 font-bold text-stone-800">
+                          {item.totalRecordCount ? Number(item.totalRecordCount).toLocaleString() : 0} 筆
+                        </td>
+                        <td className="py-3 px-2 text-stone-500 font-mono">
+                          {item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-'}
+                        </td>
+                        <td className="py-3 px-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            item.isManual ? 'bg-amber-50 text-amber-700 border border-amber-200/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                          }`}>
+                            {item.isManual ? '手動觸發' : '每日排程'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadServerBackup(item)}
+                              disabled={downloadingBackupId === item.id}
+                              className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 text-stone-700 hover:text-stone-900 cursor-pointer"
+                            >
+                              {downloadingBackupId === item.id ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Download className="w-3 h-3 text-stone-500" />
+                              )}
+                              <span>下載 ZIP</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleSyncServerBackupToDrive(item)}
+                              disabled={syncingBackupId === item.id}
+                              className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm"
+                            >
+                              {syncingBackupId === item.id ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Cloud className="w-3 h-3 text-white" />
+                              )}
+                              <span>同步至 Google Drive</span>
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Google Drive Integration & Folder Settings Card */}
+          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-stone-800 text-sm">Google 雲端硬碟 (Google Drive) 同步設定</h3>
+                  <p className="text-[11px] text-stone-500">連結您的 Google 帳號後，可在歷史清單隨時一鍵將備份封存至個人或公司 Google 雲端資料夾</p>
+                </div>
+              </div>
+
+              <div>
+                {isGoogleConnected ? (
+                  <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    已連結 Google Drive
+                  </span>
+                ) : (
+                  <span className="text-[10px] bg-stone-100 border border-stone-200 text-stone-500 px-2.5 py-1 rounded-full font-bold">
+                    未連結
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-2">
+                <Label htmlFor="gdrive-folder-cfg" className="text-stone-700 font-bold text-xs">
+                  目標資料夾名稱或 Folder ID
+                </Label>
+                <Input
+                  id="gdrive-folder-cfg"
+                  value={gdriveFolderId}
+                  onChange={(e) => setGdriveFolderId(e.target.value)}
+                  placeholder="例如：1-oBiAmVK9J-nK7gS2rn9GlQmq_fMxhFo 或 R27_Backups"
+                  className="h-10 text-xs bg-white"
+                />
+                <p className="text-[10px] text-stone-400">已預設連結至您的共享資料夾（亦可自訂名稱）。</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-800">Google 授權管理</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClientIdInput(googleClientId || '')
+                      setShowClientIdModal(true)
+                    }}
+                    className="text-[11px] text-stone-500 hover:text-stone-800 flex items-center gap-1 font-medium cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-stone-400" />
+                    <span>自訂 Client ID</span>
+                  </button>
+                </div>
+
+                {!isGoogleConnected ? (
+                  <Button
+                    onClick={() => handleConnectGoogleDrive()}
+                    disabled={isAuthorizing}
+                    className="w-full bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold gap-2 h-10 cursor-pointer"
+                  >
+                    {isAuthorizing ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>正在請求 Google 授權...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="w-3.5 h-3.5 text-brand-400" />
+                        <span>立即連結 Google 帳號授權</span>
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleConnectGoogleDrive()}
+                      className="flex-1 rounded-xl text-xs font-bold h-10 cursor-pointer"
+                    >
+                      重新授權
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleDisconnectGoogleDrive}
+                      className="rounded-xl text-xs font-bold h-10 text-red-600 hover:bg-red-50 cursor-pointer"
+                    >
+                      中斷連結
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Active Tab 2: Custom Manual Export ── */}
+      {activeTab === 'custom' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-300">
+          {/* Left Form: Scope & Modules */}
+          <div className="lg:col-span-7 space-y-6">
             {/* Step 1: Scope */}
             <div className="bg-white p-6 rounded-[2rem] border border-stone-200 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
                 <span className="bg-stone-100 text-stone-700 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">1</span>
-                <h3 className="font-bold text-stone-800 text-sm">選擇備份範圍</h3>
+                <h3 className="font-bold text-stone-800 text-sm">選擇匯出範圍</h3>
               </div>
               
               <div className="grid grid-cols-3 gap-3">
@@ -1124,7 +1417,7 @@ export default function BackupPage() {
               <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                 <div className="flex items-center gap-2">
                   <span className="bg-stone-100 text-stone-700 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">2</span>
-                  <h3 className="font-bold text-stone-800 text-sm">勾選備份項目</h3>
+                  <h3 className="font-bold text-stone-800 text-sm">勾選匯出項目</h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -1170,226 +1463,6 @@ export default function BackupPage() {
                 })}
               </div>
             </div>
-
-            {/* Step 3: Google Drive Cloud Sync */}
-            <div className="bg-white p-6 rounded-[2rem] border border-stone-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="bg-stone-100 text-stone-700 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold">3</span>
-                  <Cloud className="w-4 h-4 text-stone-600" />
-                  <h3 className="font-bold text-stone-800 text-sm">Google Drive 雲端儲存空間同步</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  {isGoogleConnected ? (
-                    <span className="text-[10px] bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      已連結 Google
-                    </span>
-                  ) : (
-                    <span className="text-[10px] bg-stone-100 border border-stone-200 text-stone-500 px-2 py-0.5 rounded-full font-bold">
-                      未授權
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {/* Google Connection Box */}
-                {!isGoogleConnected ? (
-                  <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold text-stone-800">登入 Google 雲端硬碟帳號</p>
-                        <p className="text-[11px] text-stone-500 mt-0.5 leading-relaxed">
-                          透過 Google 官方 OAuth 授權，備份完成後將直接把 ZIP 壓縮檔推送到您的 Google Drive 資料夾。
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleConnectGoogleDrive()}
-                        disabled={isAuthorizing}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        {isAuthorizing ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>正在請求授權...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Cloud className="w-3.5 h-3.5 text-brand-400" />
-                            <span>連結 Google 帳號授權</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setClientIdInput(googleClientId || '')
-                          setShowClientIdModal(true)
-                        }}
-                        className="px-3 py-2 bg-white hover:bg-stone-100 border border-stone-200 text-stone-600 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-                        title="設定 Google OAuth Client ID"
-                      >
-                        <Settings className="w-3.5 h-3.5 text-stone-400" />
-                        <span>API 設定</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                          G
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-stone-800">Google Drive 授權已就緒</p>
-                          <p className="text-[10px] text-stone-400">已具備寫入備份檔案至雲端硬碟權限</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleConnectGoogleDrive()}
-                          className="text-[10px] text-stone-500 hover:text-stone-800 px-2 py-1 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 font-medium transition-colors"
-                        >
-                          重新授權
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleDisconnectGoogleDrive}
-                          className="text-[10px] text-red-500 hover:text-red-700 px-2 py-1 bg-white border border-red-100 rounded-lg hover:bg-red-50 font-medium transition-colors"
-                        >
-                          中斷連結
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Upload Toggle & Folder Settings */}
-                <div className="flex items-center justify-between pt-1">
-                  <div>
-                    <Label htmlFor="gdrive-sync" className="text-stone-800 font-bold text-xs block">同步上傳至 Google Drive</Label>
-                    <span className="text-[10px] text-stone-400 font-medium">備份完成後將同時把壓縮檔案推送到您的雲端資料夾</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    id="gdrive-sync"
-                    checked={syncToGDrive}
-                    onChange={(e) => {
-                      if (e.target.checked && !isGoogleConnected) {
-                        handleConnectGoogleDrive()
-                      } else {
-                        setSyncToGDrive(e.target.checked)
-                      }
-                    }}
-                    className="w-9 h-5 bg-stone-200 checked:bg-brand-500 rounded-full transition-colors cursor-pointer appearance-none relative before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform"
-                  />
-                </div>
-
-                {/* Local Copy Download Toggle */}
-                <div className="flex items-center justify-between pt-1">
-                  <div>
-                    <Label htmlFor="local-download-copy" className="text-stone-800 font-bold text-xs block">同時下載本機副本 (.zip)</Label>
-                    <span className="text-[10px] text-stone-400 font-medium">在瀏覽器自動下載一份壓縮包到電腦本地下載區</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    id="local-download-copy"
-                    checked={downloadLocalCopy}
-                    onChange={(e) => setDownloadLocalCopy(e.target.checked)}
-                    className="w-9 h-5 bg-stone-200 checked:bg-brand-500 rounded-full transition-colors cursor-pointer appearance-none relative before:content-[''] before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 checked:before:translate-x-4 before:transition-transform"
-                  />
-                </div>
-
-                {syncToGDrive && (
-                  <div className="space-y-1.5 animate-in fade-in duration-200">
-                    <Label htmlFor="gdrive-folder" className="text-stone-700 font-bold text-xs">Google Drive 目標資料夾名稱</Label>
-                    <input
-                      type="text"
-                      id="gdrive-folder"
-                      value={gdriveFolderId}
-                      onChange={(e) => setGdriveFolderId(e.target.value)}
-                      className="w-full h-10 px-3 border border-stone-200 rounded-xl text-xs bg-white text-stone-800 font-medium focus:ring-2 focus:ring-brand-500/20 outline-none"
-                      placeholder="例如：R27_Coffit_Backups"
-                    />
-                    <p className="text-[10px] text-stone-400">系統會在您的 Google 雲端硬碟根目錄尋找或自動建立此名稱之資料夾。</p>
-                  </div>
-                )}
-
-                <div className="space-y-3 pt-2 border-t border-stone-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="backup-schedule" className="text-stone-700 font-bold text-xs block">設定自動排程備份頻率</Label>
-                      <span className="text-[10px] text-stone-400 font-medium">系統將於背景自動執行完整備份並推播結果至通知中心</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <select
-                      id="backup-schedule"
-                      value={autoConfig.frequency}
-                      onChange={(e) => updateFrequency(e.target.value as any)}
-                      className="flex-1 bg-white border border-stone-200 text-stone-800 px-3 py-2 rounded-xl text-xs shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer font-bold h-10 outline-none"
-                    >
-                      <option value="none">無 (僅手動備份)</option>
-                      <option value="daily">每日自動備份 (每 24 小時自動執行)</option>
-                      <option value="weekly">每週自動備份 (每 7 天自動執行)</option>
-                      <option value="monthly">每月自動備份 (每 30 天自動執行)</option>
-                    </select>
-                  </div>
-
-                  {autoConfig.frequency !== 'none' && (
-                    <div className="p-3.5 bg-stone-50 rounded-2xl border border-stone-200/80 space-y-2.5 text-xs animate-in fade-in duration-200">
-                      <div className="flex items-center justify-between text-stone-600">
-                        <span className="font-medium text-[11px]">上次排程執行：</span>
-                        <span className="font-mono font-bold text-stone-800 text-[11px]">
-                          {autoConfig.lastRunTimestamp
-                            ? format(new Date(autoConfig.lastRunTimestamp), 'yyyy/MM/dd HH:mm:ss')
-                            : '尚未觸發'}
-                        </span>
-                      </div>
-                      {autoConfig.lastStatus && (
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-stone-500">上次執行狀態：</span>
-                          <span className={`font-bold px-2 py-0.5 rounded-md ${
-                            autoConfig.lastStatus === 'success'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {autoConfig.lastStatus === 'success' ? '✅ 備份成功' : '❌ 備份失敗'}
-                          </span>
-                        </div>
-                      )}
-                      <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-stone-400">執行成功或失敗皆會即時推播至通知中心</span>
-                        <button
-                          type="button"
-                          onClick={() => triggerTestScheduledBackup()}
-                          disabled={isAutoBackupRunning}
-                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 disabled:opacity-50 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
-                        >
-                          {isAutoBackupRunning ? (
-                            <>
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                              <span>執行中...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-3 h-3 text-brand-400" />
-                              <span>立即測試排程備份與通知</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Summary & Execution panel */}
@@ -1399,7 +1472,7 @@ export default function BackupPage() {
               
               <h3 className="text-base font-bold flex items-center gap-2 border-b border-stone-800 pb-3">
                 <span>📋</span>
-                備份摘要與設定確認
+                自訂匯出確認
               </h3>
 
               <div className="space-y-4 text-xs">
@@ -1410,43 +1483,19 @@ export default function BackupPage() {
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">
-                  <span className="text-stone-400 font-medium">備份項目數</span>
+                  <span className="text-stone-400 font-medium">匯出項目數</span>
                   <span className="font-bold text-white">{selectedModulesCount} / {Object.keys(MODULE_LABELS).length} 項</span>
                 </div>
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">
                   <span className="text-stone-400 font-medium">輸出格式</span>
                   <span className="font-bold text-brand-400">JSON (還原結構) + CSV (Excel 表)</span>
                 </div>
-                <div className="flex justify-between border-b border-stone-800 pb-2.5">
-                  <span className="text-stone-400 font-medium">自動排程頻率</span>
-                  <span className={`font-bold ${autoConfig.frequency !== 'none' ? 'text-brand-400' : 'text-stone-500'}`}>
-                    {autoConfig.frequency === 'daily'
-                      ? '每日自動備份'
-                      : autoConfig.frequency === 'weekly'
-                      ? '每週自動備份'
-                      : autoConfig.frequency === 'monthly'
-                      ? '每月自動備份'
-                      : '無 (僅手動)'}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-stone-800 pb-2.5">
-                  <span className="text-stone-400 font-medium">Google Drive 同步</span>
-                  <span className={`font-bold ${syncToGDrive ? 'text-emerald-400' : 'text-stone-500'}`}>
-                    {syncToGDrive ? (isGoogleConnected ? `已啟用 (${gdriveFolderId})` : '已勾選 (執行時授權)') : '未啟用'}
-                  </span>
-                </div>
-                <div className="flex justify-between pb-1">
-                  <span className="text-stone-400 font-medium">本機檔案下載</span>
-                  <span className={`font-bold ${downloadLocalCopy ? 'text-white' : 'text-stone-500'}`}>
-                    {downloadLocalCopy ? '是 (.zip 下載)' : '否 (僅雲端同步)'}
-                  </span>
-                </div>
               </div>
 
               <div className="flex gap-2.5 p-3 rounded-2xl bg-stone-800 border border-stone-700/50 text-[10px] text-stone-300 leading-relaxed">
                 <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                 <div>
-                  備份產生的 ZIP 壓縮檔內含 <strong>json/</strong> 與 <strong>csv/</strong> 目錄。JSON 檔完整保留合約、堂數等最新資料結構，可隨時重新匯入系統。
+                  產生之 ZIP 壓縮檔內含 <strong>json/</strong> 與 <strong>csv/</strong> 目錄，可供報表統計或重新匯入。
                 </div>
               </div>
 
@@ -1459,48 +1508,16 @@ export default function BackupPage() {
                 {exportStatus === 'running' ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin text-white" />
-                    <span>正在擷取資料庫並備份中 ({exportProgress}%)</span>
+                    <span>正在擷取並打包中 ({exportProgress}%)</span>
                   </>
                 ) : (
                   <>
-                    <Play className="h-4 w-4 text-white" />
-                    <span>
-                      {syncToGDrive && downloadLocalCopy
-                        ? '開始備份（同步至 Google Drive 並下載本地副本）'
-                        : syncToGDrive
-                        ? '開始備份（僅同步至 Google Drive）'
-                        : '開始備份並下載 ZIP 檔案'}
-                    </span>
+                    <Download className="h-4 w-4 text-white" />
+                    <span>開始自訂匯出並下載 (.zip)</span>
                   </>
                 )}
               </button>
             </div>
-
-            {/* Google Drive Upload Success Result Box */}
-            {lastUploadedDriveFile && (
-              <div className="p-4 rounded-[2rem] bg-emerald-50 border border-emerald-200 text-emerald-900 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-xs font-bold">Google Drive 同步成功</span>
-                </div>
-                <p className="text-[11px] text-stone-600 font-mono break-all pl-6">
-                  {lastUploadedDriveFile.name}
-                </p>
-                {lastUploadedDriveFile.webViewLink && (
-                  <div className="pl-6 pt-1">
-                    <a
-                      href={lastUploadedDriveFile.webViewLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
-                    >
-                      <span>在 Google 雲端硬碟中檢視</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* Progress / Logs Table */}
             {exportStatus !== 'idle' && (
@@ -1508,13 +1525,13 @@ export default function BackupPage() {
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                   <h4 className="font-bold text-stone-800 text-sm flex items-center gap-2">
                     <Clock className="w-4 h-4 text-stone-400" />
-                    備份執行明細
+                    匯出執行明細
                   </h4>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                     exportStatus === 'running' ? 'bg-amber-50 text-amber-600 animate-pulse' :
                     exportStatus === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
                   }`}>
-                    {exportStatus === 'running' ? '備份中' : exportStatus === 'success' ? '完成' : '失敗'}
+                    {exportStatus === 'running' ? '處理中' : exportStatus === 'success' ? '完成' : '失敗'}
                   </span>
                 </div>
 
@@ -1569,140 +1586,6 @@ export default function BackupPage() {
             )}
           </div>
         </div>
-
-        {/* ── Server-side Scheduled Backups History Card ── */}
-        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-6 animate-in fade-in duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
-            <div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
-                  <Cloud className="w-4 h-4" />
-                </div>
-                <h3 className="font-black text-stone-900 text-base">伺服器自動排程備份紀錄 (Firebase Cloud Backups)</h3>
-              </div>
-              <p className="text-xs text-stone-500 mt-1">
-                伺服器於每天凌晨 02:00 自動無人值守執行完整備份並安全封存，您可在此直接下載或同步至您的 Google Drive
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadServerBackups}
-                disabled={loadingServerBackups}
-                className="rounded-xl text-xs font-bold gap-1.5 h-9 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingServerBackups ? 'animate-spin' : ''}`} />
-                <span>重新整理</span>
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleTriggerServerBackupNow}
-                disabled={isTriggeringServerBackup}
-                className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold gap-1.5 h-9 shadow-sm cursor-pointer"
-              >
-                {isTriggeringServerBackup ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>雲端備份中...</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 text-brand-400" />
-                    <span>⚡️ 立即手動觸發雲端備份</span>
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Backup list table */}
-          {loadingServerBackups ? (
-            <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-2">
-              <RefreshCw className="w-6 h-6 animate-spin text-stone-300" />
-              <span className="text-xs font-medium">正在讀取伺服器備份紀錄...</span>
-            </div>
-          ) : serverBackups.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center bg-stone-50/60 rounded-2xl border border-dashed border-stone-200">
-              <Database className="w-8 h-8 text-stone-300 mb-2" />
-              <p className="text-xs font-bold text-stone-600">目前尚無伺服器備份紀錄</p>
-              <p className="text-[11px] text-stone-400 mt-0.5">點擊右上角「立即手動觸發雲端備份」即可立即建立第一筆雲端備份！</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-stone-100 overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-stone-400 font-bold border-b border-stone-100">
-                    <th className="pb-3 px-2 font-medium">備份時間</th>
-                    <th className="pb-3 px-2 font-medium">備份檔案名稱</th>
-                    <th className="pb-3 px-2 font-medium">資料筆數</th>
-                    <th className="pb-3 px-2 font-medium">檔案大小</th>
-                    <th className="pb-3 px-2 font-medium">類型</th>
-                    <th className="pb-3 px-2 font-medium text-right">操作</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-50">
-                  {serverBackups.map((item) => (
-                    <tr key={item.id} className="hover:bg-stone-50/60 transition-colors">
-                      <td className="py-3 px-2 font-mono font-bold text-stone-800">
-                        {item.createdAt?.toDate ? format(item.createdAt.toDate(), 'yyyy/MM/dd HH:mm:ss') : item.id}
-                      </td>
-                      <td className="py-3 px-2 font-mono text-stone-600 max-w-[220px] truncate">
-                        {item.fileName}
-                      </td>
-                      <td className="py-3 px-2 font-bold text-stone-800">
-                        {item.totalRecordCount ? Number(item.totalRecordCount).toLocaleString() : 0} 筆
-                      </td>
-                      <td className="py-3 px-2 text-stone-500 font-mono">
-                        {item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-'}
-                      </td>
-                      <td className="py-3 px-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          item.isManual ? 'bg-amber-50 text-amber-700 border border-amber-200/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                        }`}>
-                          {item.isManual ? '手動觸發' : '半夜排程'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-2 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownloadServerBackup(item)}
-                            disabled={downloadingBackupId === item.id}
-                            className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 text-stone-700 hover:text-stone-900 cursor-pointer"
-                          >
-                            {downloadingBackupId === item.id ? (
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Download className="w-3 h-3 text-stone-500" />
-                            )}
-                            <span>下載 ZIP</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleSyncServerBackupToDrive(item)}
-                            disabled={syncingBackupId === item.id}
-                            className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm"
-                          >
-                            {syncingBackupId === item.id ? (
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Cloud className="w-3 h-3 text-white" />
-                            )}
-                            <span>同步至 Google Drive</span>
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
       )}
 
       {/* ── Active Tab 2: Import & Restore ── */}
