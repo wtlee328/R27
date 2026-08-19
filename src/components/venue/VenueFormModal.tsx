@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { RiUser3Line } from '@remixicon/react'
 import {
   Dialog,
   DialogContent,
@@ -22,16 +23,17 @@ interface VenueFormModalProps {
   onSubmit: (data: VenueRentalFormValues) => Promise<void>
   initialDate?: string // e.g. "2026-07-13"
   initialData?: VenueRental | null
+  fixedTrainerId?: string
 }
 
-export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, initialData }: VenueFormModalProps) {
+export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, initialData, fixedTrainerId }: VenueFormModalProps) {
   const [loading, setLoading] = useState(false)
   const { trainers, loading: trainersLoading } = useTrainers()
   
   const form = useForm<VenueRentalFormValues>({
     resolver: zodResolver(venueRentalFormSchema),
     defaultValues: {
-      renterTrainerId: '',
+      renterTrainerId: fixedTrainerId || '',
       selectedRenterCustomerId: '',
       newRenterCustomerName: '',
       renterName: '',
@@ -41,7 +43,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
     },
   })
 
-  // Sync initialData or initialDate when opening
+  // Sync initialData, initialDate, or fixedTrainerId when opening
   useEffect(() => {
     if (open) {
       if (initialData) {
@@ -55,7 +57,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
         }
 
         form.reset({
-          renterTrainerId: initialData.renterTrainerId || '',
+          renterTrainerId: initialData.renterTrainerId || fixedTrainerId || '',
           selectedRenterCustomerId: initialData.renterCustomerId || '',
           newRenterCustomerName: extName,
           renterName: initialData.renterName || '',
@@ -65,7 +67,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
         })
       } else {
         form.reset({
-          renterTrainerId: '',
+          renterTrainerId: fixedTrainerId || '',
           selectedRenterCustomerId: '',
           newRenterCustomerName: '',
           renterName: '',
@@ -75,12 +77,13 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
         })
       }
     }
-  }, [open, initialData, initialDate, form])
+  }, [open, initialData, initialDate, fixedTrainerId, form])
 
   const handleSubmit = async (data: VenueRentalFormValues) => {
     setLoading(true)
     try {
-      const trainerObj = trainers.find(t => t.id === data.renterTrainerId)
+      const activeTrainerId = data.renterTrainerId || fixedTrainerId || ''
+      const trainerObj = trainers.find(t => t.id === activeTrainerId)
       const trainerName = trainerObj ? trainerObj.name : '未知教練'
 
       let finalRenterName = trainerName
@@ -90,6 +93,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
 
       await onSubmit({
         ...data,
+        renterTrainerId: activeTrainerId,
         renterName: finalRenterName,
       })
       onOpenChange(false)
@@ -111,6 +115,7 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
   const isEditMode = !!initialData
 
   const watchedDate = form.watch('date')
+  const watchedTrainerId = form.watch('renterTrainerId') || fixedTrainerId
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -148,7 +153,15 @@ export function VenueFormModal({ open, onOpenChange, onSubmit, initialDate, init
           {/* Select Trainer */}
           <div className="space-y-1.5">
             <Label htmlFor="renterTrainerId" className="text-stone-700 font-bold text-xs">申請教練 *</Label>
-            {trainersLoading ? (
+            {fixedTrainerId ? (
+              <div className="flex items-center justify-between p-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold text-stone-800">
+                <div className="flex items-center gap-2">
+                  <RiUser3Line className="w-4 h-4 text-brand-500" />
+                  <span>{trainers.find(t => t.id === watchedTrainerId)?.name || '登入教練'}</span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 bg-stone-200/80 text-stone-600 rounded-md font-medium">已鎖定為當前教練</span>
+              </div>
+            ) : trainersLoading ? (
               <div className="text-xs text-stone-400">載入教練名單中...</div>
             ) : (
               <select

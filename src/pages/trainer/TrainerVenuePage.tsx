@@ -1,6 +1,11 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, Plus, Database, Calendar } from 'lucide-react'
-import { RiBuilding4Line } from '@remixicon/react'
+import {
+  RiBuilding4Line,
+  RiMoneyDollarCircleLine,
+  RiDatabase2Line,
+  RiAddLine,
+  RiCalendarLine,
+} from '@remixicon/react'
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
 import { FilterDropdown } from '@/components/shared/FilterDropdown'
@@ -93,9 +98,10 @@ export default function TrainerVenuePage() {
             setSelectedRental(null)
             setIsModalOpen(true)
           }} 
-          className="rounded-full px-8 bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-100 font-bold cursor-pointer h-10 inline-flex items-center"
+          className="rounded-full px-8 bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-100 font-bold cursor-pointer h-10 inline-flex items-center gap-1.5"
         >
-          <Plus className="w-4 h-4 mr-2" /> 填寫預約場租
+          <RiAddLine className="w-4 h-4" />
+          <span>填寫預約場租</span>
         </Button>
       </div>
 
@@ -104,14 +110,14 @@ export default function TrainerVenuePage() {
         <StatCard 
           title={`${selectedMonth === 'all' ? '歷年' : selectedMonth} 我的場租總費用`} 
           value={`NT$ ${totalExpenseSelectedMonth.toLocaleString()}`} 
-          icon={DollarSign}
+          icon={RiMoneyDollarCircleLine}
           iconColor="text-brand-500"
           iconBg="bg-brand-50"
         />
         <StatCard 
           title="歷年累計場租費用" 
           value={`NT$ ${totalExpenseAllTime.toLocaleString()}`} 
-          icon={Database}
+          icon={RiDatabase2Line}
           iconColor="text-stone-600"
           iconBg="bg-stone-50"
         />
@@ -131,7 +137,7 @@ export default function TrainerVenuePage() {
                 { value: 'all', label: '全部月份' },
                 ...monthOptions.map((m) => ({ value: m, label: m })),
               ]}
-              icon={Calendar}
+              icon={RiCalendarLine}
               label="選擇月份"
             />
           </div>
@@ -149,12 +155,13 @@ export default function TrainerVenuePage() {
         )}
       </div>
 
-      {/* Add / Edit Rental Modal */}
+      {/* Add / Edit Rental Modal (Fixed to current trainer) */}
       <VenueFormModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
         onSubmit={handleFormSubmit}
         initialData={selectedRental}
+        fixedTrainerId={currentTrainerId || undefined}
       />
     </div>
   )
