@@ -1127,7 +1127,7 @@ export default function BackupPage() {
                   全系統雲端自動備份
                 </h2>
                 <p className="text-xs text-stone-300 mt-1">
-                  自動安全封存全系統 11 項資料庫集合至雲端，可隨時手動備份或同步至 Google Drive。
+                  自動安全封存全系統 11 項資料庫集合至雲端（系統自動保留近 30 天存檔並定期清理），亦可同步至 Google Drive。
                 </p>
               </div>
 

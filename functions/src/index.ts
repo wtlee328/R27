@@ -83,6 +83,77 @@ function bufferToStream(buffer: Buffer): Readable {
 }
 
 /**
+ * Automatically clean up backups older than retentionDays (Default: 30 days)
+ */
+export async function cleanupOldBackups(retentionDays = 30) {
+  const cutoffTimestamp = Date.now() - retentionDays * 24 * 60 * 60 * 1000
+  console.log(`[Backup Retention] Checking for backups created before ${new Date(cutoffTimestamp).toISOString()} (${retentionDays} days retention)...`)
+
+  try {
+    const snap = await db.collection('systemBackups').get()
+    if (snap.empty) return
+
+    let deletedCount = 0
+
+    for (const docSnap of snap.docs) {
+      const data = docSnap.data()
+      let createdAtMs: number | null = null
+
+      if (data.createdAt?.toMillis) {
+        createdAtMs = data.createdAt.toMillis()
+      } else if (data.createdAt && typeof data.createdAt === 'number') {
+        createdAtMs = data.createdAt
+      } else if (docSnap.id && /^\d{8}_\d{6}/.test(docSnap.id)) {
+        // Parse yyyyMMdd_HHmmss
+        const idStr = docSnap.id
+        const y = parseInt(idStr.substring(0, 4), 10)
+        const m = parseInt(idStr.substring(4, 6), 10) - 1
+        const d = parseInt(idStr.substring(6, 8), 10)
+        const h = parseInt(idStr.substring(9, 11), 10)
+        const min = parseInt(idStr.substring(11, 13), 10)
+        const s = parseInt(idStr.substring(13, 15), 10)
+        createdAtMs = new Date(y, m, d, h, min, s).getTime()
+      }
+
+      if (createdAtMs && createdAtMs < cutoffTimestamp) {
+        console.log(`[Backup Retention] Purging expired backup: ${docSnap.id} (${data.fileName || 'unnamed'})`)
+
+        // 1. Delete all subcollection chunks
+        const chunksSnap = await docSnap.ref.collection('chunks').get()
+        if (!chunksSnap.empty) {
+          const chunkBatch = db.batch()
+          chunksSnap.docs.forEach((c) => chunkBatch.delete(c.ref))
+          await chunkBatch.commit()
+        }
+
+        // 2. Delete main document
+        await docSnap.ref.delete()
+
+        // 3. Delete from Firebase Cloud Storage if exists
+        if (data.fileName) {
+          try {
+            const bucket = admin.storage().bucket()
+            await bucket.file(`backups/${data.fileName}`).delete()
+          } catch (storageErr) {
+            // Ignore if file doesn't exist in bucket
+          }
+        }
+
+        deletedCount++
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log(`[Backup Retention] Successfully purged ${deletedCount} expired backup(s) older than ${retentionDays} days.`)
+    } else {
+      console.log('[Backup Retention] All backups are within the 30-day retention window. No deletion required.')
+    }
+  } catch (err: any) {
+    console.error('[Backup Retention] Error during backup cleanup:', err)
+  }
+}
+
+/**
  * Core Backup Worker
  */
 export async function executeAutomatedBackup(isManual = false) {
@@ -197,12 +268,19 @@ export async function executeAutomatedBackup(isManual = false) {
       console.log(`[Backup] Direct service-account Drive sync noted: ${driveErr.message}. (Saved safely in Cloud Storage; web app will sync when admin logs in).`)
     }
 
+    // 5. Automatically clean up backups older than 30 days (Retention policy)
+    try {
+      await cleanupOldBackups(30)
+    } catch (cleanErr: any) {
+      console.warn('[Backup] Cleanup of old backups encountered a warning:', cleanErr.message)
+    }
+
     const durationSec = ((Date.now() - startTime) / 1000).toFixed(1)
     const successMsg = `已完成系統無人值守自動備份（共 ${totalRecordCount} 筆資料），已安全封存至 Firebase 雲端空間${
       driveFileName ? `並已同步至 Google Drive (${driveFileName})` : ''
-    }，耗時 ${durationSec} 秒。`
+    }（保留近 30 天備份，逾期自動清理），耗時 ${durationSec} 秒。`
 
-    // 5. Update systemConfig/backupSchedule in Firestore
+    // 6. Update systemConfig/backupSchedule in Firestore
     await db.doc('systemConfig/backupSchedule').set(
       {
         lastRunTimestamp: Date.now(),
@@ -222,7 +300,7 @@ export async function executeAutomatedBackup(isManual = false) {
       { merge: true }
     )
 
-    // 6. Send notification to all admins
+    // 7. Send notification to all admins
     const adminsSnap = await db.collection('users').where('role', '==', 'admin').get()
     const batch = db.batch()
     const nowTimestamp = admin.firestore.FieldValue.serverTimestamp()
