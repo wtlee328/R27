@@ -136,9 +136,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4" style={{ background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #1c1917 100%)' }}>
       {/* Background decorative elements */}
       <div className="absolute inset-0 select-none pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-[650px] h-[650px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ background: 'radial-gradient(circle, rgba(234,88,12,0.22) 0%, transparent 70%)' }} />
-        <div className="absolute bottom-0 right-0 w-[750px] h-[750px] rounded-full blur-3xl translate-x-1/3 translate-y-1/3" style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.16) 0%, transparent 70%)' }} />
-        <div className="absolute top-1/2 left-1/2 w-[500px] h-[500px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ background: 'radial-gradient(circle, rgba(168,162,158,0.10) 0%, transparent 70%)' }} />
+        <div className="absolute top-0 left-0 w-[700px] h-[700px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ background: 'radial-gradient(circle, rgba(234,88,12,0.38) 0%, transparent 65%)' }} />
+        <div className="absolute bottom-0 right-0 w-[800px] h-[800px] rounded-full blur-3xl translate-x-1/3 translate-y-1/3" style={{ background: 'radial-gradient(circle, rgba(14,165,233,0.28) 0%, transparent 65%)' }} />
+        <div className="absolute top-1/2 left-1/2 w-[550px] h-[550px] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" style={{ background: 'radial-gradient(circle, rgba(168,162,158,0.18) 0%, transparent 65%)' }} />
         {/* Subtle grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.035]"
