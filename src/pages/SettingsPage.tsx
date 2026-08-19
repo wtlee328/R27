@@ -1,6 +1,6 @@
 import React from 'react'
 import { Settings, GripVertical, RotateCcw, Clock, Lock, Check, ShieldAlert } from 'lucide-react'
-import { RiSettings4Line, RiSunLine, RiMoonLine } from '@remixicon/react'
+import { RiSettings4Line, RiSunLine, RiMoonLine, RiRefreshLine, RiSparklingFill } from '@remixicon/react'
 import { useThemeStore } from '@/stores/themeStore'
 import { Reorder } from 'framer-motion'
 import { collection, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore'
@@ -9,6 +9,8 @@ import { initializeApp, deleteApp } from 'firebase/app'
 import { getAuth, signInWithEmailAndPassword, updatePassword } from 'firebase/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useMenuStore, ALL_NAV_ITEMS } from '@/stores/menuStore'
+import { triggerGlobalForceReload } from '@/hooks/useVersionGuard'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,6 +52,24 @@ export default function SettingsPage() {
   const [newPw, setNewPw] = React.useState('')
   const [pwLoading, setPwLoading] = React.useState(false)
   const [pwStatus, setPwStatus] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  // Force reload states
+  const [reloadLoading, setReloadLoading] = React.useState(false)
+
+  const handleTriggerGlobalReload = async () => {
+    if (!window.confirm('確定要強制全體在線設備（包含教練手機）重新載入最新版本嗎？')) {
+      return
+    }
+    setReloadLoading(true)
+    try {
+      await triggerGlobalForceReload(user?.displayName || '管理者')
+      toast.success('已發送全體強制刷新指令！所有在線的教練與使用者將在 2 秒內自動更新。')
+    } catch (err: any) {
+      toast.error(`發送失敗：${err.message}`)
+    } finally {
+      setReloadLoading(false)
+    }
+  }
 
   // Load Operating Hours
   React.useEffect(() => {
@@ -583,6 +603,37 @@ export default function SettingsPage() {
               {pwLoading ? '更新密碼中...' : '更新教練密碼'}
             </Button>
           </form>
+        </div>
+      )}
+
+      {/* Global Force Reload / Version Sync Card (Admin only) */}
+      {isAdmin && (
+        <div className="bg-white p-6 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                <RiRefreshLine className="h-5 w-5 text-brand-500" />
+                系統版本同步與全體強制刷新
+              </h2>
+              <p className="text-xs text-stone-500 mt-1">
+                發布重大邏輯或介面更新後，可在此一鍵向所有在線裝置（包含教練手機背景分頁）發布同步訊號，自動刷新至最新版本。
+              </p>
+            </div>
+
+            <Button
+              onClick={handleTriggerGlobalReload}
+              disabled={reloadLoading}
+              className="bg-brand-500 hover:bg-brand-600 text-white rounded-2xl text-xs font-bold px-6 h-10 gap-2 cursor-pointer shadow-md shadow-brand-500/20 shrink-0"
+            >
+              <RiRefreshLine className={`w-4 h-4 ${reloadLoading ? 'animate-spin' : ''}`} />
+              <span>{reloadLoading ? '正在發送刷新指令...' : '強制全體在線設備重新載入'}</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 bg-stone-50 rounded-xl text-stone-600 text-xs border border-stone-200/70">
+            <RiSparklingFill className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>點擊後，所有開著系統網頁的教練手機或電腦會在一秒內自動重新整理，確保不再執行舊版快取。</span>
+          </div>
         </div>
       )}
     </div>
