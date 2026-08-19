@@ -822,18 +822,12 @@ export function CustomerContractModal({
                     </span>
                   </div>
                   <div className="col-span-6 flex items-center">
-                    <span>教練比例：{isOneToTwo ? '1' : '2'} 位教練對 </span>
-                    {isEditing ? (
-                      <input 
-                        type="number" 
-                        value={editCoachRatio} 
-                        onChange={e => setEditCoachRatio(Number(e.target.value))}
-                        className="w-10 border-b border-stone-400 bg-stone-50 text-center font-bold focus:outline-none" 
-                      />
-                    ) : (
-                      <span className="font-bold text-stone-900 border-b border-stone-200 px-2 underline">{editCoachRatio}</span>
-                    )}
-                    <span> 位學員</span>
+                    <span>教練比例：</span>
+                    <span className="font-bold text-stone-900 border-b border-stone-200 px-1">
+                      {contract?.contractType === 'group'
+                        ? `1 位教練對 ${contract?.totalMembers || allContractMembers.length || 1} 位學員`
+                        : '1 位教練對 1 位學員'}
+                    </span>
                   </div>
 
                   {/* Designated Coach */}
