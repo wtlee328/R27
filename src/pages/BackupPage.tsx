@@ -1097,19 +1097,39 @@ export default function BackupPage() {
           <div className="bg-stone-900 text-white p-6 md:p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
 
-            <div className="space-y-3 max-w-xl relative z-10">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[11px] font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                每日凌晨 02:00 自動排程備份：已啟用 (Cloud Scheduler)
-              </div>
-              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
-                全系統雲端自動備份中心
-              </h2>
-              <p className="text-xs text-stone-300 leading-relaxed">
-                系統每天凌晨自動為您封存客戶、銷課、合約、金流等 11 個資料庫模組（2,700+ 筆資料）至 Firebase 雲端空間。您亦可隨時手動觸發立即建立最新存檔，或一鍵同步至 Google Drive。
-              </p>
+            <div className="space-y-4 max-w-xl relative z-10">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[11px] font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  {autoConfig.frequency === 'none' ? '自動排程：已關閉' : '雲端自動排程：已啟用'}
+                </div>
 
-              <div className="flex flex-wrap items-center gap-4 pt-1 text-[11px] text-stone-400">
+                {/* 備份頻率設定 */}
+                <div className="flex items-center gap-1.5 bg-stone-800/80 px-3 py-1 rounded-full border border-stone-700/60">
+                  <span className="text-[11px] text-stone-400 font-medium">排程頻率：</span>
+                  <select
+                    value={autoConfig.frequency}
+                    onChange={(e) => updateFrequency(e.target.value as any)}
+                    className="bg-transparent text-white text-[11px] font-bold outline-none cursor-pointer pr-1"
+                  >
+                    <option value="daily" className="bg-stone-900 text-white">每日 02:00 (自動備份)</option>
+                    <option value="weekly" className="bg-stone-900 text-white">每週 (每 7 天)</option>
+                    <option value="monthly" className="bg-stone-900 text-white">每月 (每 30 天)</option>
+                    <option value="none" className="bg-stone-900 text-white">關閉 (僅手動備份)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">
+                  全系統雲端自動備份
+                </h2>
+                <p className="text-xs text-stone-300 mt-1">
+                  自動安全封存全系統 11 項資料庫集合至雲端，可隨時手動備份或同步至 Google Drive。
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 pt-0.5 text-[11px] text-stone-400">
                 <div className="flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-stone-400" />
                   <span>最新備份：</span>
