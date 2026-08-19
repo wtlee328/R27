@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { RiHardDrive2Line } from '@remixicon/react'
 import { 
   Database, 
@@ -22,7 +22,7 @@ import {
   LogOut,
   Settings
 } from 'lucide-react'
-import { collection, getDocs, doc, setDoc, Timestamp } from 'firebase/firestore'
+import { collection, getDocs, doc, setDoc, Timestamp, query, orderBy, limit } from 'firebase/firestore'
 import { db } from '../lib/firebase'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -178,6 +178,142 @@ export default function BackupPage() {
   const [importLogs, setImportLogs] = useState<BackupLog[]>([])
   const [importProgress, setImportProgress] = useState(0)
   const [importErrorMsg, setImportErrorMsg] = useState<string | null>(null)
+
+  // ── Server-side Scheduled Backups State ──
+  const [serverBackups, setServerBackups] = useState<any[]>([])
+  const [loadingServerBackups, setLoadingServerBackups] = useState(false)
+  const [isTriggeringServerBackup, setIsTriggeringServerBackup] = useState(false)
+  const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null)
+  const [syncingBackupId, setSyncingBackupId] = useState<string | null>(null)
+
+  const loadServerBackups = useCallback(async () => {
+    setLoadingServerBackups(true)
+    try {
+      const q = query(collection(db, 'systemBackups'), orderBy('createdAt', 'desc'), limit(15))
+      const snap = await getDocs(q)
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setServerBackups(list)
+    } catch (e: any) {
+      console.warn('Failed to load server backups:', e)
+    } finally {
+      setLoadingServerBackups(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadServerBackups()
+  }, [loadServerBackups])
+
+  // Helper to reconstruct Blob from Firestore chunks or base64
+  const reconstructBackupBlob = async (backupId: string): Promise<Blob> => {
+    const chunksQuery = query(collection(db, 'systemBackups', backupId, 'chunks'), orderBy('index', 'asc'))
+    const snap = await getDocs(chunksQuery)
+
+    let fullBase64 = ''
+    if (!snap.empty) {
+      const chunksData = snap.docs.map(d => d.data())
+      chunksData.sort((a, b) => (a.index || 0) - (b.index || 0))
+      fullBase64 = chunksData.map(c => c.data || '').join('')
+    } else {
+      const docItem = serverBackups.find(b => b.id === backupId)
+      if (docItem && docItem.zipBase64) {
+        fullBase64 = docItem.zipBase64
+      }
+    }
+
+    if (!fullBase64) {
+      throw new Error('找不到該備份的資料內容')
+    }
+
+    const byteCharacters = atob(fullBase64)
+    const byteArrays = []
+    const sliceSize = 512
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize)
+      const byteNumbers = new Array(slice.length)
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i)
+      }
+      byteArrays.push(new Uint8Array(byteNumbers))
+    }
+
+    return new Blob(byteArrays, { type: 'application/zip' })
+  }
+
+  const handleDownloadServerBackup = async (item: any) => {
+    setDownloadingBackupId(item.id)
+    try {
+      const blob = await reconstructBackupBlob(item.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = item.fileName || `系統備份_${item.id}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success(`已下載備份檔：${item.fileName}`)
+    } catch (e: any) {
+      toast.error(`下載失敗：${e.message || '未知錯誤'}`)
+    } finally {
+      setDownloadingBackupId(null)
+    }
+  }
+
+  const handleSyncServerBackupToDrive = async (item: any) => {
+    let token = googleToken
+    if (!token || token.expiresAt <= Date.now()) {
+      try {
+        token = await requestGoogleDriveToken(googleClientId)
+        setGoogleToken(token)
+      } catch (err: any) {
+        toast.error(`Google 授權失敗：${err.message}`)
+        return
+      }
+    }
+
+    setSyncingBackupId(item.id)
+    try {
+      const blob = await reconstructBackupBlob(item.id)
+      const targetFolder = gdriveFolderId || '1-oBiAmVK9J-nK7gS2rn9GlQmq_fMxhFo'
+      const folderId = await findOrCreateFolder(token.accessToken, targetFolder)
+      const uploadRes = await uploadFileToGoogleDrive({
+        accessToken: token.accessToken,
+        folderId,
+        fileName: item.fileName,
+        mimeType: 'application/zip',
+        blob,
+      })
+      toast.success(`已成功同步備份至您的 Google 雲端硬碟：${uploadRes.name}`)
+      setLastUploadedDriveFile(uploadRes)
+    } catch (e: any) {
+      toast.error(`同步至 Google Drive 失敗：${e.message || '未知錯誤'}`)
+    } finally {
+      setSyncingBackupId(null)
+    }
+  }
+
+  const handleTriggerServerBackupNow = async () => {
+    setIsTriggeringServerBackup(true)
+    toast.info('正在向伺服器發送備份指令，請稍候約 15~30 秒...')
+    try {
+      const res = await fetch('https://triggerbackuphttp-knxhsqimma-uc.a.run.app', {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (data.ok) {
+        toast.success(`雲端無人值守備份完成！${data.data?.message || ''}`)
+        await loadServerBackups()
+      } else {
+        toast.error(`備份失敗：${data.error || '伺服器執行錯誤'}`)
+      }
+    } catch (e: any) {
+      toast.error(`請求錯誤：${e.message || '連線逾時'}`)
+    } finally {
+      setIsTriggeringServerBackup(false)
+    }
+  }
 
   // Toggle helpers
   const handleSelectAll = () => {
@@ -945,9 +1081,10 @@ export default function BackupPage() {
 
       {/* ── Active Tab 1: Export Backup ── */}
       {activeTab === 'export' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-300">
-          {/* Left Form: Scope & Modules */}
-          <div className="lg:col-span-7 space-y-6">
+        <div className="space-y-8 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left Form: Scope & Modules */}
+            <div className="lg:col-span-7 space-y-6">
             {/* Step 1: Scope */}
             <div className="bg-white p-6 rounded-[2rem] border border-stone-200 shadow-sm space-y-4">
               <div className="flex items-center gap-2 border-b border-stone-100 pb-3">
@@ -1432,6 +1569,140 @@ export default function BackupPage() {
             )}
           </div>
         </div>
+
+        {/* ── Server-side Scheduled Backups History Card ── */}
+        <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-stone-200 shadow-sm space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <h3 className="font-black text-stone-900 text-base">伺服器自動排程備份紀錄 (Firebase Cloud Backups)</h3>
+              </div>
+              <p className="text-xs text-stone-500 mt-1">
+                伺服器於每天凌晨 02:00 自動無人值守執行完整備份並安全封存，您可在此直接下載或同步至您的 Google Drive
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadServerBackups}
+                disabled={loadingServerBackups}
+                className="rounded-xl text-xs font-bold gap-1.5 h-9 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingServerBackups ? 'animate-spin' : ''}`} />
+                <span>重新整理</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleTriggerServerBackupNow}
+                disabled={isTriggeringServerBackup}
+                className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold gap-1.5 h-9 shadow-sm cursor-pointer"
+              >
+                {isTriggeringServerBackup ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>雲端備份中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-3.5 h-3.5 text-brand-400" />
+                    <span>⚡️ 立即手動觸發雲端備份</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Backup list table */}
+          {loadingServerBackups ? (
+            <div className="py-12 flex flex-col items-center justify-center text-stone-400 gap-2">
+              <RefreshCw className="w-6 h-6 animate-spin text-stone-300" />
+              <span className="text-xs font-medium">正在讀取伺服器備份紀錄...</span>
+            </div>
+          ) : serverBackups.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center text-center bg-stone-50/60 rounded-2xl border border-dashed border-stone-200">
+              <Database className="w-8 h-8 text-stone-300 mb-2" />
+              <p className="text-xs font-bold text-stone-600">目前尚無伺服器備份紀錄</p>
+              <p className="text-[11px] text-stone-400 mt-0.5">點擊右上角「立即手動觸發雲端備份」即可立即建立第一筆雲端備份！</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-stone-100 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-stone-400 font-bold border-b border-stone-100">
+                    <th className="pb-3 px-2 font-medium">備份時間</th>
+                    <th className="pb-3 px-2 font-medium">備份檔案名稱</th>
+                    <th className="pb-3 px-2 font-medium">資料筆數</th>
+                    <th className="pb-3 px-2 font-medium">檔案大小</th>
+                    <th className="pb-3 px-2 font-medium">類型</th>
+                    <th className="pb-3 px-2 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-50">
+                  {serverBackups.map((item) => (
+                    <tr key={item.id} className="hover:bg-stone-50/60 transition-colors">
+                      <td className="py-3 px-2 font-mono font-bold text-stone-800">
+                        {item.createdAt?.toDate ? format(item.createdAt.toDate(), 'yyyy/MM/dd HH:mm:ss') : item.id}
+                      </td>
+                      <td className="py-3 px-2 font-mono text-stone-600 max-w-[220px] truncate">
+                        {item.fileName}
+                      </td>
+                      <td className="py-3 px-2 font-bold text-stone-800">
+                        {item.totalRecordCount ? Number(item.totalRecordCount).toLocaleString() : 0} 筆
+                      </td>
+                      <td className="py-3 px-2 text-stone-500 font-mono">
+                        {item.sizeBytes ? `${(item.sizeBytes / 1024).toFixed(1)} KB` : '-'}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          item.isManual ? 'bg-amber-50 text-amber-700 border border-amber-200/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                        }`}>
+                          {item.isManual ? '手動觸發' : '半夜排程'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadServerBackup(item)}
+                            disabled={downloadingBackupId === item.id}
+                            className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 text-stone-700 hover:text-stone-900 cursor-pointer"
+                          >
+                            {downloadingBackupId === item.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Download className="w-3 h-3 text-stone-500" />
+                            )}
+                            <span>下載 ZIP</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleSyncServerBackupToDrive(item)}
+                            disabled={syncingBackupId === item.id}
+                            className="rounded-xl text-[11px] font-bold h-8 px-2.5 gap-1 bg-brand-500 hover:bg-brand-600 text-white cursor-pointer shadow-sm"
+                          >
+                            {syncingBackupId === item.id ? (
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Cloud className="w-3 h-3 text-white" />
+                            )}
+                            <span>同步至 Google Drive</span>
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
       )}
 
       {/* ── Active Tab 2: Import & Restore ── */}

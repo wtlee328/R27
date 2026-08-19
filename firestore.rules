@@ -112,5 +112,10 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       allow update, delete: if isAdmin();
     }
+
+    // System Automated Backups
+    match /systemBackups/{backupId}/{allPaths=**} {
+      allow read, list, create, update: if isAdmin();
+    }
   }
 }
