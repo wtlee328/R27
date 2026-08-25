@@ -103,14 +103,40 @@ export default function LessonsPage() {
   // Dynamic metrics per trainer based on the selectedMonth
   const trainersWithDynamicMetrics = useMemo(() => {
     return (trainers || []).map((t) => {
-      const assignedCustomerIds = (customers || [])
-        .filter((c) => c.trainerId === t.id)
-        .map((c) => c.id)
-
-      const trainerContracts = (contracts || []).filter(
-        (c) => assignedCustomerIds.includes(c.customerId) || assignedCustomerIds.includes(c.primaryCustomerId)
+      // Find all contracts where this trainer is assigned (primary, secondary, or designated in studentTrainers)
+      const trainerContracts = (contracts || []).filter(c =>
+        c.trainerId === t.id ||
+        c.secondaryTrainerId === t.id ||
+        (c.studentTrainers && Object.values(c.studentTrainers).includes(t.id))
       )
-      const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
+
+      // Collect all unique student IDs across these contracts
+      const assignedCustomerIds = new Set<string>()
+      trainerContracts.forEach(con => {
+        const memberIds = con.customerIds && con.customerIds.length > 0
+          ? con.customerIds
+          : [con.customerId, con.primaryCustomerId, con.sharedWithCustomerId, con.partnerId].filter(Boolean) as string[]
+
+        memberIds.forEach(mId => {
+          const designatedTrainer = con.studentTrainers?.[mId] ||
+            (con.contractType === 'dual' && mId !== (con.customerId || con.primaryCustomerId) && con.secondaryTrainerId
+              ? con.secondaryTrainerId
+              : con.trainerId)
+          if (designatedTrainer === t.id || con.trainerId === t.id || con.secondaryTrainerId === t.id) {
+            assignedCustomerIds.add(mId)
+          }
+        })
+      })
+
+      // Also include uncontracted customers who were directly assigned
+      ;(customers || []).forEach(c => {
+        if (c.trainerId === t.id) assignedCustomerIds.add(c.id)
+      })
+
+      const systemLessons = trainerContracts.reduce((sum, c) => {
+        if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return sum
+        return sum + Number(c.remainingSessions || 0)
+      }, 0)
 
       const taughtLessons = (records || []).filter((lr) => lr.trainerId === t.id)
       const allTimeUsedLessons = taughtLessons.length
@@ -126,6 +152,7 @@ export default function LessonsPage() {
         systemLessons,
         allTimeUsedLessons,
         totalUsedLessons: usedLessons,
+        assignedStudentCount: assignedCustomerIds.size,
       }
     })
   }, [trainers, customers, contracts, records, selectedMonth])
@@ -364,8 +391,8 @@ export default function LessonsPage() {
             </div>
           ) : (
             <div className="divide-y divide-stone-50">
-              {filteredAndSortedTrainers.map((t) => {
-                const assignedStudentCount = customers.filter(c => c.trainerId === t.id).length
+              {filteredAndSortedTrainers.map((t: any) => {
+                const assignedStudentCount = t.assignedStudentCount ?? customers.filter(c => c.trainerId === t.id).length
 
                 return (
                   <div 

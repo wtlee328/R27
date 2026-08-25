@@ -37,32 +37,53 @@ export default function TrainerCustomersPage() {
     refresh
   } = useCustomers()
 
-  // Filter customers that belong to current trainer
+  // Filter customers that belong to current trainer (Contract-driven: any contract where current trainer is assigned, regardless of remaining sessions)
   const myCustomers = useMemo(() => {
     if (!currentTrainerId) return customers
     return customers.filter(cust => {
-      // 1. Primary assigned trainer
-      if (cust.trainerId === currentTrainerId) return true
-      // 2. Or has a contract where current trainer is primary or secondary trainer
-      return contracts.some(con =>
-        (con.customerId === cust.id || con.sharedWithCustomerId === cust.id || (con.customerIds && con.customerIds.includes(cust.id))) &&
-        (con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId)
-      )
+      // 1. Has any contract (active, expiring, expired, completed) where current trainer is assigned
+      const hasContract = contracts.some(con => {
+        const isMember = con.customerId === cust.id ||
+          con.primaryCustomerId === cust.id ||
+          con.sharedWithCustomerId === cust.id ||
+          con.partnerId === cust.id ||
+          (Array.isArray(con.customerIds) && con.customerIds.includes(cust.id))
+        if (!isMember) return false
+
+        // Check if designated in studentTrainers
+        if (con.studentTrainers?.[cust.id]) {
+          return con.studentTrainers[cust.id] === currentTrainerId
+        }
+
+        // For dual contracts: check primary trainer or secondary trainer
+        if (con.contractType === 'dual') {
+          const isPrimary = cust.id === (con.customerId || con.primaryCustomerId)
+          if (!isPrimary && con.secondaryTrainerId) {
+            return con.secondaryTrainerId === currentTrainerId
+          }
+          return con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId
+        }
+
+        // General contract
+        return con.trainerId === currentTrainerId || con.secondaryTrainerId === currentTrainerId
+      })
+
+      if (hasContract) return true
+
+      // Fallback for uncontracted customers who were assigned to this trainer
+      return cust.trainerId === currentTrainerId
     })
   }, [customers, contracts, currentTrainerId])
 
   // Filter contracts relevant to current trainer
   const myContracts = useMemo(() => {
     if (!currentTrainerId) return contracts
-    const myCustIds = new Set(myCustomers.map(c => c.id))
     return contracts.filter(con =>
       con.trainerId === currentTrainerId ||
       con.secondaryTrainerId === currentTrainerId ||
-      myCustIds.has(con.customerId) ||
-      (con.sharedWithCustomerId && myCustIds.has(con.sharedWithCustomerId)) ||
-      (con.customerIds && con.customerIds.some(id => myCustIds.has(id)))
+      (con.studentTrainers && Object.values(con.studentTrainers).includes(currentTrainerId))
     )
-  }, [contracts, currentTrainerId, myCustomers])
+  }, [contracts, currentTrainerId])
 
   // Metrics for current trainer
   const activeContractsCount = useMemo(() => {

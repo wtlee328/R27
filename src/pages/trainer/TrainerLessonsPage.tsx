@@ -92,20 +92,23 @@ export default function TrainerLessonsPage() {
     }, 0)
   }, [myRecords, metricsYear])
 
-  // 3. Total remaining sessions across trainer's assigned customer contracts
-  const totalRemainingLessonsCount = useMemo(() => {
-    if (!currentTrainerId) return 0
-    const myStudentIds = customers.filter(c => c.trainerId === currentTrainerId).map(c => c.id)
-    const myContracts = venueContracts.filter(c => 
-      myStudentIds.includes(c.customerId) || 
-      myStudentIds.includes(c.primaryCustomerId) ||
-      c.trainerId === currentTrainerId
+  // Filter all contracts where current trainer is assigned
+  const myTrainerContracts = useMemo(() => {
+    if (!currentTrainerId) return []
+    return venueContracts.filter(c => 
+      c.trainerId === currentTrainerId || 
+      c.secondaryTrainerId === currentTrainerId ||
+      (c.studentTrainers && Object.values(c.studentTrainers).includes(currentTrainerId))
     )
-    return myContracts.reduce((sum, c) => {
+  }, [venueContracts, currentTrainerId])
+
+  // 3. Total remaining sessions across trainer's contracts
+  const totalRemainingLessonsCount = useMemo(() => {
+    return myTrainerContracts.reduce((sum, c) => {
       if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return sum
       return sum + Number(c.remainingSessions || 0)
     }, 0)
-  }, [customers, venueContracts, currentTrainerId])
+  }, [myTrainerContracts])
 
   // Contract type filter state (all, single, dual, shared, group)
   const [contractTypeFilter, setContractTypeFilter] = useState<'all' | 'single' | 'dual' | 'shared' | 'group'>('all')
@@ -204,14 +207,7 @@ export default function TrainerLessonsPage() {
 
     if (!currentTrainerId) return { categories, totalNominal: 0, totalActual: 0 }
 
-    const myStudentIds = customers.filter(c => c.trainerId === currentTrainerId).map(c => c.id)
-    const myContracts = venueContracts.filter(c => 
-      myStudentIds.includes(c.customerId) || 
-      myStudentIds.includes(c.primaryCustomerId) ||
-      c.trainerId === currentTrainerId
-    )
-
-    myContracts.forEach(c => {
+    myTrainerContracts.forEach(c => {
       if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return
       let rem = Number(c.remainingSessions || 0)
       if (rem <= 0 && c.groupMemberQuotas && Object.keys(c.groupMemberQuotas).length > 0) {
@@ -257,7 +253,7 @@ export default function TrainerLessonsPage() {
       totalNominal,
       totalActual,
     }
-  }, [customers, venueContracts, currentTrainerId])
+  }, [myTrainerContracts, currentTrainerId])
 
   // Filter records by contract type, notes filter, and notes search query
   const filteredRecords = useMemo(() => {

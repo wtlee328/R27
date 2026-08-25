@@ -266,9 +266,26 @@ export function CustomerTable({
       c.phone.includes(searchTerm)
     )
 
-    // 2. Trainer filter
+    // 2. Trainer filter (Contract-driven)
     if (trainers && selectedTrainerId !== 'all') {
-      result = result.filter(c => c.trainerId === selectedTrainerId)
+      result = result.filter(c => {
+        const hasContractWithTrainer = contracts.some(con => {
+          const isMember = checkIsMember(con, c.id)
+          if (!isMember) return false
+          if (con.studentTrainers?.[c.id]) {
+            return con.studentTrainers[c.id] === selectedTrainerId
+          }
+          if (con.contractType === 'dual') {
+            const isPrimary = c.id === (con.customerId || con.primaryCustomerId)
+            if (!isPrimary && con.secondaryTrainerId) {
+              return con.secondaryTrainerId === selectedTrainerId
+            }
+            return con.trainerId === selectedTrainerId || con.secondaryTrainerId === selectedTrainerId
+          }
+          return con.trainerId === selectedTrainerId || con.secondaryTrainerId === selectedTrainerId
+        })
+        return hasContractWithTrainer || c.trainerId === selectedTrainerId
+      })
     }
 
     // 3. Contract category filter

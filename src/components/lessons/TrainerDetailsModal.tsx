@@ -91,11 +91,44 @@ export function TrainerDetailsModal({
   // Breakdown expandable state ('period' | 'cumulative' | 'remaining' | null)
   const [expandedMetric, setExpandedMetric] = useState<'period' | 'cumulative' | 'remaining' | null>(null)
 
-  // Get assigned students for this trainer
+  // Contracts belonging to this trainer (primary, secondary, or designated in studentTrainers)
+  const trainerContracts = useMemo(() => {
+    if (!trainer) return []
+    return contracts.filter(c =>
+      c.trainerId === trainer.id ||
+      c.secondaryTrainerId === trainer.id ||
+      (c.studentTrainers && Object.values(c.studentTrainers).includes(trainer.id))
+    )
+  }, [contracts, trainer])
+
+  // Get assigned students for this trainer (Contract-driven: any customer in trainer's contracts)
   const trainerStudents = useMemo(() => {
     if (!trainer) return []
-    return customers.filter(c => c.trainerId === trainer.id)
-  }, [customers, trainer])
+    const studentIdSet = new Set<string>()
+
+    trainerContracts.forEach(con => {
+      const memberIds = con.customerIds && con.customerIds.length > 0
+        ? con.customerIds
+        : [con.customerId, con.primaryCustomerId, con.sharedWithCustomerId, con.partnerId].filter(Boolean) as string[]
+
+      memberIds.forEach(mId => {
+        const designatedTrainer = con.studentTrainers?.[mId] ||
+          (con.contractType === 'dual' && mId !== (con.customerId || con.primaryCustomerId) && con.secondaryTrainerId
+            ? con.secondaryTrainerId
+            : con.trainerId)
+        if (designatedTrainer === trainer.id || con.trainerId === trainer.id || con.secondaryTrainerId === trainer.id) {
+          studentIdSet.add(mId)
+        }
+      })
+    })
+
+    // Also include uncontracted students who were assigned to this trainer
+    customers.forEach(c => {
+      if (c.trainerId === trainer.id) studentIdSet.add(c.id)
+    })
+
+    return customers.filter(c => studentIdSet.has(c.id))
+  }, [customers, trainer, trainerContracts])
 
   const trainerStudentIds = useMemo(() => {
     return trainerStudents.map(c => c.id)
@@ -204,13 +237,6 @@ export function TrainerDetailsModal({
 
     if (!trainer) return { categories, totalNominal: 0, totalActual: 0 }
 
-    const studentIds = customers.filter(c => c.trainerId === trainer.id).map(c => c.id)
-    const trainerContracts = contracts.filter(c => 
-      studentIds.includes(c.customerId) || 
-      studentIds.includes(c.primaryCustomerId) ||
-      c.trainerId === trainer.id
-    )
-
     trainerContracts.forEach(c => {
       if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return
       let rem = Number(c.remainingSessions || 0)
@@ -252,7 +278,7 @@ export function TrainerDetailsModal({
     const totalActual = Object.values(categories).reduce((sum, c) => sum + c.actual, 0)
 
     return { categories, totalNominal, totalActual }
-  }, [contracts, customers, trainer])
+  }, [trainerContracts, trainer])
 
   if (!trainer) return null
 

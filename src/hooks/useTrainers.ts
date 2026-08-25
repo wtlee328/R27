@@ -87,17 +87,16 @@ export function useTrainers() {
 
       // Map trainer metrics
       const computedTrainers = trainersList.map((t) => {
-        // Find customers assigned to this trainer
-        const assignedCustomerIds = customersList
-          .filter((c) => c.trainerId === t.id)
-          .map((c) => c.id)
-
-        // Find active/ongoing contracts for these customers
-        // A contract is relevant if the primary customer is assigned to this trainer
+        // Find contracts where this trainer is assigned
         const trainerContracts = contractsList.filter(
-          (c) => assignedCustomerIds.includes(c.customerId) || assignedCustomerIds.includes(c.primaryCustomerId)
+          (c) => c.trainerId === t.id ||
+            c.secondaryTrainerId === t.id ||
+            (c.studentTrainers && Object.values(c.studentTrainers).includes(t.id))
         )
-        const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
+        const systemLessons = trainerContracts.reduce((sum, c) => {
+          if (c.status === 'cancelled' || c.status === 'completed' || c.status === 'expired') return sum
+          return sum + Number(c.remainingSessions || 0)
+        }, 0)
 
         // Find lesson records belonging to this trainer
         const trainerLessons = lessonRecordsList.filter(
