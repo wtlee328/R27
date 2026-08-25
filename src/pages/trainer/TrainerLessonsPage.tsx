@@ -66,27 +66,27 @@ export default function TrainerLessonsPage() {
   const [metricsYear, setMetricsYear] = useState(() => new Date().getFullYear())
   const [metricsMonth, setMetricsMonth] = useState(() => new Date().getMonth() + 1)
 
-  // 1. Monthly total used sessions for current trainer in metricsYear & metricsMonth
+  // 1. Monthly total used sessions for current trainer in metricsYear & metricsMonth (Actual sessions)
   const monthlyLessonsCount = useMemo(() => {
     return myRecords.reduce((sum, r) => {
       const dateVal = r.sessionDate || (r as any).date
       if (!dateVal) return sum
       const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
       if (d.getFullYear() === metricsYear && (d.getMonth() + 1) === metricsMonth) {
-        return sum + Number(r.sessionAmount || 1)
+        return sum + 1
       }
       return sum
     }, 0)
   }, [myRecords, metricsYear, metricsMonth])
 
-  // 2. Yearly total used sessions for current trainer in metricsYear
+  // 2. Yearly total used sessions for current trainer in metricsYear (Actual sessions)
   const yearlyLessonsCount = useMemo(() => {
     return myRecords.reduce((sum, r) => {
       const dateVal = r.sessionDate || (r as any).date
       if (!dateVal) return sum
       const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
       if (d.getFullYear() === metricsYear) {
-        return sum + Number(r.sessionAmount || 1)
+        return sum + 1
       }
       return sum
     }, 0)

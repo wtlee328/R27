@@ -113,13 +113,13 @@ export default function LessonsPage() {
       const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
       const taughtLessons = (records || []).filter((lr) => lr.trainerId === t.id)
-      const allTimeUsedLessons = taughtLessons.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
+      const allTimeUsedLessons = taughtLessons.length
 
       const filteredLessonsForMonth = selectedMonth === 'all'
         ? taughtLessons
         : taughtLessons.filter(lr => lr.sessionDate && format(ensureDate(lr.sessionDate), 'yyyy/MM') === selectedMonth)
 
-      const usedLessons = filteredLessonsForMonth.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
+      const usedLessons = filteredLessonsForMonth.length
 
       return {
         ...t,

@@ -99,11 +99,11 @@ export function useTrainers() {
         )
         const systemLessons = trainerContracts.reduce((sum, c) => sum + Number(c.remainingSessions || 0), 0)
 
-        // Find lesson records belonging to this trainer (or assigned customers)
+        // Find lesson records belonging to this trainer
         const trainerLessons = lessonRecordsList.filter(
-          (lr) => lr.trainerId === t.id || assignedCustomerIds.includes(lr.customerId)
+          (lr) => lr.trainerId === t.id
         )
-        const totalUsedLessons = trainerLessons.reduce((sum, lr) => sum + Number(lr.sessionAmount || 0), 0)
+        const totalUsedLessons = trainerLessons.length
 
         return {
           ...t,
