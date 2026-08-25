@@ -850,6 +850,8 @@ export function CustomerContractModal({
                     <span className="font-bold text-stone-900 border-b border-stone-200 px-1">
                       {contract?.contractType === 'group'
                         ? `1 位教練對 ${contract?.totalMembers || allContractMembers.length || 1} 位學員`
+                        : (contract?.contractType === 'dual' || !!partner)
+                        ? '1 位教練對 2 位學員'
                         : '1 位教練對 1 位學員'}
                     </span>
                   </div>
