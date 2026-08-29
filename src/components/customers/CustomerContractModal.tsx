@@ -13,8 +13,8 @@ import { Printer, X, Edit2, Trash2, Save, Plus, Trash, AlertTriangle, RefreshCw 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useAuthStore } from '@/stores/authStore'
-import { useCenterStore } from '@/stores/centerStore'
 import r27Stamp from '@/assets/r27-stamp.png'
+import coffitStamp from '@/assets/coffit-stamp.png'
 
 import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
@@ -611,7 +611,7 @@ export function CustomerContractModal({
               <div className="text-center space-y-2 border-b-2 border-stone-800 pb-4">
                 <h1 className="text-2xl font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
                 <div className="flex justify-between text-[11px] font-bold text-stone-600 print:text-[10px]">
-                  <span>紅二七健身有限公司</span>
+                  <span>{contractCenterId === 'coffit' ? '來財健康有限公司' : '紅二七健身有限公司'}</span>
                   <div>
                     <span>合約編號：</span>
                     {isEditing ? (
@@ -823,7 +823,7 @@ export function CustomerContractModal({
                     <span>{contractCenterId === 'coffit' ? 'coffit健身咖' : 'R27健身站'}（簡稱乙方）</span>
                   </div>
                   <div className="space-y-1 text-xs">
-                    <div>公司名稱：<span className="font-bold text-stone-950">紅二七健身有限公司 ({brandNameStation})</span></div>
+                    <div>公司名稱：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '來財健康有限公司' : `紅二七健身有限公司 (${brandNameStation})`}</span></div>
                     <div>負責人：<span className="font-bold text-stone-950">郭沛霖</span></div>
                     <div className="grid grid-cols-3 gap-2 pt-0.5">
                       <div>電話：<span className="font-bold text-stone-950">0905396658</span></div>
@@ -1230,7 +1230,7 @@ export function CustomerContractModal({
                   <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
                   <div className="w-20 h-20 flex items-center justify-center relative select-none pointer-events-none">
                     <img 
-                      src={r27Stamp} 
+                      src={contractCenterId === 'coffit' ? coffitStamp : r27Stamp} 
                       alt="乙方蓋印" 
                       className="max-w-full max-h-full object-contain mix-blend-multiply" 
                     />

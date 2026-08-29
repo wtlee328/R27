@@ -3003,7 +3003,7 @@ export function CustomerFormModal({
                                     <div className="text-center space-y-1.5 border-b-2 border-stone-800 pb-3">
                                       <h1 className="text-base font-black text-stone-900 tracking-tight">{brandName} 連結現有合約同意書</h1>
                                       <div className="flex justify-between text-[9px] font-bold text-stone-500">
-                                        <span>紅二七健身有限公司</span>
+                                        <span>{isCoffit ? '來財健康有限公司' : '紅二七健身有限公司'}</span>
                                         <span>連結合約編號：{selectedContract?.contractNumber || selectedContract?.id?.substring(0, 8)}</span>
                                       </div>
                                     </div>
@@ -3085,7 +3085,7 @@ export function CustomerFormModal({
                                       {brandName} {isGroup ? '團體健身教練課程契約書' : isShared ? '多人共享健身教練課程契約書' : isDual ? '雙人共享健身教練課程契約書' : '健身教練課程契約書'}
                                     </h1>
                                     <div className="flex justify-between text-[9px] font-bold text-stone-500">
-                                      <span>紅二七健身有限公司</span>
+                                      <span>{isCoffit ? '來財健康有限公司' : '紅二七健身有限公司'}</span>
                                       <span>合約編號：(系統自動產生)</span>
                                     </div>
                                   </div>
@@ -3228,7 +3228,7 @@ export function CustomerFormModal({
                                         <span>{isCoffit ? 'coffit健身咖' : 'R27健身站'}（簡稱乙方）</span>
                                       </div>
                                       <div className="space-y-1 text-[10px]">
-                                        <div>公司名稱：<span className="font-bold text-stone-900">紅二七健身有限公司</span></div>
+                                        <div>公司名稱：<span className="font-bold text-stone-900">{isCoffit ? '來財健康有限公司' : '紅二七健身有限公司'}</span></div>
                                         <div>負責人：<span className="font-bold text-stone-900">郭沛霖</span></div>
                                         <div className="grid grid-cols-3 gap-y-1 gap-x-2 pt-0.5">
                                           <div>電話：<span className="font-bold text-stone-900">0905396658</span></div>
