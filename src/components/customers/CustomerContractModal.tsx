@@ -13,6 +13,7 @@ import { Printer, X, Edit2, Trash2, Save, Plus, Trash, AlertTriangle, RefreshCw 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useAuthStore } from '@/stores/authStore'
+import { useCenterStore } from '@/stores/centerStore'
 import r27Stamp from '@/assets/r27-stamp.png'
 import coffitStamp from '@/assets/coffit-stamp.png'
 
