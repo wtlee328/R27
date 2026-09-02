@@ -307,13 +307,20 @@ export function LessonRecordWizard({
   // Pre-select contract trainer when a contract or customer is selected (only for new records)
   useEffect(() => {
     if (!initialData && selectedContract) {
-      const studentSpecificTrainer = selectedContract.studentTrainers?.[selectedCustomerId]
-      if (studentSpecificTrainer) {
-        form.setValue('trainerId', studentSpecificTrainer)
-      } else if (effectiveTrainerId) {
+      if (effectiveTrainerId) {
+        // When a fixed trainerId is passed (e.g. from trainer details modal), always keep the intended trainer
         form.setValue('trainerId', effectiveTrainerId)
       } else {
-        form.setValue('trainerId', selectedContract.trainerId || '')
+        // When in general mode with dropdown, only auto-populate if no trainer is currently selected
+        const currentTrainer = form.getValues('trainerId')
+        if (!currentTrainer) {
+          const studentSpecificTrainer = selectedContract.studentTrainers?.[selectedCustomerId]
+          if (studentSpecificTrainer) {
+            form.setValue('trainerId', studentSpecificTrainer)
+          } else {
+            form.setValue('trainerId', selectedContract.trainerId || '')
+          }
+        }
       }
     }
   }, [selectedContract, selectedCustomerId, initialData, form, effectiveTrainerId])
@@ -490,6 +497,9 @@ export function LessonRecordWizard({
                       form.setValue('customerId', '')
                       form.setValue('customerName', '')
                       form.setValue('contractId', '')
+                      if (!effectiveTrainerId) {
+                        form.setValue('trainerId', '')
+                      }
                       form.setValue('attendingCustomerIds', [])
                     }
                   }}
@@ -509,6 +519,9 @@ export function LessonRecordWizard({
                       form.setValue('customerId', '')
                       form.setValue('customerName', '')
                       form.setValue('contractId', '')
+                      if (!effectiveTrainerId) {
+                        form.setValue('trainerId', '')
+                      }
                       form.setValue('attendingCustomerIds', [])
                       setIsOpen(true)
                     }}
@@ -539,6 +552,9 @@ export function LessonRecordWizard({
                             form.setValue('customerId', c.id)
                             form.setValue('customerName', c.name)
                             form.setValue('contractId', '')
+                            if (!effectiveTrainerId) {
+                              form.setValue('trainerId', '')
+                            }
                             form.setValue('attendingCustomerIds', [c.id])
                             setSearchTerm(c.name)
                             setIsOpen(false)
