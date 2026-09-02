@@ -333,15 +333,43 @@ export default function TrainerLessonsPage() {
 
   const contractPrimaryTrainer = useMemo(() => {
     if (!selectedContract) return null
-    return trainers.find(t => t.id === selectedContract.trainerId)
-  }, [selectedContract, trainers])
+    const assignedContractTrainerId = (() => {
+      if (selectedContract.contractType === 'shared' && selectedContract.studentTrainers?.[selectedCustomerId]) {
+        return selectedContract.studentTrainers[selectedCustomerId]
+      }
+      if (selectedContract.contractType === 'dual') {
+        const isPrimary = selectedCustomerId === (selectedContract.customerId || selectedContract.primaryCustomerId)
+        if (!isPrimary && selectedContract.secondaryTrainerId) {
+          return selectedContract.secondaryTrainerId
+        }
+        if (selectedContract.studentTrainers?.[selectedCustomerId]) {
+          return selectedContract.studentTrainers[selectedCustomerId]
+        }
+      }
+      return selectedContract.trainerId
+    })()
+    return trainers.find(t => t.id === assignedContractTrainerId) || trainers.find(t => t.id === selectedContract.trainerId)
+  }, [selectedContract, selectedCustomerId, trainers])
 
   const isSubstituteTeaching = useMemo(() => {
     if (!selectedContract || !selectedTrainerId) return false
-    const primaryId = selectedContract.trainerId
-    const secondaryId = selectedContract.secondaryTrainerId
-    return selectedTrainerId !== primaryId && selectedTrainerId !== secondaryId
-  }, [selectedContract, selectedTrainerId])
+    const assignedContractTrainerId = (() => {
+      if (selectedContract.contractType === 'shared' && selectedContract.studentTrainers?.[selectedCustomerId]) {
+        return selectedContract.studentTrainers[selectedCustomerId]
+      }
+      if (selectedContract.contractType === 'dual') {
+        const isPrimary = selectedCustomerId === (selectedContract.customerId || selectedContract.primaryCustomerId)
+        if (!isPrimary && selectedContract.secondaryTrainerId) {
+          return selectedContract.secondaryTrainerId
+        }
+        if (selectedContract.studentTrainers?.[selectedCustomerId]) {
+          return selectedContract.studentTrainers[selectedCustomerId]
+        }
+      }
+      return selectedContract.trainerId
+    })()
+    return selectedTrainerId !== assignedContractTrainerId
+  }, [selectedContract, selectedTrainerId, selectedCustomerId])
 
   // Active contract summary for each customer
   const customerContractMap = useMemo(() => {
@@ -359,7 +387,7 @@ export default function TrainerLessonsPage() {
           const prev = map.get(cid) || { activeCount: 0, remainingTotal: 0 }
           map.set(cid, {
             activeCount: prev.activeCount + 1,
-            remainingTotal: prev.remainingTotal + c.remainingSessions,
+            remainingTotal: prev.remainingTotal + Number(c.remainingSessions || 0)
           })
         })
       }
@@ -467,13 +495,15 @@ export default function TrainerLessonsPage() {
       // Find the first contract with remaining sessions
       const activeContract = contracts.find(c => c.remainingSessions > 0) || contracts[0]
       setSelectedContractId(activeContract.id)
-      const studentAssignedTrainer = activeContract.studentTrainers?.[selectedCustomerId]
-      if (studentAssignedTrainer) {
-        setSelectedTrainerId(studentAssignedTrainer)
-      } else if (currentTrainerId) {
+      if (currentTrainerId) {
         setSelectedTrainerId(currentTrainerId)
-      } else if (activeContract.trainerId) {
-        setSelectedTrainerId(activeContract.trainerId)
+      } else {
+        const studentAssignedTrainer = activeContract.studentTrainers?.[selectedCustomerId]
+        if (studentAssignedTrainer) {
+          setSelectedTrainerId(studentAssignedTrainer)
+        } else if (activeContract.trainerId) {
+          setSelectedTrainerId(activeContract.trainerId)
+        }
       }
     } else if (currentTrainerId) {
       setSelectedTrainerId(currentTrainerId)
