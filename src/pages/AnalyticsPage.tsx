@@ -16,6 +16,10 @@ import {
   RiArrowUpDownLine,
   RiArrowUpLine,
   RiArrowDownLine,
+  RiArrowDownSLine,
+  RiArrowUpSLine,
+  RiSearchLine,
+  RiCloseLine,
 } from '@remixicon/react'
 import { Calendar } from 'lucide-react'
 import { StatCard } from '../components/shared/StatCard'
@@ -23,6 +27,8 @@ import { FilterDropdown } from '../components/shared/FilterDropdown'
 import { Progress } from '../components/ui/progress'
 import { Badge } from '../components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
+import { Input } from '../components/ui/input'
+import { cn } from '@/lib/utils'
 import { ChannelDonutChart } from '../components/analytics/ChannelDonutChart'
 import {
   Table,
@@ -56,6 +62,11 @@ export default function AnalyticsPage() {
 
   const [rfmSortBy, setRfmSortBy] = useState<RfmSortKey>('frequency')
   const [rfmSortOrder, setRfmSortOrder] = useState<'asc' | 'desc'>('desc')
+
+  // 續課率展開狀態
+  const [isRenewalExpanded, setIsRenewalExpanded] = useState(false)
+  const [renewalFilterTab, setRenewalFilterTab] = useState<'all' | 'renewed' | 'not_renewed'>('all')
+  const [renewalSearchTerm, setRenewalSearchTerm] = useState('')
 
   const handleRfmSort = (key: RfmSortKey) => {
     if (rfmSortBy === key) {
@@ -242,10 +253,69 @@ export default function AnalyticsPage() {
 
     const totalEnded = expiredStudentSet.size
     const renewals = renewedStudentSet.size
+    const notRenewed = totalEnded - renewals
     const rate = totalEnded > 0 ? ((renewals / totalEnded) * 100).toFixed(1) : '0.0'
 
-    return { renewals, totalEnded, rate }
-  }, [contracts, selectedYear, selectedMonth])
+    // 3. Build detailed student list for UI display
+    const customerMap = new Map<string, Customer>()
+    ;(customers || []).forEach((c) => customerMap.set(c.id, c))
+
+    const students = Array.from(expiredStudentSet).map((studentId) => {
+      const cust = customerMap.get(studentId)
+      const studentContracts = (contracts || []).filter((c) =>
+        c.customerId === studentId ||
+        c.primaryCustomerId === studentId ||
+        c.sharedWithCustomerId === studentId ||
+        (c.customerIds && c.customerIds.includes(studentId))
+      )
+
+      const isRenewed = renewedStudentSet.has(studentId)
+
+      const endedContracts = studentContracts.filter((c) =>
+        c.status === 'completed' || c.status === 'expired' || Number(c.remainingSessions || 0) === 0 || c.status === 'expiring'
+      )
+
+      const activeContracts = studentContracts.filter((c) =>
+        c.status === 'active' || (c.status !== 'completed' && c.status !== 'expired' && Number(c.remainingSessions || 0) > 0)
+      )
+
+      const trainerName = (cust?.trainerId && trainerMap[cust.trainerId]) ||
+        (studentContracts[0]?.trainerId && trainerMap[studentContracts[0].trainerId]) || '未指派'
+
+      return {
+        id: studentId,
+        name: cust?.name || '未知學員',
+        phone: cust?.phone || '—',
+        trainerName,
+        isRenewed,
+        endedContracts,
+        activeContracts,
+      }
+    })
+
+    students.sort((a, b) => {
+      if (a.isRenewed === b.isRenewed) return a.name.localeCompare(b.name, 'zh-Hant')
+      return a.isRenewed ? 1 : -1
+    })
+
+    return { renewals, totalEnded, notRenewed, rate, students }
+  }, [contracts, customers, trainerMap, selectedYear, selectedMonth])
+
+  // 篩選展開清單中的學員
+  const filteredRenewalStudents = useMemo(() => {
+    return (renewalStats.students || []).filter((s) => {
+      if (renewalFilterTab === 'renewed' && !s.isRenewed) return false
+      if (renewalFilterTab === 'not_renewed' && s.isRenewed) return false
+      if (renewalSearchTerm.trim()) {
+        const term = renewalSearchTerm.trim().toLowerCase()
+        const matchName = s.name.toLowerCase().includes(term)
+        const matchPhone = s.phone.toLowerCase().includes(term)
+        const matchTrainer = s.trainerName.toLowerCase().includes(term)
+        return matchName || matchPhone || matchTrainer
+      }
+      return true
+    })
+  }, [renewalStats.students, renewalFilterTab, renewalSearchTerm])
 
   // --- 2. 客群與漏斗分析 ---
   const demographics = useMemo(() => {
@@ -608,7 +678,22 @@ export default function AnalyticsPage() {
               value={`${renewalStats.rate}%`}
               icon={RiMedalLine}
               subtitle={`續課 ${renewalStats.renewals} / 到期 ${renewalStats.totalEnded} 人`}
-            />
+              onClick={() => setIsRenewalExpanded((prev) => !prev)}
+              isActive={isRenewalExpanded}
+              className={cn(
+                'cursor-pointer transition-all duration-200 select-none hover:border-orange-400',
+                isRenewalExpanded && 'ring-2 ring-orange-500 border-orange-500'
+              )}
+            >
+              <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] font-bold text-orange-600">
+                <span>{isRenewalExpanded ? '收合學員明細' : '展開查看學員明細'}</span>
+                {isRenewalExpanded ? (
+                  <RiArrowUpSLine className="w-4 h-4 text-orange-600" />
+                ) : (
+                  <RiArrowDownSLine className="w-4 h-4 text-orange-600 animate-bounce" />
+                )}
+              </div>
+            </StatCard>
             <StatCard
               title="幽靈會員預警 (>30天)"
               value={`${churnAnalysis.inactiveGhostMembers.length} 人`}
@@ -622,6 +707,180 @@ export default function AnalyticsPage() {
               subtitle="全館資料庫學員"
             />
           </div>
+
+          {/* 📋 可展開之續課 / 到期學員名單 Panel */}
+          {isRenewalExpanded && (
+            <Card className="border border-orange-200/90 bg-gradient-to-b from-orange-50/20 to-white shadow-md rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-3 duration-300">
+              <CardHeader className="p-4 sm:p-5 border-b border-orange-100 bg-white/90">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                        <RiMedalLine className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-bold text-stone-950 flex items-center gap-2">
+                          到期與續課學員名單
+                          <span className="text-xs font-normal text-stone-500 font-mono">({monthLabel})</span>
+                        </CardTitle>
+                        <CardDescription className="text-xs text-stone-500 mt-0.5">
+                          統計期間內合約到期共 <span className="font-bold text-stone-900">{renewalStats.totalEnded}</span> 人 · 已續約 <span className="font-bold text-emerald-600">{renewalStats.renewals}</span> 人 · 待跟進未續約 <span className="font-bold text-rose-600">{renewalStats.notRenewed}</span> 人
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Controls: Tabs, Search, Close button */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Tabs */}
+                    <div className="flex items-center p-1 bg-stone-100 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setRenewalFilterTab('all')}
+                        className={cn(
+                          'px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer',
+                          renewalFilterTab === 'all'
+                            ? 'bg-white text-stone-950 shadow-xs'
+                            : 'text-stone-500 hover:text-stone-800'
+                        )}
+                      >
+                        全部到期 ({renewalStats.totalEnded})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRenewalFilterTab('renewed')}
+                        className={cn(
+                          'px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                          renewalFilterTab === 'renewed'
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-emerald-700 hover:text-emerald-900'
+                        )}
+                      >
+                        <RiCheckboxCircleLine className="w-3.5 h-3.5" />
+                        已續約 ({renewalStats.renewals})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRenewalFilterTab('not_renewed')}
+                        className={cn(
+                          'px-2.5 sm:px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                          renewalFilterTab === 'not_renewed'
+                            ? 'bg-rose-600 text-white shadow-xs'
+                            : 'text-rose-700 hover:text-rose-900'
+                        )}
+                      >
+                        <RiAlertLine className="w-3.5 h-3.5" />
+                        未續約 ({renewalStats.notRenewed})
+                      </button>
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative w-full sm:w-52">
+                      <RiSearchLine className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <Input
+                        type="text"
+                        placeholder="搜尋姓名、電話、教練..."
+                        value={renewalSearchTerm}
+                        onChange={(e) => setRenewalSearchTerm(e.target.value)}
+                        className="h-8.5 pl-8 pr-3 text-xs rounded-xl bg-white border-stone-200 focus-visible:ring-orange-400"
+                      />
+                    </div>
+
+                    {/* Close button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsRenewalExpanded(false)}
+                      className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                      title="收合名單"
+                    >
+                      <RiCloseLine className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                <div className="overflow-x-auto max-h-96 overflow-y-auto divide-y divide-stone-100">
+                  <Table>
+                    <TableHeader className="bg-stone-50/90 sticky top-0 z-10 backdrop-blur-xs">
+                      <TableRow className="border-b border-stone-200/80">
+                        <TableHead className="w-28 text-xs font-bold text-stone-700">學員姓名</TableHead>
+                        <TableHead className="w-28 text-xs font-bold text-stone-700">聯絡電話</TableHead>
+                        <TableHead className="w-28 text-xs font-bold text-stone-700">負責教練</TableHead>
+                        <TableHead className="text-xs font-bold text-stone-700">已到期／完課合約</TableHead>
+                        <TableHead className="text-xs font-bold text-stone-700">進行中／續約合約</TableHead>
+                        <TableHead className="w-28 text-right text-xs font-bold text-stone-700 pr-6">續課狀態</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredRenewalStudents.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-12 text-stone-400 text-xs">
+                            查無符合條件的學員名單
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredRenewalStudents.map((s) => (
+                          <TableRow key={s.id} className="hover:bg-orange-50/20 transition-colors">
+                            <TableCell className="font-bold text-stone-900 text-xs">
+                              <div className="flex items-center gap-2">
+                                <div className={cn(
+                                  'w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 shadow-2xs',
+                                  s.isRenewed ? 'bg-emerald-600' : 'bg-rose-500'
+                                )}>
+                                  {s.name.charAt(0)}
+                                </div>
+                                <span className="whitespace-nowrap">{s.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-mono text-stone-600 whitespace-nowrap">{s.phone}</TableCell>
+                            <TableCell className="text-xs font-bold text-stone-800 whitespace-nowrap">{s.trainerName}</TableCell>
+                            <TableCell className="text-xs text-stone-600">
+                              <div className="flex flex-wrap gap-1.5 py-1">
+                                {s.endedContracts.map((c) => (
+                                  <span key={c.id} className="inline-flex items-center gap-1 bg-stone-100 text-stone-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-stone-200">
+                                    {c.contractType === 'dual' ? '👥 雙人' : c.contractType === 'shared' ? '👥 共享' : c.contractType === 'group' ? '🥊 團課' : '👤 單人'}
+                                    {' '}{c.totalSessions} 堂 (剩 {c.remainingSessions ?? 0} 堂)
+                                  </span>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              {s.activeContracts.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5 py-1">
+                                  {s.activeContracts.map((c) => (
+                                    <span key={c.id} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md text-[11px] font-bold border border-emerald-200">
+                                      {c.contractType === 'dual' ? '👥 雙人' : c.contractType === 'shared' ? '👥 共享' : c.contractType === 'group' ? '🥊 團課' : '👤 單人'}
+                                      {' '}{c.totalSessions} 堂 (剩 {c.remainingSessions ?? 0} 堂)
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-stone-400 font-medium italic">目前無進行中合約</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right pr-6 whitespace-nowrap">
+                              {s.isRenewed ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 text-[11px] font-bold">
+                                  <RiCheckboxCircleLine className="w-3 h-3 mr-1" />
+                                  已續約
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-rose-100 text-rose-800 hover:bg-rose-100 border border-rose-200 text-[11px] font-bold">
+                                  <RiAlertLine className="w-3 h-3 mr-1" />
+                                  未續約
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* 📈 12-Month Lesson Trend Bar Chart (Black & Orange Accent) */}
           <Card className="border border-stone-200/80 shadow-xs">
