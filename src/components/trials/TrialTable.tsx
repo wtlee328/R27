@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import type { TrialRecord } from '../../types'
 import { format } from 'date-fns'
 import { 
@@ -10,8 +10,20 @@ import {
   DialogDescription
 } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { RiUserSearchLine, RiDeleteBinLine, RiAlertLine, RiEditLine } from '@remixicon/react'
+import {
+  RiUserSearchLine,
+  RiDeleteBinLine,
+  RiAlertLine,
+  RiEditLine,
+  RiArrowUpDownLine,
+  RiArrowUpSLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { useTrainers } from '../../hooks/useTrainers'
+import { cn } from '@/lib/utils'
+
+type SortField = 'date' | 'clientName' | 'phone' | 'trainer' | 'notes' | 'outcome'
+type SortOrder = 'asc' | 'desc'
 
 export function TrialTable({
   trials,
@@ -27,11 +39,101 @@ export function TrialTable({
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const { trainers } = useTrainers()
 
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+
+  const trainerMap = useMemo(() => {
+    const map = new Map<string, string>()
+    trainers.forEach((t) => map.set(t.id, t.name))
+    return map
+  }, [trainers])
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortOrder(field === 'date' ? 'desc' : 'asc')
+    }
+  }
+
+  const sortedTrials = useMemo(() => {
+    const list = [...trials]
+    list.sort((a, b) => {
+      let comparison = 0
+      switch (sortField) {
+        case 'date': {
+          const timeA = a.date?.toDate ? a.date.toDate().getTime() : (a.date ? new Date(a.date as any).getTime() : 0)
+          const timeB = b.date?.toDate ? b.date.toDate().getTime() : (b.date ? new Date(b.date as any).getTime() : 0)
+          comparison = timeA - timeB
+          break
+        }
+        case 'clientName': {
+          comparison = (a.clientName || '').localeCompare(b.clientName || '', 'zh-Hant')
+          break
+        }
+        case 'phone': {
+          comparison = (a.phone || '').localeCompare(b.phone || '')
+          break
+        }
+        case 'trainer': {
+          const nameA = trainerMap.get(a.trialTrainerId) || ''
+          const nameB = trainerMap.get(b.trialTrainerId) || ''
+          comparison = nameA.localeCompare(nameB, 'zh-Hant')
+          break
+        }
+        case 'notes': {
+          comparison = (a.notes || '').localeCompare(b.notes || '', 'zh-Hant')
+          break
+        }
+        case 'outcome': {
+          const order = { pending: 0, converted: 1, not_converted: 2 }
+          comparison = (order[a.outcome] ?? 99) - (order[b.outcome] ?? 99)
+          break
+        }
+      }
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+    return list
+  }, [trials, sortField, sortOrder, trainerMap])
+
   const handleDelete = () => {
     if (deleteId) {
       onDelete(deleteId)
       setDeleteId(null)
     }
+  }
+
+  const renderSortableHeader = (field: SortField, label: string, align: 'left' | 'center' | 'right' = 'left') => {
+    const isActive = sortField === field
+    return (
+      <th
+        onClick={() => handleSort(field)}
+        className={cn(
+          'px-5 py-3.5 text-[10px] uppercase tracking-wider cursor-pointer select-none transition-colors group',
+          align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left',
+          isActive ? 'font-black text-stone-900 bg-stone-100/80' : 'font-black text-stone-400 hover:text-stone-700 hover:bg-stone-100/40'
+        )}
+      >
+        <div className={cn(
+          'flex items-center gap-1.5',
+          align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+        )}>
+          <span>{label}</span>
+          <span className="inline-flex shrink-0">
+            {isActive ? (
+              sortOrder === 'asc' ? (
+                <RiArrowUpSLine className="w-4 h-4 text-stone-900 font-bold" />
+              ) : (
+                <RiArrowDownSLine className="w-4 h-4 text-stone-900 font-bold" />
+              )
+            ) : (
+              <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300 group-hover:text-stone-500 transition-colors" />
+            )}
+          </span>
+        </div>
+      </th>
+    )
   }
 
   if (trials.length === 0) {
@@ -52,17 +154,17 @@ export function TrialTable({
         <table className="w-full text-sm text-left">
           <thead className="bg-stone-50/80 border-b border-stone-100">
             <tr>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">體驗日期</th>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">姓名</th>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">聯絡電話</th>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">體驗課教練</th>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider">備註</th>
-              <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider text-center">結果狀態</th>
+              {renderSortableHeader('date', '體驗日期')}
+              {renderSortableHeader('clientName', '姓名')}
+              {renderSortableHeader('phone', '聯絡電話')}
+              {renderSortableHeader('trainer', '體驗課教練')}
+              {renderSortableHeader('notes', '備註')}
+              {renderSortableHeader('outcome', '結果狀態', 'center')}
               <th className="px-5 py-3.5 text-[10px] font-black text-stone-400 uppercase tracking-wider text-right">操作</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-stone-50">
-            {trials.map((r) => (
+            {sortedTrials.map((r) => (
               <tr key={r.id} className="group hover:bg-stone-50/60 transition-colors">
                 <td className="px-5 py-3.5 text-stone-500 tabular-nums">
                   {r.date ? format(r.date.toDate(), 'yyyy/MM/dd') : '-'}

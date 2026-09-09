@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { format, isToday, isYesterday } from 'date-fns'
-import { RiUserSearchLine } from '@remixicon/react'
+import { RiUserSearchLine, RiArrowUpDownLine, RiArrowUpSLine, RiArrowDownSLine } from '@remixicon/react'
 import { UserCheck, AlertCircle, Plus, Phone, Edit2 } from 'lucide-react'
 import { useTrials } from '@/hooks/useTrials'
 import { useTrainers } from '@/hooks/useTrainers'
@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
+
+type SortField = 'clientName' | 'trainer' | 'date' | 'phone' | 'outcome'
+type SortOrder = 'asc' | 'desc'
 
 export default function TrainerTrialsPage() {
   const { user } = useAuthStore()
@@ -21,6 +25,9 @@ export default function TrainerTrialsPage() {
 
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [sortField, setSortField] = useState<SortField>('date')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   // Form states
   const [clientName, setClientName] = useState('')
@@ -39,6 +46,51 @@ export default function TrainerTrialsPage() {
     if (!currentTrainerId) return trials
     return trials.filter(r => r.trialTrainerId === currentTrainerId || r.trainerId === currentTrainerId)
   }, [trials, currentTrainerId])
+
+  const sortedMyTrials = useMemo(() => {
+    const list = [...myTrials]
+    list.sort((a, b) => {
+      let comparison = 0
+      switch (sortField) {
+        case 'date': {
+          const timeA = a.date?.toDate ? a.date.toDate().getTime() : (a.date ? new Date(a.date as any).getTime() : 0)
+          const timeB = b.date?.toDate ? b.date.toDate().getTime() : (b.date ? new Date(b.date as any).getTime() : 0)
+          comparison = timeA - timeB
+          break
+        }
+        case 'clientName': {
+          comparison = (a.clientName || '').localeCompare(b.clientName || '', 'zh-Hant')
+          break
+        }
+        case 'phone': {
+          comparison = (a.phone || '').localeCompare(b.phone || '')
+          break
+        }
+        case 'trainer': {
+          const nameA = trainers.find(t => t.id === a.trialTrainerId)?.name || ''
+          const nameB = trainers.find(t => t.id === b.trialTrainerId)?.name || ''
+          comparison = nameA.localeCompare(nameB, 'zh-Hant')
+          break
+        }
+        case 'outcome': {
+          const order = { pending: 0, converted: 1, not_converted: 2 }
+          comparison = (order[a.outcome] ?? 99) - (order[b.outcome] ?? 99)
+          break
+        }
+      }
+      return sortOrder === 'asc' ? comparison : -comparison
+    })
+    return list
+  }, [myTrials, sortField, sortOrder, trainers])
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortOrder(field === 'date' ? 'desc' : 'asc')
+    }
+  }
 
   // Set default trainer ID for form
   useEffect(() => {
@@ -298,19 +350,89 @@ export default function TrainerTrialsPage() {
           {/* Desktop Table */}
           <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-sm">
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1.2fr_220px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide">
-              <span>體驗客</span>
-              <span>教練</span>
-              <span>日期</span>
-              <span>聯絡資訊</span>
-              <span>狀態 / 操作</span>
+            <div className="grid grid-cols-[2fr_1fr_1fr_1.2fr_220px] gap-4 px-6 py-3 bg-stone-50 border-b border-stone-100 text-xs font-bold text-stone-500 uppercase tracking-wide select-none">
+              <button
+                type="button"
+                onClick={() => handleSort('clientName')}
+                className={cn(
+                  'flex items-center gap-1 text-left cursor-pointer transition-colors',
+                  sortField === 'clientName' ? 'text-stone-900 font-black' : 'hover:text-stone-800'
+                )}
+              >
+                <span>體驗客</span>
+                {sortField === 'clientName' ? (
+                  sortOrder === 'asc' ? <RiArrowUpSLine className="w-3.5 h-3.5 text-stone-900" /> : <RiArrowDownSLine className="w-3.5 h-3.5 text-stone-900" />
+                ) : (
+                  <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSort('trainer')}
+                className={cn(
+                  'flex items-center gap-1 text-left cursor-pointer transition-colors',
+                  sortField === 'trainer' ? 'text-stone-900 font-black' : 'hover:text-stone-800'
+                )}
+              >
+                <span>教練</span>
+                {sortField === 'trainer' ? (
+                  sortOrder === 'asc' ? <RiArrowUpSLine className="w-3.5 h-3.5 text-stone-900" /> : <RiArrowDownSLine className="w-3.5 h-3.5 text-stone-900" />
+                ) : (
+                  <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSort('date')}
+                className={cn(
+                  'flex items-center gap-1 text-left cursor-pointer transition-colors',
+                  sortField === 'date' ? 'text-stone-900 font-black' : 'hover:text-stone-800'
+                )}
+              >
+                <span>日期</span>
+                {sortField === 'date' ? (
+                  sortOrder === 'asc' ? <RiArrowUpSLine className="w-3.5 h-3.5 text-stone-900" /> : <RiArrowDownSLine className="w-3.5 h-3.5 text-stone-900" />
+                ) : (
+                  <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSort('phone')}
+                className={cn(
+                  'flex items-center gap-1 text-left cursor-pointer transition-colors',
+                  sortField === 'phone' ? 'text-stone-900 font-black' : 'hover:text-stone-800'
+                )}
+              >
+                <span>聯絡資訊</span>
+                {sortField === 'phone' ? (
+                  sortOrder === 'asc' ? <RiArrowUpSLine className="w-3.5 h-3.5 text-stone-900" /> : <RiArrowDownSLine className="w-3.5 h-3.5 text-stone-900" />
+                ) : (
+                  <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSort('outcome')}
+                className={cn(
+                  'flex items-center gap-1 text-left cursor-pointer transition-colors',
+                  sortField === 'outcome' ? 'text-stone-900 font-black' : 'hover:text-stone-800'
+                )}
+              >
+                <span>狀態 / 操作</span>
+                {sortField === 'outcome' ? (
+                  sortOrder === 'asc' ? <RiArrowUpSLine className="w-3.5 h-3.5 text-stone-900" /> : <RiArrowDownSLine className="w-3.5 h-3.5 text-stone-900" />
+                ) : (
+                  <RiArrowUpDownLine className="w-3.5 h-3.5 text-stone-300" />
+                )}
+              </button>
             </div>
 
             {trialsLoading ? (
               <div className="p-10 text-center text-stone-400 text-sm animate-pulse">載入中...</div>
-            ) : myTrials.length > 0 ? (
+            ) : sortedMyTrials.length > 0 ? (
               <div className="divide-y divide-stone-100">
-                {myTrials.slice(0, 50).map((record) => {
+                {sortedMyTrials.slice(0, 50).map((record) => {
                   const trainerName = trainers.find(t => t.id === record.trialTrainerId)?.name || '未指定教練'
 
                   const statusConfig = record.outcome === 'converted'
