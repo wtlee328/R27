@@ -2,6 +2,7 @@ import React from 'react'
 import { Info, AlertTriangle } from 'lucide-react'
 import type { StructuredAIBlock, StatCardData, TableComponentData, AlertBoxData } from '@/types/ai'
 import { AITableRenderer } from './AITableRenderer'
+import { AIMarkdownRenderer } from './AIMarkdownRenderer'
 
 interface StructuredBlockRendererProps {
   blocks: StructuredAIBlock[]
@@ -111,11 +112,7 @@ export const StructuredBlockRenderer: React.FC<StructuredBlockRendererProps> = (
         }
 
         if (block.type === 'text') {
-          return (
-            <div key={idx} className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed whitespace-pre-wrap">
-              {String(block.data)}
-            </div>
-          )
+          return <AIMarkdownRenderer key={idx} content={String(block.data)} />
         }
 
         return null

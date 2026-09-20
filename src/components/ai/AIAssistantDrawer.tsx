@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAIAssistantStore, getDefaultWelcomeMessage } from '@/stores/aiAssistantStore'
 import { useCenterStore } from '@/stores/centerStore'
 import { StructuredBlockRenderer } from './StructuredBlockRenderer'
+import { AIMarkdownRenderer } from './AIMarkdownRenderer'
 
 export const AIAssistantDrawer: React.FC = () => {
   const { centerId } = useCenterStore()
@@ -175,10 +176,8 @@ export const AIAssistantDrawer: React.FC = () => {
             return (
               <div key={msg.id} className="flex flex-col items-start gap-1">
                 <div className="w-full rounded-2xl rounded-tl-xs px-4 sm:px-5 py-3.5 bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-xs sm:text-sm shadow-xs">
-                  {/* Assistant Text / Summary */}
-                  <div className="leading-relaxed whitespace-pre-wrap font-sans text-stone-800 dark:text-stone-200">
-                    {msg.content}
-                  </div>
+                  {/* Assistant Text / Summary with Markdown UI Rendering */}
+                  <AIMarkdownRenderer content={msg.content} />
 
                   {/* Structured Dynamic Blocks (StatCards, Tables, Alerts) */}
                   {blocks.length > 0 && <StructuredBlockRenderer blocks={blocks} />}
