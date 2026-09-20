@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Sparkles,
   Send,
@@ -17,21 +17,27 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { useAIAssistantStore } from '@/stores/aiAssistantStore'
+import { useAIAssistantStore, getDefaultWelcomeMessage } from '@/stores/aiAssistantStore'
 import { useCenterStore } from '@/stores/centerStore'
 import { StructuredBlockRenderer } from './StructuredBlockRenderer'
 
-const DEFAULT_PROMPTS = [
-  '查詢本月課程收入明細與總額',
-  '查看今年度累積損益狀況',
-  '目前預收學費負債餘額還有多少？',
-  '查詢未付清或分期逾期的合約',
-]
-
 export const AIAssistantDrawer: React.FC = () => {
-  const { isOpen, setIsOpen, messages, isLoading, sendMessage, clearMessages, prefillPrompt, setPrefillPrompt } =
-    useAIAssistantStore()
   const { centerId } = useCenterStore()
+  const {
+    isOpen,
+    setIsOpen,
+    messagesByCenter,
+    isLoading,
+    sendMessage,
+    clearMessages,
+    prefillPrompt,
+    setPrefillPrompt,
+  } = useAIAssistantStore()
+
+  const messages = useMemo(() => {
+    return messagesByCenter[centerId] || [getDefaultWelcomeMessage(centerId)]
+  }, [messagesByCenter, centerId])
+  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
 
   const [inputMessage, setInputMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -109,9 +115,9 @@ export const AIAssistantDrawer: React.FC = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clearMessages}
+              onClick={() => clearMessages(centerId)}
               className="h-8 px-2 text-xs text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white gap-1"
-              title="清空對話紀錄"
+              title={`清空 ${centerName} 對話紀錄`}
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">清除紀錄</span>
@@ -129,7 +135,12 @@ export const AIAssistantDrawer: React.FC = () => {
                 常見財務快捷提問：
               </div>
               <div className="flex flex-wrap gap-2">
-                {DEFAULT_PROMPTS.map((prompt, idx) => (
+                {[
+                  `查詢 ${centerName} 本月課程收入明細與總額`,
+                  `查看 ${centerName} 今年度累積損益狀況`,
+                  `目前 ${centerName} 預收學費負債餘額還有多少？`,
+                  `查詢 ${centerName} 未付清或分期逾期的合約`,
+                ].map((prompt, idx) => (
                   <button
                     key={idx}
                     onClick={() => handleSend(prompt)}

@@ -81,15 +81,20 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
   },
 ]
 
-const SYSTEM_PROMPT = `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
-你的任務是協助管理員快速查詢與分析財務資料（流水帳、損益、預收銷課、合約收款等）。
+function getSystemPrompt(centerId: string) {
+  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  return `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
+【目前服務場館】：${centerName}（centerId: "${centerId}"）。
+你的任務是協助管理員快速查詢與分析 ${centerName} 場館的財務資料（流水帳、損益、預收銷課、合約收款等）。
 
 【最高原則】：
-1. 你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字（Zero Hallucination Policy）。
-2. 若查詢結果為空或無相關資料，請如實告知「在指定的年份/月份條件下查無相關資料」，並提醒使用者核對條件或分店切換。
-3. 若使用者的問題沒有提及年份，預設請使用當前年份（2026 年）或當月進行查詢。
-4. 回答風格應專業、清晰，先以簡要總結重點數值，並對重大數據做清楚的條列說明。
-5. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
+1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
+2. 你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字（Zero Hallucination Policy）。
+3. 若查詢結果為空或無相關資料，請如實告知「在指定的年份/月份條件下查無相關資料」，並提醒使用者核對條件或確認是否已切換至正確場館。
+4. 若使用者的問題沒有提及年份，預設請使用當前年份（2026 年）或當月進行查詢。
+5. 回答風格應專業、清晰，先以簡要總結重點數值，並對重大數據做清楚的條列說明。
+6. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
+}
 
 /**
  * Executes specialized Accounting Agent with gpt-5.6-luna
@@ -108,7 +113,7 @@ export async function executeAccountingAgent(
 
   // Build message sequence
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: getSystemPrompt(centerId) },
   ]
 
   // Add conversation history (up to last 6 turns)
@@ -342,12 +347,13 @@ export async function executeAccountingAgent(
       }
     }
 
-    // Suggested questions
+    // Suggested questions with center name
+    const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
     const suggestedQuestions = [
-      '查詢本月課程收入明細',
-      '損益表的收支結構佔比',
-      '目前預收學費負債餘額還有多少？',
-      '有未結清或分期逾期的合約嗎？',
+      `查詢 ${centerName} 本月課程收入明細`,
+      `查看 ${centerName} 損益表的收支結構佔比`,
+      `目前 ${centerName} 預收學費負債餘額還有多少？`,
+      `查詢 ${centerName} 未結清或分期逾期的合約`,
     ]
 
     return {
