@@ -1,7 +1,8 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  LogOut, Menu, X, Building2, UserCheck, Settings, ChevronDown,
+  LogOut, Menu, X, Building2, UserCheck, Settings, ChevronDown, Sparkles,
 } from 'lucide-react'
+import { useAIAssistantStore } from '@/stores/aiAssistantStore'
 import { signOut } from '@/lib/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -27,6 +28,7 @@ export function Navbar() {
   const { centerId, setCenterId } = useCenterStore()
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore()
   const { theme, toggleTheme } = useThemeStore()
+  const { toggleOpen: toggleAIOpen } = useAIAssistantStore()
   const order = useMenuStore((state) => state.order)
   const navigate = useNavigate()
 
@@ -74,6 +76,18 @@ export function Navbar() {
         {/* Right side: Center Switcher + Theme Toggle + Notification + User Profile */}
         <div className="flex items-center gap-3">
           <CenterSwitcher centerId={centerId} setCenterId={setCenterId} />
+
+          {/* Accounting AI Assistant Button (Admin Only) */}
+          {user?.role === 'admin' && (
+            <button
+              onClick={toggleAIOpen}
+              className="px-2.5 py-1.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:hover:bg-orange-900/60 dark:text-orange-300 border border-orange-200/80 dark:border-orange-800/60 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-2xs"
+              title="開啟會計 AI 助理 (gpt-5.6-luna)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
+              <span className="hidden md:inline">會計 AI</span>
+            </button>
+          )}
 
           <div className="h-4 w-px bg-stone-200 hidden sm:block" />
 

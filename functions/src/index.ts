@@ -411,3 +411,9 @@ export const triggerBackupHttp = onRequest(
     }
   }
 )
+
+/**
+ * 🤖 Accounting AI Assistant API Endpoint
+ */
+export { askAIAssistant } from './ai'
+

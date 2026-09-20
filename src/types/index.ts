@@ -290,3 +290,7 @@ export interface OperatingHours {
   startTime: string
   endTime: string
 }
+
+// ─── AI Assistant Types ────────────────────────────────────────
+export * from './ai'
+
