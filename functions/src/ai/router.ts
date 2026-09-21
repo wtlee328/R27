@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import { Domain, AIAssistantResponse } from './types'
+import { getTaipeiDateTimeInfo } from './utils/timeUtils'
 
 export interface RouteResult {
   domain: Domain
@@ -17,7 +18,9 @@ export async function routeIntent(
   userMessage: string,
   centerId: string
 ): Promise<RouteResult> {
+  const timeInfo = getTaipeiDateTimeInfo()
   const prompt = `你是一個專業健身場館管理系統的意圖分類器。系統目前僅開放「會計與財務管理（Accounting）」功能。
+【現在時間（台灣時區 Asia/Taipei，UTC+8）】：${timeInfo.fullString}（今天日期：${timeInfo.dateStr}）
 請分析使用者的訊息，將其歸類為以下三個領域之一：
 1. "accounting"：涉及會計、財務、收入、支出、流水帳、損益表、預收學費、銷課營收、合約款項、分期收款、退費、扣款、堂數金額換算等。
 2. "out_of_scope"：涉及系統其他非會計功能，如學員個人隱私/病史/電話、教練排課排班/打卡、體驗課流程、非財務的合約法務、純營運分析等。

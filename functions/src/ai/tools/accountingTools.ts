@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin'
+import { parseToTaipeiDate } from '../utils/timeUtils'
 
 function getDb() {
   return admin.firestore()
@@ -60,41 +61,43 @@ function normalizeCashFlowRecord(data: any) {
 
 /**
  * Tool 1: query_cash_flow_records
+ * Supports exact date range (startDate ~ endDate) or year/month filtering
  */
 export async function queryCashFlowRecords(params: {
   centerId: string
-  year: number
-  month?: number
+  year?: number
+  month?: number | 'all'
+  startDate?: string
+  endDate?: string
   type?: 'income' | 'expense' | 'all'
   category?: string
   searchTerm?: string
   limit?: number
 }) {
   const db = getDb()
-  const { centerId, year, month, type = 'all', category, searchTerm, limit = 50 } = params
+  const {
+    centerId,
+    year,
+    month,
+    startDate,
+    endDate,
+    type = 'all',
+    category,
+    searchTerm,
+    limit = 50,
+  } = params
 
   const snap = await db.collection('cashFlowRecords').where('centerId', '==', centerId).get()
 
   let list = snap.docs.map((d) => {
     const data = d.data()
     const norm = normalizeCashFlowRecord(data)
-    let dateStr = ''
-    let dateObj: Date | null = null
-
-    if (data.date?.toDate) {
-      dateObj = data.date.toDate()
-    } else if (data.date) {
-      dateObj = new Date(data.date)
-    }
-
-    if (dateObj && !isNaN(dateObj.getTime())) {
-      dateStr = dateObj.toISOString().split('T')[0]
-    }
+    const taipeiDate = parseToTaipeiDate(data.date)
 
     return {
       id: d.id,
-      date: dateStr,
-      dateObj,
+      date: taipeiDate?.dateStr || '',
+      taipeiDate,
       type: norm.type,
       category: norm.category,
       amount: norm.amount,
@@ -104,11 +107,20 @@ export async function queryCashFlowRecords(params: {
     }
   })
 
-  // Filter by year & month
+  // Filter by date range or year/month
   list = list.filter((r) => {
-    if (!r.dateObj) return false
-    if (r.dateObj.getFullYear() !== year) return false
-    if (month && month !== 0 && r.dateObj.getMonth() + 1 !== month) return false
+    if (!r.taipeiDate || !r.date) return false
+
+    // Date range filter
+    if (startDate && r.date < startDate) return false
+    if (endDate && r.date > endDate) return false
+
+    // Year & Month filter (when startDate/endDate not provided)
+    if (!startDate && !endDate) {
+      if (year && r.taipeiDate.year !== year) return false
+      if (month && month !== 'all' && month !== 0 && r.taipeiDate.month !== month) return false
+    }
+
     if (type !== 'all' && r.type !== type) return false
     if (category && !r.category.includes(category)) return false
     if (searchTerm) {
@@ -122,7 +134,7 @@ export async function queryCashFlowRecords(params: {
   })
 
   // Sort by date desc
-  list.sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0))
+  list.sort((a, b) => b.date.localeCompare(a.date))
 
   const totalCount = list.length
   let totalIncome = 0
@@ -133,20 +145,34 @@ export async function queryCashFlowRecords(params: {
     else totalExpense += r.amount
   })
 
-  const pagedList = list.slice(0, limit).map(({ id, date, type, category, amount, account, description, notes }) => ({
-    id,
-    date,
-    type: type === 'income' ? '收入' : '支出',
-    category,
-    amount,
-    account,
-    description: description || '-',
-    notes: notes || '-',
-  }))
+  const pagedList = list
+    .slice(0, limit)
+    .map(({ id, date, type, category, amount, account, description, notes }) => ({
+      id,
+      date,
+      type: type === 'income' ? '收入' : '支出',
+      category,
+      amount,
+      account,
+      description: description || '-',
+      notes: notes || '-',
+    }))
+
+  const dateRangeLabel =
+    startDate && endDate
+      ? `${startDate} 至 ${endDate}`
+      : year
+        ? month && month !== 'all'
+          ? `${year}年${month}月`
+          : `${year}全年度`
+        : undefined
 
   return {
     year,
     month: month || 'all',
+    startDate,
+    endDate,
+    dateRangeLabel,
     totalRecordsFound: totalCount,
     totalIncome,
     totalExpense,
@@ -158,14 +184,17 @@ export async function queryCashFlowRecords(params: {
 
 /**
  * Tool 2: get_profit_loss_summary
+ * Supports exact date range or year/month filtering
  */
 export async function getProfitLossSummary(params: {
   centerId: string
-  year: number
+  year?: number
   month?: number | 'all'
+  startDate?: string
+  endDate?: string
 }) {
   const db = getDb()
-  const { centerId, year, month = 'all' } = params
+  const { centerId, year, month = 'all', startDate, endDate } = params
 
   const snap = await db.collection('cashFlowRecords').where('centerId', '==', centerId).get()
 
@@ -178,14 +207,19 @@ export async function getProfitLossSummary(params: {
   snap.docs.forEach((d) => {
     const data = d.data()
     const norm = normalizeCashFlowRecord(data)
-    let dateObj: Date | null = null
+    const taipeiDate = parseToTaipeiDate(data.date)
+    if (!taipeiDate) return
+    const dateStr = taipeiDate.dateStr
 
-    if (data.date?.toDate) dateObj = data.date.toDate()
-    else if (data.date) dateObj = new Date(data.date)
+    // Date range filter
+    if (startDate && dateStr < startDate) return
+    if (endDate && dateStr > endDate) return
 
-    if (!dateObj || isNaN(dateObj.getTime())) return
-    if (dateObj.getFullYear() !== year) return
-    if (month !== 'all' && typeof month === 'number' && dateObj.getMonth() + 1 !== month) return
+    // Year/Month fallback
+    if (!startDate && !endDate && year) {
+      if (taipeiDate.year !== year) return
+      if (month !== 'all' && typeof month === 'number' && taipeiDate.month !== month) return
+    }
 
     recordCount++
     const cat = norm.category || '其他'
@@ -200,16 +234,36 @@ export async function getProfitLossSummary(params: {
 
   // Format category breakdowns
   const topIncomeCategories = Object.entries(incomeCategories)
-    .map(([name, amount]) => ({ category: name, amount, percentage: totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) + '%' : '0%' }))
+    .map(([name, amount]) => ({
+      category: name,
+      amount,
+      percentage: totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) + '%' : '0%',
+    }))
     .sort((a, b) => b.amount - a.amount)
 
   const topExpenseCategories = Object.entries(expenseCategories)
-    .map(([name, amount]) => ({ category: name, amount, percentage: totalExpense > 0 ? ((amount / totalExpense) * 100).toFixed(1) + '%' : '0%' }))
+    .map(([name, amount]) => ({
+      category: name,
+      amount,
+      percentage: totalExpense > 0 ? ((amount / totalExpense) * 100).toFixed(1) + '%' : '0%',
+    }))
     .sort((a, b) => b.amount - a.amount)
+
+  const dateRangeLabel =
+    startDate && endDate
+      ? `${startDate} 至 ${endDate}`
+      : year
+        ? month && month !== 'all'
+          ? `${year}年${month}月`
+          : `${year}全年度`
+        : undefined
 
   return {
     year,
     month,
+    startDate,
+    endDate,
+    dateRangeLabel,
     recordCount,
     totalIncome,
     totalExpense,
@@ -221,14 +275,17 @@ export async function getProfitLossSummary(params: {
 
 /**
  * Tool 3: get_prepaid_and_realized_metrics
+ * Supports exact date range or year/month filtering
  */
 export async function getPrepaidAndRealizedMetrics(params: {
   centerId: string
-  year: number
+  year?: number
   month?: number | 'all'
+  startDate?: string
+  endDate?: string
 }) {
   const db = getDb()
-  const { centerId, year, month = 'all' } = params
+  const { centerId, year, month = 'all', startDate, endDate } = params
 
   // 1. Fetch contracts
   const contractsSnap = await db.collection('contracts').where('centerId', '==', centerId).get()
@@ -242,14 +299,18 @@ export async function getPrepaidAndRealizedMetrics(params: {
 
   contractsSnap.docs.forEach((doc) => {
     const c = doc.data()
-    let createdAtObj: Date | null = null
-    if (c.createdAt?.toDate) createdAtObj = c.createdAt.toDate()
-    else if (c.createdAt) createdAtObj = new Date(c.createdAt)
+    const taipeiDate = parseToTaipeiDate(c.createdAt)
 
-    const isMatchPeriod =
-      createdAtObj &&
-      createdAtObj.getFullYear() === year &&
-      (month === 'all' || createdAtObj.getMonth() + 1 === month)
+    let isMatchPeriod = false
+    if (taipeiDate) {
+      if (startDate && endDate) {
+        isMatchPeriod = taipeiDate.dateStr >= startDate && taipeiDate.dateStr <= endDate
+      } else if (year) {
+        isMatchPeriod =
+          taipeiDate.year === year &&
+          (month === 'all' || taipeiDate.month === month)
+      }
+    }
 
     const total = Number(c.totalAmount || 0)
     const isInstallment =
@@ -289,24 +350,43 @@ export async function getPrepaidAndRealizedMetrics(params: {
 
   lessonsSnap.docs.forEach((doc) => {
     const l = doc.data()
-    let sessionDateObj: Date | null = null
-    if (l.sessionDate?.toDate) sessionDateObj = l.sessionDate.toDate()
-    else if (l.sessionDate) sessionDateObj = new Date(l.sessionDate)
+    const taipeiDate = parseToTaipeiDate(l.sessionDate)
+    if (!taipeiDate) return
+    const dateStr = taipeiDate.dateStr
 
-    if (!sessionDateObj) return
-    if (sessionDateObj.getFullYear() !== year) return
-    if (month !== 'all' && sessionDateObj.getMonth() + 1 !== month) return
+    let isMatchPeriod = false
+    if (startDate && endDate) {
+      isMatchPeriod = dateStr >= startDate && dateStr <= endDate
+    } else if (year) {
+      isMatchPeriod =
+        taipeiDate.year === year &&
+        (month === 'all' || taipeiDate.month === month)
+    }
 
-    realizedLessonRevenue += Number(l.sessionAmount || 0)
-    realizedLessonCount++
+    if (isMatchPeriod) {
+      realizedLessonRevenue += Number(l.sessionAmount || 0)
+      realizedLessonCount++
+    }
   })
 
   // Unearned revenue estimate (預收學費負債餘額)
   const unearnedRevenueEstimate = Math.max(0, totalPaidAmount - realizedLessonRevenue)
 
+  const dateRangeLabel =
+    startDate && endDate
+      ? `${startDate} 至 ${endDate}`
+      : year
+        ? month && month !== 'all'
+          ? `${year}年${month}月`
+          : `${year}全年度`
+        : undefined
+
   return {
     year,
     month,
+    startDate,
+    endDate,
+    dateRangeLabel,
     periodContractedAmount: totalContractedAmount,
     periodTotalPaidAmount: totalPaidAmount,
     lumpSumPaidAmount: lumpSumTotal,
@@ -382,7 +462,8 @@ export async function queryContractPayments(params: {
     }
 
     let startDateStr = ''
-    if (c.startDate?.toDate) startDateStr = c.startDate.toDate().toISOString().split('T')[0]
+    const taipeiDate = parseToTaipeiDate(c.startDate)
+    if (taipeiDate) startDateStr = taipeiDate.dateStr
 
     results.push({
       contractNo: c.contractNo || doc.id.substring(0, 8),

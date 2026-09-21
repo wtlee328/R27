@@ -6,6 +6,7 @@ import {
   getPrepaidAndRealizedMetrics,
   queryContractPayments,
 } from '../tools/accountingTools'
+import { getTaipeiDateTimeInfo } from '../utils/timeUtils'
 
 const AGENT_MODEL = 'gpt-5.6-luna'
 
@@ -15,18 +16,30 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
     type: 'function',
     function: {
       name: 'query_cash_flow_records',
-      description: '查詢場館現金流水帳紀錄（收支明細、金額、類別、帳戶、備註等）。可指定年度、月份、收支類型或關鍵字。',
+      description:
+        '查詢場館現金流水帳紀錄（收支明細、金額、類別、帳戶、備註等）。可指定特定日期範圍 (startDate/endDate)、或年度與月份、收支類型、關鍵字。若查詢「最近三個月」、「最近半年」等相對區間，請計算出精確的 startDate 與 endDate (格式 YYYY-MM-DD) 傳入。',
       parameters: {
         type: 'object',
         properties: {
-          year: { type: 'number', description: '查詢年份，例如 2026' },
+          startDate: {
+            type: 'string',
+            description: '查詢起始日期，格式 YYYY-MM-DD（例如最近三個月起始日 2026-07-01）',
+          },
+          endDate: {
+            type: 'string',
+            description: '查詢結束日期，格式 YYYY-MM-DD（例如今天日期）',
+          },
+          year: { type: 'number', description: '查詢年份，例如 2026（若有填 startDate/endDate 則此欄可不填）' },
           month: { type: 'number', description: '查詢月份 (1-12)。若不填或填 0 則代表全年度' },
-          type: { type: 'string', enum: ['income', 'expense', 'all'], description: '收支類型：income (收入), expense (支出), all (全部)' },
+          type: {
+            type: 'string',
+            enum: ['income', 'expense', 'all'],
+            description: '收支類型：income (收入), expense (支出), all (全部)',
+          },
           category: { type: 'string', description: '收支類別過濾（例如：課程收入、場租收入、房租、水電費、薪酬）' },
           searchTerm: { type: 'string', description: '關鍵字搜尋（學員姓名、備註或摘要內容）' },
           limit: { type: 'number', description: '最多回傳筆數，預設 50' },
         },
-        required: ['year'],
       },
     },
   },
@@ -34,14 +47,16 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
     type: 'function',
     function: {
       name: 'get_profit_loss_summary',
-      description: '獲取特定年份或月份的損益彙總（營業收入總額、營業支出總額、淨損益，以及各收支大類金額與佔比）。',
+      description:
+        '獲取特定日期區間或年份月份的損益彙總（營業收入總額、營業支出總額、淨損益，以及各收支大類金額與佔比）。若查詢「最近三個月」、「最近半年」等區間，請直接使用 startDate 與 endDate (格式 YYYY-MM-DD)。',
       parameters: {
         type: 'object',
         properties: {
+          startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+          endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
           year: { type: 'number', description: '查詢年份，例如 2026' },
           month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
         },
-        required: ['year'],
       },
     },
   },
@@ -49,14 +64,16 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
     type: 'function',
     function: {
       name: 'get_prepaid_and_realized_metrics',
-      description: '獲取預收學費與銷課實現營收指標（合約總簽約額、全期實收款、躉繳/分期實收、銷課實現營收、預收學費負債餘額、有效合約總堂數與剩餘堂數）。',
+      description:
+        '獲取特定日期區間或年份月份的預收學費與銷課實現營收指標（合約總簽約額、全期實收款、躉繳/分期實收、銷課實現營收、預收學費負債餘額、有效合約總堂數與剩餘堂數）。若查詢特定區間請傳入 startDate 與 endDate。',
       parameters: {
         type: 'object',
         properties: {
+          startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+          endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
           year: { type: 'number', description: '查詢年份，例如 2026' },
           month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
         },
-        required: ['year'],
       },
     },
   },
@@ -64,7 +81,8 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
     type: 'function',
     function: {
       name: 'query_contract_payments',
-      description: '查詢學員課程合約款項與分期收款狀態（學員姓名、合約編號、合約總額、已付金額、未付餘額、分期付款狀態等）。',
+      description:
+        '查詢學員課程合約款項與分期收款狀態（學員姓名、合約編號、合約總額、已付金額、未付餘額、分期付款狀態等）。',
       parameters: {
         type: 'object',
         properties: {
@@ -83,17 +101,33 @@ const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] 
 
 function getSystemPrompt(centerId: string) {
   const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const timeInfo = getTaipeiDateTimeInfo()
+
   return `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
 【目前服務場館】：${centerName}（centerId: "${centerId}"）。
-你的任務是協助管理員快速查詢與分析 ${centerName} 場館的財務資料（流水帳、損益、預收銷課、合約收款等）。
+【現在時間（台灣時區 Asia/Taipei，UTC+8）】：${timeInfo.fullString}
+- 當前年份：${timeInfo.year} 年
+- 當前月份：${timeInfo.month} 月
+- 當前今天日期：${timeInfo.dateStr} (${timeInfo.weekday})
+
+【時間基準與相對時間計算指引】：
+1. 以上提供的台灣現在時間為所有時間判斷的「唯一絕對基準」，請勿依賴自身預設日期。
+2. 當使用者提及相對時間時，請以此基準精確計算起迄日期：
+   - 「今天」：${timeInfo.dateStr}
+   - 「本月 / 這個月」：${timeInfo.year} 年 ${timeInfo.month} 月（區間：${timeInfo.currentMonthStartDate} 至 ${timeInfo.dateStr}）
+   - 「上個月」：${timeInfo.lastMonthYear} 年 ${timeInfo.lastMonth} 月
+   - 「今年」：${timeInfo.year} 年（${timeInfo.year}-01-01 至 ${timeInfo.dateStr}）
+   - 「去年」：${timeInfo.year - 1} 年（${timeInfo.year - 1}-01-01 至 ${timeInfo.year - 1}-12-31）
+   - 「最近三個月」：以現在為基準往前回推三個月（區間：${timeInfo.threeMonthsAgoStartDate} 至 ${timeInfo.dateStr}）
+   - 「最近半年」：以現在為基準往前回推六個月（區間：${timeInfo.sixMonthsAgoStartDate} 至 ${timeInfo.dateStr}）
+3. 在調用資料庫查詢工具（Tools）時，若涉及日期區間（例如「最近三個月」、「最近半年」或指定起迄日），請務必使用 startDate 與 endDate 參數（格式 YYYY-MM-DD）進行查詢，確保 DB 查詢範圍與你的時間推算完全一致！
 
 【最高原則】：
 1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
-2. 你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字（Zero Hallucination Policy）。
-3. 若查詢結果為空或無相關資料，請如實告知「在指定的年份/月份條件下查無相關資料」，並提醒使用者核對條件或確認是否已切換至正確場館。
-4. 若使用者的問題沒有提及年份，預設請使用當前年份（2026 年）或當月進行查詢。
-5. 回答風格應專業、清晰，先以簡要總結重點數值，並對重大數據做清楚的條列說明。
-6. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
+2. 零數據幻覺（Zero Data Hallucination Policy）：你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字。
+3. 若查詢結果為空或無相關資料，請如實告知「在指定的日期範圍（XXXX-XX-XX 至 XXXX-XX-XX）查無相關資料」，並提醒使用者核對條件或確認是否已切換至正確場館。
+4. 回答風格應專業、清晰，先以簡要總結重點數值，並對重大數據做清楚的條列說明。
+5. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
 }
 
 /**
@@ -111,7 +145,7 @@ export async function executeAccountingAgent(
   const executedTools: string[] = []
   const toolResultsList: any[] = []
 
-  // Build message sequence
+  // Build message sequence with real-time Taiwan timezone injection
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: 'system', content: getSystemPrompt(centerId) },
   ]
@@ -210,21 +244,29 @@ export async function executeAccountingAgent(
       const { tool, data } = item
       if (!data || data.error) continue
 
+      const periodLabel =
+        data.dateRangeLabel ||
+        (data.year
+          ? data.month === 'all'
+            ? `${data.year}全年度`
+            : `${data.year}年${data.month}月`
+          : '')
+
       if (tool === 'query_cash_flow_records') {
         // Stat cards
         const statCards: StatCardData[] = [
           {
-            title: `${data.month === 'all' ? `${data.year}年` : `${data.year}年${data.month}月`} 總收入`,
+            title: `${periodLabel ? `${periodLabel} ` : ''}總收入`,
             value: `NT$ ${data.totalIncome.toLocaleString()}`,
             color: 'emerald',
           },
           {
-            title: '總支出',
+            title: `${periodLabel ? `${periodLabel} ` : ''}總支出`,
             value: `NT$ ${data.totalExpense.toLocaleString()}`,
             color: 'red',
           },
           {
-            title: '淨現金流',
+            title: `${periodLabel ? `${periodLabel} ` : ''}淨現金流`,
             value: `NT$ ${data.netCashFlow.toLocaleString()}`,
             color: data.netCashFlow >= 0 ? 'emerald' : 'red',
           },
@@ -234,7 +276,7 @@ export async function executeAccountingAgent(
         // Data table
         if (data.records && data.records.length > 0) {
           const tableData: TableComponentData = {
-            title: `${data.month === 'all' ? `${data.year}年` : `${data.year}年${data.month}月`} 收支明細列表 (共 ${data.totalRecordsFound} 筆)`,
+            title: `${periodLabel ? `${periodLabel} ` : ''}收支明細列表 (共 ${data.totalRecordsFound} 筆)`,
             columns: [
               { key: 'date', label: '日期', type: 'date' },
               { key: 'type', label: '收支', type: 'badge' },
@@ -258,17 +300,17 @@ export async function executeAccountingAgent(
       } else if (tool === 'get_profit_loss_summary') {
         const statCards: StatCardData[] = [
           {
-            title: '營業總收入',
+            title: `${periodLabel ? `${periodLabel} ` : ''}營業總收入`,
             value: `NT$ ${data.totalIncome.toLocaleString()}`,
             color: 'emerald',
           },
           {
-            title: '營業總支出',
+            title: `${periodLabel ? `${periodLabel} ` : ''}營業總支出`,
             value: `NT$ ${data.totalExpense.toLocaleString()}`,
             color: 'red',
           },
           {
-            title: '本期淨損益',
+            title: `${periodLabel ? `${periodLabel} ` : ''}淨損益`,
             value: `NT$ ${data.netProfit.toLocaleString()}`,
             color: data.netProfit >= 0 ? 'emerald' : 'red',
           },
@@ -278,7 +320,7 @@ export async function executeAccountingAgent(
         // Income breakdown table
         if (data.topIncomeCategories && data.topIncomeCategories.length > 0) {
           const tableData: TableComponentData = {
-            title: '收入類別結構分佈',
+            title: `${periodLabel ? `${periodLabel} ` : ''}收入類別結構分佈`,
             columns: [
               { key: 'category', label: '收入類別', type: 'text' },
               { key: 'amount', label: '金額 (NT$)', type: 'currency', align: 'right' },
@@ -293,7 +335,7 @@ export async function executeAccountingAgent(
         // Expense breakdown table
         if (data.topExpenseCategories && data.topExpenseCategories.length > 0) {
           const tableData: TableComponentData = {
-            title: '支出類別結構分佈',
+            title: `${periodLabel ? `${periodLabel} ` : ''}支出類別結構分佈`,
             columns: [
               { key: 'category', label: '支出類別', type: 'text' },
               { key: 'amount', label: '金額 (NT$)', type: 'currency', align: 'right' },
@@ -307,13 +349,13 @@ export async function executeAccountingAgent(
       } else if (tool === 'get_prepaid_and_realized_metrics') {
         const statCards: StatCardData[] = [
           {
-            title: '全期實收款總額',
+            title: `${periodLabel ? `${periodLabel} ` : ''}全期實收款總額`,
             value: `NT$ ${data.periodTotalPaidAmount.toLocaleString()}`,
             subtitle: `躉繳 ${data.lumpSumPaidAmount.toLocaleString()} / 分期已付 ${data.installmentPaidAmount.toLocaleString()}`,
             color: 'emerald',
           },
           {
-            title: '銷課實現營收',
+            title: `${periodLabel ? `${periodLabel} ` : ''}銷課實現營收`,
             value: `NT$ ${data.realizedLessonRevenue.toLocaleString()}`,
             subtitle: `共完成 ${data.realizedLessonCount} 堂課`,
             color: 'purple',
@@ -351,9 +393,9 @@ export async function executeAccountingAgent(
     const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
     const suggestedQuestions = [
       `查詢 ${centerName} 本月課程收入明細`,
-      `查看 ${centerName} 損益表的收支結構佔比`,
+      `查詢 ${centerName} 最近三個月的支出分析`,
+      `查看 ${centerName} 今年度損益佔比`,
       `目前 ${centerName} 預收學費負債餘額還有多少？`,
-      `查詢 ${centerName} 未結清或分期逾期的合約`,
     ]
 
     return {
