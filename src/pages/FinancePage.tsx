@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react'
-import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar, Building2, CreditCard, Sparkles } from 'lucide-react'
-import { useAIAssistantStore } from '@/stores/aiAssistantStore'
+import { DollarSign, ArrowUpRight, ArrowDownRight, TrendingUp, BarChart2, List, FileSpreadsheet, Percent, Calendar, Building2, CreditCard } from 'lucide-react'
 import { RiCalculatorLine, RiLineChartLine } from '@remixicon/react'
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
@@ -24,7 +23,6 @@ export default function FinancePage() {
   const { records, loading, createRecord, updateRecord, deleteRecord } = useCashFlow()
   const { contracts } = useCustomers()
   const { records: lessonRecords } = useLessonRecords()
-  const { setPrefillPrompt, setIsOpen: setAIOpen } = useAIAssistantStore()
   const [activeTab, setActiveTab] = useState<TabType>('cash-flow')
   const [cashFlowSubView, setCashFlowSubView] = useState<CashFlowSubView>('statement')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -280,20 +278,8 @@ export default function FinancePage() {
           <p className="text-sm text-stone-500 mt-1">管理正規現金流量表、收支金流與月度損益統計</p>
         </div>
 
-        {/* Tab Controls + AI Button */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => {
-              setPrefillPrompt('幫我分析本月的損益狀況與重點收支明細')
-              setAIOpen(true)
-            }}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-xl bg-orange-500 hover:bg-orange-600 text-white shadow-xs hover:shadow transition-all cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-orange-200 animate-pulse" />
-            <span>AI 會計諮詢</span>
-          </button>
-
-          <div className="flex p-1 bg-stone-100/80 rounded-2xl border border-stone-200/60 self-start sm:self-center">
+        {/* Tab Controls */}
+        <div className="flex p-1 bg-stone-100/80 rounded-2xl border border-stone-200/60 self-start sm:self-center">
           <button
             onClick={() => setActiveTab('cash-flow')}
             className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition-all ${
@@ -340,7 +326,6 @@ export default function FinancePage() {
           </button>
         </div>
       </div>
-    </div>
 
       {/* Tab Contents: Cash Flow Statement */}
       {activeTab === 'cash-flow' && (
