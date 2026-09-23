@@ -100,7 +100,7 @@ export const AIAssistantDrawer: React.FC = () => {
                   會計 AI 助理
                 </SheetTitle>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4.5 font-mono text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/60 bg-orange-50/50 dark:bg-orange-950/30">
-                  gpt-5.6-luna
+                  gpt-6-luna
                 </Badge>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
@@ -211,7 +211,7 @@ export const AIAssistantDrawer: React.FC = () => {
           {isLoading && (
             <div className="flex items-center gap-2 p-3.5 rounded-2xl rounded-tl-xs bg-white dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 text-xs text-stone-600 dark:text-stone-400 shadow-xs">
               <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
-              <span>會計 AI 分析與計算中 (gpt-5.6-luna)...</span>
+              <span>會計 AI 分析與計算中 (gpt-6-luna)...</span>
             </div>
           )}
 

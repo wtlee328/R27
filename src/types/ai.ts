@@ -46,6 +46,8 @@ export interface AIAssistantResponse {
     centerId: string
     executedTools: string[]
     timestamp: number
+    model?: string
+    reasoningEffort?: string
   }
 }
 

@@ -8,10 +8,10 @@ export interface RouteResult {
   outOfScopeResponse?: AIAssistantResponse
 }
 
-const CLASSIFIER_MODEL = 'gpt-5.6-luna'
+const CLASSIFIER_MODEL = 'gpt-6-luna'
 
 /**
- * Stage 1: Intent & Domain Classifier using gpt-5.6-luna
+ * Stage 1: Intent & Domain Classifier using gpt-6-luna (Task difficulty: Low -> reasoning_effort: low)
  */
 export async function routeIntent(
   openai: OpenAI,
@@ -36,7 +36,7 @@ export async function routeIntent(
         { role: 'user', content: userMessage },
       ],
       response_format: { type: 'json_object' },
-      reasoning_effort: 'none',
+      reasoning_effort: 'low',
       temperature: 0.1,
     })
 

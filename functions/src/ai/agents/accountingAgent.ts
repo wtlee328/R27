@@ -8,92 +8,114 @@ import {
 } from '../tools/accountingTools'
 import { getTaipeiDateTimeInfo } from '../utils/timeUtils'
 
-const AGENT_MODEL = 'gpt-5.6-luna'
+const AGENT_MODEL = 'gpt-6-luna'
 
-// OpenAI Function Calling Tool Definitions
-const accountingToolsDeclarations: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+export type ReasoningEffortLevel = 'low' | 'medium' | 'high'
+
+/**
+ * Dynamically determines reasoning.effort based on task complexity:
+ * - high: Cross-period financial comparisons, profit & loss analysis, prepaid unearned revenue vs realized revenue reconciliation, contract installment/overdue audits, trend evaluation.
+ * - medium: Multi-month / relative period queries (e.g. 最近三個月、最近半年、上個月、全年度明細), category cash flow aggregations.
+ * - low: Single date / today's cash flow lookup, basic contract lookup, simple greeting / direct query.
+ */
+export function determineReasoningEffort(userMessage: string): ReasoningEffortLevel {
+  const highComplexityKeywords = [
+    '損益', '利潤', '毛利', '淨利', '預收', '銷課', '負債', '未實現', '履約',
+    '比較', '趨勢', '分析', '異常', '逾期', '分期', '跨月', '半年', '年度', '全年度', '退費', '對帳'
+  ]
+  const mediumComplexityKeywords = [
+    '最近三個月', '最近3個月', '上個月', '支出', '收入', '明細', '流水帳', '統計', '彙總', '總額'
+  ]
+
+  if (highComplexityKeywords.some((kw) => userMessage.includes(kw))) {
+    return 'high'
+  }
+  if (mediumComplexityKeywords.some((kw) => userMessage.includes(kw))) {
+    return 'medium'
+  }
+  return 'low'
+}
+
+// OpenAI Responses API Function Tool Definitions for gpt-6-luna
+const accountingResponsesTools: OpenAI.Responses.FunctionTool[] = [
   {
     type: 'function',
-    function: {
-      name: 'query_cash_flow_records',
-      description:
-        '查詢場館現金流水帳紀錄（收支明細、金額、類別、帳戶、備註等）。可指定特定日期範圍 (startDate/endDate)、或年度與月份、收支類型、關鍵字。若查詢「最近三個月」、「最近半年」等相對區間，請計算出精確的 startDate 與 endDate (格式 YYYY-MM-DD) 傳入。',
-      parameters: {
-        type: 'object',
-        properties: {
-          startDate: {
-            type: 'string',
-            description: '查詢起始日期，格式 YYYY-MM-DD（例如最近三個月起始日 2026-07-01）',
-          },
-          endDate: {
-            type: 'string',
-            description: '查詢結束日期，格式 YYYY-MM-DD（例如今天日期）',
-          },
-          year: { type: 'number', description: '查詢年份，例如 2026（若有填 startDate/endDate 則此欄可不填）' },
-          month: { type: 'number', description: '查詢月份 (1-12)。若不填或填 0 則代表全年度' },
-          type: {
-            type: 'string',
-            enum: ['income', 'expense', 'all'],
-            description: '收支類型：income (收入), expense (支出), all (全部)',
-          },
-          category: { type: 'string', description: '收支類別過濾（例如：課程收入、場租收入、房租、水電費、薪酬）' },
-          searchTerm: { type: 'string', description: '關鍵字搜尋（學員姓名、備註或摘要內容）' },
-          limit: { type: 'number', description: '最多回傳筆數，預設 50' },
+    name: 'query_cash_flow_records',
+    description:
+      '查詢場館現金流水帳紀錄（收支明細、金額、類別、帳戶、備註等）。可指定特定日期範圍 (startDate/endDate)、或年度與月份、收支類型、關鍵字。若查詢「最近三個月」、「最近半年」等相對區間，請計算出精確的 startDate 與 endDate (格式 YYYY-MM-DD) 傳入。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        startDate: {
+          type: 'string',
+          description: '查詢起始日期，格式 YYYY-MM-DD（例如最近三個月起始日 2026-07-01）',
         },
+        endDate: {
+          type: 'string',
+          description: '查詢結束日期，格式 YYYY-MM-DD（例如今天日期）',
+        },
+        year: { type: 'number', description: '查詢年份，例如 2026（若有填 startDate/endDate 則此欄可不填）' },
+        month: { type: 'number', description: '查詢月份 (1-12)。若不填或填 0 則代表全年度' },
+        type: {
+          type: 'string',
+          enum: ['income', 'expense', 'all'],
+          description: '收支類型：income (收入), expense (支出), all (全部)',
+        },
+        category: { type: 'string', description: '收支類別過濾（例如：課程收入、場租收入、房租、水電費、薪酬）' },
+        searchTerm: { type: 'string', description: '關鍵字搜尋（學員姓名、備註或摘要內容）' },
+        limit: { type: 'number', description: '最多回傳筆數，預設 50' },
       },
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'get_profit_loss_summary',
-      description:
-        '獲取特定日期區間或年份月份的損益彙總（營業收入總額、營業支出總額、淨損益，以及各收支大類金額與佔比）。若查詢「最近三個月」、「最近半年」等區間，請直接使用 startDate 與 endDate (格式 YYYY-MM-DD)。',
-      parameters: {
-        type: 'object',
-        properties: {
-          startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
-          endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
-          year: { type: 'number', description: '查詢年份，例如 2026' },
-          month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
-        },
+    name: 'get_profit_loss_summary',
+    description:
+      '獲取特定日期區間或年份月份的損益彙總（營業收入總額、營業支出總額、淨損益，以及各收支大類金額與佔比）。若查詢「最近三個月」、「最近半年」等區間，請直接使用 startDate 與 endDate (格式 YYYY-MM-DD)。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+        endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
+        year: { type: 'number', description: '查詢年份，例如 2026' },
+        month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
       },
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'get_prepaid_and_realized_metrics',
-      description:
-        '獲取特定日期區間或年份月份的預收學費與銷課實現營收指標（合約總簽約額、全期實收款、躉繳/分期實收、銷課實現營收、預收學費負債餘額、有效合約總堂數與剩餘堂數）。若查詢特定區間請傳入 startDate 與 endDate。',
-      parameters: {
-        type: 'object',
-        properties: {
-          startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
-          endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
-          year: { type: 'number', description: '查詢年份，例如 2026' },
-          month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
-        },
+    name: 'get_prepaid_and_realized_metrics',
+    description:
+      '獲取特定日期區間或年份月份的預收學費與銷課實現營收指標（合約總簽約額、全期實收款、躉繳/分期實收、銷課實現營收、預收學費負債餘額、有效合約總堂數與剩餘堂數）。若查詢特定區間請傳入 startDate 與 endDate。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+        endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
+        year: { type: 'number', description: '查詢年份，例如 2026' },
+        month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
       },
     },
   },
   {
     type: 'function',
-    function: {
-      name: 'query_contract_payments',
-      description:
-        '查詢學員課程合約款項與分期收款狀態（學員姓名、合約編號、合約總額、已付金額、未付餘額、分期付款狀態等）。',
-      parameters: {
-        type: 'object',
-        properties: {
-          studentName: { type: 'string', description: '學員姓名關鍵字（可選）' },
-          paymentStatus: {
-            type: 'string',
-            enum: ['paid', 'pending', 'overdue', 'all'],
-            description: '付款狀態：paid (已結清), pending (分期中未結清), overdue (有逾期款), all (全部)',
-          },
-          limit: { type: 'number', description: '最多回傳筆數，預設 30' },
+    name: 'query_contract_payments',
+    description:
+      '查詢學員課程合約款項與分期收款狀態（學員姓名、合約編號、合約總額、已付金額、未付餘額、分期付款狀態等）。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        studentName: { type: 'string', description: '學員姓名關鍵字（可選）' },
+        paymentStatus: {
+          type: 'string',
+          enum: ['paid', 'pending', 'overdue', 'all'],
+          description: '付款狀態：paid (已結清), pending (分期中未結清), overdue (有逾期款), all (全部)',
         },
+        limit: { type: 'number', description: '最多回傳筆數，預設 30' },
       },
     },
   },
@@ -131,7 +153,7 @@ function getSystemPrompt(centerId: string) {
 }
 
 /**
- * Executes specialized Accounting Agent with gpt-5.6-luna
+ * Executes specialized Accounting Agent with gpt-6-luna and dynamic reasoning.effort
  */
 export async function executeAccountingAgent(
   openai: OpenAI,
@@ -145,51 +167,47 @@ export async function executeAccountingAgent(
   const executedTools: string[] = []
   const toolResultsList: any[] = []
 
-  // Build message sequence with real-time Taiwan timezone injection
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: getSystemPrompt(centerId) },
-  ]
+  // Dynamic reasoning effort evaluation based on task difficulty
+  const reasoningEffort = determineReasoningEffort(userMessage)
 
-  // Add conversation history (up to last 6 turns)
+  // Build input message sequence
+  const inputItems: any[] = []
   if (history && history.length > 0) {
     const recentHistory = history.slice(-6)
     for (const h of recentHistory) {
       if (h.role === 'user' || h.role === 'assistant') {
-        messages.push({ role: h.role, content: h.content })
+        inputItems.push({ role: h.role, content: h.content })
       }
     }
   }
-
-  messages.push({ role: 'user', content: userMessage })
+  inputItems.push({ role: 'user', content: userMessage })
 
   try {
-    // 1. First Model Call (May decide to call tools)
-    let response = await openai.chat.completions.create({
+    // 1. Initial Call to Responses API with gpt-6-luna and dynamic reasoning.effort
+    let currentResponse = await openai.responses.create({
       model: AGENT_MODEL,
-      messages,
-      tools: accountingToolsDeclarations,
-      tool_choice: 'auto',
-      reasoning_effort: 'none',
-      temperature: 0.2,
+      instructions: getSystemPrompt(centerId),
+      input: inputItems,
+      tools: accountingResponsesTools,
+      reasoning: { effort: reasoningEffort },
     })
-
-    let choice = response.choices[0]
-    let currentMessage = choice?.message
 
     // 2. Handle Tool Calls Loop (up to 3 turns)
     let loopCount = 0
-    while (currentMessage?.tool_calls && currentMessage.tool_calls.length > 0 && loopCount < 3) {
-      loopCount++
-      messages.push(currentMessage)
+    let toolCalls = (currentResponse.output || []).filter((item: any) => item.type === 'function_call')
 
-      for (const toolCall of currentMessage.tool_calls) {
-        if (toolCall.type !== 'function') continue
-        const fnName = toolCall.function.name
+    while (toolCalls.length > 0 && loopCount < 3) {
+      loopCount++
+      const functionOutputs: any[] = []
+
+      for (const tc of toolCalls as any[]) {
+        if (tc.type !== 'function_call') continue
+        const fnName = tc.name
         let fnArgs: any = {}
         try {
-          fnArgs = JSON.parse(toolCall.function.arguments || '{}')
+          fnArgs = JSON.parse(tc.arguments || '{}')
         } catch (e) {
-          console.warn('Failed to parse tool call args:', toolCall.function.arguments)
+          console.warn('Failed to parse tool call args:', tc.arguments)
         }
 
         // Force centerId into tool args
@@ -216,26 +234,25 @@ export async function executeAccountingAgent(
 
         toolResultsList.push({ tool: fnName, data: result })
 
-        messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: JSON.stringify(result),
+        functionOutputs.push({
+          type: 'function_call_output',
+          call_id: tc.call_id,
+          output: JSON.stringify(result),
         })
       }
 
-      // Call model again with tool results
-      response = await openai.chat.completions.create({
+      // Next turn: feed function outputs back into Responses API
+      currentResponse = await openai.responses.create({
         model: AGENT_MODEL,
-        messages,
-        reasoning_effort: 'none',
-        temperature: 0.2,
+        previous_response_id: currentResponse.id,
+        input: functionOutputs,
+        reasoning: { effort: reasoningEffort },
       })
 
-      choice = response.choices[0]
-      currentMessage = choice?.message
+      toolCalls = (currentResponse.output || []).filter((item: any) => item.type === 'function_call')
     }
 
-    const replyText = currentMessage?.content || '已完成財務數據查詢。'
+    const replyText = currentResponse.output_text || '已完成財務數據查詢。'
 
     // 3. Transform Tool Results into Structured UI Blocks
     const blocks: StructuredAIBlock[] = []
@@ -409,6 +426,8 @@ export async function executeAccountingAgent(
         centerId,
         executedTools,
         timestamp,
+        model: AGENT_MODEL,
+        reasoningEffort,
       },
     }
   } catch (error: any) {
@@ -433,6 +452,8 @@ export async function executeAccountingAgent(
         centerId,
         executedTools,
         timestamp,
+        model: AGENT_MODEL,
+        reasoningEffort,
       },
     }
   }

@@ -8,7 +8,7 @@ export const getDefaultWelcomeMessage = (centerId: string): AIChatMessage => {
   return {
     id: `welcome_${centerId}_init`,
     role: 'assistant',
-    content: `您好！我是 【${centerName}】 會計 AI 助理（搭載 OpenAI gpt-5.6-luna）。\n您可以直接問我「查詢上月課程收入」、「本月損益狀況」、「預收學費負債餘額」或「合約收款狀態」等會計問題！`,
+    content: `您好！我是 【${centerName}】 會計 AI 助理（搭載 OpenAI gpt-6-luna）。\n您可以直接問我「查詢上月課程收入」、「本月損益狀況」、「預收學費負債餘額」或「合約收款狀態」等會計問題！`,
     timestamp: Date.now(),
   }
 }

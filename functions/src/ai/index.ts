@@ -9,7 +9,7 @@ export * from './types'
 
 /**
  * 🤖 Accounting AI Assistant HTTPS Endpoint
- * Supports RBAC (Admin only) + Center Isolation + OpenAI gpt-5.6-luna
+ * Supports RBAC (Admin only) + Center Isolation + OpenAI gpt-6-luna with Dynamic reasoning.effort
  */
 export const askAIAssistant = onRequest(
   {
@@ -76,7 +76,7 @@ export const askAIAssistant = onRequest(
 
       const openai = new OpenAI({ apiKey })
 
-      // 6. Stage 1: Intent & Domain Classifier (gpt-5.6-luna)
+      // 6. Stage 1: Intent & Domain Classifier (gpt-6-luna)
       const routeResult = await routeIntent(openai, message, centerId)
 
       if (!routeResult.isAccounting && routeResult.outOfScopeResponse) {
@@ -87,7 +87,7 @@ export const askAIAssistant = onRequest(
         return
       }
 
-      // 7. Stage 2: Accounting Specialized Agent with Tools (gpt-5.6-luna)
+      // 7. Stage 2: Accounting Specialized Agent with Tools (gpt-6-luna with dynamic reasoning.effort)
       const agentResponse = await executeAccountingAgent(openai, message, centerId, conversationHistory)
 
       res.status(200).json({
