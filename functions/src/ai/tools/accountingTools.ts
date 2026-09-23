@@ -451,7 +451,7 @@ export async function queryContractPayments(params: {
   // Fetch contracts
   const contractsSnap = await db.collection('contracts').where('centerId', '==', centerId).get()
 
-  let results: any[] = []
+  const results: any[] = []
 
   contractsSnap.docs.forEach((doc) => {
     const c = doc.data()

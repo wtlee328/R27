@@ -501,7 +501,7 @@ export default function LessonsPage() {
         onOpenChange={setIsWizardOpen}
         onSubmit={handleWizardSubmit}
         initialData={editingRecord}
-        trainerId={selectedTrainerId || undefined}
+        trainerId={editingRecord ? undefined : (selectedTrainerId || undefined)}
       />
 
       <TrainerOnboardModal

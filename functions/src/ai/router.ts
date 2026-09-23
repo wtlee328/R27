@@ -56,7 +56,7 @@ export async function routeIntent(
     const conversationId = `conv_${timestamp}`
 
     let text = ''
-    let suggestedQuestions = [
+    const suggestedQuestions = [
       '查詢本月課程收入明細',
       '目前累積的損益狀況如何？',
       '查看預收學費負債餘額與待履約堂數',

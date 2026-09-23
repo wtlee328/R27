@@ -614,21 +614,34 @@ export function useLessonRecords() {
         const isNewDualContract = newPrimaryContractData?.contractType === 'dual'
         const effectiveNewSessionAmount = isNewDualContract ? 1 : (data.sessionAmount || 1)
 
-        for (const cid of newContractIds) {
+        const newDeductionsByContract = new Map<string, StudentDeduction[]>()
+        newDeductions.forEach(d => {
+          const cid = d.contractId || newPrimaryContractId
+          if (cid) {
+            const list = newDeductionsByContract.get(cid) || []
+            list.push(d)
+            newDeductionsByContract.set(cid, list)
+          }
+        })
+
+        for (const [cid, deds] of newDeductionsByContract.entries()) {
           const cSnap = contractSnapsMap.get(cid)
           if (!cSnap || !cSnap.exists()) continue
           const cData = cSnap.data() as Contract
 
-          let deductAmount = effectiveNewSessionAmount
+          let totalDeductedAmount = deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
           if (cData.contractType === 'dual') {
-            deductAmount = 1
+            totalDeductedAmount = 1
+          } else if (cData.contractType === 'shared') {
+            totalDeductedAmount = effectiveNewSessionAmount
           }
 
-          trackContractChange(cid, -deductAmount)
+          trackContractChange(cid, -totalDeductedAmount)
 
           if (cData.contractType === 'group' && cData.groupMemberQuotas) {
-            newAttendeeIds.forEach(aId => {
-              trackQuotaChange(cid, aId, -effectiveNewSessionAmount)
+            deds.forEach(d => {
+              const amountToDeduct = Number(d.sessionAmount) || 1
+              trackQuotaChange(cid, d.customerId, -amountToDeduct)
             })
           }
         }
@@ -720,12 +733,15 @@ export function useLessonRecords() {
           : (oldData.unitPriceAtDeduction || 0)
         const recognizedAmount = Math.round(effectiveSessionAmount * unitPriceAtDeduction)
 
-        const newFinalDeductions: StudentDeduction[] = newAttendeeIds.map((aId, idx) => ({
-          customerId: aId,
-          customerName: attendeeNames[idx] || '',
-          contractId: data.contractId,
-          sessionAmount: effectiveSessionAmount,
-        }))
+        const newFinalDeductions: StudentDeduction[] = newAttendeeIds.map((aId, idx) => {
+          const matchingDed = newDeductions.find(d => d.customerId === aId)
+          return {
+            customerId: aId,
+            customerName: attendeeNames[idx] || (matchingDed?.customerName || ''),
+            contractId: matchingDed?.contractId || data.contractId,
+            sessionAmount: matchingDed?.sessionAmount || effectiveSessionAmount,
+          }
+        })
 
         const updateData: any = {
           ...data,

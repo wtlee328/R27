@@ -17,7 +17,9 @@ import { useContracts } from '../../hooks/useContracts'
 import { useTrainers } from '../../hooks/useTrainers'
 import { useAuthStore } from '@/stores/authStore'
 import { useTrainerProfileStore } from '@/stores/trainerProfileStore'
-import type { LessonRecord } from '../../types'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
+import type { LessonRecord, Contract, StudentDeduction } from '../../types'
 import {
   RiUserLine,
   RiUserSearchLine,
@@ -134,6 +136,18 @@ export function LessonRecordWizard({
         attendingCustomerIds: initialData.attendingCustomerIds || [initialData.customerId],
       })
       setSearchTerm(initialData.customerName || '')
+
+      if (initialData.deductions && initialData.deductions.length > 0) {
+        const selections: Record<string, string> = {}
+        initialData.deductions.forEach(d => {
+          if (d.customerId && d.contractId) {
+            selections[d.customerId] = d.contractId
+          }
+        })
+        setStudentContractSelections(selections)
+      } else if (initialData.customerId && initialData.contractId) {
+        setStudentContractSelections({ [initialData.customerId]: initialData.contractId })
+      }
     } else {
       form.reset({
         customerId: '',
@@ -145,12 +159,64 @@ export function LessonRecordWizard({
         notes: '',
         attendingCustomerIds: [],
       })
+      setStudentContractSelections({})
       setSearchTerm('')
     }
   }, [initialData, form, effectiveTrainerId])
 
   const selectedCustomerId = form.watch('customerId')
-  const { contracts } = useContracts(selectedCustomerId)
+  const { contracts, loading: contractsLoading } = useContracts(selectedCustomerId)
+  const [missingContracts, setMissingContracts] = useState<Contract[]>([])
+
+  // Ensure that contracts referenced by initialData are loaded even if completed or filtered
+  useEffect(() => {
+    if (!initialData) {
+      setMissingContracts([])
+      return
+    }
+
+    const neededIds = new Set<string>()
+    if (initialData.contractId) neededIds.add(initialData.contractId)
+    if (Array.isArray(initialData.deductions)) {
+      initialData.deductions.forEach(d => {
+        if (d.contractId) neededIds.add(d.contractId)
+      })
+    }
+
+    const unobtainedIds = Array.from(neededIds).filter(
+      id => !contracts.some(c => c.id === id) && !missingContracts.some(c => c.id === id)
+    )
+
+    if (unobtainedIds.length > 0) {
+      Promise.all(
+        unobtainedIds.map(async id => {
+          try {
+            const snap = await getDoc(doc(db, 'contracts', id))
+            if (snap.exists()) {
+              return { id: snap.id, ...snap.data() } as Contract
+            }
+          } catch (e) {
+            console.warn(`Failed to fetch missing contract ${id}`, e)
+          }
+          return null
+        })
+      ).then(fetched => {
+        const valid = fetched.filter((c): c is Contract => c !== null)
+        if (valid.length > 0) {
+          setMissingContracts(prev => [...prev, ...valid])
+        }
+      })
+    }
+  }, [initialData, contracts, missingContracts])
+
+  const allContracts = useMemo(() => {
+    const map = new Map<string, Contract>()
+    contracts.forEach(c => map.set(c.id, c))
+    missingContracts.forEach(c => {
+      if (!map.has(c.id)) map.set(c.id, c)
+    })
+    return Array.from(map.values())
+  }, [contracts, missingContracts])
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -167,7 +233,7 @@ export function LessonRecordWizard({
   }, [selectedCustomerId, customers])
 
   const selectedContractId = form.watch('contractId')
-  const selectedContract = contracts.find(c => c.id === selectedContractId)
+  const selectedContract = allContracts.find(c => c.id === selectedContractId)
 
   // Per-student contract selection map for multi/group contracts
   const [studentContractSelections, setStudentContractSelections] = useState<Record<string, string>>({})
@@ -182,48 +248,6 @@ export function LessonRecordWizard({
     return uniqueIds.map(id => customers.find(c => c.id === id)).filter(Boolean) as typeof customers
   }, [selectedContract, selectedCustomerId, customers])
 
-  // Automatically select initial attendees and FIFO contracts when primary contract changes
-  useEffect(() => {
-    if (selectedContract) {
-      const isMulti = selectedContract.contractType === 'dual' || selectedContract.contractType === 'group'
-      if (isMulti && groupCustomers.length > 0) {
-        // Default check all group members as attending
-        const allMemberIds = groupCustomers.map(c => c.id)
-        form.setValue('attendingCustomerIds', allMemberIds)
-
-        // FIFO contract auto selection for each member
-        const initialSelections: Record<string, string> = {}
-        groupCustomers.forEach(m => {
-          const memberContracts = contracts.filter(c => {
-            const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(m.id)
-            const isCust = c.customerId === m.id || c.primaryCustomerId === m.id || c.sharedWithCustomerId === m.id || c.partnerId === m.id
-            if (!isInIds && !isCust) return false
-            if (c.contractType === 'group' && c.groupMemberQuotas) {
-              return (c.groupMemberQuotas[m.id]?.remainingSessions || 0) > 0
-            }
-            return c.remainingSessions > 0
-          }).sort((a, b) => {
-            const tA = a.createdAt?.seconds || 0
-            const tB = b.createdAt?.seconds || 0
-            return tA - tB // FIFO: oldest first
-          })
-
-          if (memberContracts.some(c => c.id === selectedContract.id)) {
-            initialSelections[m.id] = selectedContract.id
-          } else if (memberContracts.length > 0) {
-            initialSelections[m.id] = memberContracts[0].id
-          } else {
-            initialSelections[m.id] = selectedContract.id
-          }
-        })
-        setStudentContractSelections(initialSelections)
-      } else {
-        form.setValue('attendingCustomerIds', [selectedCustomerId])
-        setStudentContractSelections({ [selectedCustomerId]: selectedContract.id })
-      }
-    }
-  }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form])
-
   const isDualContract = selectedContract?.contractType === 'dual'
   const isSharedContract = selectedContract?.contractType === 'shared'
   const isGroupContract = selectedContract?.contractType === 'group'
@@ -233,9 +257,9 @@ export function LessonRecordWizard({
     isGroupContract
   ))
 
-  // Automatically select initial attendees and FIFO contracts when primary contract changes
+  // Automatically select initial attendees and FIFO contracts when primary contract changes (only in create mode)
   useEffect(() => {
-    if (selectedContract) {
+    if (!initialData && selectedContract) {
       if (isDualContract) {
         // Dual contract: Both students must attend together, fixed 1 session
         const allMemberIds = groupCustomers.map(c => c.id)
@@ -258,7 +282,7 @@ export function LessonRecordWizard({
 
         const initialSelections: Record<string, string> = {}
         groupCustomers.forEach(m => {
-          const memberContracts = contracts.filter(c => {
+          const memberContracts = allContracts.filter(c => {
             const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(m.id)
             const isCust = c.customerId === m.id || c.primaryCustomerId === m.id || c.sharedWithCustomerId === m.id || c.partnerId === m.id
             if (!isInIds && !isCust) return false
@@ -286,14 +310,14 @@ export function LessonRecordWizard({
         setStudentContractSelections({ [selectedCustomerId]: selectedContract.id })
       }
     }
-  }, [selectedContract, groupCustomers, selectedCustomerId, contracts, form, isDualContract, isSharedContract, isGroupContract])
+  }, [selectedContract, groupCustomers, selectedCustomerId, allContracts, form, isDualContract, isSharedContract, isGroupContract, initialData])
 
   const watchedCustomerId = form.watch('customerId')
   const watchedContractId = form.watch('contractId')
   const watchedTrainerId = form.watch('trainerId') || (trainerId || '')
   const watchedSessionDate = form.watch('sessionDate')
-  const watchedSessionAmount = form.watch('sessionAmount')
-  const watchedAttendingIds = form.watch('attendingCustomerIds') || []
+  const rawAttendingIds = form.watch('attendingCustomerIds')
+  const watchedAttendingIds = useMemo(() => rawAttendingIds || [], [rawAttendingIds])
 
   // Dynamically adjust sessionAmount based on contract type
   useEffect(() => {
@@ -331,8 +355,8 @@ export function LessonRecordWizard({
     if (!watchedCustomerId) {
       return '請先選擇學員'
     }
-    if (contracts.length === 0) {
-      return '該學員無進行中合約，無法進行銷課'
+    if (!initialData && allContracts.length === 0) {
+      return contractsLoading ? '正在讀取合約資訊...' : '該學員無進行中合約，無法進行銷課'
     }
     if (!watchedContractId) {
       return '請選擇合約'
@@ -362,23 +386,80 @@ export function LessonRecordWizard({
       }
     }
 
-    // 3. Quota sufficiency check for each attendee
+    // 3. Quota sufficiency check for each attendee (accounting for initialData refund in edit mode)
     const targetCustomerIds = isMultiContract ? watchedAttendingIds : [watchedCustomerId]
+    const neededPerStudent = isDualContract ? 1 : Number(watchedSessionAmount || 1)
+
+    // Calculate how many sessions were previously deducted from each contract in initialData
+    const getInitialRefundForContract = (cid: string, cType?: string) => {
+      if (!initialData) return 0
+      const oldDeductions: StudentDeduction[] = Array.isArray(initialData.deductions) && initialData.deductions.length > 0
+        ? initialData.deductions
+        : [{
+            customerId: initialData.customerId,
+            customerName: initialData.customerName || '',
+            contractId: initialData.contractId,
+            sessionAmount: initialData.sessionAmount || 1,
+          }]
+      const deds = oldDeductions.filter(d => (d.contractId || initialData.contractId) === cid)
+      if (deds.length === 0) return 0
+      if (cType === 'dual') return 1
+      if (cType === 'shared') return Number(initialData.sessionAmount) || 1
+      return deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
+    }
+
+    const getInitialRefundForMember = (cid: string, mId: string) => {
+      if (!initialData) return 0
+      const oldDeductions: StudentDeduction[] = Array.isArray(initialData.deductions) && initialData.deductions.length > 0
+        ? initialData.deductions
+        : [{
+            customerId: initialData.customerId,
+            customerName: initialData.customerName || '',
+            contractId: initialData.contractId,
+            sessionAmount: initialData.sessionAmount || 1,
+          }]
+      const ded = oldDeductions.find(d => d.customerId === mId && (d.contractId || initialData.contractId) === cid)
+      return ded ? (Number(ded.sessionAmount) || 1) : 0
+    }
+
+    // Track total sessions needed per contract across all attendees in this submission
+    const contractDeductionNeeds = new Map<string, number>()
     for (const custId of targetCustomerIds) {
       const chosenContractId = studentContractSelections[custId] || watchedContractId
-      const con = contracts.find(c => c.id === chosenContractId)
+      const con = allContracts.find(c => c.id === chosenContractId)
       const custName = groupCustomers.find(c => c.id === custId)?.name || customers.find(c => c.id === custId)?.name || '學員'
       if (!con) {
         return `找不到學員 ${custName} 的扣抵合約`
       }
+
+      // Check group member quota if applicable
       if (con.contractType === 'group' && con.groupMemberQuotas && con.groupMemberQuotas[custId]) {
-        const memberQuota = con.groupMemberQuotas[custId].remainingSessions || 0
-        const neededPerStudent = Number(watchedSessionAmount || 1)
-        if (memberQuota < neededPerStudent) {
-          return `學員 ${custName} 的個人剩餘堂數不足 (現有 ${memberQuota} 堂, 需要 ${neededPerStudent} 堂)`
+        const memberRefund = getInitialRefundForMember(con.id, custId)
+        const memberAvailable = (con.groupMemberQuotas[custId].remainingSessions || 0) + memberRefund
+        if (memberAvailable < neededPerStudent) {
+          return `學員 ${custName} 的個人可用堂數不足 (現有 ${memberAvailable} 堂, 需要 ${neededPerStudent} 堂)`
         }
-      } else if (con.remainingSessions < (isDualContract ? 1 : Number(watchedSessionAmount || 1))) {
-        return `合約 (剩餘 ${con.remainingSessions} 堂) 堂數不足`
+      }
+
+      // Accumulate total needed for this contract
+      const currentNeed = contractDeductionNeeds.get(con.id) || 0
+      if (con.contractType === 'dual') {
+        contractDeductionNeeds.set(con.id, 1)
+      } else if (con.contractType === 'shared') {
+        contractDeductionNeeds.set(con.id, neededPerStudent)
+      } else {
+        contractDeductionNeeds.set(con.id, currentNeed + neededPerStudent)
+      }
+    }
+
+    // Verify each contract has enough effective remaining balance
+    for (const [cid, neededAmount] of contractDeductionNeeds.entries()) {
+      const con = allContracts.find(c => c.id === cid)
+      if (!con) continue
+      const refund = getInitialRefundForContract(cid, con.contractType)
+      const effectiveRemaining = (Number(con.remainingSessions) || 0) + refund
+      if (effectiveRemaining < neededAmount) {
+        return `合約 (可用 ${effectiveRemaining} 堂) 堂數不足，需要 ${neededAmount} 堂`
       }
     }
 
@@ -395,9 +476,11 @@ export function LessonRecordWizard({
     isGroupContract,
     isMultiContract,
     studentContractSelections,
-    contracts,
+    allContracts,
+    contractsLoading,
     groupCustomers,
     customers,
+    initialData,
   ])
 
   const isValid = validationError === null
@@ -608,7 +691,7 @@ export function LessonRecordWizard({
                 <select
                   className={cn(
                     'w-full h-10 rounded-xl border px-3 text-sm focus:outline-none focus:ring-2 transition-all appearance-none cursor-pointer font-medium',
-                    (!selectedCustomerId || contracts.length === 0)
+                    (!selectedCustomerId || allContracts.length === 0)
                       ? 'opacity-50 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200'
                       : selectedContractId
                         ? 'bg-orange-50/40 border-orange-300 text-stone-800 focus:ring-orange-200/50 focus:border-orange-400'
@@ -617,7 +700,7 @@ export function LessonRecordWizard({
                   {...form.register('contractId', {
                     onChange: (e) => {
                       const conId = e.target.value
-                      const con = contracts.find(c => c.id === conId)
+                      const con = allContracts.find(c => c.id === conId)
                       if (con) {
                         const ids = con.customerIds && con.customerIds.length > 0
                           ? con.customerIds
@@ -626,23 +709,25 @@ export function LessonRecordWizard({
                       }
                     }
                   })}
-                  disabled={!selectedCustomerId || contracts.length === 0}
+                  disabled={!selectedCustomerId || allContracts.length === 0}
                 >
                   {!selectedCustomerId ? (
                     <option value="" disabled>請先選擇學員</option>
-                  ) : contracts.length === 0 ? (
+                  ) : allContracts.length === 0 ? (
                     <option value="" disabled>無進行中合約</option>
                   ) : (
                     <option value="" disabled>請選擇合約</option>
                   )}
-                  {contracts.map((c) => {
+                  {allContracts.map((c) => {
                     const isGroup = c.contractType === 'group' || !!c.groupMemberQuotas
                     const isShared = c.contractType === 'shared' || (Array.isArray(c.customerIds) && c.customerIds.length >= 3 && c.contractType !== 'group')
                     const isDual = !isGroup && !isShared && (c.contractType === 'dual' || (!!c.sharedWithCustomerId && c.contractType !== 'shared'))
                     const typeLabel = isGroup ? '團體' : isShared ? '共享' : isDual ? '雙人' : '單人'
+                    const isOriginal = initialData && (c.id === initialData.contractId || initialData.deductions?.some(d => d.contractId === c.id))
+                    const statusTag = isOriginal ? ' (此紀錄原合約)' : c.remainingSessions === 0 ? ' (已用罄)' : ''
                     return (
                       <option key={c.id} value={c.id}>
-                        [{typeLabel}] {(c as any).contractNo || c.id.substring(0, 8)} — 剩 {c.remainingSessions} 堂
+                        [{typeLabel}] {(c as any).contractNo || c.id.substring(0, 8)} — 剩 {c.remainingSessions} 堂{statusTag}
                       </option>
                     )
                   })}
@@ -735,7 +820,7 @@ export function LessonRecordWizard({
                 <div className="rounded-xl border border-stone-100 overflow-hidden bg-stone-50/40 divide-y divide-stone-100/80">
                   {groupCustomers.map((member, idx) => {
                     const isAttending = (watchedAttendingIds || []).includes(member.id)
-                    const memberContracts = contracts.filter(c => {
+                    const memberContracts = allContracts.filter(c => {
                       const isInIds = Array.isArray(c.customerIds) && c.customerIds.includes(member.id)
                       const isCust = c.customerId === member.id || c.primaryCustomerId === member.id || c.sharedWithCustomerId === member.id || c.partnerId === member.id
                       return isInIds || isCust
@@ -942,7 +1027,7 @@ export function LessonRecordWizard({
               ) : (
                 <span className="flex items-center gap-2">
                   <RiCheckLine className="w-4 h-4" />
-                  確認銷課
+                  {initialData ? '儲存修改' : '確認銷課'}
                 </span>
               )}
             </Button>
