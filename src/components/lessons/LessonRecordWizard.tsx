@@ -316,6 +316,7 @@ export function LessonRecordWizard({
   const watchedContractId = form.watch('contractId')
   const watchedTrainerId = form.watch('trainerId') || (trainerId || '')
   const watchedSessionDate = form.watch('sessionDate')
+  const watchedSessionAmount = form.watch('sessionAmount')
   const rawAttendingIds = form.watch('attendingCustomerIds')
   const watchedAttendingIds = useMemo(() => rawAttendingIds || [], [rawAttendingIds])
 
