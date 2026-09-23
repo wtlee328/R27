@@ -89,7 +89,8 @@ export async function queryCashFlowRecords(params: {
 
   const snap = await db.collection('cashFlowRecords').where('centerId', '==', centerId).get()
 
-  let list = snap.docs.map((d) => {
+  // 1. Map all records with normalized structure & Taipei date
+  const allRecords = snap.docs.map((d) => {
     const data = d.data()
     const norm = normalizeCashFlowRecord(data)
     const taipeiDate = parseToTaipeiDate(data.date)
@@ -107,8 +108,8 @@ export async function queryCashFlowRecords(params: {
     }
   })
 
-  // Filter by date range or year/month
-  list = list.filter((r) => {
+  // 2. Filter records strictly within the DATE RANGE (period context)
+  const periodRecords = allRecords.filter((r) => {
     if (!r.taipeiDate || !r.date) return false
 
     // Date range filter
@@ -121,6 +122,21 @@ export async function queryCashFlowRecords(params: {
       if (month && month !== 'all' && month !== 0 && r.taipeiDate.month !== month) return false
     }
 
+    return true
+  })
+
+  // 3. Calculate REAL, TRUE period totals across all transactions in this period!
+  let periodTotalIncome = 0
+  let periodTotalExpense = 0
+  periodRecords.forEach((r) => {
+    if (r.type === 'income') periodTotalIncome += r.amount
+    else periodTotalExpense += r.amount
+  })
+  const periodNetCashFlow = periodTotalIncome - periodTotalExpense
+  const periodTotalCount = periodRecords.length
+
+  // 4. Filter by specific search criteria (type, category, searchTerm)
+  const filteredList = periodRecords.filter((r) => {
     if (type !== 'all' && r.type !== type) return false
     if (category && !r.category.includes(category)) return false
     if (searchTerm) {
@@ -134,24 +150,23 @@ export async function queryCashFlowRecords(params: {
   })
 
   // Sort by date desc
-  list.sort((a, b) => b.date.localeCompare(a.date))
+  filteredList.sort((a, b) => b.date.localeCompare(a.date))
 
-  const totalCount = list.length
-  let totalIncome = 0
-  let totalExpense = 0
-
-  list.forEach((r) => {
-    if (r.type === 'income') totalIncome += r.amount
-    else totalExpense += r.amount
+  const filteredCount = filteredList.length
+  let filteredIncome = 0
+  let filteredExpense = 0
+  filteredList.forEach((r) => {
+    if (r.type === 'income') filteredIncome += r.amount
+    else filteredExpense += r.amount
   })
 
-  const pagedList = list
+  const pagedList = filteredList
     .slice(0, limit)
-    .map(({ id, date, type, category, amount, account, description, notes }) => ({
+    .map(({ id, date, type: rType, category: rCategory, amount, account, description, notes }) => ({
       id,
       date,
-      type: type === 'income' ? '收入' : '支出',
-      category,
+      type: rType === 'income' ? '收入' : '支出',
+      category: rCategory,
       amount,
       account,
       description: description || '-',
@@ -173,10 +188,24 @@ export async function queryCashFlowRecords(params: {
     startDate,
     endDate,
     dateRangeLabel,
-    totalRecordsFound: totalCount,
-    totalIncome,
-    totalExpense,
-    netCashFlow: totalIncome - totalExpense,
+    filterCategory: category || undefined,
+    filterType: type !== 'all' ? type : undefined,
+    filterSearchTerm: searchTerm || undefined,
+    // Filtered stats
+    totalRecordsFound: filteredCount,
+    filteredTotalAmount: filteredIncome + filteredExpense,
+    filteredIncome,
+    filteredExpense,
+    filteredNet: filteredIncome - filteredExpense,
+    // TRUE, non-zero period totals across all transactions
+    periodTotalIncome,
+    periodTotalExpense,
+    periodNetCashFlow,
+    periodTotalCount,
+    // Compatibility aliases
+    totalIncome: category ? filteredIncome : periodTotalIncome,
+    totalExpense: category ? filteredExpense : periodTotalExpense,
+    netCashFlow: category ? filteredIncome - filteredExpense : periodNetCashFlow,
     returnedCount: pagedList.length,
     records: pagedList,
   }

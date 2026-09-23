@@ -127,6 +127,7 @@ function getSystemPrompt(centerId: string) {
 
   return `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
 【目前服務場館】：${centerName}（centerId: "${centerId}"）。
+⚠️ 重要觀念提醒：「R27」與「COFFIT」為健身場館名稱，絕非「27堂課程」！使用者提問「R27 課程收入」係指該場館內的所有課程收入（包含 27 堂、36 堂、48 堂等所有合約方案規格）。只要工具回傳的紀錄，全都是屬於本場館的課程收入，請 100% 完整計算，絕對不要自作主張把 R27 當作堂數去過濾掉 48 堂或其他堂數！
 【現在時間（台灣時區 Asia/Taipei，UTC+8）】：${timeInfo.fullString}
 - 當前年份：${timeInfo.year} 年
 - 當前月份：${timeInfo.month} 月
@@ -143,6 +144,12 @@ function getSystemPrompt(centerId: string) {
    - 「最近三個月」：以現在為基準往前回推三個月（區間：${timeInfo.threeMonthsAgoStartDate} 至 ${timeInfo.dateStr}）
    - 「最近半年」：以現在為基準往前回推六個月（區間：${timeInfo.sixMonthsAgoStartDate} 至 ${timeInfo.dateStr}）
 3. 在調用資料庫查詢工具（Tools）時，若涉及日期區間（例如「最近三個月」、「最近半年」或指定起迄日），請務必使用 startDate 與 endDate 參數（格式 YYYY-MM-DD）進行查詢，確保 DB 查詢範圍與你的時間推算完全一致！
+
+【收支數據解讀與回答指引】：
+1. 當使用者詢問特定類別（例如「課程收入明細」、「水電支出」）時：
+   - 首要任務是完整列出並加總工具回傳的該類別所有筆數與金額（例如「2026年9月 課程收入共 4 筆，合計 104,800 元」）。切勿遺漏任何一筆！
+   - 若要進一步提供全場館整體收支概況，必須引用工具回傳的真實全場館數據（periodTotalIncome、periodTotalExpense、periodNetCashFlow）。
+   - ⚠️ 絕對不可因為查詢特定類別（例如「課程收入」）本身沒有支出紀錄，就誤認為「全場館總支出為 0」！全場館總支出必須以工具提供的真實 periodTotalExpense 為準（例如 9 月份含有房租與水電等支出）。
 
 【最高原則】：
 1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
@@ -270,30 +277,104 @@ export async function executeAccountingAgent(
           : '')
 
       if (tool === 'query_cash_flow_records') {
-        // Stat cards
-        const statCards: StatCardData[] = [
-          {
-            title: `${periodLabel ? `${periodLabel} ` : ''}總收入`,
-            value: `NT$ ${data.totalIncome.toLocaleString()}`,
+        const statCards: StatCardData[] = []
+        const prefix = periodLabel ? `${periodLabel} ` : ''
+
+        if (data.filterCategory) {
+          // Specific category queried (e.g. 課程收入)
+          const isIncome = (data.filteredIncome || 0) > 0 && (data.filteredExpense || 0) === 0
+          statCards.push({
+            title: `${prefix}「${data.filterCategory}」合計`,
+            value: `NT$ ${(data.filteredTotalAmount ?? data.totalIncome).toLocaleString()}`,
+            subtitle: `共 ${data.totalRecordsFound} 筆明細`,
+            color: isIncome ? 'emerald' : 'red',
+          })
+          statCards.push({
+            title: `${prefix}全場館總收入`,
+            value: `NT$ ${(data.periodTotalIncome ?? data.totalIncome).toLocaleString()}`,
+            subtitle: '包含所有收入類別',
             color: 'emerald',
-          },
-          {
-            title: `${periodLabel ? `${periodLabel} ` : ''}總支出`,
-            value: `NT$ ${data.totalExpense.toLocaleString()}`,
+          })
+          statCards.push({
+            title: `${prefix}全場館總支出`,
+            value: `NT$ ${(data.periodTotalExpense ?? data.totalExpense).toLocaleString()}`,
+            subtitle: '包含房租、水電等實際支出',
             color: 'red',
-          },
-          {
-            title: `${periodLabel ? `${periodLabel} ` : ''}淨現金流`,
-            value: `NT$ ${data.netCashFlow.toLocaleString()}`,
-            color: data.netCashFlow >= 0 ? 'emerald' : 'red',
-          },
-        ]
+          })
+          statCards.push({
+            title: `${prefix}淨現金流`,
+            value: `NT$ ${(data.periodNetCashFlow ?? data.netCashFlow).toLocaleString()}`,
+            subtitle: '總收入 - 總支出',
+            color: (data.periodNetCashFlow ?? data.netCashFlow) >= 0 ? 'emerald' : 'red',
+          })
+        } else if (data.filterType === 'income') {
+          statCards.push({
+            title: `${prefix}查詢收入合計`,
+            value: `NT$ ${(data.filteredIncome ?? data.totalIncome).toLocaleString()}`,
+            subtitle: `共 ${data.totalRecordsFound} 筆`,
+            color: 'emerald',
+          })
+          statCards.push({
+            title: `${prefix}全場館總支出`,
+            value: `NT$ ${(data.periodTotalExpense ?? data.totalExpense).toLocaleString()}`,
+            subtitle: '包含房租、水電等實際支出',
+            color: 'red',
+          })
+          statCards.push({
+            title: `${prefix}淨現金流`,
+            value: `NT$ ${(data.periodNetCashFlow ?? data.netCashFlow).toLocaleString()}`,
+            color: (data.periodNetCashFlow ?? data.netCashFlow) >= 0 ? 'emerald' : 'red',
+          })
+        } else if (data.filterType === 'expense') {
+          statCards.push({
+            title: `${prefix}查詢支出合計`,
+            value: `NT$ ${(data.filteredExpense ?? data.totalExpense).toLocaleString()}`,
+            subtitle: `共 ${data.totalRecordsFound} 筆`,
+            color: 'red',
+          })
+          statCards.push({
+            title: `${prefix}全場館總收入`,
+            value: `NT$ ${(data.periodTotalIncome ?? data.totalIncome).toLocaleString()}`,
+            color: 'emerald',
+          })
+          statCards.push({
+            title: `${prefix}淨現金流`,
+            value: `NT$ ${(data.periodNetCashFlow ?? data.netCashFlow).toLocaleString()}`,
+            color: (data.periodNetCashFlow ?? data.netCashFlow) >= 0 ? 'emerald' : 'red',
+          })
+        } else {
+          statCards.push(
+            {
+              title: `${prefix}總收入`,
+              value: `NT$ ${(data.periodTotalIncome ?? data.totalIncome).toLocaleString()}`,
+              color: 'emerald',
+            },
+            {
+              title: `${prefix}總支出`,
+              value: `NT$ ${(data.periodTotalExpense ?? data.totalExpense).toLocaleString()}`,
+              color: 'red',
+            },
+            {
+              title: `${prefix}淨現金流`,
+              value: `NT$ ${(data.periodNetCashFlow ?? data.netCashFlow).toLocaleString()}`,
+              color: (data.periodNetCashFlow ?? data.netCashFlow) >= 0 ? 'emerald' : 'red',
+            }
+          )
+        }
         blocks.push({ type: 'stat_card_group', data: statCards })
 
         // Data table
         if (data.records && data.records.length > 0) {
+          const tableTitle = data.filterCategory
+            ? `${prefix}「${data.filterCategory}」明細列表 (共 ${data.totalRecordsFound} 筆)`
+            : `${prefix}收支明細列表 (共 ${data.totalRecordsFound} 筆)`
+
+          const summaryDesc = data.filterCategory
+            ? `共 ${data.totalRecordsFound} 筆，小計 NT$ ${(data.filteredTotalAmount ?? data.totalIncome).toLocaleString()}（當期全場館總支出 NT$ ${(data.periodTotalExpense ?? data.totalExpense).toLocaleString()}）`
+            : `總收入 ${(data.periodTotalIncome ?? data.totalIncome).toLocaleString()} / 總支出 ${(data.periodTotalExpense ?? data.totalExpense).toLocaleString()}`
+
           const tableData: TableComponentData = {
-            title: `${periodLabel ? `${periodLabel} ` : ''}收支明細列表 (共 ${data.totalRecordsFound} 筆)`,
+            title: tableTitle,
             columns: [
               { key: 'date', label: '日期', type: 'date' },
               { key: 'type', label: '收支', type: 'badge' },
@@ -304,11 +385,13 @@ export async function executeAccountingAgent(
             ],
             rows: data.records,
             summaryRow: {
-              date: '總計',
+              date: data.filterCategory ? '類別小計' : '總計',
               type: '-',
-              category: '-',
-              amount: data.totalIncome - data.totalExpense,
-              description: `收入 ${data.totalIncome.toLocaleString()} / 支出 ${data.totalExpense.toLocaleString()}`,
+              category: data.filterCategory || '-',
+              amount: data.filterCategory
+                ? data.filteredTotalAmount ?? data.totalIncome
+                : (data.periodTotalIncome ?? data.totalIncome) - (data.periodTotalExpense ?? data.totalExpense),
+              description: summaryDesc,
             },
             totalCount: data.totalRecordsFound,
           }
