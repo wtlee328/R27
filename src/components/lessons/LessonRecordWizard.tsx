@@ -171,7 +171,7 @@ export function LessonRecordWizard({
   // Ensure that contracts referenced by initialData are loaded even if completed or filtered
   useEffect(() => {
     if (!initialData) {
-      setMissingContracts([])
+      setMissingContracts(prev => (prev.length > 0 ? [] : prev))
       return
     }
 
@@ -184,32 +184,37 @@ export function LessonRecordWizard({
     }
 
     const unobtainedIds = Array.from(neededIds).filter(
-      id => !contracts.some(c => c.id === id) && !missingContracts.some(c => c.id === id)
+      id => !contracts.some(c => c.id === id)
     )
 
-    if (unobtainedIds.length > 0) {
-      Promise.all(
-        unobtainedIds.map(async id => {
-          try {
-            const snap = await getDoc(doc(db, 'contracts', id))
-            if (snap.exists()) {
-              return { id: snap.id, ...snap.data() } as Contract
-            }
-          } catch (e) {
-            console.warn(`Failed to fetch missing contract ${id}`, e)
+    if (unobtainedIds.length === 0) return
+
+    Promise.all(
+      unobtainedIds.map(async id => {
+        try {
+          const snap = await getDoc(doc(db, 'contracts', id))
+          if (snap.exists()) {
+            return { id: snap.id, ...snap.data() } as Contract
           }
-          return null
-        })
-      ).then(fetched => {
-        const valid = fetched.filter((c): c is Contract => c !== null)
-        if (valid.length > 0) {
-          setMissingContracts(prev => [...prev, ...valid])
+        } catch (e) {
+          console.warn(`Failed to fetch missing contract ${id}`, e)
         }
+        return null
       })
-    }
-  }, [initialData, contracts, missingContracts])
+    ).then(fetched => {
+      const valid = fetched.filter((c): c is Contract => c !== null)
+      if (valid.length > 0) {
+        setMissingContracts(prev => {
+          const existingIds = new Set(prev.map(c => c.id))
+          const toAdd = valid.filter(c => !existingIds.has(c.id))
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev
+        })
+      }
+    })
+  }, [initialData, contracts])
 
   const allContracts = useMemo(() => {
+    if (missingContracts.length === 0) return contracts
     const map = new Map<string, Contract>()
     contracts.forEach(c => map.set(c.id, c))
     missingContracts.forEach(c => {
