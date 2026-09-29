@@ -352,7 +352,10 @@ export function useLessonRecords() {
         recordDataForLog = recordData
 
         const deductions: StudentDeduction[] = (recordData.deductions && recordData.deductions.length > 0)
-          ? recordData.deductions
+          ? recordData.deductions.map(d => ({
+              ...d,
+              contractId: d.contractId || recordData.contractId,
+            }))
           : [{
               customerId: recordData.customerId,
               customerName: recordData.customerName,
@@ -413,10 +416,11 @@ export function useLessonRecords() {
         // 2. ALL WRITES LATER
         const deductionsByContract = new Map<string, StudentDeduction[]>()
         deductions.forEach(d => {
-          if (d.contractId) {
-            const list = deductionsByContract.get(d.contractId) || []
+          const cid = d.contractId || recordData.contractId
+          if (cid) {
+            const list = deductionsByContract.get(cid) || []
             list.push(d)
-            deductionsByContract.set(d.contractId, list)
+            deductionsByContract.set(cid, list)
           }
         })
 
@@ -509,7 +513,10 @@ export function useLessonRecords() {
         
         const oldData = recordSnap.data() as any
         const oldDeductions: StudentDeduction[] = Array.isArray(oldData.deductions) && oldData.deductions.length > 0
-          ? oldData.deductions
+          ? oldData.deductions.map((d: any) => ({
+              ...d,
+              contractId: d.contractId || oldData.contractId,
+            }))
           : [{
               customerId: oldData.customerId,
               customerName: oldData.customerName || '',
@@ -518,13 +525,13 @@ export function useLessonRecords() {
             }]
 
         // Collect all contract IDs that need to be read (both old and new)
-        const oldContractIds = oldDeductions.map(d => d.contractId).filter(Boolean) as string[]
+        const oldContractIds = oldDeductions.map(d => d.contractId || oldData.contractId).filter(Boolean) as string[]
         if (oldData.contractId && !oldContractIds.includes(oldData.contractId)) {
           oldContractIds.push(oldData.contractId)
         }
 
         const newPrimaryContractId = data.contractId
-        const newDeductions: StudentDeduction[] = Array.isArray((data as any).deductions) && (data as any).deductions.length > 0
+        const rawNewDeductions: StudentDeduction[] = Array.isArray((data as any).deductions) && (data as any).deductions.length > 0
           ? (data as any).deductions
           : [{
               customerId: data.customerId,
@@ -533,7 +540,7 @@ export function useLessonRecords() {
               sessionAmount: data.sessionAmount || 1,
             }]
 
-        const newContractIds = newDeductions.map(d => d.contractId).filter(Boolean) as string[]
+        const newContractIds = rawNewDeductions.map(d => d.contractId).concat(newPrimaryContractId ? [newPrimaryContractId] : []).filter(Boolean) as string[]
         if (newPrimaryContractId && !newContractIds.includes(newPrimaryContractId)) {
           newContractIds.push(newPrimaryContractId)
         }
@@ -590,7 +597,7 @@ export function useLessonRecords() {
           const cSnap = contractSnapsMap.get(cid)
           if (!cSnap || !cSnap.exists()) continue
           const cData = cSnap.data() as Contract
-          const deds = oldDeductions.filter(d => d.contractId === cid)
+          const deds = oldDeductions.filter(d => (d.contractId || oldData.contractId) === cid)
 
           let refundAmount = deds.reduce((sum, item) => sum + (Number(item.sessionAmount) || 1), 0)
           if (cData.contractType === 'dual') {
@@ -612,10 +619,27 @@ export function useLessonRecords() {
         const newPrimaryContractSnap = contractSnapsMap.get(newPrimaryContractId)
         const newPrimaryContractData = newPrimaryContractSnap?.exists() ? (newPrimaryContractSnap.data() as Contract) : null
         const isNewDualContract = newPrimaryContractData?.contractType === 'dual'
+        const isNewGroupContract = newPrimaryContractData?.contractType === 'group' || !!newPrimaryContractData?.groupMemberQuotas
         const effectiveNewSessionAmount = isNewDualContract ? 1 : (data.sessionAmount || 1)
 
+        // Sanitize new deductions: non-group contracts must deduct against newPrimaryContractId.
+        // Even for group contracts, if a deduction still points to the old primary contract while the primary contract has changed,
+        // rebind it to the new primary contract.
+        const sanitizedNewDeductions: StudentDeduction[] = rawNewDeductions.map(d => {
+          let cid = d.contractId || newPrimaryContractId
+          if (!isNewGroupContract) {
+            cid = newPrimaryContractId
+          } else if (cid === oldData.contractId && newPrimaryContractId && newPrimaryContractId !== oldData.contractId) {
+            cid = newPrimaryContractId
+          }
+          return {
+            ...d,
+            contractId: cid,
+          }
+        })
+
         const newDeductionsByContract = new Map<string, StudentDeduction[]>()
-        newDeductions.forEach(d => {
+        sanitizedNewDeductions.forEach(d => {
           const cid = d.contractId || newPrimaryContractId
           if (cid) {
             const list = newDeductionsByContract.get(cid) || []
@@ -734,11 +758,11 @@ export function useLessonRecords() {
         const recognizedAmount = Math.round(effectiveSessionAmount * unitPriceAtDeduction)
 
         const newFinalDeductions: StudentDeduction[] = newAttendeeIds.map((aId, idx) => {
-          const matchingDed = newDeductions.find(d => d.customerId === aId)
+          const matchingDed = sanitizedNewDeductions.find(d => d.customerId === aId)
           return {
             customerId: aId,
             customerName: attendeeNames[idx] || (matchingDed?.customerName || ''),
-            contractId: matchingDed?.contractId || data.contractId,
+            contractId: matchingDed?.contractId || newPrimaryContractId,
             sessionAmount: matchingDed?.sessionAmount || effectiveSessionAmount,
           }
         })

@@ -431,7 +431,9 @@ export function LessonRecordWizard({
     // Track total sessions needed per contract across all attendees in this submission
     const contractDeductionNeeds = new Map<string, number>()
     for (const custId of targetCustomerIds) {
-      const chosenContractId = studentContractSelections[custId] || watchedContractId
+      const chosenContractId = (!isGroupContract)
+        ? watchedContractId
+        : (studentContractSelections[custId] || watchedContractId)
       const con = allContracts.find(c => c.id === chosenContractId)
       const custName = groupCustomers.find(c => c.id === custId)?.name || customers.find(c => c.id === custId)?.name || '學員'
       if (!con) {
@@ -514,7 +516,9 @@ export function LessonRecordWizard({
     // Build per-student deductions
     const deductions = attendees.map(studentId => {
       const cust = customers.find(c => c.id === studentId)
-      const chosenContractId = studentContractSelections[studentId] || data.contractId
+      const chosenContractId = (!isGroupContract)
+        ? data.contractId
+        : (studentContractSelections[studentId] || data.contractId)
       return {
         customerId: studentId,
         customerName: cust?.name || '',
@@ -708,10 +712,37 @@ export function LessonRecordWizard({
                       const conId = e.target.value
                       const con = allContracts.find(c => c.id === conId)
                       if (con) {
+                        const isDual = con.contractType === 'dual'
+                        const isShared = con.contractType === 'shared'
+                        const isGroup = con.contractType === 'group' || !!con.groupMemberQuotas
+
                         const ids = con.customerIds && con.customerIds.length > 0
                           ? con.customerIds
                           : [selectedCustomerId, con.sharedWithCustomerId, con.partnerId].filter((id): id is string => !!id)
-                        form.setValue('attendingCustomerIds', Array.from(new Set(ids)))
+                        const uniqueIds = Array.from(new Set(ids))
+
+                        if (isDual) {
+                          form.setValue('attendingCustomerIds', uniqueIds)
+                          form.setValue('sessionAmount', 1)
+                          const selections: Record<string, string> = {}
+                          uniqueIds.forEach(id => { selections[id] = con.id })
+                          setStudentContractSelections(selections)
+                        } else if (isShared) {
+                          form.setValue('attendingCustomerIds', [selectedCustomerId])
+                          form.setValue('sessionAmount', 1)
+                          const selections: Record<string, string> = {}
+                          uniqueIds.forEach(id => { selections[id] = con.id })
+                          setStudentContractSelections(selections)
+                        } else if (isGroup) {
+                          form.setValue('attendingCustomerIds', uniqueIds)
+                          const selections: Record<string, string> = {}
+                          uniqueIds.forEach(id => { selections[id] = con.id })
+                          setStudentContractSelections(selections)
+                        } else {
+                          // Single contract
+                          form.setValue('attendingCustomerIds', [selectedCustomerId])
+                          setStudentContractSelections({ [selectedCustomerId]: con.id })
+                        }
                       }
                     }
                   })}
