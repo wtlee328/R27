@@ -7,6 +7,7 @@ import {
   queryContractPayments,
 } from '../tools/accountingTools'
 import { getTaipeiDateTimeInfo } from '../utils/timeUtils'
+import { manageContextMemory } from '../utils/contextManager'
 
 const AGENT_MODEL = 'gpt-6-luna'
 
@@ -177,14 +178,23 @@ export async function executeAccountingAgent(
   // Dynamic reasoning effort evaluation based on task difficulty
   const reasoningEffort = determineReasoningEffort(userMessage)
 
-  // Build input message sequence
+  // Generate System Prompt
+  const systemPrompt = getSystemPrompt(centerId)
+
+  // Manage Context Memory & Automatic Compaction at 60% Context Window
+  const { managedHistory, compactionInfo } = await manageContextMemory(
+    openai,
+    centerId,
+    history,
+    userMessage,
+    systemPrompt
+  )
+
+  // Build input message sequence using full managed context (supports system memory summary, user, assistant)
   const inputItems: any[] = []
-  if (history && history.length > 0) {
-    const recentHistory = history.slice(-6)
-    for (const h of recentHistory) {
-      if (h.role === 'user' || h.role === 'assistant') {
-        inputItems.push({ role: h.role, content: h.content })
-      }
+  for (const h of managedHistory) {
+    if (h.role === 'user' || h.role === 'assistant' || h.role === 'system') {
+      inputItems.push({ role: h.role, content: h.content })
     }
   }
   inputItems.push({ role: 'user', content: userMessage })
@@ -193,7 +203,7 @@ export async function executeAccountingAgent(
     // 1. Initial Call to Responses API with gpt-6-luna and dynamic reasoning.effort
     let currentResponse = await openai.responses.create({
       model: AGENT_MODEL,
-      instructions: getSystemPrompt(centerId),
+      instructions: systemPrompt,
       input: inputItems,
       tools: accountingResponsesTools,
       reasoning: { effort: reasoningEffort },
@@ -505,6 +515,7 @@ export async function executeAccountingAgent(
       text: replyText,
       blocks,
       suggestedQuestions,
+      compaction: compactionInfo,
       metadata: {
         centerId,
         executedTools,
@@ -531,6 +542,7 @@ export async function executeAccountingAgent(
         },
       ],
       suggestedQuestions: ['重新查詢本月收入', '查看損益概況'],
+      compaction: compactionInfo,
       metadata: {
         centerId,
         executedTools,

@@ -35,6 +35,16 @@ export interface StructuredAIBlock {
   data: string | TableComponentData | StatCardData[] | AlertBoxData
 }
 
+export interface MemoryCompactionInfo {
+  compacted: boolean
+  summary?: string
+  compactedMessageCount?: number
+  totalTokensBefore?: number
+  totalTokensAfter?: number
+  contextLimit?: number
+  usagePercent?: number
+}
+
 export interface AIAssistantResponse {
   conversationId: string
   messageId: string
@@ -42,6 +52,7 @@ export interface AIAssistantResponse {
   text: string
   blocks: StructuredAIBlock[]
   suggestedQuestions?: string[]
+  compaction?: MemoryCompactionInfo
   metadata: {
     centerId: string
     executedTools: string[]
@@ -53,8 +64,9 @@ export interface AIAssistantResponse {
 
 export interface AIChatMessage {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
   responsePayload?: AIAssistantResponse
   timestamp: number
+  isCompactedSummary?: boolean
 }

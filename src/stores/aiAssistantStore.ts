@@ -103,14 +103,35 @@ export const useAIAssistantStore = create<AIAssistantState>()(
             timestamp: Date.now(),
           }
 
-          set((state) => ({
-            messagesByCenter: {
-              ...state.messagesByCenter,
-              [centerId]: [...(state.messagesByCenter[centerId] || []), assistantMsg],
-            },
-            isLoading: false,
-            error: null,
-          }))
+          set((state) => {
+            let updatedMessages = [...(state.messagesByCenter[centerId] || []), assistantMsg]
+
+            // If backend performed memory compaction (60% context window threshold),
+            // fold older messages into a structured summary node to keep local storage & context lightweight
+            if (response.compaction?.compacted && response.compaction.summary) {
+              const summaryMsg: AIChatMessage = {
+                id: `summary_${Date.now()}`,
+                role: 'system',
+                content: response.compaction.summary,
+                isCompactedSummary: true,
+                timestamp: Date.now(),
+              }
+
+              // Keep recent 5 messages (recent turns + the new assistant response)
+              const RECENT_TO_KEEP = 5
+              const recentSlice = updatedMessages.slice(-RECENT_TO_KEEP)
+              updatedMessages = [summaryMsg, ...recentSlice]
+            }
+
+            return {
+              messagesByCenter: {
+                ...state.messagesByCenter,
+                [centerId]: updatedMessages,
+              },
+              isLoading: false,
+              error: null,
+            }
+          })
         } catch (err: any) {
           const errorMsg = err?.message || '傳送訊息失敗，請確認網路或 API 狀態。'
           set((state) => ({
