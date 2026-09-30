@@ -642,12 +642,9 @@ export function TrainerDetailsModal({
                     >
                       <div className="flex items-center gap-4">
                         {/* Date column */}
-                        <div className="shrink-0 text-center">
-                          <p className={cn('text-[10px] font-black uppercase tracking-wider', isSelected ? 'text-stone-400' : 'text-stone-400')}>
+                        <div className="shrink-0 text-center min-w-[36px]">
+                          <p className={cn('text-xs font-bold uppercase tracking-wider', isSelected ? 'text-stone-300' : 'text-stone-500')}>
                             {r.sessionDate ? format(ensureDate(r.sessionDate), 'MM/dd') : '-'}
-                          </p>
-                          <p className={cn('text-[9px] font-mono', isSelected ? 'text-stone-500' : 'text-stone-300')}>
-                            {r.sessionDate ? format(ensureDate(r.sessionDate), 'HH/mm') : ''}
                           </p>
                         </div>
 
@@ -917,7 +914,7 @@ export function TrainerDetailsModal({
                         <RiCalendarLine className="w-4 h-4 text-stone-400" /> 上課日期
                       </span>
                       <span className="font-bold text-stone-900 font-mono">
-                        {r.sessionDate ? format(ensureDate(r.sessionDate), 'yyyy/MM/dd HH:mm') : '—'}
+                        {r.sessionDate ? format(ensureDate(r.sessionDate), 'yyyy/MM/dd') : '—'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-3.5">

@@ -380,6 +380,22 @@ export default function BackupPage() {
       return String(val)
     }
 
+    const formatDateOnly = (val: any) => {
+      if (!val) return ''
+      if (val && typeof val === 'object' && val.seconds !== undefined) {
+        const d = new Date(val.seconds * 1000)
+        return format(d, 'yyyy-MM-dd')
+      }
+      if (val instanceof Date) {
+        return format(val, 'yyyy-MM-dd')
+      }
+      const parsed = new Date(val)
+      if (!isNaN(parsed.getTime())) {
+        return format(parsed, 'yyyy-MM-dd')
+      }
+      return String(val)
+    }
+
     const formatCenterId = (cid: any) => {
       if (!cid || cid === 'r27') return 'R27 Fitness'
       if (cid === 'coffit') return 'Coffit 訓練中心'
@@ -420,7 +436,7 @@ export default function BackupPage() {
       case 'lessonRecords':
         headers = [
           '銷課ID', '場館類別', '主要學員', '所有銷課扣堂學員', '合約ID/編號',
-          '主銷課教練', '是否代課', '代課教練', '上課時間', '扣除總堂數',
+          '主銷課教練', '是否代課', '代課教練', '上課日期', '扣除總堂數',
           '銷課認列金額 (NT$)', '課後備註', '紀錄建立時間'
         ]
         mapper = (row) => {
@@ -437,7 +453,7 @@ export default function BackupPage() {
             '主銷課教練': trainerMap[row.trainerId] || row.trainerId || '',
             '是否代課': row.isSubstitute ? '是 (代課)' : '否',
             '代課教練': row.substituteTrainerId ? (trainerMap[row.substituteTrainerId] || row.substituteTrainerId) : '',
-            '上課時間': formatTime(row.sessionDate),
+            '上課日期': formatDateOnly(row.sessionDate),
             '扣除總堂數': row.sessionAmount ?? 1,
             '銷課認列金額 (NT$)': row.recognizedAmount ?? 0,
             '課後備註': row.notes || '',
