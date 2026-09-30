@@ -198,9 +198,9 @@ export default function TrainerLessonsPage() {
   // Contract type filter state (all, single, dual, shared, group)
   const [contractTypeFilter, setContractTypeFilter] = useState<'all' | 'single' | 'dual' | 'shared' | 'group'>('all')
 
-  // Notes filter & search state
+  // Keyword search & notes filter state
   const [notesFilter, setNotesFilter] = useState<'all' | 'has_notes' | 'no_notes'>('all')
-  const [notesSearchQuery, setNotesSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Sorting states for lesson records (Date, Student Name)
   const [sortBy, setSortBy] = useState<'date' | 'name'>('date')
@@ -365,15 +365,22 @@ export default function TrainerLessonsPage() {
         if (r.notes && r.notes.trim()) return false
       }
 
-      // 4. 備註關鍵字搜尋
-      if (notesSearchQuery.trim()) {
-        const q = notesSearchQuery.trim().toLowerCase()
-        if (!r.notes || !r.notes.toLowerCase().includes(q)) return false
+      // 4. 關鍵字搜尋 (同時搜尋學員姓名與備註事項)
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase()
+        const customerName = (r.customerName || '').toLowerCase()
+        const attendingNames = (r.attendingCustomerNames || []).map(n => (n || '').toLowerCase()).join(' ')
+        const notes = (r.notes || '').toLowerCase()
+
+        const matchesCustomer = customerName.includes(q) || attendingNames.includes(q)
+        const matchesNotes = notes.includes(q)
+
+        if (!matchesCustomer && !matchesNotes) return false
       }
 
       return true
     })
-  }, [myRecords, metricsYear, metricsMonth, contractTypeFilter, notesFilter, notesSearchQuery, getRecordContractType])
+  }, [myRecords, metricsYear, metricsMonth, contractTypeFilter, notesFilter, searchQuery, getRecordContractType])
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a, b) => {
@@ -1014,21 +1021,22 @@ export default function TrainerLessonsPage() {
               <option value="no_notes">僅無備註</option>
             </select>
 
-            {/* 備註搜尋輸入框 */}
-            <div className="relative w-44">
+            {/* 學員姓名與備註搜尋輸入框 */}
+            <div className="relative w-44 sm:w-48">
               <RiSearchLine className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
               <input
                 type="text"
-                placeholder="搜尋備註事項..."
-                value={notesSearchQuery}
-                onChange={(e) => setNotesSearchQuery(e.target.value)}
+                placeholder="搜尋學員姓名、備註..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-7.5 pl-8 pr-7 text-xs font-medium bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-stone-200 transition-all"
               />
-              {notesSearchQuery && (
+              {searchQuery && (
                 <button
                   type="button"
-                  onClick={() => setNotesSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+                  title="清除搜尋"
                 >
                   <RiCloseLine className="w-3.5 h-3.5" />
                 </button>
@@ -1206,20 +1214,44 @@ export default function TrainerLessonsPage() {
             <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-100 flex items-center justify-center mx-auto mb-4">
               <RiCalendarCheckLine className="w-7 h-7 text-stone-300" />
             </div>
-            <p className="text-sm font-semibold text-stone-600">
-              {metricsYear} 年 {metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`} 尚無銷課紀錄
-            </p>
-            <p className="text-xs text-stone-400 mt-1">
-              可切換其他月份查看，或點擊右上角「新增銷課」開始記錄
-            </p>
-            {metricsMonth !== 'all' && (
-              <button
-                type="button"
-                onClick={() => setMetricsMonth('all')}
-                className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors cursor-pointer"
-              >
-                查看 {metricsYear} 全年度紀錄
-              </button>
+            {searchQuery.trim() || contractTypeFilter !== 'all' || notesFilter !== 'all' ? (
+              <>
+                <p className="text-sm font-semibold text-stone-600">
+                  查無符合搜尋或篩選條件的銷課紀錄
+                </p>
+                <p className="text-xs text-stone-400 mt-1">
+                  請嘗試更換學員姓名、備註關鍵字或調整篩選條件
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setContractTypeFilter('all')
+                    setNotesFilter('all')
+                  }}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors cursor-pointer"
+                >
+                  重設搜尋與篩選條件
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold text-stone-600">
+                  {metricsYear} 年 {metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`} 尚無銷課紀錄
+                </p>
+                <p className="text-xs text-stone-400 mt-1">
+                  可切換其他月份查看，或點擊右上角「新增銷課」開始記錄
+                </p>
+                {metricsMonth !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => setMetricsMonth('all')}
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors cursor-pointer"
+                  >
+                    查看 {metricsYear} 全年度紀錄
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
