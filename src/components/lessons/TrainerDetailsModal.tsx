@@ -78,13 +78,13 @@ export function TrainerDetailsModal({
 
   // Notes filter & search state
   const [notesFilter, setNotesFilter] = useState<'all' | 'has_notes' | 'no_notes'>('all')
-  const [notesSearchQuery, setNotesSearchQuery] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Reset filter and search when modal closes or trainer changes
   React.useEffect(() => {
     if (!open) {
       setNotesFilter('all')
-      setNotesSearchQuery('')
+      setSearchQuery('')
     }
   }, [open, trainer?.id])
 
@@ -140,7 +140,7 @@ export function TrainerDetailsModal({
     return records.filter(lr => lr.trainerId === trainer.id)
   }, [records, trainer])
 
-  // Filter lessons by selected month, notes filter, and notes search query
+  // Filter lessons by selected month, notes filter, and keyword search query (student name & notes)
   const filteredLessons = useMemo(() => {
     return trainerLessons.filter(lr => {
       if (selectedMonth !== 'all') {
@@ -151,13 +151,20 @@ export function TrainerDetailsModal({
       } else if (notesFilter === 'no_notes') {
         if (lr.notes && lr.notes.trim()) return false
       }
-      if (notesSearchQuery.trim()) {
-        const q = notesSearchQuery.trim().toLowerCase()
-        if (!lr.notes || !lr.notes.toLowerCase().includes(q)) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase()
+        const customerName = (lr.customerName || '').toLowerCase()
+        const attendingNames = (lr.attendingCustomerNames || []).map(n => (n || '').toLowerCase()).join(' ')
+        const notes = (lr.notes || '').toLowerCase()
+
+        const matchesCustomer = customerName.includes(q) || attendingNames.includes(q)
+        const matchesNotes = notes.includes(q)
+
+        if (!matchesCustomer && !matchesNotes) return false
       }
       return true
     })
-  }, [trainerLessons, selectedMonth, notesFilter, notesSearchQuery])
+  }, [trainerLessons, selectedMonth, notesFilter, searchQuery])
 
   const sortedFilteredLessons = useMemo(() => {
     return [...filteredLessons].sort((a, b) => {
@@ -531,21 +538,22 @@ export function TrainerDetailsModal({
                   <option value="no_notes">僅無備註</option>
                 </select>
 
-                {/* 備註關鍵字搜尋 */}
-                <div className="relative flex-1 min-w-[120px]">
+                {/* 搜尋輸入框（學員姓名與備註關鍵字） */}
+                <div className="relative flex-1 min-w-[140px]">
                   <RiSearchLine className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-stone-400 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="搜尋備註關鍵字..."
-                    value={notesSearchQuery}
-                    onChange={(e) => setNotesSearchQuery(e.target.value)}
+                    placeholder="搜尋學員姓名、備註..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full h-7 pl-7 pr-6 text-[11px] font-medium bg-white border border-stone-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-stone-300"
                   />
-                  {notesSearchQuery && (
+                  {searchQuery && (
                     <button
                       type="button"
-                      onClick={() => setNotesSearchQuery('')}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                      title="清除搜尋"
                     >
                       <RiCloseLine className="w-3 h-3" />
                     </button>
@@ -576,7 +584,24 @@ export function TrainerDetailsModal({
               {sortedFilteredLessons.length === 0 ? (
                 <div className="py-16 text-center">
                   <RiTimeLine className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-                  <p className="text-stone-400 text-sm italic">無銷課紀錄</p>
+                  {searchQuery.trim() || notesFilter !== 'all' ? (
+                    <>
+                      <p className="text-stone-600 text-sm font-semibold">查無符合搜尋或篩選條件的銷課紀錄</p>
+                      <p className="text-stone-400 text-xs mt-1">請嘗試更換關鍵字或重設篩選條件</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('')
+                          setNotesFilter('all')
+                        }}
+                        className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-2.5 py-1 rounded-lg border border-orange-200 transition-colors cursor-pointer"
+                      >
+                        重設搜尋與篩選條件
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-stone-400 text-sm italic">無銷課紀錄</p>
+                  )}
                 </div>
               ) : (
                 sortedFilteredLessons.map((r) => {
