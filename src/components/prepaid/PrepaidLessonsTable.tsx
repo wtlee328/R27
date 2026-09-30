@@ -18,6 +18,7 @@ import {
 } from '@remixicon/react'
 import { StatCard } from '../shared/StatCard'
 import { FilterDropdown } from '../shared/FilterDropdown'
+import { YearMonthPicker } from '../shared/YearMonthPicker'
 import { Input } from '../ui/input'
 import { useCustomers } from '../../hooks/useCustomers'
 import { useLessonRecords } from '../../hooks/useLessonRecords'
@@ -372,30 +373,14 @@ export function PrepaidLessonsTable({
         </div>
 
         {onYearChange && onMonthChange && (
-          <div className="flex items-center gap-2">
-            <FilterDropdown
-              value={selectedYear}
-              onChange={(v) => onYearChange(Number(v))}
-              options={[0, 1, 2, 3].map((offset) => {
-                const y = new Date().getFullYear() - offset
-                return { value: y, label: `${y} 年` }
-              })}
-              icon={Calendar}
-              label="年份"
-            />
-            <FilterDropdown
-              value={selectedMonth}
-              onChange={(v) => onMonthChange(v === 'all' ? 'all' : Number(v))}
-              options={[
-                { value: 'all', label: '全年度' },
-                ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
-                  value: m,
-                  label: `${String(m).padStart(2, '0')} 月`,
-                })),
-              ]}
-              label="月份"
-            />
-          </div>
+          <YearMonthPicker
+            year={selectedYear}
+            month={selectedMonth}
+            onYearMonthChange={(y, m) => {
+              onYearChange(y)
+              onMonthChange(m)
+            }}
+          />
         )}
       </div>
 

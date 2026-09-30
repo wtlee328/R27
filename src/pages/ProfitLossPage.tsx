@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { Calendar, ArrowUpRight, ArrowDownRight, Percent } from 'lucide-react'
 import { RiPieChartLine, RiLineChartLine } from '@remixicon/react'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
+import { YearMonthPicker } from '../components/shared/YearMonthPicker'
 import { StatCard } from '../components/shared/StatCard'
 import { useCashFlow } from '../hooks/useCashFlow'
 import { useCustomers } from '../hooks/useCustomers'
@@ -184,28 +185,13 @@ export default function ProfitLossPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <FilterDropdown
-            value={selectedYear}
-            onChange={(v) => setSelectedYear(Number(v))}
-            options={[0, 1, 2].map((offset) => {
-              const y = now.getFullYear() - offset
-              return { value: y, label: `${y} 年` }
-            })}
-            icon={Calendar}
-            label="選擇年份"
-          />
-
-          <FilterDropdown
-            value={selectedMonth}
-            onChange={(v) => setSelectedMonth(v === 'all' ? 'all' : Number(v))}
-            options={[
-              { value: 'all', label: '所有月份 (全年度)' },
-              ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({
-                value: m,
-                label: `${String(m).padStart(2, '0')} 月`,
-              })),
-            ]}
-            label="選擇月份"
+          <YearMonthPicker
+            year={selectedYear}
+            month={selectedMonth}
+            onYearMonthChange={(y, m) => {
+              setSelectedYear(y)
+              setSelectedMonth(m)
+            }}
           />
         </div>
       </div>

@@ -20,6 +20,7 @@ import {
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
+import { YearMonthPicker } from '../components/shared/YearMonthPicker'
 import { LessonRecordWizard } from '../components/lessons/LessonRecordWizard'
 import { TrainerOnboardModal } from '../components/lessons/TrainerOnboardModal'
 import { TrainerDetailsModal } from '../components/lessons/TrainerDetailsModal'
@@ -348,18 +349,10 @@ export default function LessonsPage() {
 
             <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
               {/* Selected Month Filter */}
-              <FilterDropdown
+              <YearMonthPicker
                 value={selectedMonth}
                 onChange={setSelectedMonth}
-                options={[
-                  { value: 'all', label: '全部月份' },
-                  ...monthOptions.map((m) => ({
-                    value: m,
-                    label: `${m.replace('/', ' 年 ')} 月`,
-                  })),
-                ]}
-                icon={RiCalendarLine}
-                label="月份篩選"
+                allMonthsLabel="全部月份"
               />
 
               {/* Sort Dropdown */}

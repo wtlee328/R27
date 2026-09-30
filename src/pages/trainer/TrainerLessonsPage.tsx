@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { YearMonthPicker } from '@/components/shared/YearMonthPicker'
 import { cn } from '@/lib/utils'
 
 import type { Customer, Contract } from '@/types'
@@ -787,75 +788,15 @@ export default function TrainerLessonsPage() {
           </div>
 
           {/* 整合型年月選擇器 */}
-          <div className="inline-flex items-center bg-white border border-stone-200/90 rounded-xl p-1 shadow-2xs">
-            {/* 上一月箭頭 */}
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
-              title="上一月"
-            >
-              <RiArrowLeftSLine className="w-4 h-4" />
-            </button>
-
-            {/* 年月選擇器主體 */}
-            <div className="flex items-center gap-1.5 px-2 py-0.5">
-              <RiCalendarLine className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-              
-              {/* 年份下拉選單 */}
-              <div className="relative inline-flex items-center">
-                <select
-                  value={metricsYear}
-                  onChange={(e) => setMetricsYear(Number(e.target.value))}
-                  className="appearance-none bg-transparent pr-4 text-xs font-bold text-stone-800 hover:text-orange-600 focus:outline-none cursor-pointer transition-colors"
-                >
-                  {availableYears.map(y => (
-                    <option key={y} value={y}>{y} 年</option>
-                  ))}
-                </select>
-                <RiArrowDownSLine className="w-3 h-3 text-stone-400 pointer-events-none absolute right-0" />
-              </div>
-
-              <span className="text-stone-300 font-light text-xs">/</span>
-
-              {/* 月份下拉選單 */}
-              <div className="relative inline-flex items-center">
-                <select
-                  value={metricsMonth}
-                  onChange={(e) => setMetricsMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                  className="appearance-none bg-transparent pr-4 text-xs font-bold text-stone-800 hover:text-orange-600 focus:outline-none cursor-pointer transition-colors"
-                >
-                  <option value="all">全年度</option>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                    <option key={m} value={m}>{m} 月</option>
-                  ))}
-                </select>
-                <RiArrowDownSLine className="w-3 h-3 text-stone-400 pointer-events-none absolute right-0" />
-              </div>
-            </div>
-
-            {/* 下一月箭頭 */}
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
-              title="下一月"
-            >
-              <RiArrowRightSLine className="w-4 h-4" />
-            </button>
-
-            {/* 回到當前月快捷鍵 */}
-            {!isCurrentYearMonth && (
-              <button
-                type="button"
-                onClick={handleGoToCurrentMonth}
-                className="ml-1 px-2 py-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200/60"
-                title="回到目前系統年月"
-              >
-                本月
-              </button>
-            )}
-          </div>
+          <YearMonthPicker
+            year={metricsYear}
+            month={metricsMonth}
+            onYearMonthChange={(y, m) => {
+              setMetricsYear(y)
+              setMetricsMonth(m)
+            }}
+            availableYears={availableYears}
+          />
         </div>
 
         <div className="grid grid-cols-3 gap-3">

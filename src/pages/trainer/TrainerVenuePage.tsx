@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { StatCard } from '@/components/shared/StatCard'
 import { FilterDropdown } from '@/components/shared/FilterDropdown'
+import { YearMonthPicker } from '@/components/shared/YearMonthPicker'
 import { VenueTable } from '@/components/venue/VenueTable'
 import { VenueFormModal } from '@/components/venue/VenueFormModal'
 import { useVenueRentals } from '@/hooks/useVenueRentals'
@@ -129,16 +130,11 @@ export default function TrainerVenuePage() {
           <h2 className="text-lg font-bold text-stone-900">場租預約明細</h2>
           
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-400 font-bold shrink-0">選擇月份</span>
-            <FilterDropdown
+            <span className="text-xs text-stone-400 font-bold shrink-0">月份篩選</span>
+            <YearMonthPicker
               value={selectedMonth}
               onChange={setSelectedMonth}
-              options={[
-                { value: 'all', label: '全部月份' },
-                ...monthOptions.map((m) => ({ value: m, label: m })),
-              ]}
-              icon={RiCalendarLine}
-              label="選擇月份"
+              allMonthsLabel="全部月份"
             />
           </div>
         </div>
