@@ -8,6 +8,7 @@ import {
   RiRefreshLine,
   RiSearchLine,
   RiArrowRightSLine,
+  RiArrowLeftSLine,
   RiCheckLine,
   RiAlertLine,
   RiTimeLine,
@@ -94,9 +95,58 @@ export default function TrainerLessonsPage() {
     return records.filter(r => r.trainerId === currentTrainerId)
   }, [records, currentTrainerId])
 
-  // Date filtering state for top metrics (Default: current year & current month)
+  // Date filtering state for top metrics & lesson records (Default: current year & current month)
   const [metricsYear, setMetricsYear] = useState(() => new Date().getFullYear())
-  const [metricsMonth, setMetricsMonth] = useState(() => new Date().getMonth() + 1)
+  const [metricsMonth, setMetricsMonth] = useState<number | 'all'>(() => new Date().getMonth() + 1)
+
+  // Dynamically compute available years based on records and current date
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear()
+    const yearsSet = new Set<number>([currentYear - 2, currentYear - 1, currentYear, currentYear + 1])
+    myRecords.forEach(r => {
+      const d = r.sessionDate || (r as any).date
+      if (d) {
+        const dateObj = d.toDate ? d.toDate() : new Date(d)
+        if (!isNaN(dateObj.getTime())) {
+          yearsSet.add(dateObj.getFullYear())
+        }
+      }
+    })
+    return Array.from(yearsSet).sort((a, b) => b - a)
+  }, [myRecords])
+
+  const isCurrentYearMonth = useMemo(() => {
+    const now = new Date()
+    return metricsYear === now.getFullYear() && metricsMonth === (now.getMonth() + 1)
+  }, [metricsYear, metricsMonth])
+
+  const handlePrevMonth = useCallback(() => {
+    if (metricsMonth === 'all') {
+      setMetricsYear(y => y - 1)
+    } else if (metricsMonth === 1) {
+      setMetricsYear(y => y - 1)
+      setMetricsMonth(12)
+    } else {
+      setMetricsMonth(m => (m as number) - 1)
+    }
+  }, [metricsMonth])
+
+  const handleNextMonth = useCallback(() => {
+    if (metricsMonth === 'all') {
+      setMetricsYear(y => y + 1)
+    } else if (metricsMonth === 12) {
+      setMetricsYear(y => y + 1)
+      setMetricsMonth(1)
+    } else {
+      setMetricsMonth(m => (m as number) + 1)
+    }
+  }, [metricsMonth])
+
+  const handleGoToCurrentMonth = useCallback(() => {
+    const now = new Date()
+    setMetricsYear(now.getFullYear())
+    setMetricsMonth(now.getMonth() + 1)
+  }, [])
 
   // 1. Monthly total used sessions for current trainer in metricsYear & metricsMonth (Actual sessions)
   const monthlyLessonsCount = useMemo(() => {
@@ -104,8 +154,10 @@ export default function TrainerLessonsPage() {
       const dateVal = r.sessionDate || (r as any).date
       if (!dateVal) return sum
       const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
-      if (d.getFullYear() === metricsYear && (d.getMonth() + 1) === metricsMonth) {
-        return sum + 1
+      if (d.getFullYear() === metricsYear) {
+        if (metricsMonth === 'all' || (d.getMonth() + 1) === metricsMonth) {
+          return sum + 1
+        }
       }
       return sum
     }, 0)
@@ -177,7 +229,9 @@ export default function TrainerLessonsPage() {
       const dateVal = r.sessionDate || (r as any).date
       if (!dateVal) return false
       const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
-      return d.getFullYear() === metricsYear && (d.getMonth() + 1) === metricsMonth
+      if (d.getFullYear() !== metricsYear) return false
+      if (metricsMonth !== 'all' && (d.getMonth() + 1) !== metricsMonth) return false
+      return true
     })
   }, [myRecords, metricsYear, metricsMonth])
 
@@ -287,20 +341,30 @@ export default function TrainerLessonsPage() {
     }
   }, [myTrainerContracts, currentTrainerId])
 
-  // Filter records by contract type, notes filter, and notes search query
+  // Filter records by date (year & month), contract type, notes filter, and notes search query
   const filteredRecords = useMemo(() => {
     return myRecords.filter(r => {
+      // 1. 時間段篩選 (Year & Month)
+      const dateVal = r.sessionDate || (r as any).date
+      if (!dateVal) return false
+      const d = dateVal.toDate ? dateVal.toDate() : new Date(dateVal)
+      if (d.getFullYear() !== metricsYear) return false
+      if (metricsMonth !== 'all' && (d.getMonth() + 1) !== metricsMonth) return false
+
+      // 2. 合約類型篩選
       if (contractTypeFilter !== 'all') {
         const cType = getRecordContractType(r)
         if (cType !== contractTypeFilter) return false
       }
 
+      // 3. 備註狀態篩選
       if (notesFilter === 'has_notes') {
         if (!r.notes || !r.notes.trim()) return false
       } else if (notesFilter === 'no_notes') {
         if (r.notes && r.notes.trim()) return false
       }
 
+      // 4. 備註關鍵字搜尋
       if (notesSearchQuery.trim()) {
         const q = notesSearchQuery.trim().toLowerCase()
         if (!r.notes || !r.notes.toLowerCase().includes(q)) return false
@@ -308,7 +372,7 @@ export default function TrainerLessonsPage() {
 
       return true
     })
-  }, [myRecords, contractTypeFilter, notesFilter, notesSearchQuery, getRecordContractType])
+  }, [myRecords, metricsYear, metricsMonth, contractTypeFilter, notesFilter, notesSearchQuery, getRecordContractType])
 
   const sortedRecords = useMemo(() => {
     return [...filteredRecords].sort((a, b) => {
@@ -714,27 +778,83 @@ export default function TrainerLessonsPage() {
 
       {/* ── Stats Cards ── */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">數據總覽</span>
+        <div className="flex items-center justify-between flex-wrap gap-2.5">
           <div className="flex items-center gap-2">
-            <select
-              value={metricsYear}
-              onChange={(e) => setMetricsYear(Number(e.target.value))}
-              className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+            <span className="text-[11px] font-black text-stone-400 uppercase tracking-widest">數據總覽</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-orange-50 text-orange-600 border border-orange-200/60 font-mono">
+              {metricsYear} 年 {metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`}
+            </span>
+          </div>
+
+          {/* 整合型年月選擇器 */}
+          <div className="inline-flex items-center bg-white border border-stone-200/90 rounded-xl p-1 shadow-2xs">
+            {/* 上一月箭頭 */}
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              title="上一月"
             >
-              {[2024, 2025, 2026, 2027].map(y => (
-                <option key={y} value={y}>{y} 年</option>
-              ))}
-            </select>
-            <select
-              value={metricsMonth}
-              onChange={(e) => setMetricsMonth(Number(e.target.value))}
-              className="h-7 rounded-lg border border-stone-200 bg-stone-50 px-2 text-xs font-bold text-stone-700 focus:outline-none cursor-pointer"
+              <RiArrowLeftSLine className="w-4 h-4" />
+            </button>
+
+            {/* 年月選擇器主體 */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5">
+              <RiCalendarLine className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+              
+              {/* 年份下拉選單 */}
+              <div className="relative inline-flex items-center">
+                <select
+                  value={metricsYear}
+                  onChange={(e) => setMetricsYear(Number(e.target.value))}
+                  className="appearance-none bg-transparent pr-4 text-xs font-bold text-stone-800 hover:text-orange-600 focus:outline-none cursor-pointer transition-colors"
+                >
+                  {availableYears.map(y => (
+                    <option key={y} value={y}>{y} 年</option>
+                  ))}
+                </select>
+                <RiArrowDownSLine className="w-3 h-3 text-stone-400 pointer-events-none absolute right-0" />
+              </div>
+
+              <span className="text-stone-300 font-light text-xs">/</span>
+
+              {/* 月份下拉選單 */}
+              <div className="relative inline-flex items-center">
+                <select
+                  value={metricsMonth}
+                  onChange={(e) => setMetricsMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  className="appearance-none bg-transparent pr-4 text-xs font-bold text-stone-800 hover:text-orange-600 focus:outline-none cursor-pointer transition-colors"
+                >
+                  <option value="all">全年度</option>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                    <option key={m} value={m}>{m} 月</option>
+                  ))}
+                </select>
+                <RiArrowDownSLine className="w-3 h-3 text-stone-400 pointer-events-none absolute right-0" />
+              </div>
+            </div>
+
+            {/* 下一月箭頭 */}
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
+              title="下一月"
             >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>{m} 月</option>
-              ))}
-            </select>
+              <RiArrowRightSLine className="w-4 h-4" />
+            </button>
+
+            {/* 回到當前月快捷鍵 */}
+            {!isCurrentYearMonth && (
+              <button
+                type="button"
+                onClick={handleGoToCurrentMonth}
+                className="ml-1 px-2 py-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors cursor-pointer border border-orange-200/60"
+                title="回到目前系統年月"
+              >
+                本月
+              </button>
+            )}
           </div>
         </div>
 
@@ -750,7 +870,9 @@ export default function TrainerLessonsPage() {
             )}
           >
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">本月堂數</p>
+              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wide">
+                {metricsMonth === 'all' ? '年度總堂數' : `${metricsMonth} 月堂數`}
+              </p>
               <div className={cn(
                 "w-5 h-5 rounded-md flex items-center justify-center transition-all duration-200",
                 expandedMetric === 'monthly' ? "bg-orange-500 text-white rotate-180" : "bg-stone-100 text-stone-400 group-hover:bg-orange-100 group-hover:text-orange-600"
@@ -833,7 +955,7 @@ export default function TrainerLessonsPage() {
             : remainingBreakdown
 
           const titleText = expandedMetric === 'monthly'
-            ? `${metricsYear} 年 ${metricsMonth} 月 銷課合約類別 Breakdown`
+            ? `${metricsYear} 年 ${metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`} 銷課合約類別 Breakdown`
             : expandedMetric === 'yearly'
             ? `${metricsYear} 年度 銷課合約類別 Breakdown`
             : `進行中合約 系統剩餘堂數 Breakdown`
@@ -918,9 +1040,14 @@ export default function TrainerLessonsPage() {
       {/* ── Records List ── */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-[11px] font-bold text-stone-400 uppercase tracking-widest">
-            銷課紀錄 ({sortedRecords.length})
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-stone-700 tracking-tight">
+              {metricsYear} 年 {metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`} 銷課紀錄
+            </span>
+            <span className="text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full font-mono">
+              {sortedRecords.length} 堂
+            </span>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* 合約類型篩選 */}
             <select
@@ -1138,8 +1265,21 @@ export default function TrainerLessonsPage() {
             <div className="w-16 h-16 rounded-2xl bg-stone-50 border border-stone-100 flex items-center justify-center mx-auto mb-4">
               <RiCalendarCheckLine className="w-7 h-7 text-stone-300" />
             </div>
-            <p className="text-sm font-semibold text-stone-400">尚無銷課紀錄</p>
-            <p className="text-xs text-stone-300 mt-1">點擊右上角「新增銷課」開始記錄</p>
+            <p className="text-sm font-semibold text-stone-600">
+              {metricsYear} 年 {metricsMonth === 'all' ? '全年度' : `${metricsMonth} 月`} 尚無銷課紀錄
+            </p>
+            <p className="text-xs text-stone-400 mt-1">
+              可切換其他月份查看，或點擊右上角「新增銷課」開始記錄
+            </p>
+            {metricsMonth !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setMetricsMonth('all')}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-xl border border-orange-200 transition-colors cursor-pointer"
+              >
+                查看 {metricsYear} 全年度紀錄
+              </button>
+            )}
           </div>
         )}
       </div>
