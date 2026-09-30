@@ -54,6 +54,7 @@ export interface AIAssistantRequest {
   message: string
   centerId: string
   conversationHistory?: ChatMessage[]
+  sessionId?: string
 }
 
 export interface AIAssistantResponse {
@@ -66,6 +67,8 @@ export interface AIAssistantResponse {
   compaction?: MemoryCompactionInfo
   metadata: {
     centerId: string
+    userId?: string
+    sessionId?: string
     executedTools: string[]
     timestamp: number
     model?: string

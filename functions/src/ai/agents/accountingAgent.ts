@@ -167,11 +167,12 @@ export async function executeAccountingAgent(
   openai: OpenAI,
   userMessage: string,
   centerId: string,
-  history: ChatMessage[] = []
+  history: ChatMessage[] = [],
+  contextMeta?: { userId?: string; sessionId?: string }
 ): Promise<AIAssistantResponse> {
   const timestamp = Date.now()
   const messageId = `msg_${timestamp}`
-  const conversationId = `conv_${timestamp}`
+  const conversationId = contextMeta?.sessionId || `conv_${timestamp}`
   const executedTools: string[] = []
   const toolResultsList: any[] = []
 
@@ -518,6 +519,8 @@ export async function executeAccountingAgent(
       compaction: compactionInfo,
       metadata: {
         centerId,
+        userId: contextMeta?.userId,
+        sessionId: contextMeta?.sessionId,
         executedTools,
         timestamp,
         model: AGENT_MODEL,
@@ -545,6 +548,8 @@ export async function executeAccountingAgent(
       compaction: compactionInfo,
       metadata: {
         centerId,
+        userId: contextMeta?.userId,
+        sessionId: contextMeta?.sessionId,
         executedTools,
         timestamp,
         model: AGENT_MODEL,

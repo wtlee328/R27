@@ -29,7 +29,8 @@ function getEndpointUrl(): string {
 export async function askAccountingAI(
   message: string,
   centerId: string,
-  history: AIChatMessage[] = []
+  history: AIChatMessage[] = [],
+  sessionId?: string
 ): Promise<AIAssistantResponse> {
   const currentUser = auth.currentUser
   if (!currentUser) {
@@ -57,6 +58,7 @@ export async function askAccountingAI(
       message,
       centerId,
       conversationHistory,
+      sessionId,
     }),
   })
 

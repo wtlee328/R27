@@ -58,7 +58,7 @@ export const askAIAssistant = onRequest(
       }
 
       // 4. Validate Request Payload
-      const { message, centerId = 'r27', conversationHistory = [] } = req.body as AIAssistantRequest
+      const { message, centerId = 'r27', conversationHistory = [], sessionId } = req.body as AIAssistantRequest
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         res.status(400).json({ ok: false, error: '請提供提問內容' })
         return
@@ -82,13 +82,27 @@ export const askAIAssistant = onRequest(
       if (!routeResult.isAccounting && routeResult.outOfScopeResponse) {
         res.status(200).json({
           ok: true,
-          data: routeResult.outOfScopeResponse,
+          data: {
+            ...routeResult.outOfScopeResponse,
+            conversationId: sessionId || routeResult.outOfScopeResponse.conversationId,
+            metadata: {
+              ...routeResult.outOfScopeResponse.metadata,
+              userId: uid,
+              sessionId: sessionId || routeResult.outOfScopeResponse.conversationId,
+            },
+          },
         })
         return
       }
 
       // 7. Stage 2: Accounting Specialized Agent with Tools (gpt-6-luna with dynamic reasoning.effort)
-      const agentResponse = await executeAccountingAgent(openai, message, centerId, conversationHistory)
+      const agentResponse = await executeAccountingAgent(
+        openai,
+        message,
+        centerId,
+        conversationHistory,
+        { userId: uid, sessionId }
+      )
 
       res.status(200).json({
         ok: true,
