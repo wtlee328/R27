@@ -502,6 +502,44 @@ export function useLessonRecords() {
     }
   }
 
+  const updateRecordNotes = async (id: string, notes: string) => {
+    try {
+      const recordRef = doc(db, 'lessonRecords', id)
+      const recordSnap = await getDoc(recordRef)
+      if (!recordSnap.exists()) throw new Error('找不到該筆銷課紀錄')
+
+      const oldData = recordSnap.data() as LessonRecord
+      const trimmedNotes = (notes || '').trim()
+
+      await updateDoc(recordRef, {
+        notes: trimmedNotes,
+        updatedAt: serverTimestamp(),
+      })
+
+      // Update local state immediately for snappy response
+      setRecords(prev =>
+        prev.map(r => (r.id === id ? { ...r, notes: trimmedNotes } : r))
+      )
+
+      // Log activity
+      await logActivity({
+        centerId: (oldData.centerId || centerId) as any,
+        trainerId: oldData.trainerId,
+        trainerName: oldData.trainerName || '',
+        action: 'update',
+        module: 'lessonRecords',
+        recordId: id,
+        recordSummary: `更新銷課備註: ${oldData.attendingCustomerNames?.join('、') || oldData.customerName || '未知學員'} - ${trimmedNotes || '（清空備註）'}`,
+        previousValue: { notes: oldData.notes || '' },
+        newValue: { notes: trimmedNotes },
+      }).catch(e => console.warn('Failed to log note update activity:', e))
+
+    } catch (err: any) {
+      console.error('Error updating lesson notes:', err)
+      throw err
+    }
+  }
+
   const updateRecord = async (id: string, data: LessonRecordFormValues) => {
     try {
       const recordRef = doc(db, 'lessonRecords', id)
@@ -798,6 +836,7 @@ export function useLessonRecords() {
     error,
     createRecord,
     updateRecord,
+    updateRecordNotes,
     deleteRecord,
     refresh: fetchRecords,
   }

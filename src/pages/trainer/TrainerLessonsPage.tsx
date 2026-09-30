@@ -23,7 +23,9 @@ import {
   RiArrowDownSLine,
   RiPieChartLine,
   RiChat1Line,
+  RiEditLine,
 } from '@remixicon/react'
+import { toast } from 'sonner'
 import type { LessonRecord } from '@/types'
 import { useLessonRecords } from '@/hooks/useLessonRecords'
 import { useCustomers } from '@/hooks/useCustomers'
@@ -45,7 +47,7 @@ export default function TrainerLessonsPage() {
   const { selectedTrainerId: activeTrainerId } = useTrainerProfileStore()
   const currentTrainerId = activeTrainerId || (user?.role === 'trainer' ? user?.trainerId : null)
 
-  const { records, loading: recordsLoading, createRecord } = useLessonRecords()
+  const { records, loading: recordsLoading, createRecord, updateRecordNotes } = useLessonRecords()
   const { customers, contracts: venueContracts, loading: customersLoading } = useCustomers()
   const { trainers, loading: trainersLoading } = useTrainers()
 
@@ -53,6 +55,36 @@ export default function TrainerLessonsPage() {
   // Selected record for slide-in detail panel
   const [selectedRecord, setSelectedRecord] = useState<LessonRecord | null>(null)
   const [isPanelVisible, setIsPanelVisible] = useState(false)
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const [editingNotesText, setEditingNotesText] = useState('')
+  const [isSavingNotes, setIsSavingNotes] = useState(false)
+
+  const handleClosePanel = useCallback(() => {
+    setIsPanelVisible(false)
+    setIsEditingNotes(false)
+    setTimeout(() => {
+      setSelectedRecord(null)
+      setEditingNotesText('')
+    }, 300)
+  }, [])
+
+  const handleSaveNotes = async () => {
+    if (!selectedRecord) return
+    setIsSavingNotes(true)
+    try {
+      await updateRecordNotes(selectedRecord.id, editingNotesText)
+      const trimmed = editingNotesText.trim()
+      setSelectedRecord(prev => prev ? { ...prev, notes: trimmed } : null)
+      setIsEditingNotes(false)
+      toast.success('課程備註已更新')
+    } catch (err: any) {
+      console.error('儲存課程備註失敗:', err)
+      toast.error(err.message || '更新備註失敗，請稍後再試')
+    } finally {
+      setIsSavingNotes(false)
+    }
+  }
+
   const panelRef = useRef<HTMLDivElement>(null)
   const [step, setStep] = useState(1) // 1: Select Customer, 2: Select Contract & Trainer & Details
 
@@ -1025,10 +1057,11 @@ export default function TrainerLessonsPage() {
                   key={record.id}
                   onClick={() => {
                     if (isSelected) {
-                      setIsPanelVisible(false)
-                      setTimeout(() => setSelectedRecord(null), 300)
+                      handleClosePanel()
                     } else {
                       setSelectedRecord(record)
+                      setIsEditingNotes(false)
+                      setEditingNotesText(record.notes || '')
                       setIsPanelVisible(false)
                       requestAnimationFrame(() => {
                         requestAnimationFrame(() => setIsPanelVisible(true))
@@ -1059,15 +1092,34 @@ export default function TrainerLessonsPage() {
                   <span className="text-xs text-stone-500 font-medium truncate">{trainerName}</span>
                   
                   {/* 備註事項欄位 */}
-                  <div className="min-w-0 flex items-center gap-1.5" title={record.notes || ''}>
-                    {record.notes ? (
-                      <>
-                        <RiChat1Line className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                        <span className="text-xs text-stone-700 font-medium truncate">{record.notes}</span>
-                      </>
-                    ) : (
-                      <span className="text-xs text-stone-300 font-normal italic">—</span>
-                    )}
+                  <div className="min-w-0 flex items-center justify-between gap-1.5 group/note" title={record.notes || ''}>
+                    <div className="min-w-0 flex items-center gap-1.5">
+                      {record.notes ? (
+                        <>
+                          <RiChat1Line className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="text-xs text-stone-700 font-medium truncate">{record.notes}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-stone-300 font-normal italic">—</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedRecord(record)
+                        setIsEditingNotes(true)
+                        setEditingNotesText(record.notes || '')
+                        setIsPanelVisible(false)
+                        requestAnimationFrame(() => {
+                          requestAnimationFrame(() => setIsPanelVisible(true))
+                        })
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-stone-400 hover:text-orange-600 hover:bg-orange-50 p-1 rounded-md transition-all shrink-0 ml-auto"
+                      title="編輯此筆備註"
+                    >
+                      <RiEditLine className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   <span className="text-xs font-bold text-stone-600 font-mono">{cumSessions} 堂</span>
@@ -1601,7 +1653,7 @@ export default function TrainerLessonsPage() {
               </div>
               <button
                 type="button"
-                onClick={() => { setIsPanelVisible(false); setTimeout(() => setSelectedRecord(null), 300) }}
+                onClick={handleClosePanel}
                 className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
               >
                 <RiCloseLine className="h-4 w-4 text-stone-500" />
@@ -1646,12 +1698,81 @@ export default function TrainerLessonsPage() {
               </div>
 
               <div>
-                <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-2">課程備註</p>
-                <div className="bg-stone-50 rounded-xl border border-stone-100 px-4 py-3">
-                  <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", r.notes ? "text-stone-700 font-medium" : "text-stone-400 italic")}>
-                    {r.notes || '無課程備註'}
-                  </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">課程備註</p>
+                  {!isEditingNotes ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingNotes(true)
+                        setEditingNotesText(r.notes || '')
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 px-2 py-0.5 rounded transition-colors"
+                    >
+                      <RiEditLine className="w-3.5 h-3.5" />
+                      編輯
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-bold text-orange-600">編輯中</span>
+                  )}
                 </div>
+
+                {!isEditingNotes ? (
+                  <div
+                    onClick={() => {
+                      setIsEditingNotes(true)
+                      setEditingNotesText(r.notes || '')
+                    }}
+                    className="bg-stone-50 hover:bg-stone-100/70 cursor-pointer rounded-xl border border-stone-100 px-4 py-3 transition-colors group"
+                    title="點擊編輯課程備註"
+                  >
+                    <p className={cn("text-sm leading-relaxed whitespace-pre-wrap", r.notes ? "text-stone-700 font-medium" : "text-stone-400 italic")}>
+                      {r.notes || '無課程備註（點擊新增）'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editingNotesText}
+                      onChange={(e) => setEditingNotesText(e.target.value)}
+                      placeholder="輸入課程備註內容..."
+                      rows={4}
+                      className="text-sm bg-white border-orange-200 focus:border-orange-500 focus:ring-orange-500 rounded-xl resize-none"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isSavingNotes}
+                        onClick={() => {
+                          setIsEditingNotes(false)
+                          setEditingNotesText(r.notes || '')
+                        }}
+                        className="text-xs text-stone-500 hover:text-stone-700 h-8 px-3"
+                      >
+                        取消
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isSavingNotes}
+                        onClick={handleSaveNotes}
+                        className="text-xs bg-orange-600 hover:bg-orange-700 text-white font-bold h-8 px-3.5 rounded-lg shadow-xs"
+                      >
+                        {isSavingNotes ? (
+                          <>
+                            <RiLoader4Line className="w-3.5 h-3.5 animate-spin mr-1" />
+                            儲存中...
+                          </>
+                        ) : (
+                          '儲存備註'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {r.attendingCustomerNames && r.attendingCustomerNames.length > 1 && (
@@ -1673,7 +1794,7 @@ export default function TrainerLessonsPage() {
 
       {selectedRecord && (
         <div
-          onClick={() => { setIsPanelVisible(false); setTimeout(() => setSelectedRecord(null), 300) }}
+          onClick={handleClosePanel}
           style={{ opacity: isPanelVisible ? 1 : 0, transition: 'opacity 0.3s ease', pointerEvents: isPanelVisible ? 'auto' : 'none' }}
           className="fixed inset-0 bg-black/20 z-40"
         />
