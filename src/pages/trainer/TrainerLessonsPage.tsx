@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
-import { format, isToday, isYesterday } from 'date-fns'
+import { format } from 'date-fns'
 import {
   RiCalendarCheckLine,
   RiAddLine,
@@ -655,14 +655,8 @@ export default function TrainerLessonsPage() {
 
   const formatRecordDate = (timestamp: any) => {
     if (!timestamp) return ''
-    const date = timestamp.toDate()
-    if (isToday(date)) {
-      return `今天 ${format(date, 'HH:mm')}`
-    }
-    if (isYesterday(date)) {
-      return `昨天 ${format(date, 'HH:mm')}`
-    }
-    return format(date, 'yyyy/MM/dd HH:mm')
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+    return format(date, 'yyyy/MM/dd')
   }
 
   return (
@@ -1624,11 +1618,7 @@ export default function TrainerLessonsPage() {
               <div className="bg-stone-50 rounded-2xl border border-stone-100 divide-y divide-stone-100 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3.5">
                   <span className="text-xs font-bold text-stone-400">上課日期</span>
-                  <span className="text-sm font-bold text-stone-800">{r.sessionDate ? format(r.sessionDate.toDate(), 'yyyy/MM/dd') : '—'}</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3.5">
-                  <span className="text-xs font-bold text-stone-400">上課時間</span>
-                  <span className="text-sm font-bold text-stone-800">{r.sessionDate ? format(r.sessionDate.toDate(), 'HH:mm') : '—'}</span>
+                  <span className="text-sm font-bold text-stone-800">{r.sessionDate ? format(r.sessionDate.toDate ? r.sessionDate.toDate() : new Date(r.sessionDate), 'yyyy/MM/dd') : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between px-4 py-3.5">
                   <span className="text-xs font-bold text-stone-400">授課教練</span>
