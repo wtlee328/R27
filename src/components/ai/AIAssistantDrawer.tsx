@@ -8,6 +8,7 @@ import {
   HelpCircle,
   CornerDownLeft,
   Brain,
+  Plus,
 } from 'lucide-react'
 import {
   Sheet,
@@ -32,6 +33,7 @@ export const AIAssistantDrawer: React.FC = () => {
     isLoading,
     sendMessage,
     clearMessages,
+    startNewSession,
     prefillPrompt,
     setPrefillPrompt,
   } = useAIAssistantStore()
@@ -135,11 +137,21 @@ export const AIAssistantDrawer: React.FC = () => {
 
           <div className="flex items-center gap-1.5 pr-6">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => startNewSession(centerId)}
+              className="h-8 px-2.5 text-xs text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/60 bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 gap-1 cursor-pointer font-medium"
+              title="開啟全新獨立會話（會話上下文完全隔離）"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>新會話</span>
+            </Button>
+            <Button
               variant="ghost"
               size="sm"
               onClick={() => clearMessages(centerId)}
               className="h-8 px-2 text-xs text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-white gap-1"
-              title={`清空 ${centerName} 對話紀錄`}
+              title={`清空 ${centerName} 本次對話紀錄`}
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">清除紀錄</span>

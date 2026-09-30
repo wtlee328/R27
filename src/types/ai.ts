@@ -55,11 +55,23 @@ export interface AIAssistantResponse {
   compaction?: MemoryCompactionInfo
   metadata: {
     centerId: string
+    userId?: string
+    sessionId?: string
     executedTools: string[]
     timestamp: number
     model?: string
     reasoningEffort?: string
   }
+}
+
+export interface AIChatSession {
+  id: string
+  centerId: string
+  userId: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  messages: AIChatMessage[]
 }
 
 export interface AIChatMessage {

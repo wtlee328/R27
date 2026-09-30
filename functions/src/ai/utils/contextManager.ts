@@ -2,13 +2,18 @@ import OpenAI from 'openai'
 import { ChatMessage, MemoryCompactionInfo } from '../types'
 
 /**
- * Context Window Configuration for Accounting Assistant
- * Target Context Window: 32,768 tokens (optimized for balance of cost, speed, and long-term memory).
- * Compaction Threshold: 60% of context window (19,660 tokens).
+ * Official GPT-6 Luna Model Specifications:
+ * - Context Window: 1,050,000 tokens
+ * - Max Output Limit: 128,000 tokens
+ * - Compaction Threshold: 60% of context window (630,000 tokens)
  */
-export const CONTEXT_WINDOW_LIMIT = 32768
+export const CONTEXT_WINDOW_LIMIT = process.env.AI_CONTEXT_WINDOW_LIMIT
+  ? parseInt(process.env.AI_CONTEXT_WINDOW_LIMIT, 10)
+  : 1050000
+
+export const MAX_OUTPUT_LIMIT = 128000
 export const COMPACTION_THRESHOLD_RATIO = 0.60
-export const COMPACTION_TRIGGER_TOKENS = Math.floor(CONTEXT_WINDOW_LIMIT * COMPACTION_THRESHOLD_RATIO) // 19,660
+export const COMPACTION_TRIGGER_TOKENS = Math.floor(CONTEXT_WINDOW_LIMIT * COMPACTION_THRESHOLD_RATIO) // 630,000 by default
 
 // Approximate overheads for System Prompt instructions & Tools JSON Schema
 const SYSTEM_PROMPT_BASE_TOKENS = 950
