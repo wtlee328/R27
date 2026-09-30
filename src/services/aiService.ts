@@ -39,10 +39,13 @@ export async function askAccountingAI(
   const idToken = await currentUser.getIdToken(true)
   const endpoint = getEndpointUrl()
 
-  const conversationHistory = history.slice(-6).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }))
+  // Pass full conversational context memory (excluding error notices and welcome messages)
+  const conversationHistory = history
+    .filter((m) => m.content && !m.id.startsWith('err_') && !m.id.startsWith('welcome_'))
+    .map((m) => ({
+      role: m.role,
+      content: m.content,
+    }))
 
   const response = await fetch(endpoint, {
     method: 'POST',

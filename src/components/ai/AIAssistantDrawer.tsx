@@ -7,6 +7,7 @@ import {
   Building2,
   HelpCircle,
   CornerDownLeft,
+  Brain,
 } from 'lucide-react'
 import {
   Sheet,
@@ -124,7 +125,10 @@ export const AIAssistantDrawer: React.FC = () => {
                 <Building2 className="w-3 h-3" />
                 <span>目前場館：<strong className="text-stone-800 dark:text-stone-200 uppercase">{centerId}</strong></span>
                 <span className="mx-1">•</span>
-                <span>唯讀安全查詢</span>
+                <span className="inline-flex items-center gap-0.5 text-orange-600 dark:text-orange-400 font-medium">
+                  <Brain className="w-2.5 h-2.5" />
+                  對話記憶（60% 自動壓縮）
+                </span>
               </div>
             </div>
           </div>
@@ -174,6 +178,24 @@ export const AIAssistantDrawer: React.FC = () => {
           {/* Conversation history bubbles */}
           {messages.map((msg) => {
             const isUser = msg.role === 'user'
+            const isSystemSummary = msg.role === 'system' || msg.isCompactedSummary
+
+            // Compacted Memory Summary Bubble
+            if (isSystemSummary) {
+              return (
+                <div key={msg.id} className="w-full my-1.5">
+                  <div className="rounded-2xl p-3.5 bg-orange-50/70 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-800/50 shadow-xs">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-orange-800 dark:text-orange-300 mb-1.5">
+                      <Brain className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
+                      <span>對話記憶已壓縮（Context 達 60% 自動精煉保留重要事實）</span>
+                    </div>
+                    <div className="text-[11px] text-stone-700 dark:text-stone-300 whitespace-pre-wrap leading-relaxed pl-3 border-l-2 border-orange-300 dark:border-orange-700/60 font-mono">
+                      {msg.content}
+                    </div>
+                  </div>
+                </div>
+              )
+            }
 
             if (isUser) {
               return (
@@ -252,9 +274,9 @@ export const AIAssistantDrawer: React.FC = () => {
             />
             <div className="flex items-center justify-between px-2 pt-1">
               <div className="text-[10px] text-stone-400 hidden sm:flex items-center gap-1">
-                <span>按 Enter 送出</span>
+                <span>Enter 送出</span>
                 <CornerDownLeft className="w-2.5 h-2.5" />
-                <span>，Shift + Enter 換行</span>
+                <span>，Shift+Enter 換行 • 支援上下文記憶</span>
               </div>
               <div className="flex items-center gap-1 ml-auto">
                 <Button
