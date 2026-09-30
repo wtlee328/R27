@@ -4,6 +4,7 @@ import { RiUserSearchLine, RiGroupLine, RiUserFollowLine, RiLineChartLine } from
 import { Button } from '../components/ui/button'
 import { StatCard } from '../components/shared/StatCard'
 import { FilterDropdown } from '../components/shared/FilterDropdown'
+import { YearMonthPicker } from '../components/shared/YearMonthPicker'
 import { TrialTable } from '../components/trials/TrialTable'
 import { TrialFormModal } from '../components/trials/TrialFormModal'
 import { useTrials } from '../hooks/useTrials'
@@ -112,20 +113,12 @@ export default function TrialsPage() {
 
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-[0_1px_4px_0_rgba(0,0,0,0.04)] overflow-hidden">
         <div className="px-5 py-3.5 border-b border-stone-100">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-stone-500 select-none">選擇月份</span>
-            <FilterDropdown
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-stone-500 select-none">月份篩選</span>
+            <YearMonthPicker
               value={selectedMonth}
               onChange={setSelectedMonth}
-              options={[
-                { value: 'all', label: '全部月份' },
-                ...monthOptions.map((m) => ({
-                  value: m,
-                  label: `${m.replace('/', ' 年 ')} 月`,
-                })),
-              ]}
-              icon={Calendar}
-              label="選擇月份"
+              allMonthsLabel="全部月份"
             />
           </div>
         </div>
