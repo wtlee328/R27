@@ -43,6 +43,7 @@ export const AIAssistantDrawer: React.FC = () => {
   const [inputMessage, setInputMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const isComposingRef = useRef(false)
 
   // Auto-scroll to bottom when messages change or loading
   useEffect(() => {
@@ -75,7 +76,23 @@ export const AIAssistantDrawer: React.FC = () => {
     await sendMessage(text, centerId)
   }
 
+  const handleCompositionStart = () => {
+    isComposingRef.current = true
+  }
+
+  const handleCompositionEnd = () => {
+    // 延遲重設以防止某些瀏覽器（如 macOS Safari/Chrome）在組字完成時瞬間觸發 keydown 送出
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // 檢查是否處於中文輸入法組字階段（注音選字、拼音輸入）
+    if (e.nativeEvent.isComposing || isComposingRef.current || e.keyCode === 229) {
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -226,6 +243,8 @@ export const AIAssistantDrawer: React.FC = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
               placeholder="詢問會計或財務問題（例如：上月課程收入總計多少？）..."
               className="w-full bg-transparent border-none resize-none focus-visible:ring-0 text-xs sm:text-sm min-h-[56px] max-h-[140px] text-stone-900 dark:text-stone-100 placeholder:text-stone-400"
               rows={2}
