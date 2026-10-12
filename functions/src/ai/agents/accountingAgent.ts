@@ -19,19 +19,25 @@ export type ReasoningEffortLevel = 'low' | 'medium' | 'high'
  * - medium: Multi-month / relative period queries (e.g. 最近三個月、最近半年、上個月、全年度明細), category cash flow aggregations.
  * - low: Single date / today's cash flow lookup, basic contract lookup, simple greeting / direct query.
  */
-export function determineReasoningEffort(userMessage: string): ReasoningEffortLevel {
+export function determineReasoningEffort(userMessage: string, history: ChatMessage[] = []): ReasoningEffortLevel {
   const highComplexityKeywords = [
     '損益', '利潤', '毛利', '淨利', '預收', '銷課', '負債', '未實現', '履約',
     '比較', '趨勢', '分析', '異常', '逾期', '分期', '跨月', '半年', '年度', '全年度', '退費', '對帳'
   ]
   const mediumComplexityKeywords = [
-    '最近三個月', '最近3個月', '上個月', '支出', '收入', '明細', '流水帳', '統計', '彙總', '總額'
+    '最近三個月', '最近3個月', '上個月', '支出', '收入', '明細', '流水帳', '統計', '彙總', '總額', '去年'
   ]
 
-  if (highComplexityKeywords.some((kw) => userMessage.includes(kw))) {
+  // Inspect combined text across recent turns and current prompt to preserve reasoning level during follow-ups
+  const combinedText = [
+    ...history.slice(-2).map((m) => m.content || ''),
+    userMessage,
+  ].join(' ')
+
+  if (highComplexityKeywords.some((kw) => combinedText.includes(kw))) {
     return 'high'
   }
-  if (mediumComplexityKeywords.some((kw) => userMessage.includes(kw))) {
+  if (mediumComplexityKeywords.some((kw) => combinedText.includes(kw))) {
     return 'medium'
   }
   return 'low'
@@ -152,6 +158,12 @@ function getSystemPrompt(centerId: string) {
    - 若要進一步提供全場館整體收支概況，必須引用工具回傳的真實全場館數據（periodTotalIncome、periodTotalExpense、periodNetCashFlow）。
    - ⚠️ 絕對不可因為查詢特定類別（例如「課程收入」）本身沒有支出紀錄，就誤認為「全場館總支出為 0」！全場館總支出必須以工具提供的真實 periodTotalExpense 為準（例如 9 月份含有房租與水電等支出）。
 
+【多輪對話承接與省略句解析指引】：
+1. 當使用者發送省略句、切換時間或追問（例如「我要看去年」、「那8月呢」、「汪雪貞呢」、「算成含稅是多少」）：
+   - 請務必結合前次回話的主題、類別與指標進行理解。
+   - 例如：前一輪剛查詢「今年的損益狀況」，接著問「我要看去年」，即代表「查詢去年的累積損益狀況」，請直接調用相應工具（如 get_profit_loss_summary，year: ${timeInfo.year - 1}），切勿反問使用者要看什麼！
+   - 例如：前一輪剛查詢「某教練的銷課收入」，接著問「那上個月呢」，即代表「查詢該教練上個月的銷課收入」。
+
 【最高原則】：
 1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
 2. 零數據幻覺（Zero Data Hallucination Policy）：你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字。
@@ -176,8 +188,8 @@ export async function executeAccountingAgent(
   const executedTools: string[] = []
   const toolResultsList: any[] = []
 
-  // Dynamic reasoning effort evaluation based on task difficulty
-  const reasoningEffort = determineReasoningEffort(userMessage)
+  // Dynamic reasoning effort evaluation based on task difficulty (with history context)
+  const reasoningEffort = determineReasoningEffort(userMessage, history)
 
   // Generate System Prompt
   const systemPrompt = getSystemPrompt(centerId)
