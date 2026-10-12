@@ -164,6 +164,15 @@ function getSystemPrompt(centerId: string) {
    - 例如：前一輪剛查詢「今年的損益狀況」，接著問「我要看去年」，即代表「查詢去年的累積損益狀況」，請直接調用相應工具（如 get_profit_loss_summary，year: ${timeInfo.year - 1}），切勿反問使用者要看什麼！
    - 例如：前一輪剛查詢「某教練的銷課收入」，接著問「那上個月呢」，即代表「查詢該教練上個月的銷課收入」。
 
+【財務報表與前端指標對齊說明】：
+1. 「預收與銷課（Prepaid & Realized）」指標：
+   - 前端「預收與銷課」卡片顯示之「全期實收」即為該期間或全期合約已收款總額，對應工具 get_prepaid_and_realized_metrics 回傳之 periodTotalPaidAmount。
+   - 「銷課金額」對應 realizedLessonRevenue。
+   - 「預收學費負債餘額（待履約）」對應 unearnedRevenueEstimate（即實收款扣除已銷課金額）。
+2. 「流水帳現金流（Cash Flow Records）」：
+   - 現金流紀錄中的「課程收入」代表特定期間實際入帳的現金/銀行流水，屬於收付實現帳。
+   - ⚠️ 嚴禁將「預收合約實收款」與「現金流課程收入」混淆，若兩者因認列維度不同而有差異，應專業且清晰地說明兩者計算基礎的差異（合約簽收實收 vs 現金流流水帳），嚴禁捏造不實的筆數或編造未經證實的差額原因！
+
 【最高原則】：
 1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
 2. 零數據幻覺（Zero Data Hallucination Policy）：你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字。
