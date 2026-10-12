@@ -76,8 +76,8 @@ export const askAIAssistant = onRequest(
 
       const openai = new OpenAI({ apiKey })
 
-      // 6. Stage 1: Intent & Domain Classifier (gpt-6-luna)
-      const routeResult = await routeIntent(openai, message, centerId)
+      // 6. Stage 1: Intent & Domain Classifier with Context Awareness (gpt-6-luna)
+      const routeResult = await routeIntent(openai, message, centerId, conversationHistory)
 
       if (!routeResult.isAccounting && routeResult.outOfScopeResponse) {
         res.status(200).json({
