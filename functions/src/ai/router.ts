@@ -114,7 +114,6 @@ export async function routeIntent(
       messages,
       response_format: { type: 'json_object' },
       reasoning_effort: 'low',
-      temperature: 0.1,
     })
 
     const rawContent = response.choices[0]?.message?.content || '{}'
