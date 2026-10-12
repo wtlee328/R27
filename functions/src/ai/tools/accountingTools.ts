@@ -353,7 +353,7 @@ export async function getPrepaidAndRealizedMetrics(params: {
         .filter((inst: any) => inst.status === 'paid')
         .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
       if (installmentSum > 0) paid = installmentSum
-    } else if (!isInstallment && paid === 0) {
+    } else if (!isInstallment) {
       paid = total
     }
 
@@ -478,7 +478,7 @@ export async function queryContractPayments(params: {
 
       overdueCount = c.installments.filter((inst: any) => inst.status === 'overdue').length
       pendingCount = c.installments.filter((inst: any) => inst.status === 'pending').length
-    } else if (!isInstallment && paid === 0) {
+    } else if (!isInstallment) {
       paid = total
     }
 
