@@ -26,6 +26,7 @@ import { useTrainers } from '../../hooks/useTrainers'
 import type { Contract, Customer } from '../../types'
 import { cn } from '../../lib/utils'
 import { Calendar } from 'lucide-react'
+import { calculatePrepaidAndRealized } from '@/finance-core'
 
 type DetailTab = 'contracts' | 'lessons' | 'monthly-summary'
 
@@ -136,141 +137,30 @@ export function PrepaidLessonsTable({
   }
 
   const summaryMetrics = useMemo(() => {
-    let newContractsTotalValue = 0
-    let lumpSumTotal = 0
-    let installmentPaidTotal = 0
-    let pendingInstallmentsTotal = 0
-    let totalCollectedAmount = 0
-
-    const catMetrics = {
-      single: { key: 'single', label: '單人合約', colorDot: 'bg-emerald-500', newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
-      dual:   { key: 'dual',   label: '雙人合約', colorDot: 'bg-amber-500',   newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
-      shared: { key: 'shared', label: '共享合約', colorDot: 'bg-indigo-500',  newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
-      group:  { key: 'group',  label: '團體合約', colorDot: 'bg-purple-500',  newAmount: 0, newContractsCount: 0, lumpSum: 0, installmentPaid: 0, realizedRevenue: 0, realizedSessions: 0, liabilityBalance: 0, remainingSessions: 0 },
-    }
-
-    ;(periodContracts || []).forEach((c) => {
-      const catKey = getContractCategoryKey(c)
-      const { total, paid, isInstallment, lumpSumAmount, installmentPaidAmount } = getContractPaymentInfo(c)
-      newContractsTotalValue += total
-      totalCollectedAmount += paid
-
-      catMetrics[catKey].newAmount += total
-      catMetrics[catKey].newContractsCount += 1
-
-      if (isInstallment) {
-        installmentPaidTotal += installmentPaidAmount
-        pendingInstallmentsTotal += Math.max(0, total - paid)
-        catMetrics[catKey].installmentPaid += installmentPaidAmount
-      } else {
-        lumpSumTotal += lumpSumAmount
-        catMetrics[catKey].lumpSum += lumpSumAmount
-      }
-    })
-
-    let realizedRevenueTotal = 0
-    let totalSessionsUsed = 0
-
-    ;(periodLessonRecords || []).forEach((r) => {
-      const deductions = (r.deductions && r.deductions.length > 0)
-        ? r.deductions
-        : [{ customerId: r.customerId, customerName: r.customerName, contractId: r.contractId, sessionAmount: r.sessionAmount || 1 }]
-
-      deductions.forEach(d => {
-        const c = contractMap.get(d.contractId)
-        const catKey = c ? getContractCategoryKey(c) : 'single'
-        const sessions = Number(d.sessionAmount || 1)
-        totalSessionsUsed += sessions
-        catMetrics[catKey].realizedSessions += sessions
-
-        if (c && Number(c.totalSessions) > 0) {
-          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
-          const rev = sessions * avgPrice
-          realizedRevenueTotal += rev
-          catMetrics[catKey].realizedRevenue += rev
-        } else {
-          const rev = sessions * 1500
-          realizedRevenueTotal += rev
-          catMetrics[catKey].realizedRevenue += rev
-        }
-      })
-    })
-
-    let unearnedLiabilityBalance = 0
-    let remainingSessionsCount = 0
-
-    ;(contracts || []).forEach((c) => {
-      const catKey = getContractCategoryKey(c)
-      const rem = Number(c.remainingSessions || 0)
-      const tot = Number(c.totalSessions || 0)
-      if (rem > 0 && tot > 0) {
-        const avgPrice = Number(c.totalAmount || 0) / tot
-        const liab = rem * avgPrice
-        unearnedLiabilityBalance += liab
-        remainingSessionsCount += rem
-
-        catMetrics[catKey].liabilityBalance += liab
-        catMetrics[catKey].remainingSessions += rem
-      }
-    })
-
-    // 全系統不限月份之「總已收款項」與「總銷課金額」
-    let allTimeCollected = 0
-    ;(contracts || []).forEach((c) => {
-      const { paid } = getContractPaymentInfo(c)
-      allTimeCollected += paid
-    })
-
-    let allTimeRealized = 0
-    ;(records || []).forEach((r) => {
-      const deductions = (r.deductions && r.deductions.length > 0)
-        ? r.deductions
-        : [{ customerId: r.customerId, customerName: r.customerName, contractId: r.contractId, sessionAmount: r.sessionAmount || 1 }]
-
-      deductions.forEach(d => {
-        const c = contractMap.get(d.contractId)
-        const sessions = Number(d.sessionAmount || 1)
-        if (c && Number(c.totalSessions) > 0) {
-          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
-          allTimeRealized += sessions * avgPrice
-        } else {
-          allTimeRealized += sessions * 1500
-        }
-      })
-    })
-
-    const allTimeNetCollectedMinusRealized = allTimeCollected - allTimeRealized
-
-    const categoryList = [
-      catMetrics.single,
-      catMetrics.dual,
-      catMetrics.shared,
-      catMetrics.group,
-    ].map(cat => ({
-      ...cat,
-      newAmount: Math.round(cat.newAmount),
-      lumpSum: Math.round(cat.lumpSum),
-      installmentPaid: Math.round(cat.installmentPaid),
-      realizedRevenue: Math.round(cat.realizedRevenue),
-      liabilityBalance: Math.round(cat.liabilityBalance),
-    }))
+    const period = { year: selectedYear, month: selectedMonth }
+    const summary = calculatePrepaidAndRealized(
+      contracts as any[],
+      records as any[],
+      period,
+      contractMap as any
+    )
 
     return {
-      newContractsTotalValue: Math.round(newContractsTotalValue),
-      lumpSumTotal: Math.round(lumpSumTotal),
-      installmentPaidTotal: Math.round(installmentPaidTotal),
-      pendingInstallmentsTotal: Math.round(pendingInstallmentsTotal),
-      totalCollectedAmount: Math.round(totalCollectedAmount),
-      realizedRevenueTotal: Math.round(realizedRevenueTotal),
-      allTimeCollected: Math.round(allTimeCollected),
-      allTimeRealized: Math.round(allTimeRealized),
-      netCollectedMinusRealized: Math.round(allTimeNetCollectedMinusRealized),
-      totalSessionsUsed,
-      unearnedLiabilityBalance: Math.round(unearnedLiabilityBalance),
-      remainingSessionsCount,
-      categoryList,
+      newContractsTotalValue: summary.newContractsTotalValue,
+      lumpSumTotal: summary.lumpSumTotal,
+      installmentPaidTotal: summary.installmentPaidTotal,
+      pendingInstallmentsTotal: summary.pendingInstallmentsTotal,
+      totalCollectedAmount: summary.totalCollectedAmount,
+      realizedRevenueTotal: summary.realizedRevenueTotal,
+      allTimeCollected: summary.allTimeCollected,
+      allTimeRealized: summary.allTimeRealized,
+      netCollectedMinusRealized: summary.allTimeNetCollectedMinusRealized,
+      totalSessionsUsed: summary.totalSessionsUsed,
+      unearnedLiabilityBalance: summary.unearnedLiabilityBalance,
+      remainingSessionsCount: summary.remainingSessionsCount,
+      categoryList: summary.categoryList,
     }
-  }, [periodContracts, periodLessonRecords, contractMap, contracts, records])
+  }, [contracts, records, selectedYear, selectedMonth, contractMap])
 
   const monthlyMatrix = useMemo(() => {
     return Array.from({ length: 12 }, (_, idx) => {
