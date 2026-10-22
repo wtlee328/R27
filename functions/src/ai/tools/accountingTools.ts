@@ -265,18 +265,22 @@ export async function drilldownMetric(params: {
   }
 
   if (metricDef.category === 'contract') {
-    const items = contracts.map((c) => {
-      const info = getContractPaymentInfo(c)
-      return {
-        id: c.id,
-        contractNo: c.contractNo,
-        studentName: c.studentName || c.customerName,
-        totalAmount: info.total,
-        paidAmount: info.paid,
-        isInstallment: info.isInstallment,
-        unpaid: Math.max(0, info.total - info.paid),
-      }
-    }).slice(0, limit)
+    const isAllTime = !period || (!period.year && !period.startDate && !period.endDate)
+    const items = contracts
+      .filter((c) => isAllTime || isDateInPeriod(c.createdAt, period))
+      .map((c) => {
+        const info = getContractPaymentInfo(c)
+        return {
+          id: c.id,
+          contractNo: c.contractNo,
+          studentName: c.studentName || c.customerName,
+          totalAmount: info.total,
+          paidAmount: info.paid,
+          isInstallment: info.isInstallment,
+          unpaid: Math.max(0, info.total - info.paid),
+        }
+      })
+      .slice(0, limit)
 
     return {
       metricDef,
