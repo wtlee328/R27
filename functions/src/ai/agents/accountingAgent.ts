@@ -5,7 +5,11 @@ import {
   getProfitLossSummary,
   getPrepaidAndRealizedMetrics,
   queryContractPayments,
+  getFinancialMetrics,
+  reconcileMetrics,
+  drilldownMetric,
 } from '../tools/accountingTools'
+import { generateRegistryPromptSnippet } from '../../finance-core'
 import { getTaipeiDateTimeInfo } from '../utils/timeUtils'
 import { manageContextMemory } from '../utils/contextManager'
 
@@ -22,7 +26,7 @@ export type ReasoningEffortLevel = 'low' | 'medium' | 'high'
 export function determineReasoningEffort(userMessage: string, history: ChatMessage[] = []): ReasoningEffortLevel {
   const highComplexityKeywords = [
     '損益', '利潤', '毛利', '淨利', '預收', '銷課', '負債', '未實現', '履約',
-    '比較', '趨勢', '分析', '異常', '逾期', '分期', '跨月', '半年', '年度', '全年度', '退費', '對帳'
+    '比較', '趨勢', '分析', '異常', '逾期', '分期', '跨月', '半年', '年度', '全年度', '退費', '對帳', '勾稽', '對不上', '差額'
   ]
   const mediumComplexityKeywords = [
     '最近三個月', '最近3個月', '上個月', '支出', '收入', '明細', '流水帳', '統計', '彙總', '總額', '去年'
@@ -45,6 +49,66 @@ export function determineReasoningEffort(userMessage: string, history: ChatMessa
 
 // OpenAI Responses API Function Tool Definitions for gpt-6-luna
 const accountingResponsesTools: OpenAI.Responses.FunctionTool[] = [
+  {
+    type: 'function',
+    name: 'get_financial_metrics',
+    description:
+      '【核心推薦工具】獲取場館標準規範之財務與會計指標（包含合約總簽約額、全期合約實收款、銷課實現營收、預收學費負債餘額、權責制營業損益、收付實現現金流淨額等）。支援指定特定起訖日 (startDate/endDate) 或年份與月份。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+        endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
+        year: { type: 'number', description: '查詢年份，例如 2026' },
+        month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
+      },
+    },
+  },
+  {
+    type: 'function',
+    name: 'reconcile_financial_metrics',
+    description:
+      '【勾稽對帳工具】當兩個指標或前端報表數字對不上、有差額或需要查核原因時使用。支援三種勾稽比對：1. contracts_total_vs_paid (合約總額 vs 實收款，查核分期未繳) 2. collected_vs_realized (實收款 vs 銷課實現，查核預收學費負債) 3. cashflow_tuition_vs_contracts (現金流水帳學費 vs 合約模組實收款，查核跨期入帳)。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        reconcileType: {
+          type: 'string',
+          enum: ['contracts_total_vs_paid', 'collected_vs_realized', 'cashflow_tuition_vs_contracts'],
+          description: '勾稽類型：contracts_total_vs_paid, collected_vs_realized, cashflow_tuition_vs_contracts',
+        },
+        startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+        endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
+        year: { type: 'number', description: '查詢年份，例如 2026' },
+        month: { type: 'number', description: '查詢月份 (1-12)。若不填則代表全年度' },
+      },
+      required: ['reconcileType'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'drilldown_financial_metric',
+    description:
+      '【指標下鑽穿透】下鑽查詢特定指標的底層組成明細與計算公式。例如下鑽 cashFlowTotalIncome (現金流總收入明細) 或 contractedAmount (合約清單)。',
+    strict: null,
+    parameters: {
+      type: 'object',
+      properties: {
+        metricId: {
+          type: 'string',
+          description: '指標 ID，例如 contractedAmount, totalCollectedAmount, realizedLessonRevenue, unearnedRevenueLiabilityBalance, cashFlowTotalIncome 等',
+        },
+        startDate: { type: 'string', description: '查詢起始日期，格式 YYYY-MM-DD' },
+        endDate: { type: 'string', description: '查詢結束日期，格式 YYYY-MM-DD' },
+        year: { type: 'number', description: '查詢年份，例如 2026' },
+        month: { type: 'number', description: '查詢月份 (1-12)' },
+        limit: { type: 'number', description: '最多回傳明細筆數，預設 50' },
+      },
+      required: ['metricId'],
+    },
+  },
   {
     type: 'function',
     name: 'query_cash_flow_records',
@@ -131,6 +195,7 @@ const accountingResponsesTools: OpenAI.Responses.FunctionTool[] = [
 function getSystemPrompt(centerId: string) {
   const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
   const timeInfo = getTaipeiDateTimeInfo()
+  const registryPrompt = generateRegistryPromptSnippet()
 
   return `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
 【目前服務場館】：${centerName}（centerId: "${centerId}"）。
@@ -152,33 +217,27 @@ function getSystemPrompt(centerId: string) {
    - 「最近半年」：以現在為基準往前回推六個月（區間：${timeInfo.sixMonthsAgoStartDate} 至 ${timeInfo.dateStr}）
 3. 在調用資料庫查詢工具（Tools）時，若涉及日期區間（例如「最近三個月」、「最近半年」或指定起迄日），請務必使用 startDate 與 endDate 參數（格式 YYYY-MM-DD）進行查詢，確保 DB 查詢範圍與你的時間推算完全一致！
 
-【收支數據解讀與回答指引】：
-1. 當使用者詢問特定類別（例如「課程收入明細」、「水電支出」）時：
-   - 首要任務是完整列出並加總工具回傳的該類別所有筆數與金額（例如「2026年9月 課程收入共 4 筆，合計 104,800 元」）。切勿遺漏任何一筆！
-   - 若要進一步提供全場館整體收支概況，必須引用工具回傳的真實全場館數據（periodTotalIncome、periodTotalExpense、periodNetCashFlow）。
-   - ⚠️ 絕對不可因為查詢特定類別（例如「課程收入」）本身沒有支出紀錄，就誤認為「全場館總支出為 0」！全場館總支出必須以工具提供的真實 periodTotalExpense 為準（例如 9 月份含有房租與水電等支出）。
+${registryPrompt}
+
+【專業勾稽與差額解釋指引（Reconciliation Guidelines）】：
+1. 嚴禁任何數字幻覺：如果你回答的數字與使用者看到的報表不同，絕不可憑空猜測「可能有退款」或「系統未入帳」，請【立刻調用 reconcile_financial_metrics 工具】進行精準勾稽！
+2. 合約實收與分期付款邏輯：
+   - 部分合約採分期付款（paymentType === 'installment'），在會計帳上是以整份合約的總金額認列簽約額，但在實收款項中，只會計算「已繳期數（status === 'paid'）」的金額。尚未繳款的期數屬於待收分期帳款。
+   - 一次付清（躉繳）合約簽署時，全額實收即等於合約總金額。
+3. 預收學費與銷課實現差異：
+   - 「實收款項扣銷課金額」即為「預收學費負債餘額（待履約義務）」。學員先付款買課，場館承擔授課履約義務；每當學員上一堂課，系統即按該合約的平均單堂價格將預收負債轉列為「銷課實現營收」。
+4. 現金流流水帳與合約模組實收款差異：
+   - 現金流紀錄代表銀行與現金帳戶之實際進出（收付實現制）。合約模組實收款代表該期間簽約所產生的已收金額。
 
 【多輪對話承接與省略句解析指引】：
 1. 當使用者發送省略句、切換時間或追問（例如「我要看去年」、「那8月呢」、「汪雪貞呢」、「算成含稅是多少」）：
    - 請務必結合前次回話的主題、類別與指標進行理解。
-   - 例如：前一輪剛查詢「今年的損益狀況」，接著問「我要看去年」，即代表「查詢去年的累積損益狀況」，請直接調用相應工具（如 get_profit_loss_summary，year: ${timeInfo.year - 1}），切勿反問使用者要看什麼！
-   - 例如：前一輪剛查詢「某教練的銷課收入」，接著問「那上個月呢」，即代表「查詢該教練上個月的銷課收入」。
-
-【財務報表與前端指標對齊說明】：
-1. 「預收與銷課（Prepaid & Realized）」指標：
-   - 前端「預收與銷課」卡片顯示之「全期實收」即為該期間或全期合約已收款總額，對應工具 get_prepaid_and_realized_metrics 回傳之 periodTotalPaidAmount。
-   - 「銷課金額」對應 realizedLessonRevenue。
-   - 「預收學費負債餘額（待履約）」對應 unearnedRevenueEstimate（即實收款扣除已銷課金額）。
-2. 「流水帳現金流（Cash Flow Records）」：
-   - 現金流紀錄中的「課程收入」代表特定期間實際入帳的現金/銀行流水，屬於收付實現帳。
-   - ⚠️ 嚴禁將「預收合約實收款」與「現金流課程收入」混淆，若兩者因認列維度不同而有差異，應專業且清晰地說明兩者計算基礎的差異（合約簽收實收 vs 現金流流水帳），嚴禁捏造不實的筆數或編造未經證實的差額原因！
+   - 例如：前一輪剛查詢「今年的損益狀況」，接著問「我要看去年」，即代表「查詢去年的累積損益狀況」，請直接調用相應工具（如 get_financial_metrics 或 get_profit_loss_summary，year: ${timeInfo.year - 1}），切勿反問使用者要看什麼！
 
 【最高原則】：
 1. 嚴格場館隔離：你目前【僅】負責【${centerName}】場館的數據。任何查詢、分析或延伸問題的解答，均必須 100% 針對【${centerName}】，切勿引用或混淆其他場館的資料。
 2. 零數據幻覺（Zero Data Hallucination Policy）：你的所有金額、筆數、姓名與堂數數據必須 100% 來自 Tool 調用的回傳結果，嚴禁自創捏造任何數字。
-3. 若查詢結果為空或無相關資料，請如實告知「在指定的日期範圍（XXXX-XX-XX 至 XXXX-XX-XX）查無相關資料」，並提醒使用者核對條件或確認是否已切換至正確場館。
-4. 回答風格應專業、清晰，先以簡要總結重點數值，並對重大數據做清楚的條列說明。
-5. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
+3. 在回答結尾，請主動提供 2~3 個管理員可能感興趣的後續財務延伸問題。`
 }
 
 /**
@@ -255,7 +314,13 @@ export async function executeAccountingAgent(
 
         let result: any = null
         try {
-          if (fnName === 'query_cash_flow_records') {
+          if (fnName === 'get_financial_metrics') {
+            result = await getFinancialMetrics(fnArgs)
+          } else if (fnName === 'reconcile_financial_metrics') {
+            result = await reconcileMetrics(fnArgs)
+          } else if (fnName === 'drilldown_financial_metric') {
+            result = await drilldownMetric(fnArgs)
+          } else if (fnName === 'query_cash_flow_records') {
             result = await queryCashFlowRecords(fnArgs)
           } else if (fnName === 'get_profit_loss_summary') {
             result = await getProfitLossSummary(fnArgs)
@@ -308,12 +373,77 @@ export async function executeAccountingAgent(
             : `${data.year}年${data.month}月`
           : '')
 
-      if (tool === 'query_cash_flow_records') {
+      if (tool === 'get_financial_metrics' && data.metrics) {
+        const m = data.metrics
+        const statCards: StatCardData[] = [
+          {
+            title: `${periodLabel ? `${periodLabel} ` : ''}合約總簽約額`,
+            value: `NT$ ${m.contractedAmount.toLocaleString()}`,
+            subtitle: `期間實收 NT$ ${m.totalCollectedAmount.toLocaleString()}`,
+            color: 'emerald',
+          },
+          {
+            title: `${periodLabel ? `${periodLabel} ` : ''}銷課實現營收`,
+            value: `NT$ ${m.realizedLessonRevenue.toLocaleString()}`,
+            subtitle: `已履約 ${m.realizedLessonSessions} 堂 (均價 NT$ ${m.averageSessionPrice.toLocaleString()})`,
+            color: 'purple',
+          },
+          {
+            title: '預收學費負債餘額',
+            value: `NT$ ${m.unearnedRevenueLiabilityBalance.toLocaleString()}`,
+            subtitle: `全期實收扣銷課 NT$ ${m.allTimeNetCollectedMinusRealized.toLocaleString()}`,
+            color: 'amber',
+          },
+          {
+            title: `${periodLabel ? `${periodLabel} ` : ''}權責制淨損益`,
+            value: `NT$ ${m.operatingAccrualNetProfit.toLocaleString()}`,
+            subtitle: `營業收入 NT$ ${m.operatingAccrualRevenue.toLocaleString()}`,
+            color: m.operatingAccrualNetProfit >= 0 ? 'emerald' : 'red',
+          },
+        ]
+        blocks.push({ type: 'stat_card_group', data: statCards })
+      } else if (tool === 'reconcile_financial_metrics') {
+        const statCards: StatCardData[] = [
+          {
+            title: data.sideAName,
+            value: `NT$ ${Number(data.sideATotal || 0).toLocaleString()}`,
+            color: 'stone',
+          },
+          {
+            title: data.sideBName,
+            value: `NT$ ${Number(data.sideBTotal || 0).toLocaleString()}`,
+            color: 'stone',
+          },
+          {
+            title: '勾稽差額 (A - B)',
+            value: `NT$ ${Number(data.differenceTotal || 0).toLocaleString()}`,
+            subtitle: data.isBalanced ? '完全平衡無差額' : '存在差異項',
+            color: data.isBalanced ? 'emerald' : 'orange',
+          },
+        ]
+        blocks.push({ type: 'stat_card_group', data: statCards })
+
+        if (data.discrepancies && data.discrepancies.length > 0) {
+          const tableData: TableComponentData = {
+            title: `${data.title} - 明細差額清單`,
+            columns: [
+              { key: 'code', label: '編號', type: 'text' },
+              { key: 'name', label: '對象/合約', type: 'text' },
+              { key: 'sideAValue', label: '項目 A 金額', type: 'currency', align: 'right' },
+              { key: 'sideBValue', label: '項目 B 金額', type: 'currency', align: 'right' },
+              { key: 'difference', label: '差額', type: 'currency', align: 'right' },
+              { key: 'reason', label: '會計原因分析', type: 'text' },
+            ],
+            rows: data.discrepancies,
+            totalCount: data.discrepancies.length,
+          }
+          blocks.push({ type: 'table', data: tableData })
+        }
+      } else if (tool === 'query_cash_flow_records') {
         const statCards: StatCardData[] = []
         const prefix = periodLabel ? `${periodLabel} ` : ''
 
         if (data.filterCategory) {
-          // Specific category queried (e.g. 課程收入)
           const isIncome = (data.filteredIncome || 0) > 0 && (data.filteredExpense || 0) === 0
           statCards.push({
             title: `${prefix}「${data.filterCategory}」合計`,
@@ -528,10 +658,10 @@ export async function executeAccountingAgent(
     // Suggested questions with center name
     const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
     const suggestedQuestions = [
-      `查詢 ${centerName} 本月課程收入明細`,
-      `查詢 ${centerName} 最近三個月的支出分析`,
+      `查詢 ${centerName} 本月核心財務指標`,
+      `進行 ${centerName} 實收款與銷課金額勾稽對帳`,
       `查看 ${centerName} 今年度損益佔比`,
-      `目前 ${centerName} 預收學費負債餘額還有多少？`,
+      `查詢 ${centerName} 本月課程收入明細`,
     ]
 
     return {

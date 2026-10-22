@@ -1,7 +1,8 @@
 {
   "name": "functions",
   "scripts": {
-    "build": "tsc",
+    "prebuild": "node -e \"const fs=require('fs'); fs.rmSync('src/finance-core', {recursive:true,force:true}); fs.cpSync('../src/finance-core', 'src/finance-core', {recursive:true, filter: (src) => !src.includes('__tests__')}); console.log('finance-core synced');\"",
+    "build": "npm run prebuild && tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
