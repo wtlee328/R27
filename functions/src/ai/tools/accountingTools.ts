@@ -200,12 +200,22 @@ export async function reconcileMetrics(params: {
     period,
   })
 
+  const dateRangeLabel =
+    startDate && endDate
+      ? `${startDate} 至 ${endDate}`
+      : year
+        ? month && month !== 'all'
+          ? `${year}年${month}月`
+          : `${year}全年度`
+        : '全期（歷史至今）'
+
   return {
     centerId,
     year,
     month,
     startDate,
     endDate,
+    dateRangeLabel,
     ...result,
   }
 }

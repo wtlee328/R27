@@ -93,11 +93,17 @@ export function reconcileFinancialMetrics(params: {
       })
     })
 
-    let sideATotal = 0 // Paid
-    let sideBTotal = 0 // Realized
+    let sideATotal = 0 // Paid in period (or all-time)
+    let sideBTotal = 0 // Realized in period (or all-time)
     const discrepancies: ReconcileItem[] = []
+    const isAllTime = !period || (!period.year && !period.startDate && !period.endDate)
 
     contracts.forEach((c) => {
+      // If a specific period is requested, only consider contracts created within that period for period reconciliation
+      if (!isAllTime && !isDateInPeriod(c.createdAt, period)) {
+        return
+      }
+
       const info = getContractPaymentInfo(c)
       const realized = contractRealizedMap.get(c.id) || 0
       sideATotal += info.paid
@@ -125,16 +131,19 @@ export function reconcileFinancialMetrics(params: {
     })
 
     const diffTotal = sideATotal - sideBTotal
+    const scopeLabel = isAllTime ? '全期（歷史至今）' : '指定期間'
     return {
       reconcileType,
-      title: '合約實收款項 vs 銷課實現營收 履約對帳表',
-      sideAName: '實收款項 (Collected Paid)',
-      sideBName: '已履約銷課營收 (Realized Revenue)',
+      title: `${scopeLabel} 合約實收款項 vs 銷課實現營收 履約對帳表`,
+      sideAName: isAllTime ? '全期實收款項 (All-Time Paid)' : '期間合約實收款 (Period Paid)',
+      sideBName: isAllTime ? '全期銷課實現營收 (All-Time Realized)' : '期間銷課實現營收 (Period Realized)',
       sideATotal: Math.round(sideATotal),
       sideBTotal: Math.round(sideBTotal),
       differenceTotal: Math.round(diffTotal),
       isBalanced: Math.abs(diffTotal) < 1,
-      summary: `全場實收扣除銷課營收之淨差額為 NT$ ${Math.round(diffTotal).toLocaleString()}。差額正值代表學員已付款但尚未履約之「預收學費負債餘額」。`,
+      summary: isAllTime
+        ? `全期實收扣除銷課營收之淨差額為 NT$ ${Math.round(diffTotal).toLocaleString()}。差額正值代表學員已付款但尚未履約之「預收學費負債餘額」。`
+        : `該期間新簽合約實收款 NT$ ${Math.round(sideATotal).toLocaleString()}，扣除期間內銷課營收 NT$ ${Math.round(sideBTotal).toLocaleString()}，差額為 NT$ ${Math.round(diffTotal).toLocaleString()}。`,
       discrepancies: discrepancies.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference)).slice(0, 30),
     }
   }
