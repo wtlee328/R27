@@ -318,20 +318,30 @@ export async function getPrepaidAndRealizedMetrics(params: {
 
   // 1. Fetch contracts
   const contractsSnap = await db.collection('contracts').where('centerId', '==', centerId).get()
+  const contractMap = new Map<string, any>()
+  contractsSnap.docs.forEach((doc) => contractMap.set(doc.id, doc.data()))
 
   let totalContractedAmount = 0
   let totalPaidAmount = 0
   let lumpSumTotal = 0
   let installmentPaidTotal = 0
-  let totalContractSessions = 0
+  let pendingInstallmentsTotal = 0
+  let allTimeCollectedAmount = 0
+
+  let unearnedLiabilityBalance = 0
   let remainingContractSessions = 0
+  let totalContractSessions = 0
+
+  const isAllTime = !startDate && !endDate && !year
 
   contractsSnap.docs.forEach((doc) => {
     const c = doc.data()
     const taipeiDate = parseToTaipeiDate(c.createdAt)
 
     let isMatchPeriod = false
-    if (taipeiDate) {
+    if (isAllTime) {
+      isMatchPeriod = true
+    } else if (taipeiDate) {
       if (startDate && endDate) {
         isMatchPeriod = taipeiDate.dateStr >= startDate && taipeiDate.dateStr <= endDate
       } else if (year) {
@@ -348,26 +358,39 @@ export async function getPrepaidAndRealizedMetrics(params: {
       (Array.isArray(c.installments) && c.installments.length > 0)
 
     let paid = Number(c.paidAmount || 0)
-    if (isInstallment && Array.isArray(c.installments) && c.installments.length > 0) {
-      const installmentSum = c.installments
-        .filter((inst: any) => inst.status === 'paid')
-        .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
-      if (installmentSum > 0) paid = installmentSum
-    } else if (!isInstallment) {
+    if (isInstallment) {
+      if (Array.isArray(c.installments) && c.installments.length > 0) {
+        const installmentSum = c.installments
+          .filter((inst: any) => inst.status === 'paid')
+          .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
+        if (installmentSum > 0) paid = installmentSum
+      }
+    } else {
       paid = total
     }
+
+    // Cumulative all-time collected across all contracts
+    allTimeCollectedAmount += paid
 
     if (isMatchPeriod) {
       totalContractedAmount += total
       totalPaidAmount += paid
-      if (isInstallment) installmentPaidTotal += paid
-      else lumpSumTotal += total
+      if (isInstallment) {
+        installmentPaidTotal += paid
+        pendingInstallmentsTotal += Math.max(0, total - paid)
+      } else {
+        lumpSumTotal += total
+      }
     }
 
-    // Cumulative active sessions
-    if (c.status === 'active' || c.status === 'expiring') {
-      totalContractSessions += Number(c.totalSessions || 0)
-      remainingContractSessions += Number(c.remainingSessions || 0)
+    // Unearned revenue liability across active contracts: remainingSessions * avgPrice
+    const rem = Number(c.remainingSessions || 0)
+    const tot = Number(c.totalSessions || 0)
+    if (rem > 0 && tot > 0) {
+      const avgPrice = total / tot
+      unearnedLiabilityBalance += rem * avgPrice
+      remainingContractSessions += rem
+      totalContractSessions += tot
     }
   })
 
@@ -375,7 +398,8 @@ export async function getPrepaidAndRealizedMetrics(params: {
   const lessonsSnap = await db.collection('lessonRecords').where('centerId', '==', centerId).get()
 
   let realizedLessonRevenue = 0
-  let realizedLessonCount = 0
+  let realizedLessonSessions = 0
+  let realizedLessonRecordsCount = 0
 
   lessonsSnap.docs.forEach((doc) => {
     const l = doc.data()
@@ -384,7 +408,9 @@ export async function getPrepaidAndRealizedMetrics(params: {
     const dateStr = taipeiDate.dateStr
 
     let isMatchPeriod = false
-    if (startDate && endDate) {
+    if (isAllTime) {
+      isMatchPeriod = true
+    } else if (startDate && endDate) {
       isMatchPeriod = dateStr >= startDate && dateStr <= endDate
     } else if (year) {
       isMatchPeriod =
@@ -393,13 +419,33 @@ export async function getPrepaidAndRealizedMetrics(params: {
     }
 
     if (isMatchPeriod) {
-      realizedLessonRevenue += Number(l.sessionAmount || 0)
-      realizedLessonCount++
+      realizedLessonRecordsCount++
+
+      const deductions =
+        l.deductions && l.deductions.length > 0
+          ? l.deductions
+          : [
+              {
+                customerId: l.customerId,
+                contractId: l.contractId,
+                sessionAmount: l.sessionAmount || 1,
+              },
+            ]
+
+      deductions.forEach((d: any) => {
+        const c = contractMap.get(d.contractId)
+        const sessions = Number(d.sessionAmount || 1)
+        realizedLessonSessions += sessions
+
+        if (c && Number(c.totalSessions) > 0) {
+          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
+          realizedLessonRevenue += sessions * avgPrice
+        } else {
+          realizedLessonRevenue += sessions * 1500
+        }
+      })
     }
   })
-
-  // Unearned revenue estimate (預收學費負債餘額)
-  const unearnedRevenueEstimate = Math.max(0, totalPaidAmount - realizedLessonRevenue)
 
   const dateRangeLabel =
     startDate && endDate
@@ -408,7 +454,10 @@ export async function getPrepaidAndRealizedMetrics(params: {
         ? month && month !== 'all'
           ? `${year}年${month}月`
           : `${year}全年度`
-        : undefined
+        : '全期（歷史至今）'
+
+  const avgSessionPrice =
+    realizedLessonSessions > 0 ? Math.round(realizedLessonRevenue / realizedLessonSessions) : 0
 
   return {
     year,
@@ -420,9 +469,13 @@ export async function getPrepaidAndRealizedMetrics(params: {
     periodTotalPaidAmount: totalPaidAmount,
     lumpSumPaidAmount: lumpSumTotal,
     installmentPaidAmount: installmentPaidTotal,
-    realizedLessonRevenue,
-    realizedLessonCount,
-    unearnedRevenueEstimate,
+    pendingInstallmentsAmount: pendingInstallmentsTotal,
+    allTimeCollectedAmount,
+    realizedLessonRevenue: Math.round(realizedLessonRevenue),
+    realizedLessonSessions,
+    realizedLessonRecordsCount,
+    averageSessionPrice: avgSessionPrice,
+    unearnedRevenueLiabilityBalance: Math.round(unearnedLiabilityBalance),
     activeContractsRemainingSessions: remainingContractSessions,
     activeContractsTotalSessions: totalContractSessions,
   }

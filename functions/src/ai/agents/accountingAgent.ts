@@ -479,23 +479,27 @@ export async function executeAccountingAgent(
           blocks.push({ type: 'table', data: tableData })
         }
       } else if (tool === 'get_prepaid_and_realized_metrics') {
+        const realizedSessions = data.realizedLessonSessions ?? data.realizedLessonCount ?? 0
+        const avgPrice = data.averageSessionPrice ? ` (均堂價 NT$ ${data.averageSessionPrice.toLocaleString()})` : ''
+        const liability = data.unearnedRevenueLiabilityBalance ?? data.unearnedRevenueEstimate ?? 0
+
         const statCards: StatCardData[] = [
           {
-            title: `${periodLabel ? `${periodLabel} ` : ''}全期實收款總額`,
-            value: `NT$ ${data.periodTotalPaidAmount.toLocaleString()}`,
-            subtitle: `躉繳 ${data.lumpSumPaidAmount.toLocaleString()} / 分期已付 ${data.installmentPaidAmount.toLocaleString()}`,
+            title: `${periodLabel ? `${periodLabel} ` : ''}實收款總額`,
+            value: `NT$ ${(data.periodTotalPaidAmount || 0).toLocaleString()}`,
+            subtitle: `一次付清 ${(data.lumpSumPaidAmount || 0).toLocaleString()} · 分期已付 ${(data.installmentPaidAmount || 0).toLocaleString()}`,
             color: 'emerald',
           },
           {
             title: `${periodLabel ? `${periodLabel} ` : ''}銷課實現營收`,
-            value: `NT$ ${data.realizedLessonRevenue.toLocaleString()}`,
-            subtitle: `共完成 ${data.realizedLessonCount} 堂課`,
+            value: `NT$ ${(data.realizedLessonRevenue || 0).toLocaleString()}`,
+            subtitle: `已履約 ${realizedSessions} 堂課${avgPrice}`,
             color: 'purple',
           },
           {
-            title: '預收學費負債估算',
-            value: `NT$ ${data.unearnedRevenueEstimate.toLocaleString()}`,
-            subtitle: `有效合約待履約堂數：${data.activeContractsRemainingSessions} 堂`,
+            title: '預收學費負債餘額',
+            value: `NT$ ${liability.toLocaleString()}`,
+            subtitle: `有效合約待履約堂數：${data.activeContractsRemainingSessions || 0} 堂`,
             color: 'amber',
           },
         ]
