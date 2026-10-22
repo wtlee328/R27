@@ -1,67 +1,288 @@
 import * as admin from 'firebase-admin'
-import { parseToTaipeiDate } from '../utils/timeUtils'
+import {
+  parseDateToTaipei,
+  normalizeCashFlow,
+  calculatePrepaidAndRealized,
+  calculateProfitLoss,
+  getContractPaymentInfo,
+  METRIC_REGISTRY,
+  reconcileFinancialMetrics,
+  isDateInPeriod,
+  RawContract,
+  RawLessonRecord,
+  RawCashFlowRecord,
+  PeriodFilter,
+} from '../../finance-core'
 
 function getDb() {
   return admin.firestore()
 }
 
-// Helper to normalize cash flow record
-function normalizeCashFlowRecord(data: any) {
-  if (data.type && data.category && typeof data.amount === 'number') {
+/**
+ * Fetch domain datasets from Firestore for a given centerId
+ */
+async function fetchCenterDatasets(centerId: string) {
+  const db = getDb()
+  const [contractsSnap, lessonsSnap, cashFlowSnap, customersSnap] = await Promise.all([
+    db.collection('contracts').where('centerId', '==', centerId).get(),
+    db.collection('lessonRecords').where('centerId', '==', centerId).get(),
+    db.collection('cashFlowRecords').where('centerId', '==', centerId).get(),
+    db.collection('customers').where('centerId', '==', centerId).get(),
+  ])
+
+  const customerMap = new Map<string, string>()
+  customersSnap.docs.forEach((d) => {
+    customerMap.set(d.id, d.data().name || '')
+  })
+
+  const contracts: RawContract[] = contractsSnap.docs.map((doc) => {
+    const data = doc.data()
     return {
-      type: data.type as 'income' | 'expense',
-      category: data.category as string,
-      amount: Number(data.amount) || 0,
-      account: data.account || '預收款帳號',
-      description: data.description || '',
-      notes: data.notes || '',
-      date: data.date,
+      id: doc.id,
+      centerId: data.centerId,
+      customerId: data.customerId,
+      customerName: customerMap.get(data.customerId) || data.customerName,
+      studentName: customerMap.get(data.customerId) || data.studentName,
+      contractNo: data.contractNo || doc.id.substring(0, 8),
+      contractType: data.contractType,
+      totalAmount: data.totalAmount,
+      paidAmount: data.paidAmount,
+      totalSessions: data.totalSessions,
+      remainingSessions: data.remainingSessions,
+      paymentType: data.paymentType,
+      installments: data.installments,
+      sharedWithCustomerId: data.sharedWithCustomerId,
+      createdAt: data.createdAt,
+      startDate: data.startDate,
+      status: data.status,
     }
+  })
+
+  const lessonRecords: RawLessonRecord[] = lessonsSnap.docs.map((doc) => {
+    const data = doc.data()
+    return {
+      id: doc.id,
+      centerId: data.centerId,
+      customerId: data.customerId,
+      contractId: data.contractId,
+      sessionAmount: data.sessionAmount,
+      sessionDate: data.sessionDate,
+      deductions: data.deductions,
+      trainerId: data.trainerId,
+      trainerName: data.trainerName,
+      courseName: data.courseName,
+      status: data.status,
+    }
+  })
+
+  const cashFlowRecords: RawCashFlowRecord[] = cashFlowSnap.docs.map((doc) => {
+    const data = doc.data()
+    return {
+      id: doc.id,
+      centerId: data.centerId,
+      date: data.date,
+      type: data.type,
+      category: data.category,
+      amount: data.amount,
+      account: data.account,
+      description: data.description,
+      notes: data.notes,
+      debitCategory: data.debitCategory,
+      creditCategory: data.creditCategory,
+      debitAmount: data.debitAmount,
+      creditAmount: data.creditAmount,
+    }
+  })
+
+  return { contracts, lessonRecords, cashFlowRecords, customerMap }
+}
+
+function buildPeriodFilter(params: {
+  year?: number
+  month?: number | 'all'
+  startDate?: string
+  endDate?: string
+}): PeriodFilter | undefined {
+  if (params.startDate || params.endDate) {
+    return { startDate: params.startDate, endDate: params.endDate }
   }
-
-  // Legacy schema compatibility
-  const isCashOrBank = (cat?: string) =>
-    cat && ['現金', '銀行存款', '公司存款', '預收款', '預收款帳號'].some((a) => cat.includes(a))
-
-  const isDebitCash = isCashOrBank(data.debitCategory)
-  const isCreditCash = isCashOrBank(data.creditCategory)
-
-  if (isDebitCash && !isCreditCash) {
-    return {
-      type: 'income' as const,
-      category: data.creditCategory || '其他收入',
-      amount: Number(data.debitAmount || data.creditAmount || 0),
-      account: data.debitCategory || '預收款帳號',
-      description: data.description || '',
-      notes: data.notes || '',
-      date: data.date,
-    }
-  } else if (!isDebitCash && isCreditCash) {
-    return {
-      type: 'expense' as const,
-      category: data.debitCategory || '其他支出',
-      amount: Number(data.debitAmount || data.creditAmount || 0),
-      account: data.creditCategory || '預收款帳號',
-      description: data.description || '',
-      notes: data.notes || '',
-      date: data.date,
-    }
+  if (params.year) {
+    return { year: params.year, month: params.month }
   }
+  return undefined
+}
+
+/**
+ * Metric-Driven Tool 1: get_financial_metrics
+ * Queries canonical metrics from METRIC_REGISTRY powered by finance-core
+ */
+export async function getFinancialMetrics(params: {
+  centerId: string
+  year?: number
+  month?: number | 'all'
+  startDate?: string
+  endDate?: string
+}) {
+  const { centerId, year, month = 'all', startDate, endDate } = params
+  const period = buildPeriodFilter({ year, month, startDate, endDate })
+  const { contracts, lessonRecords, cashFlowRecords } = await fetchCenterDatasets(centerId)
+
+  const prepaidSummary = calculatePrepaidAndRealized(contracts, lessonRecords, period)
+
+  const profitLossSummary = calculateProfitLoss(
+    cashFlowRecords,
+    contracts,
+    lessonRecords,
+    period
+  )
+
+  const dateRangeLabel =
+    startDate && endDate
+      ? `${startDate} 至 ${endDate}`
+      : year
+        ? month && month !== 'all'
+          ? `${year}年${month}月`
+          : `${year}全年度`
+        : '全期（歷史至今）'
 
   return {
-    type: 'income' as const,
-    category: data.category || '一般收支',
-    amount: Number(data.amount || data.creditAmount || data.debitAmount || 0),
-    account: data.account || '預收款帳號',
-    description: data.description || '',
-    notes: data.notes || '',
-    date: data.date,
+    centerId,
+    year,
+    month,
+    startDate,
+    endDate,
+    dateRangeLabel,
+    // Canonical Metrics
+    metrics: {
+      contractedAmount: prepaidSummary.newContractsTotalValue,
+      totalCollectedAmount: prepaidSummary.totalCollectedAmount,
+      lumpSumPaidAmount: prepaidSummary.lumpSumTotal,
+      installmentPaidAmount: prepaidSummary.installmentPaidTotal,
+      pendingInstallmentsAmount: prepaidSummary.pendingInstallmentsTotal,
+      allTimeCollectedAmount: prepaidSummary.allTimeCollected,
+      realizedLessonRevenue: prepaidSummary.realizedRevenueTotal,
+      realizedLessonSessions: prepaidSummary.totalSessionsUsed,
+      averageSessionPrice: prepaidSummary.averageSessionPrice,
+      unearnedRevenueLiabilityBalance: prepaidSummary.unearnedLiabilityBalance,
+      allTimeNetCollectedMinusRealized: prepaidSummary.allTimeNetCollectedMinusRealized,
+      cashFlowTotalIncome: profitLossSummary.totalCashIncome,
+      cashFlowTotalExpense: profitLossSummary.totalCashExpense,
+      cashFlowNetProfit: profitLossSummary.cashNetFlow,
+      operatingAccrualRevenue: profitLossSummary.totalOperatingIncome,
+      operatingAccrualNetProfit: profitLossSummary.accrualNetProfit,
+    },
+    prepaidSummary,
+    profitLossSummary,
   }
 }
 
 /**
- * Tool 1: query_cash_flow_records
- * Supports exact date range (startDate ~ endDate) or year/month filtering
+ * Metric-Driven Tool 2: reconcile_financial_metrics
+ * Performs deep accounting reconciliation between diverging metric concepts.
+ */
+export async function reconcileMetrics(params: {
+  centerId: string
+  reconcileType: 'contracts_total_vs_paid' | 'collected_vs_realized' | 'cashflow_tuition_vs_contracts'
+  year?: number
+  month?: number | 'all'
+  startDate?: string
+  endDate?: string
+}) {
+  const { centerId, reconcileType, year, month = 'all', startDate, endDate } = params
+  const period = buildPeriodFilter({ year, month, startDate, endDate })
+  const { contracts, lessonRecords, cashFlowRecords } = await fetchCenterDatasets(centerId)
+
+  const result = reconcileFinancialMetrics({
+    reconcileType,
+    contracts,
+    lessonRecords,
+    cashFlowRecords,
+    period,
+  })
+
+  return {
+    centerId,
+    year,
+    month,
+    startDate,
+    endDate,
+    ...result,
+  }
+}
+
+/**
+ * Metric-Driven Tool 3: drilldown_financial_metric
+ * Returns line-item transaction breakdowns and underlying formula for any canonical metric.
+ */
+export async function drilldownMetric(params: {
+  centerId: string
+  metricId: string
+  year?: number
+  month?: number | 'all'
+  startDate?: string
+  endDate?: string
+  limit?: number
+}) {
+  const { centerId, metricId, year, month = 'all', startDate, endDate, limit = 50 } = params
+  const period = buildPeriodFilter({ year, month, startDate, endDate })
+  const metricDef = METRIC_REGISTRY[metricId]
+
+  if (!metricDef) {
+    return {
+      error: `未知的指標代碼: "${metricId}"。支援的指標包括: ${Object.keys(METRIC_REGISTRY).join(', ')}`,
+    }
+  }
+
+  const { contracts, cashFlowRecords } = await fetchCenterDatasets(centerId)
+
+  // Dispatch drilldown based on metric definition
+  if (metricDef.category === 'cashflow') {
+    const items = cashFlowRecords
+      .filter((raw) => isDateInPeriod(raw.date, period))
+      .map(normalizeCashFlow)
+      .filter((r) => {
+        if (metricId === 'cashFlowTotalIncome') return r.type === 'income'
+        if (metricId === 'cashFlowTotalExpense') return r.type === 'expense'
+        return true
+      })
+      .slice(0, limit)
+
+    return {
+      metricDef,
+      totalCount: items.length,
+      items,
+    }
+  }
+
+  if (metricDef.category === 'contract') {
+    const items = contracts.map((c) => {
+      const info = getContractPaymentInfo(c)
+      return {
+        id: c.id,
+        contractNo: c.contractNo,
+        studentName: c.studentName || c.customerName,
+        totalAmount: info.total,
+        paidAmount: info.paid,
+        isInstallment: info.isInstallment,
+        unpaid: Math.max(0, info.total - info.paid),
+      }
+    }).slice(0, limit)
+
+    return {
+      metricDef,
+      totalCount: items.length,
+      items,
+    }
+  }
+
+  return {
+    metricDef,
+    message: `指標 ${metricDef.label} 查詢成功，其計算公式為: ${metricDef.formula}`,
+  }
+}
+
+/**
+ * Backwards-Compatible Tool 1: query_cash_flow_records
  */
 export async function queryCashFlowRecords(params: {
   centerId: string
@@ -74,7 +295,6 @@ export async function queryCashFlowRecords(params: {
   searchTerm?: string
   limit?: number
 }) {
-  const db = getDb()
   const {
     centerId,
     year,
@@ -87,16 +307,15 @@ export async function queryCashFlowRecords(params: {
     limit = 50,
   } = params
 
-  const snap = await db.collection('cashFlowRecords').where('centerId', '==', centerId).get()
+  const { cashFlowRecords } = await fetchCenterDatasets(centerId)
 
-  // 1. Map all records with normalized structure & Taipei date
-  const allRecords = snap.docs.map((d) => {
-    const data = d.data()
-    const norm = normalizeCashFlowRecord(data)
-    const taipeiDate = parseToTaipeiDate(data.date)
+  // Map with normalized structure & Taipei date
+  const allRecords = cashFlowRecords.map((raw) => {
+    const norm = normalizeCashFlow(raw)
+    const taipeiDate = parseDateToTaipei(raw.date)
 
     return {
-      id: d.id,
+      id: raw.id,
       date: taipeiDate?.dateStr || '',
       taipeiDate,
       type: norm.type,
@@ -104,19 +323,17 @@ export async function queryCashFlowRecords(params: {
       amount: norm.amount,
       account: norm.account,
       description: norm.description,
-      notes: norm.notes,
+      notes: (raw.notes || '') as string,
     }
   })
 
-  // 2. Filter records strictly within the DATE RANGE (period context)
+  // Filter records strictly within the DATE RANGE
   const periodRecords = allRecords.filter((r) => {
     if (!r.taipeiDate || !r.date) return false
 
-    // Date range filter
     if (startDate && r.date < startDate) return false
     if (endDate && r.date > endDate) return false
 
-    // Year & Month filter (when startDate/endDate not provided)
     if (!startDate && !endDate) {
       if (year && r.taipeiDate.year !== year) return false
       if (month && month !== 'all' && month !== 0 && r.taipeiDate.month !== month) return false
@@ -125,7 +342,6 @@ export async function queryCashFlowRecords(params: {
     return true
   })
 
-  // 3. Calculate REAL, TRUE period totals across all transactions in this period!
   let periodTotalIncome = 0
   let periodTotalExpense = 0
   periodRecords.forEach((r) => {
@@ -135,7 +351,6 @@ export async function queryCashFlowRecords(params: {
   const periodNetCashFlow = periodTotalIncome - periodTotalExpense
   const periodTotalCount = periodRecords.length
 
-  // 4. Filter by specific search criteria (type, category, searchTerm)
   const filteredList = periodRecords.filter((r) => {
     if (type !== 'all' && r.type !== type) return false
     if (category && !r.category.includes(category)) return false
@@ -149,7 +364,6 @@ export async function queryCashFlowRecords(params: {
     return true
   })
 
-  // Sort by date desc
   filteredList.sort((a, b) => b.date.localeCompare(a.date))
 
   const filteredCount = filteredList.length
@@ -191,18 +405,15 @@ export async function queryCashFlowRecords(params: {
     filterCategory: category || undefined,
     filterType: type !== 'all' ? type : undefined,
     filterSearchTerm: searchTerm || undefined,
-    // Filtered stats
     totalRecordsFound: filteredCount,
     filteredTotalAmount: filteredIncome + filteredExpense,
     filteredIncome,
     filteredExpense,
     filteredNet: filteredIncome - filteredExpense,
-    // TRUE, non-zero period totals across all transactions
     periodTotalIncome,
     periodTotalExpense,
     periodNetCashFlow,
     periodTotalCount,
-    // Compatibility aliases
     totalIncome: category ? filteredIncome : periodTotalIncome,
     totalExpense: category ? filteredExpense : periodTotalExpense,
     netCashFlow: category ? filteredIncome - filteredExpense : periodNetCashFlow,
@@ -212,8 +423,7 @@ export async function queryCashFlowRecords(params: {
 }
 
 /**
- * Tool 2: get_profit_loss_summary
- * Supports exact date range or year/month filtering
+ * Backwards-Compatible Tool 2: get_profit_loss_summary
  */
 export async function getProfitLossSummary(params: {
   centerId: string
@@ -222,61 +432,33 @@ export async function getProfitLossSummary(params: {
   startDate?: string
   endDate?: string
 }) {
-  const db = getDb()
   const { centerId, year, month = 'all', startDate, endDate } = params
+  const period = buildPeriodFilter({ year, month, startDate, endDate })
+  const { contracts, lessonRecords, cashFlowRecords } = await fetchCenterDatasets(centerId)
 
-  const snap = await db.collection('cashFlowRecords').where('centerId', '==', centerId).get()
+  const pnl = calculateProfitLoss(
+    cashFlowRecords,
+    contracts,
+    lessonRecords,
+    period
+  )
+
+  const totalIncome = pnl.totalCashIncome
+  const totalExpense = pnl.totalCashExpense
+  const netProfit = pnl.cashNetFlow
+
+  const topIncomeCategories = pnl.topIncomeCategories
+  const topExpenseCategories = pnl.topExpenseCategories
 
   const incomeCategories: Record<string, number> = {}
-  const expenseCategories: Record<string, number> = {}
-  let totalIncome = 0
-  let totalExpense = 0
-  let recordCount = 0
-
-  snap.docs.forEach((d) => {
-    const data = d.data()
-    const norm = normalizeCashFlowRecord(data)
-    const taipeiDate = parseToTaipeiDate(data.date)
-    if (!taipeiDate) return
-    const dateStr = taipeiDate.dateStr
-
-    // Date range filter
-    if (startDate && dateStr < startDate) return
-    if (endDate && dateStr > endDate) return
-
-    // Year/Month fallback
-    if (!startDate && !endDate && year) {
-      if (taipeiDate.year !== year) return
-      if (month !== 'all' && typeof month === 'number' && taipeiDate.month !== month) return
-    }
-
-    recordCount++
-    const cat = norm.category || '其他'
-    if (norm.type === 'income') {
-      incomeCategories[cat] = (incomeCategories[cat] || 0) + norm.amount
-      totalIncome += norm.amount
-    } else {
-      expenseCategories[cat] = (expenseCategories[cat] || 0) + norm.amount
-      totalExpense += norm.amount
-    }
+  topIncomeCategories.forEach((item) => {
+    incomeCategories[item.category] = item.amount
   })
 
-  // Format category breakdowns
-  const topIncomeCategories = Object.entries(incomeCategories)
-    .map(([name, amount]) => ({
-      category: name,
-      amount,
-      percentage: totalIncome > 0 ? ((amount / totalIncome) * 100).toFixed(1) + '%' : '0%',
-    }))
-    .sort((a, b) => b.amount - a.amount)
-
-  const topExpenseCategories = Object.entries(expenseCategories)
-    .map(([name, amount]) => ({
-      category: name,
-      amount,
-      percentage: totalExpense > 0 ? ((amount / totalExpense) * 100).toFixed(1) + '%' : '0%',
-    }))
-    .sort((a, b) => b.amount - a.amount)
+  const expenseCategories: Record<string, number> = {}
+  topExpenseCategories.forEach((item) => {
+    expenseCategories[item.category] = item.amount
+  })
 
   const dateRangeLabel =
     startDate && endDate
@@ -293,18 +475,20 @@ export async function getProfitLossSummary(params: {
     startDate,
     endDate,
     dateRangeLabel,
-    recordCount,
     totalIncome,
     totalExpense,
-    netProfit: totalIncome - totalExpense,
+    netProfit,
+    operatingAccrualRevenue: pnl.totalOperatingIncome,
+    operatingAccrualNetProfit: pnl.accrualNetProfit,
+    incomeCategories,
+    expenseCategories,
     topIncomeCategories,
     topExpenseCategories,
   }
 }
 
 /**
- * Tool 3: get_prepaid_and_realized_metrics
- * Supports exact date range or year/month filtering
+ * Backwards-Compatible Tool 3: get_prepaid_and_realized_metrics
  */
 export async function getPrepaidAndRealizedMetrics(params: {
   centerId: string
@@ -313,139 +497,15 @@ export async function getPrepaidAndRealizedMetrics(params: {
   startDate?: string
   endDate?: string
 }) {
-  const db = getDb()
   const { centerId, year, month = 'all', startDate, endDate } = params
+  const period = buildPeriodFilter({ year, month, startDate, endDate })
+  const { contracts, lessonRecords } = await fetchCenterDatasets(centerId)
 
-  // 1. Fetch contracts
-  const contractsSnap = await db.collection('contracts').where('centerId', '==', centerId).get()
-  const contractMap = new Map<string, any>()
-  contractsSnap.docs.forEach((doc) => contractMap.set(doc.id, doc.data()))
-
-  let totalContractedAmount = 0
-  let totalPaidAmount = 0
-  let lumpSumTotal = 0
-  let installmentPaidTotal = 0
-  let pendingInstallmentsTotal = 0
-  let allTimeCollectedAmount = 0
-
-  let unearnedLiabilityBalance = 0
-  let remainingContractSessions = 0
-  let totalContractSessions = 0
-
-  const isAllTime = !startDate && !endDate && !year
-
-  contractsSnap.docs.forEach((doc) => {
-    const c = doc.data()
-    const taipeiDate = parseToTaipeiDate(c.createdAt)
-
-    let isMatchPeriod = false
-    if (isAllTime) {
-      isMatchPeriod = true
-    } else if (taipeiDate) {
-      if (startDate && endDate) {
-        isMatchPeriod = taipeiDate.dateStr >= startDate && taipeiDate.dateStr <= endDate
-      } else if (year) {
-        isMatchPeriod =
-          taipeiDate.year === year &&
-          (month === 'all' || taipeiDate.month === month)
-      }
-    }
-
-    const total = Number(c.totalAmount || 0)
-    const isInstallment =
-      c.paymentType === 'installment' ||
-      c.paymentType === 'installments' ||
-      (Array.isArray(c.installments) && c.installments.length > 0)
-
-    let paid = Number(c.paidAmount || 0)
-    if (isInstallment) {
-      if (Array.isArray(c.installments) && c.installments.length > 0) {
-        const installmentSum = c.installments
-          .filter((inst: any) => inst.status === 'paid')
-          .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
-        if (installmentSum > 0) paid = installmentSum
-      }
-    } else {
-      paid = total
-    }
-
-    // Cumulative all-time collected across all contracts
-    allTimeCollectedAmount += paid
-
-    if (isMatchPeriod) {
-      totalContractedAmount += total
-      totalPaidAmount += paid
-      if (isInstallment) {
-        installmentPaidTotal += paid
-        pendingInstallmentsTotal += Math.max(0, total - paid)
-      } else {
-        lumpSumTotal += total
-      }
-    }
-
-    // Unearned revenue liability across active contracts: remainingSessions * avgPrice
-    const rem = Number(c.remainingSessions || 0)
-    const tot = Number(c.totalSessions || 0)
-    if (rem > 0 && tot > 0) {
-      const avgPrice = total / tot
-      unearnedLiabilityBalance += rem * avgPrice
-      remainingContractSessions += rem
-      totalContractSessions += tot
-    }
-  })
-
-  // 2. Fetch lessonRecords to compute realized revenue
-  const lessonsSnap = await db.collection('lessonRecords').where('centerId', '==', centerId).get()
-
-  let realizedLessonRevenue = 0
-  let realizedLessonSessions = 0
-  let realizedLessonRecordsCount = 0
-
-  lessonsSnap.docs.forEach((doc) => {
-    const l = doc.data()
-    const taipeiDate = parseToTaipeiDate(l.sessionDate)
-    if (!taipeiDate) return
-    const dateStr = taipeiDate.dateStr
-
-    let isMatchPeriod = false
-    if (isAllTime) {
-      isMatchPeriod = true
-    } else if (startDate && endDate) {
-      isMatchPeriod = dateStr >= startDate && dateStr <= endDate
-    } else if (year) {
-      isMatchPeriod =
-        taipeiDate.year === year &&
-        (month === 'all' || taipeiDate.month === month)
-    }
-
-    if (isMatchPeriod) {
-      realizedLessonRecordsCount++
-
-      const deductions =
-        l.deductions && l.deductions.length > 0
-          ? l.deductions
-          : [
-              {
-                customerId: l.customerId,
-                contractId: l.contractId,
-                sessionAmount: l.sessionAmount || 1,
-              },
-            ]
-
-      deductions.forEach((d: any) => {
-        const c = contractMap.get(d.contractId)
-        const sessions = Number(d.sessionAmount || 1)
-        realizedLessonSessions += sessions
-
-        if (c && Number(c.totalSessions) > 0) {
-          const avgPrice = Number(c.totalAmount || 0) / Number(c.totalSessions)
-          realizedLessonRevenue += sessions * avgPrice
-        } else {
-          realizedLessonRevenue += sessions * 1500
-        }
-      })
-    }
-  })
+  const summary = calculatePrepaidAndRealized(
+    contracts,
+    lessonRecords,
+    period
+  )
 
   const dateRangeLabel =
     startDate && endDate
@@ -456,33 +516,31 @@ export async function getPrepaidAndRealizedMetrics(params: {
           : `${year}全年度`
         : '全期（歷史至今）'
 
-  const avgSessionPrice =
-    realizedLessonSessions > 0 ? Math.round(realizedLessonRevenue / realizedLessonSessions) : 0
-
   return {
     year,
     month,
     startDate,
     endDate,
     dateRangeLabel,
-    periodContractedAmount: totalContractedAmount,
-    periodTotalPaidAmount: totalPaidAmount,
-    lumpSumPaidAmount: lumpSumTotal,
-    installmentPaidAmount: installmentPaidTotal,
-    pendingInstallmentsAmount: pendingInstallmentsTotal,
-    allTimeCollectedAmount,
-    realizedLessonRevenue: Math.round(realizedLessonRevenue),
-    realizedLessonSessions,
-    realizedLessonRecordsCount,
-    averageSessionPrice: avgSessionPrice,
-    unearnedRevenueLiabilityBalance: Math.round(unearnedLiabilityBalance),
-    activeContractsRemainingSessions: remainingContractSessions,
-    activeContractsTotalSessions: totalContractSessions,
+    periodContractedAmount: summary.newContractsTotalValue,
+    periodTotalPaidAmount: summary.totalCollectedAmount,
+    lumpSumPaidAmount: summary.lumpSumTotal,
+    installmentPaidAmount: summary.installmentPaidTotal,
+    pendingInstallmentsAmount: summary.pendingInstallmentsTotal,
+    allTimeCollectedAmount: summary.allTimeCollected,
+    realizedLessonRevenue: summary.realizedRevenueTotal,
+    realizedLessonSessions: summary.totalSessionsUsed,
+    realizedLessonRecordsCount: summary.totalSessionsUsed,
+    averageSessionPrice: summary.averageSessionPrice,
+    unearnedRevenueLiabilityBalance: summary.unearnedLiabilityBalance,
+    activeContractsRemainingSessions: summary.remainingSessionsCount,
+    activeContractsTotalSessions: summary.remainingSessionsCount + summary.totalSessionsUsed,
+    allTimeNetCollectedMinusRealized: summary.allTimeNetCollectedMinusRealized,
   }
 }
 
 /**
- * Tool 4: query_contract_payments
+ * Backwards-Compatible Tool 4: query_contract_payments
  */
 export async function queryContractPayments(params: {
   centerId: string
@@ -490,79 +548,53 @@ export async function queryContractPayments(params: {
   paymentStatus?: 'paid' | 'pending' | 'overdue' | 'all'
   limit?: number
 }) {
-  const db = getDb()
   const { centerId, studentName, paymentStatus = 'all', limit = 30 } = params
-
-  // Fetch customers to map name to customerId
-  const customersSnap = await db.collection('customers').where('centerId', '==', centerId).get()
-  const customerMap = new Map<string, string>()
-  customersSnap.docs.forEach((d) => {
-    const data = d.data()
-    customerMap.set(d.id, data.name || '')
-  })
-
-  // Fetch contracts
-  const contractsSnap = await db.collection('contracts').where('centerId', '==', centerId).get()
+  const { contracts } = await fetchCenterDatasets(centerId)
 
   const results: any[] = []
 
-  contractsSnap.docs.forEach((doc) => {
-    const c = doc.data()
-    const custName = customerMap.get(c.customerId) || c.customerId || '未知學員'
+  contracts.forEach((c) => {
+    const custName = c.studentName || c.customerName || '未知學員'
 
     if (studentName && !custName.toLowerCase().includes(studentName.toLowerCase())) {
       return
     }
 
-    const total = Number(c.totalAmount || 0)
-    const isInstallment =
-      c.paymentType === 'installment' ||
-      c.paymentType === 'installments' ||
-      (Array.isArray(c.installments) && c.installments.length > 0)
-
-    let paid = Number(c.paidAmount || 0)
+    const info = getContractPaymentInfo(c)
     let overdueCount = 0
     let pendingCount = 0
 
-    if (isInstallment && Array.isArray(c.installments)) {
-      paid = c.installments
-        .filter((inst: any) => inst.status === 'paid')
-        .reduce((sum: number, inst: any) => sum + Number(inst.amount || 0), 0)
-
+    if (info.isInstallment && Array.isArray(c.installments)) {
       overdueCount = c.installments.filter((inst: any) => inst.status === 'overdue').length
       pendingCount = c.installments.filter((inst: any) => inst.status === 'pending').length
-    } else if (!isInstallment) {
-      paid = total
     }
 
     let status: 'paid' | 'pending' | 'overdue' = 'paid'
     if (overdueCount > 0) status = 'overdue'
-    else if (paid < total || pendingCount > 0) status = 'pending'
+    else if (info.paid < info.total || pendingCount > 0) status = 'pending'
 
     if (paymentStatus !== 'all' && status !== paymentStatus) {
       return
     }
 
-    let startDateStr = ''
-    const taipeiDate = parseToTaipeiDate(c.startDate)
-    if (taipeiDate) startDateStr = taipeiDate.dateStr
+    const taipeiDate = parseDateToTaipei(c.startDate)
+    const startDateStr = taipeiDate?.dateStr || '-'
 
     results.push({
-      contractNo: c.contractNo || doc.id.substring(0, 8),
+      contractNo: c.contractNo || c.id.substring(0, 8),
       studentName: custName,
       contractType: c.contractType || 'single',
       totalSessions: Number(c.totalSessions || 0),
       remainingSessions: Number(c.remainingSessions || 0),
-      totalAmount: total,
-      paidAmount: paid,
-      unpaidAmount: Math.max(0, total - paid),
-      paymentType: isInstallment ? '分期付款' : '全額躉繳',
+      totalAmount: info.total,
+      paidAmount: info.paid,
+      unpaidAmount: Math.max(0, info.total - info.paid),
+      paymentType: info.isInstallment ? '分期付款' : '全額躉繳',
       paymentStatus: status === 'paid' ? '已付清' : status === 'overdue' ? '有逾期' : '分期中',
-      startDate: startDateStr || '-',
+      startDate: startDateStr,
     })
   })
 
-  // Sort by unpaidAmount desc
   results.sort((a, b) => b.unpaidAmount - a.unpaidAmount)
 
   return {
