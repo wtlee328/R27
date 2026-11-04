@@ -33,7 +33,7 @@ export function useTrainers() {
   const [error, setError] = useState<string | null>(null)
   const { centerId } = useCenterStore()
   const { user } = useAuthStore()
-  const activeCenterId = user?.isSharedTrainerAccount ? (user.centerId || 'r27') : centerId
+  const activeCenterId = user?.isSharedTrainerAccount ? (user.centerId || 'hongshulin_branch') : centerId
 
   const fetchTrainersData = useCallback(async () => {
     setLoading(true)

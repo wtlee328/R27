@@ -5,7 +5,7 @@ import { askAccountingAI } from '@/services/aiService'
 import { auth } from '@/lib/firebase'
 
 export const getDefaultWelcomeMessage = (centerId: string): AIChatMessage => {
-  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
   return {
     id: `welcome_${centerId}_init`,
     role: 'assistant',
@@ -66,8 +66,8 @@ export const useAIAssistantStore = create<AIAssistantState>()(
       userSessions: {},
       activeSessionId: {},
       messagesByCenter: {
-        r27: [getDefaultWelcomeMessage('r27')],
-        coffit: [getDefaultWelcomeMessage('coffit')],
+        hongshulin_branch: [getDefaultWelcomeMessage('hongshulin_branch')],
+        tianmu_branch: [getDefaultWelcomeMessage('tianmu_branch')],
       },
 
       toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
@@ -144,7 +144,7 @@ export const useAIAssistantStore = create<AIAssistantState>()(
 
       clearMessages: (centerId: string) => {
         const userId = getCurrentUserId()
-        const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+        const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
         const currentSessionId = get().getActiveSessionId(centerId)
 
         const clearedMessage: AIChatMessage = {

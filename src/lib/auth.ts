@@ -39,9 +39,14 @@ export function useAuthListener() {
 
         if (userSnap.exists()) {
           const userData = userSnap.data()
+          const normalizedCenterId =
+            userData.centerId === 'tianmu_branch'
+              ? 'tianmu_branch'
+              : 'hongshulin_branch'
           appUser = {
             uid: firebaseUser.uid,
             ...userData,
+            centerId: normalizedCenterId,
             // Custom Claims take highest precedence if set
             role: tokenRole || (userData.role as UserRole) || 'trainer',
           } as AppUser
@@ -49,8 +54,8 @@ export function useAuthListener() {
           // First login — create user doc
           // Check if this is a shared trainer account
           const trainerEmailMap: Record<string, string> = {
-            'trainer-r27@r27app.com': 'r27',
-            'trainer-coffit@r27app.com': 'coffit',
+            'trainer-hongshulin@r27app.com': 'hongshulin_branch',
+            'trainer-tianmu@r27app.com': 'tianmu_branch',
           }
           const trainerCenterId = trainerEmailMap[firebaseUser.email ?? '']
           
@@ -60,7 +65,7 @@ export function useAuthListener() {
             // Shared trainer account
             newUser = {
               email: firebaseUser.email ?? '',
-              displayName: trainerCenterId === 'r27' ? 'R27 教練' : 'Coffit 教練',
+              displayName: trainerCenterId === 'hongshulin_branch' ? 'R27 紅樹林店教練' : 'R27 天母店教練',
               role: 'trainer',
               centerId: trainerCenterId,
               isSharedTrainerAccount: true,
@@ -74,7 +79,7 @@ export function useAuthListener() {
               email: firebaseUser.email ?? '',
               displayName: firebaseUser.displayName ?? firebaseUser.email ?? '',
               role,
-              centerId: 'r27',
+              centerId: 'hongshulin_branch',
               createdAt: serverTimestamp(),
               updatedAt: serverTimestamp(),
             }

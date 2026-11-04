@@ -22,13 +22,13 @@ export default function ActivityLogPage() {
   // Filter logs
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
-      const centerLabel = log.centerId === 'coffit' ? 'coffit' : log.centerId === 'r27' ? 'r27 健身' : '通用場館'
+      const centerLabel = log.centerId === 'tianmu_branch' ? 'R27 天母店' : log.centerId === 'hongshulin_branch' ? 'R27 紅樹林店' : '通用場館'
       const matchSearch =
         log.trainerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.recordSummary.toLowerCase().includes(searchTerm.toLowerCase()) ||
         centerLabel.toLowerCase().includes(searchTerm.toLowerCase())
       
-      const matchCenter = selectedCenter === 'all' || log.centerId === selectedCenter || (!log.centerId && selectedCenter === 'r27')
+      const matchCenter = selectedCenter === 'all' || log.centerId === selectedCenter || (!log.centerId && selectedCenter === 'hongshulin_branch')
       const matchModule = selectedModule === 'all' || log.module === selectedModule
       const matchAction = selectedAction === 'all' || log.action === selectedAction
 
@@ -42,19 +42,19 @@ export default function ActivityLogPage() {
   }
 
   const getCenterBadge = (cId?: string) => {
-    if (cId === 'coffit') {
+    if (cId === 'tianmu_branch') {
       return (
         <span className="bg-purple-50 text-purple-700 border-purple-200/80 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-          Coffit
+          R27 天母店
         </span>
       )
     }
-    if (cId === 'r27') {
+    if (cId === 'hongshulin_branch') {
       return (
         <span className="bg-orange-50 text-orange-700 border-orange-200/80 font-bold text-[10px] px-2 py-0.5 rounded border inline-flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-          R27 健身
+          R27 紅樹林店
         </span>
       )
     }
@@ -126,8 +126,8 @@ export default function ActivityLogPage() {
             onChange={setSelectedCenter}
             options={[
               { value: 'all', label: '所有場館' },
-              { value: 'r27', label: 'R27 健身' },
-              { value: 'coffit', label: 'Coffit' },
+              { value: 'hongshulin_branch', label: 'R27 紅樹林店' },
+              { value: 'tianmu_branch', label: 'R27 天母店' },
             ]}
             icon={Building2}
             label="場館過濾"

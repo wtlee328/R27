@@ -24,7 +24,7 @@ const STORAGE_KEY_CONFIG = 'r27_auto_backup_config'
 export const DEFAULT_BACKUP_CONFIG: AutoBackupConfig = {
   frequency: 'none',
   lastRunTimestamp: 0,
-  gdriveFolderId: 'R27_Coffit_Backups',
+  gdriveFolderId: 'R27_Fitness_Backups',
   syncToGDrive: false,
 }
 
@@ -109,7 +109,7 @@ export function isBackupDue(config: AutoBackupConfig): boolean {
  */
 export async function pushBackupNotification({
   userId,
-  centerId = 'r27',
+  centerId = 'hongshulin_branch',
   isSuccess,
   message,
   detail,
@@ -155,7 +155,7 @@ const BACKUP_COLLECTIONS = [
  */
 export async function executeScheduledBackup({
   userId,
-  centerId = 'r27',
+  centerId = 'hongshulin_branch',
   isManualTrigger = false,
 }: {
   userId: string
@@ -192,7 +192,7 @@ export async function executeScheduledBackup({
     const tokenObj = getStoredGoogleDriveToken()
     if (tokenObj && tokenObj.expiresAt > Date.now()) {
       try {
-        const folderId = await findOrCreateFolder(tokenObj.accessToken, config.gdriveFolderId || 'R27_Coffit_Backups')
+        const folderId = await findOrCreateFolder(tokenObj.accessToken, config.gdriveFolderId || 'R27_Fitness_Backups')
         const driveRes = await uploadFileToGoogleDrive({
           accessToken: tokenObj.accessToken,
           folderId,

@@ -51,7 +51,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { useAutoBackupScheduler } from '../hooks/useAutoBackupScheduler'
 
-type ScopeType = 'all' | 'r27' | 'coffit'
+type ScopeType = 'all' | 'hongshulin_branch' | 'tianmu_branch'
 
 interface BackupLog {
   collection: string
@@ -160,7 +160,7 @@ export default function BackupPage() {
   const [googleToken, setGoogleToken] = useState<{ accessToken: string; expiresAt: number } | null>(initialSavedToken)
   const [syncToGDrive, setSyncToGDrive] = useState(() => Boolean(initialSavedToken))
   const [downloadLocalCopy, setDownloadLocalCopy] = useState(true)
-  const [gdriveFolderId, setGdriveFolderId] = useState('R27_Coffit_Backups')
+  const [gdriveFolderId, setGdriveFolderId] = useState('R27_Fitness_Backups')
   const [googleClientId, setGoogleClientId] = useState<string>(() => getStoredGoogleClientId())
   const [clientIdInput, setClientIdInput] = useState<string>('')
   const [showClientIdModal, setShowClientIdModal] = useState<boolean>(false)
@@ -397,8 +397,8 @@ export default function BackupPage() {
     }
 
     const formatCenterId = (cid: any) => {
-      if (!cid || cid === 'r27') return 'R27 Fitness'
-      if (cid === 'coffit') return 'Coffit 訓練中心'
+      if (!cid || cid === 'hongshulin_branch') return 'R27 紅樹林店'
+      if (cid === 'tianmu_branch') return 'R27 天母店'
       return String(cid)
     }
 
@@ -796,13 +796,13 @@ export default function BackupPage() {
               const data = d.data()
               return {
                 id: d.id,
-                centerId: data.centerId || 'r27',
+                centerId: data.centerId || 'hongshulin_branch',
                 ...data
               }
             })
             .filter(item => {
               if (selectedScope === 'all') return true
-              if (selectedScope === 'r27') return !item.centerId || item.centerId === 'r27'
+              if (selectedScope === 'hongshulin_branch') return !item.centerId || item.centerId === 'hongshulin_branch'
               return item.centerId === selectedScope
             })
 
@@ -844,7 +844,7 @@ export default function BackupPage() {
       setExportProgress(85)
 
       const dateStr = format(new Date(), 'yyyyMMdd_HHmmss')
-      const scopeLabel = selectedScope === 'all' ? '全部場館' : selectedScope === 'r27' ? 'R27_Fitness' : 'Coffit_訓練中心'
+      const scopeLabel = selectedScope === 'all' ? '全部場館' : selectedScope === 'hongshulin_branch' ? 'R27_紅樹林店' : 'R27_天母店'
       const filename = `系統備份_${scopeLabel}_${dateStr}.zip`
 
       if (syncToGDrive) {
@@ -872,7 +872,7 @@ export default function BackupPage() {
         if (token) {
           try {
             setExportProgress(90)
-            const folderId = await findOrCreateFolder(token, gdriveFolderId || 'R27_Coffit_Backups')
+            const folderId = await findOrCreateFolder(token, gdriveFolderId || 'R27_Fitness_Backups')
             const driveFile = await uploadFileToGoogleDrive({
               accessToken: token,
               folderId,
@@ -1033,6 +1033,14 @@ export default function BackupPage() {
           if (!rawItem.id) continue
           const docId = String(rawItem.id)
           const dataToSave = restoreTimestamps(rawItem)
+          if (
+            dataToSave.centerId &&
+            dataToSave.centerId !== 'hongshulin_branch' &&
+            dataToSave.centerId !== 'tianmu_branch'
+          ) {
+            dataToSave.centerId =
+              String(dataToSave.centerId).toLowerCase() === 'r27' ? 'hongshulin_branch' : 'tianmu_branch'
+          }
           
           const docRef = doc(db, logItem.collection, docId)
           await setDoc(docRef, dataToSave, { merge: true })
@@ -1431,8 +1439,8 @@ export default function BackupPage() {
               </div>
               
               <div className="grid grid-cols-3 gap-3">
-                {(['all', 'r27', 'coffit'] as const).map(scope => {
-                  const label = scope === 'all' ? '全部場館' : scope === 'r27' ? 'R27 Fitness' : 'Coffit 訓練中心'
+                {(['all', 'hongshulin_branch', 'tianmu_branch'] as const).map(scope => {
+                  const label = scope === 'all' ? '全部場館' : scope === 'hongshulin_branch' ? 'R27 紅樹林店' : 'R27 天母店'
                   const isSelected = selectedScope === scope
                   return (
                     <button
@@ -1449,7 +1457,7 @@ export default function BackupPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
                         isSelected ? 'bg-white/20 text-white/90' : 'bg-stone-50 text-stone-400'
                       }`}>
-                        {scope === 'all' ? 'R27 + Coffit' : scope.toUpperCase()}
+                        {scope === 'all' ? '紅樹林店 + 天母店' : scope === 'hongshulin_branch' ? 'HONGSHULIN' : 'TIANMU'}
                       </span>
                     </button>
                   )
@@ -1524,7 +1532,7 @@ export default function BackupPage() {
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">
                   <span className="text-stone-400 font-medium">所選訓練中心</span>
                   <span className="font-bold text-white">
-                    {selectedScope === 'all' ? '全部場館 (R27 + Coffit)' : selectedScope === 'r27' ? 'R27 Fitness' : 'Coffit 訓練中心'}
+                    {selectedScope === 'all' ? '全部場館 (紅樹林店 + 天母店)' : selectedScope === 'hongshulin_branch' ? 'R27 紅樹林店' : 'R27 天母店'}
                   </span>
                 </div>
                 <div className="flex justify-between border-b border-stone-800 pb-2.5">

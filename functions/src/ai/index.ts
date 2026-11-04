@@ -58,7 +58,7 @@ export const askAIAssistant = onRequest(
       }
 
       // 4. Validate Request Payload
-      const { message, centerId = 'r27', conversationHistory = [], sessionId } = req.body as AIAssistantRequest
+      const { message, centerId = 'hongshulin_branch', conversationHistory = [], sessionId } = req.body as AIAssistantRequest
       if (!message || typeof message !== 'string' || message.trim().length === 0) {
         res.status(400).json({ ok: false, error: '請提供提問內容' })
         return

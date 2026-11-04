@@ -21,7 +21,7 @@ export async function routeIntent(
   centerId: string,
   conversationHistory: ChatMessage[] = []
 ): Promise<RouteResult> {
-  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
   const trimmed = userMessage.trim()
 
   // ── 1. Follow-up Heuristic Protection (Zero-latency Contextual Bypass) ──

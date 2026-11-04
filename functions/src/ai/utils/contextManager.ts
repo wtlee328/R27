@@ -121,7 +121,7 @@ export async function manageContextMemory(
     })
     .join('\n\n')
 
-  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
 
   const compactionPrompt = `你是一個專業健身場館管理系統的「會計對話記憶壓縮專家」。
 【當前服務場館】：${centerName}
