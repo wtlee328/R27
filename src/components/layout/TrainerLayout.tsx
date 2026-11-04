@@ -33,7 +33,7 @@ export function TrainerLayout() {
     return <Navigate to="/trainer/select" replace />
   }
 
-  const centerLabel = user?.centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+  const centerLabel = user?.centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
   const centerSubLabel = '教練管理系統'
 
   const activeTab = TRAINER_TABS.find(t => location.pathname.startsWith(t.to))

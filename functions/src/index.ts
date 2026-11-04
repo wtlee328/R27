@@ -309,7 +309,7 @@ export async function executeAutomatedBackup(isManual = false) {
       const notifRef = db.collection('notifications').doc()
       batch.set(notifRef, {
         userId: adminDoc.id,
-        centerId: 'r27',
+        centerId: 'hongshulin_branch',
         type: 'backup_success',
         title: '自動排程備份成功',
         message: successMsg,
@@ -358,7 +358,7 @@ export async function executeAutomatedBackup(isManual = false) {
         const notifRef = db.collection('notifications').doc()
         batch.set(notifRef, {
           userId: adminDoc.id,
-          centerId: 'r27',
+          centerId: 'hongshulin_branch',
           type: 'backup_failed',
           title: '自動排程備份失敗',
           message: errorMsg,

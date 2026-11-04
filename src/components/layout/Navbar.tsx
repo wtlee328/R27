@@ -18,7 +18,7 @@ import {
 import { NotificationCenter } from '@/components/layout/NotificationCenter'
 
 import { useMenuStore, ALL_NAV_ITEMS, type NavItem } from '@/stores/menuStore'
-import { useCenterStore } from '@/stores/centerStore'
+import { useCenterStore, type CenterId } from '@/stores/centerStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { RiSunLine, RiMoonLine } from '@remixicon/react'
 
@@ -60,13 +60,7 @@ export function Navbar() {
 
         {/* Brand Logo area in topbar */}
         <div className="flex items-center justify-center h-full">
-          {centerId === 'r27' ? (
-            <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-11 sm:h-12 w-auto max-h-[50px] object-contain brightness-0 dark-invert-logo shrink-0 select-none translate-y-[5px]" />
-          ) : (
-            <div className="flex items-center text-stone-950 font-black tracking-widest text-lg pl-2 select-none translate-y-[1px]">
-              COFFIT
-            </div>
-          )}
+          <img src="/assets/logos/on-dark/logo-small.png" alt="R27" className="h-11 sm:h-12 w-auto max-h-[50px] object-contain brightness-0 dark-invert-logo shrink-0 select-none translate-y-[5px]" />
         </div>
 
         <div className="flex-1" />
@@ -178,7 +172,7 @@ export function Navbar() {
         {/* Sidebar Footer */}
         <div className="p-4 bg-transparent shrink-0">
           <p className="text-[11px] font-bold text-stone-400 text-center">
-            © {new Date().getFullYear()} {centerId === 'r27' ? 'R27 FITNESS' : 'COFFIT'}
+            © {new Date().getFullYear()} R27 FITNESS
           </p>
         </div>
       </aside>
@@ -186,14 +180,14 @@ export function Navbar() {
   )
 }
 
-function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenterId: (id: 'r27' | 'coffit') => void }) {
+function CenterSwitcher({ centerId, setCenterId }: { centerId: CenterId; setCenterId: (id: CenterId) => void }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200/80 text-stone-800 transition-all text-xs font-bold select-none outline-none border border-stone-200 cursor-pointer dark:bg-[#232f3d] dark:hover:bg-[#2c3b4d] dark:text-stone-100 dark:border-stone-700">
           <div className="flex items-center gap-1.5">
             <Building2 className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-            <span>{centerId === 'r27' ? 'R27 Fitness' : 'Coffit'}</span>
+            <span>{centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'}</span>
           </div>
           <ChevronDown className="h-3 w-3 text-stone-400" />
         </button>
@@ -202,28 +196,28 @@ function CenterSwitcher({ centerId, setCenterId }: { centerId: string; setCenter
         <DropdownMenuLabel className="text-[11px] font-bold text-stone-400 dark:text-stone-400">選擇切換場館</DropdownMenuLabel>
         <DropdownMenuSeparator className="dark:bg-stone-700" />
         <DropdownMenuItem
-          onClick={() => setCenterId('r27')}
+          onClick={() => setCenterId('hongshulin_branch')}
           className={cn(
             "flex items-center justify-between cursor-pointer text-xs py-2 font-bold text-stone-700 dark:text-stone-200",
-            centerId === 'r27'
+            centerId === 'hongshulin_branch'
               ? "text-orange-600 bg-orange-50 focus:bg-orange-100 focus:text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 dark:focus:bg-orange-500/30 dark:focus:text-orange-300"
               : "focus:bg-stone-100 focus:text-stone-900 dark:focus:bg-stone-700/80 dark:focus:text-white"
           )}
         >
-          <span>R27 Fitness</span>
-          {centerId === 'r27' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
+          <span>R27 紅樹林店</span>
+          {centerId === 'hongshulin_branch' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
         </DropdownMenuItem>
         <DropdownMenuItem
-          onClick={() => setCenterId('coffit')}
+          onClick={() => setCenterId('tianmu_branch')}
           className={cn(
             "flex items-center justify-between cursor-pointer text-xs py-2 font-bold text-stone-700 dark:text-stone-200",
-            centerId === 'coffit'
+            centerId === 'tianmu_branch'
               ? "text-orange-600 bg-orange-50 focus:bg-orange-100 focus:text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 dark:focus:bg-orange-500/30 dark:focus:text-orange-300"
               : "focus:bg-stone-100 focus:text-stone-900 dark:focus:bg-stone-700/80 dark:focus:text-white"
           )}
         >
-          <span>Coffit</span>
-          {centerId === 'coffit' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
+          <span>R27 天母店</span>
+          {centerId === 'tianmu_branch' && <span className="text-[10px] text-orange-600 dark:text-orange-400 font-black">✓</span>}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

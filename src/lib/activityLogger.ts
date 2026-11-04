@@ -1,10 +1,10 @@
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { db, auth } from './firebase'
-import { useCenterStore } from '../stores/centerStore'
+import { useCenterStore, type CenterId } from '../stores/centerStore'
 import type { ActivityAction, ActivityModule } from '@/types'
 
 export async function logActivity(params: {
-  centerId?: 'r27' | 'coffit'
+  centerId?: CenterId
   trainerId: string
   trainerName: string
   action: ActivityAction
@@ -42,7 +42,7 @@ export async function logActivity(params: {
       }
     }
 
-    resolvedCenterId = resolvedCenterId || 'r27'
+    resolvedCenterId = resolvedCenterId || 'hongshulin_branch'
 
     const docData = {
       ...params,

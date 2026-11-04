@@ -6,17 +6,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuthStore } from '@/stores/authStore'
+import type { CenterId } from '@/stores/centerStore'
 
-type LoginProfile = 'admin' | 'r27-trainer' | 'coffit-trainer' | null
+type LoginRole = 'admin' | 'trainer' | null
 
-const TRAINER_EMAIL_MAP: Record<string, string> = {
-  'r27-trainer': 'trainer-r27@r27app.com',
-  'coffit-trainer': 'trainer-coffit@r27app.com',
+const TRAINER_EMAIL_MAP: Record<CenterId, string> = {
+  hongshulin_branch: 'trainer-hongshulin@r27app.com',
+  tianmu_branch: 'trainer-tianmu@r27app.com',
 }
 
-const PROFILE_CONFIG = [
+interface SelectorOption {
+  id: string
+  label: string
+  sublabel: string
+  dotColor: string
+  glowColor: string
+  glowColorStrong: string
+}
+
+const ROLE_OPTIONS: SelectorOption[] = [
   {
-    id: 'admin' as const,
+    id: 'admin',
     label: '管理員',
     sublabel: '全功能管理介面',
     dotColor: 'bg-white',
@@ -24,30 +34,40 @@ const PROFILE_CONFIG = [
     glowColorStrong: 'rgba(255,255,255,0.35)',
   },
   {
-    id: 'r27-trainer' as const,
-    label: 'R27 教練',
+    id: 'trainer',
+    label: '教練',
     sublabel: '銷課・體驗客・場租',
     dotColor: 'bg-orange-500',
     glowColor: 'rgba(249,115,22,0.18)',
     glowColorStrong: 'rgba(249,115,22,0.30)',
   },
+]
+
+const BRANCH_OPTIONS: (SelectorOption & { id: CenterId })[] = [
   {
-    id: 'coffit-trainer' as const,
-    label: 'Coffit 教練',
-    sublabel: '銷課・體驗客・場租',
+    id: 'hongshulin_branch',
+    label: 'R27 紅樹林店',
+    sublabel: '紅樹林店教練專區・銷課・體驗客・場租',
+    dotColor: 'bg-orange-500',
+    glowColor: 'rgba(249,115,22,0.18)',
+    glowColorStrong: 'rgba(249,115,22,0.30)',
+  },
+  {
+    id: 'tianmu_branch',
+    label: 'R27 天母店',
+    sublabel: '天母店教練專區・銷課・體驗客・場租',
     dotColor: 'bg-sky-400',
     glowColor: 'rgba(56,189,248,0.15)',
     glowColorStrong: 'rgba(56,189,248,0.28)',
   },
 ]
 
-type ProfileCfg = (typeof PROFILE_CONFIG)[number]
-
-function ProfileButton({ cfg, onClick }: { cfg: ProfileCfg; onClick: () => void }) {
+function OptionButton({ cfg, onClick }: { cfg: SelectorOption; onClick: () => void }) {
   const [hovered, setHovered] = useState(false)
 
   return (
     <button
+      type="button"
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -90,7 +110,8 @@ export default function LoginPage() {
   const from = (location.state as { from?: Location })?.from?.pathname ?? '/'
 
   const { user, loading: authLoading } = useAuthStore()
-  const [profile, setProfile] = useState<LoginProfile>(null)
+  const [role, setRole] = useState<LoginRole>(null)
+  const [branch, setBranch] = useState<CenterId | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -107,13 +128,30 @@ export default function LoginPage() {
     }
   }, [user, authLoading, navigate, from])
 
-  function handleSelectProfile(p: LoginProfile) {
-    setProfile(p)
+  function handleSelectRole(selectedRole: LoginRole) {
+    setRole(selectedRole)
+    setBranch(null)
     setError(null)
     setPassword('')
-    if (p && p !== 'admin') {
-      setEmail(TRAINER_EMAIL_MAP[p] || '')
+    setEmail('')
+  }
+
+  function handleSelectBranch(selectedBranch: CenterId) {
+    setBranch(selectedBranch)
+    setError(null)
+    setPassword('')
+    setEmail(TRAINER_EMAIL_MAP[selectedBranch] || '')
+  }
+
+  function handleBack() {
+    setError(null)
+    setPassword('')
+    if (role === 'trainer' && branch) {
+      setBranch(null)
+      setEmail('')
     } else {
+      setRole(null)
+      setBranch(null)
       setEmail('')
     }
   }
@@ -123,7 +161,12 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const loginEmail = profile === 'admin' ? email : (TRAINER_EMAIL_MAP[profile!] || '')
+      const loginEmail =
+        role === 'admin'
+          ? email
+          : branch
+            ? TRAINER_EMAIL_MAP[branch]
+            : ''
       await signIn(loginEmail, password)
     } catch (err: any) {
       console.error('Auth error:', err)
@@ -131,6 +174,8 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
+  const selectedBranchCfg = branch ? BRANCH_OPTIONS.find((b) => b.id === branch) : null
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4" style={{ background: 'linear-gradient(135deg, #1c1917 0%, #292524 50%, #1c1917 100%)' }}>
@@ -151,7 +196,7 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         {/* ── Brand Header ── */}
-        <div className="text-center mb-10 select-none space-y-5">
+        <div className="text-center mb-10 select-none space-y-4">
           {/* R27 Logo */}
           <div className="flex justify-center">
             <img
@@ -161,19 +206,8 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* × Divider + COFFIT */}
-          <div className="flex items-center justify-center gap-3">
-            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-stone-700 to-stone-700" />
-            <span className="text-stone-600 text-xs font-bold tracking-widest uppercase px-1">×</span>
-            <div className="h-px flex-1 bg-gradient-to-l from-transparent via-stone-700 to-stone-700" />
-          </div>
-
-          {/* COFFIT Wordmark */}
-          <div className="space-y-1.5">
-            <p className="text-white/90 text-xl font-black tracking-[0.2em] uppercase">
-              COFFIT
-            </p>
-            <p className="text-stone-500 text-[11px] tracking-[0.15em] uppercase font-medium">
+          <div className="space-y-1">
+            <p className="text-stone-400 text-[11px] tracking-[0.2em] uppercase font-semibold">
               健身管理系統
             </p>
           </div>
@@ -181,57 +215,81 @@ export default function LoginPage() {
 
         {/* ── Card ── */}
         <div className="bg-stone-800/70 backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/50 border border-stone-700/60 overflow-hidden">
-          {!profile ? (
-            /* ── Profile Selector ── */
+          {!role ? (
+            /* ── Step 1: Role Selector ── */
             <div className="p-6">
               <div className="mb-5">
-                <h2 className="text-sm font-bold text-stone-300 tracking-wide">選擇登入身份</h2>
+                <h2 className="text-sm font-bold text-stone-300 tracking-wide">選擇登入角色</h2>
               </div>
               <div className="space-y-2">
-                {PROFILE_CONFIG.map((cfg) => (
-                  <ProfileButton
+                {ROLE_OPTIONS.map((cfg) => (
+                  <OptionButton
                     key={cfg.id}
                     cfg={cfg}
-                    onClick={() => handleSelectProfile(cfg.id)}
+                    onClick={() => handleSelectRole(cfg.id as LoginRole)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : role === 'trainer' && !branch ? (
+            /* ── Step 2: Branch Selector (for Trainers) ── */
+            <div className="p-6">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-300 transition-colors mb-5 -mt-1 cursor-pointer font-medium"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                返回選擇角色
+              </button>
+              <div className="mb-5">
+                <h2 className="text-sm font-bold text-stone-200 tracking-wide">選擇所屬分店</h2>
+                <p className="text-[11px] text-stone-500 mt-0.5">請選擇您所屬的 R27 分店以繼續登入</p>
+              </div>
+              <div className="space-y-2">
+                {BRANCH_OPTIONS.map((cfg) => (
+                  <OptionButton
+                    key={cfg.id}
+                    cfg={cfg}
+                    onClick={() => handleSelectBranch(cfg.id)}
                   />
                 ))}
               </div>
             </div>
           ) : (
-            /* ── Login Form ── */
+            /* ── Step 3 / Admin: Login Form ── */
             <div className="p-6">
               <button
                 type="button"
-                onClick={() => { setProfile(null); setError(null) }}
+                onClick={handleBack}
                 className="flex items-center gap-1 text-xs text-stone-500 hover:text-stone-300 transition-colors mb-5 -mt-1 cursor-pointer font-medium"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
-                返回
+                {role === 'trainer' ? '返回選擇分店' : '返回選擇角色'}
               </button>
 
               {/* Profile badge */}
-              {(() => {
-                const cfg = PROFILE_CONFIG.find(c => c.id === profile)
-                return (
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className={`w-2 h-2 rounded-full ${cfg?.dotColor ?? 'bg-stone-400'} shrink-0`} />
-                    <div>
-                      <h2 className="text-sm font-bold text-stone-200">
-                        {profile === 'admin' ? '管理員登入' : `${cfg?.label} 登入`}
-                      </h2>
-                      <p className="text-[11px] text-stone-500 mt-0.5">
-                        {profile === 'admin'
-                          ? '請輸入管理員帳號與密碼以繼續'
-                          : '請輸入教練密碼以繼續'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                )
-              })()}
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    role === 'admin' ? 'bg-white' : (selectedBranchCfg?.dotColor ?? 'bg-orange-500')
+                  } shrink-0`}
+                />
+                <div>
+                  <h2 className="text-sm font-bold text-stone-200">
+                    {role === 'admin' ? '管理員登入' : `${selectedBranchCfg?.label ?? 'R27'} 教練登入`}
+                  </h2>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    {role === 'admin'
+                      ? '請輸入管理員帳號與密碼以繼續'
+                      : '請輸入教練密碼以繼續'
+                    }
+                  </p>
+                </div>
+              </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {profile === 'admin' && (
+                {role === 'admin' && (
                   <div className="space-y-1.5">
                     <Label htmlFor="email" className="text-stone-400 text-xs font-medium">管理員電子郵件</Label>
                     <Input
@@ -296,7 +354,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-stone-700 mt-7 tracking-wider">
-          © {new Date().getFullYear()} R27 FITNESS STATION × COFFIT
+          © {new Date().getFullYear()} R27 FITNESS STATION
         </p>
       </div>
     </div>

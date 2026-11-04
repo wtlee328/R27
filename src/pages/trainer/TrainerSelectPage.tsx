@@ -22,7 +22,7 @@ export default function TrainerSelectPage() {
 
   const { trainers, loading } = useTrainers()
 
-  const centerLabel = user?.centerId === 'coffit' ? 'Coffit' : 'R27 Fitness'
+  const centerLabel = user?.centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
 
   function handleSelect(id: string, name: string) {
     setSelectedTrainer(id, name)

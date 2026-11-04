@@ -50,7 +50,7 @@ export function useAutoBackupScheduler() {
         console.log(`[AutoBackup] Schedule is due (${currentConfig.frequency}), executing automatic backup...`)
         const result = await executeScheduledBackup({
           userId: user.uid,
-          centerId: centerId || 'r27',
+          centerId: centerId || 'hongshulin_branch',
           isManualTrigger: false,
         })
         console.log('[AutoBackup] Result:', result)
@@ -107,7 +107,7 @@ export function useAutoBackupScheduler() {
       toast.info('正在測試執行排程備份並發送通知...')
       const result = await executeScheduledBackup({
         userId: user.uid,
-        centerId: centerId || 'r27',
+        centerId: centerId || 'hongshulin_branch',
         isManualTrigger: true,
       })
       const updated = await fetchSystemBackupConfig()

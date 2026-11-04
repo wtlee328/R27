@@ -14,8 +14,8 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useAuthStore } from '@/stores/authStore'
 import { useCenterStore } from '@/stores/centerStore'
-import r27Stamp from '@/assets/r27-stamp.png'
-import coffitStamp from '@/assets/coffit-stamp.png'
+import hongshulinStamp from '@/assets/hongshulin-stamp.png'
+import tianmuStamp from '@/assets/tianmu-stamp.png'
 
 import SignatureCanvasComponent from 'react-signature-canvas'
 const SignatureCanvas: any = (SignatureCanvasComponent as any).default || SignatureCanvasComponent
@@ -97,9 +97,10 @@ export function CustomerContractModal({
   const { isAdmin, isTrainer } = useAuthStore()
   const { centerId } = useCenterStore()
   const contractCenterId = currentContract?.centerId || contract?.centerId || centerId
-  const brandName = contractCenterId === 'coffit' ? 'Coffit' : 'R27 Fitness'
-  const brandNameStation = contractCenterId === 'coffit' ? 'Coffit Station' : 'R27 Fitness Station'
-  const brandNameAbbr = contractCenterId === 'coffit' ? 'Coffit' : 'R27健身站'
+  const isTianmu = contractCenterId === 'tianmu_branch'
+  const brandName = 'R27'
+  const brandNameStation = 'R27 Fitness Station'
+  const brandNameAbbr = isTianmu ? 'R27 Fitness 天母店' : 'R27 Fitness 紅樹林店'
 
   const [isEditing, setIsEditing] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
@@ -612,7 +613,7 @@ export function CustomerContractModal({
               <div className="text-center space-y-2 border-b-2 border-stone-800 pb-4">
                 <h1 className="text-2xl font-black text-stone-900 tracking-tight">{brandName} 健身教練課程契約書</h1>
                 <div className="flex justify-between text-[11px] font-bold text-stone-600 print:text-[10px]">
-                  <span>{contractCenterId === 'coffit' ? '來財健康有限公司' : '紅二七健身有限公司'}</span>
+                  <span>{isTianmu ? '來財健康有限公司' : '紅二七健身有限公司'}</span>
                   <div>
                     <span>合約編號：</span>
                     {isEditing ? (
@@ -821,16 +822,16 @@ export function CustomerContractModal({
                 {/* 乙方 */}
                 <div className="space-y-2 pt-2 border-t border-dashed border-stone-200 text-stone-700">
                   <div className="font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded text-[11px]">
-                    <span>{contractCenterId === 'coffit' ? 'coffit健身咖' : 'R27健身站'}（簡稱乙方）</span>
+                    <span>{brandNameAbbr}（簡稱乙方）</span>
                   </div>
                   <div className="space-y-1 text-xs">
-                    <div>公司名稱：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '來財健康有限公司' : `紅二七健身有限公司 (${brandNameStation})`}</span></div>
+                    <div>公司名稱：<span className="font-bold text-stone-950">{isTianmu ? '來財健康有限公司' : `紅二七健身有限公司 (${brandNameStation})`}</span></div>
                     <div>負責人：<span className="font-bold text-stone-950">郭沛霖</span></div>
                     <div className="grid grid-cols-3 gap-2 pt-0.5">
                       <div>電話：<span className="font-bold text-stone-950">0905396658</span></div>
-                      <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '台北市士林區中山北路六段184號1樓' : '新北市淡水區中正東路二段68號'}</span></div>
-                      <div>網址：<span className="font-bold text-stone-950 underline font-mono text-[10px]">{contractCenterId === 'coffit' ? 'https://www.instagram.com/coffit0184/' : 'https://www.instagram.com/r27fitness'}</span></div>
-                      <div className="col-span-2">公共意外責任險：<span className="font-bold text-stone-950">{contractCenterId === 'coffit' ? '已投保足額公共意外責任險' : '已投保（效期：114/11/21-115/11/21）'}</span></div>
+                      <div className="col-span-2">營業/履約地址：<span className="font-bold text-stone-950">{isTianmu ? '台北市士林區中山北路六段184號1樓' : '新北市淡水區中正東路二段68號'}</span></div>
+                      <div>網址：<span className="font-bold text-stone-950 underline font-mono text-[10px]">{isTianmu ? 'https://www.instagram.com/r27fitness_tianmu/' : 'https://www.instagram.com/r27fitness'}</span></div>
+                      <div className="col-span-2">公共意外責任險：<span className="font-bold text-stone-950">{isTianmu ? '已投保足額公共意外責任險' : '已投保（效期：114/11/21-115/11/21）'}</span></div>
                     </div>
                   </div>
                 </div>
@@ -1231,7 +1232,7 @@ export function CustomerContractModal({
                   <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">乙方蓋印</p>
                   <div className="w-20 h-20 flex items-center justify-center relative select-none pointer-events-none">
                     <img 
-                      src={contractCenterId === 'coffit' ? coffitStamp : r27Stamp} 
+                      src={isTianmu ? tianmuStamp : hongshulinStamp} 
                       alt="乙方蓋印" 
                       className="max-w-full max-h-full object-contain mix-blend-multiply" 
                     />
