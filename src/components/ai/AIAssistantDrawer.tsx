@@ -41,7 +41,7 @@ export const AIAssistantDrawer: React.FC = () => {
   const messages = useMemo(() => {
     return messagesByCenter[centerId] || [getDefaultWelcomeMessage(centerId)]
   }, [messagesByCenter, centerId])
-  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
 
   const [inputMessage, setInputMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -125,7 +125,7 @@ export const AIAssistantDrawer: React.FC = () => {
               </div>
               <div className="flex items-center gap-1 text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
                 <Building2 className="w-3 h-3" />
-                <span>目前場館：<strong className="text-stone-800 dark:text-stone-200 uppercase">{centerId}</strong></span>
+                <span>目前場館：<strong className="text-stone-800 dark:text-stone-200">{centerName}</strong></span>
                 <span className="mx-1">•</span>
                 <span className="inline-flex items-center gap-0.5 text-orange-600 dark:text-orange-400 font-medium">
                   <Brain className="w-2.5 h-2.5" />

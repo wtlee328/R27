@@ -52,7 +52,7 @@ async function migrate() {
       
       const renterName = booking.renterName || booking.trainerName || '未知租借人'
       const notes = booking.purpose || ''
-      const centerId = booking.centerId || 'r27'
+      const centerId = booking.centerId || 'hongshulin_branch'
 
       const cashFlowData = {
         date: bookingDate,

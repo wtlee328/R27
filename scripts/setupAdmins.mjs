@@ -71,7 +71,7 @@ async function setupAdmins() {
         email: admin.email,
         displayName: admin.displayName,
         role: 'admin',
-        centerId: 'r27',
+        centerId: 'hongshulin_branch',
         isSuperAdmin: admin.isSuperAdmin,
         updatedAt: FieldValue.serverTimestamp(),
       }

@@ -161,13 +161,13 @@ export const CHRONIC_CONDITIONS = [
 
 // ─── Centers ──────────────────────────────────────────────────
 export const CENTERS = {
-  R27: 'r27',
-  COFFIT: 'coffit',
+  HONGSHULIN: 'hongshulin_branch',
+  TIANMU: 'tianmu_branch',
 } as const
 
 export const CENTER_LABELS = {
-  [CENTERS.R27]: 'R27 Fitness',
-  [CENTERS.COFFIT]: 'Coffit',
+  [CENTERS.HONGSHULIN]: 'R27 紅樹林店',
+  [CENTERS.TIANMU]: 'R27 天母店',
 } as const
 
 // ─── Firestore collection names ───────────────────────────────
@@ -189,8 +189,8 @@ export const COLLECTIONS = {
 
 // ─── Trainer Account Emails ──────────────────────────────────
 export const TRAINER_EMAILS: Record<string, string> = {
-  'trainer-r27@r27app.com': 'r27',
-  'trainer-coffit@r27app.com': 'coffit',
+  'trainer-hongshulin@r27app.com': 'hongshulin_branch',
+  'trainer-tianmu@r27app.com': 'tianmu_branch',
 }
 
 // ─── Booking Status Labels ──────────────────────────────────

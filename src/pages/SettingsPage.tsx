@@ -25,7 +25,7 @@ export default function SettingsPage() {
 
 
   // Operating Hours states (0 is Sunday, 1 is Monday, ..., 6 is Saturday)
-  const [r27Hours, setR27Hours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
+  const [hongshulinHours, setHongshulinHours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
     '0': { startTime: '09:00', endTime: '05:00' },
     '1': { startTime: '09:00', endTime: '05:00' },
     '2': { startTime: '09:00', endTime: '05:00' },
@@ -34,7 +34,7 @@ export default function SettingsPage() {
     '5': { startTime: '09:00', endTime: '05:00' },
     '6': { startTime: '09:00', endTime: '05:00' },
   })
-  const [coffitHours, setCoffitHours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
+  const [tianmuHours, setTianmuHours] = React.useState<Record<string, { startTime: string; endTime: string }>>({
     '0': { startTime: '09:00', endTime: '05:00' },
     '1': { startTime: '09:00', endTime: '05:00' },
     '2': { startTime: '09:00', endTime: '05:00' },
@@ -47,7 +47,7 @@ export default function SettingsPage() {
   const [hoursStatus, setHoursStatus] = React.useState<string | null>(null)
 
   // Trainer Password states
-  const [pwCenter, setPwCenter] = React.useState<'r27' | 'coffit'>('r27')
+  const [pwCenter, setPwCenter] = React.useState<'hongshulin_branch' | 'tianmu_branch'>('hongshulin_branch')
   const [currentPw, setCurrentPw] = React.useState('')
   const [newPw, setNewPw] = React.useState('')
   const [pwLoading, setPwLoading] = React.useState(false)
@@ -90,34 +90,34 @@ export default function SettingsPage() {
             '6': { startTime: '09:00', endTime: '05:00' },
           }
 
-          if (data.r27) {
-            // Backward compatibility
-            if (data.r27.startTime) {
+          const hslData = data.hongshulin_branch
+          if (hslData) {
+            if (hslData.startTime) {
               const mapped = { ...defaultWeek }
               for (let i = 0; i <= 6; i++) {
                 mapped[String(i)] = {
-                  startTime: data.r27.startTime,
-                  endTime: data.r27.endTime || '05:00'
+                  startTime: hslData.startTime,
+                  endTime: hslData.endTime || '05:00'
                 }
               }
-              setR27Hours(mapped)
+              setHongshulinHours(mapped)
             } else {
-              setR27Hours({ ...defaultWeek, ...data.r27 })
+              setHongshulinHours({ ...defaultWeek, ...hslData })
             }
           }
-          if (data.coffit) {
-            // Backward compatibility
-            if (data.coffit.startTime) {
+          const tmData = data.tianmu_branch
+          if (tmData) {
+            if (tmData.startTime) {
               const mapped = { ...defaultWeek }
               for (let i = 0; i <= 6; i++) {
                 mapped[String(i)] = {
-                  startTime: data.coffit.startTime,
-                  endTime: data.coffit.endTime || '05:00'
+                  startTime: tmData.startTime,
+                  endTime: tmData.endTime || '05:00'
                 }
               }
-              setCoffitHours(mapped)
+              setTianmuHours(mapped)
             } else {
-              setCoffitHours({ ...defaultWeek, ...data.coffit })
+              setTianmuHours({ ...defaultWeek, ...tmData })
             }
           }
         }
@@ -133,8 +133,8 @@ export default function SettingsPage() {
     setHoursStatus(null)
     try {
       await setDoc(doc(db, 'systemConfig', 'operatingHours'), {
-        r27: r27Hours,
-        coffit: coffitHours,
+        hongshulin_branch: hongshulinHours,
+        tianmu_branch: tianmuHours,
       })
       setHoursStatus('營業時間設定已成功儲存！')
       setTimeout(() => setHoursStatus(null), 3000)
@@ -153,7 +153,7 @@ export default function SettingsPage() {
     setPwLoading(true)
     setPwStatus(null)
 
-    const trainerEmail = pwCenter === 'r27' ? 'trainer-r27@r27app.com' : 'trainer-coffit@r27app.com'
+    const trainerEmail = pwCenter === 'hongshulin_branch' ? 'trainer-hongshulin@r27app.com' : 'trainer-tianmu@r27app.com'
 
     // We initialize a secondary App client-side, log in to update the password, then delete it.
     let secondaryApp
@@ -171,7 +171,7 @@ export default function SettingsPage() {
         throw new Error('未成功載入教練使用者資訊')
       }
 
-      setPwStatus({ type: 'success', message: `${pwCenter === 'r27' ? 'R27' : 'Coffit'} 教練密碼更新成功！` })
+      setPwStatus({ type: 'success', message: `${pwCenter === 'hongshulin_branch' ? 'R27 紅樹林店' : 'R27 天母店'} 教練密碼更新成功！` })
       setCurrentPw('')
       setNewPw('')
     } catch (err: any) {
@@ -380,17 +380,17 @@ export default function SettingsPage() {
                 場館營業時間設定
               </h2>
               <p className="text-xs text-stone-400 mt-1">
-                設定 R27 與 Coffit 的場租營業時段（預設為 09:00 - 05:00）
+                設定 R27 紅樹林店 與 R27 天母店 的場租營業時段（預設為 09:00 - 05:00）
               </p>
             </div>
           </div>
           
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* R27 Operating Hours */}
+              {/* Hongshulin Operating Hours */}
               <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
                 <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
-                  <span>R27 Fitness</span>
+                  <span>R27 紅樹林店</span>
                   <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (當天)</span>
                 </h3>
                 <div className="space-y-3 pb-1">
@@ -408,12 +408,12 @@ export default function SettingsPage() {
                       <Input
                         type="text"
                         placeholder="09:00"
-                        value={r27Hours[day.key]?.startTime || '09:00'}
+                        value={hongshulinHours[day.key]?.startTime || '09:00'}
                         onChange={(e) => {
-                          setR27Hours({
-                            ...r27Hours,
+                          setHongshulinHours({
+                            ...hongshulinHours,
                             [day.key]: {
-                              ...(r27Hours[day.key] || { endTime: '05:00' }),
+                              ...(hongshulinHours[day.key] || { endTime: '05:00' }),
                               startTime: e.target.value,
                             },
                           })
@@ -423,12 +423,12 @@ export default function SettingsPage() {
                       <Input
                         type="text"
                         placeholder="05:00"
-                        value={r27Hours[day.key]?.endTime || '05:00'}
+                        value={hongshulinHours[day.key]?.endTime || '05:00'}
                         onChange={(e) => {
-                          setR27Hours({
-                            ...r27Hours,
+                          setHongshulinHours({
+                            ...hongshulinHours,
                             [day.key]: {
-                              ...(r27Hours[day.key] || { startTime: '09:00' }),
+                              ...(hongshulinHours[day.key] || { startTime: '09:00' }),
                               endTime: e.target.value,
                             },
                           })
@@ -440,10 +440,10 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Coffit Operating Hours */}
+              {/* Tianmu Operating Hours */}
               <div className="space-y-4 p-4 bg-stone-50/50 rounded-xl border border-stone-200/60">
                 <h3 className="text-sm font-bold text-stone-800 border-b border-stone-200/40 pb-1.5 flex justify-between">
-                  <span>Coffit</span>
+                  <span>R27 天母店</span>
                   <span className="text-[10px] text-stone-400 font-normal">開始 / 結束 (當天)</span>
                 </h3>
                 <div className="space-y-3 pb-1">
@@ -461,12 +461,12 @@ export default function SettingsPage() {
                       <Input
                         type="text"
                         placeholder="09:00"
-                        value={coffitHours[day.key]?.startTime || '09:00'}
+                        value={tianmuHours[day.key]?.startTime || '09:00'}
                         onChange={(e) => {
-                          setCoffitHours({
-                            ...coffitHours,
+                          setTianmuHours({
+                            ...tianmuHours,
                             [day.key]: {
-                              ...(coffitHours[day.key] || { endTime: '05:00' }),
+                              ...(tianmuHours[day.key] || { endTime: '05:00' }),
                               startTime: e.target.value,
                             },
                           })
@@ -476,12 +476,12 @@ export default function SettingsPage() {
                       <Input
                         type="text"
                         placeholder="05:00"
-                        value={coffitHours[day.key]?.endTime || '05:00'}
+                        value={tianmuHours[day.key]?.endTime || '05:00'}
                         onChange={(e) => {
-                          setCoffitHours({
-                            ...coffitHours,
+                          setTianmuHours({
+                            ...tianmuHours,
                             [day.key]: {
-                              ...(coffitHours[day.key] || { startTime: '09:00' }),
+                              ...(tianmuHours[day.key] || { startTime: '09:00' }),
                               endTime: e.target.value,
                             },
                           })
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                 教練帳號密碼管理
               </h2>
               <p className="text-xs text-stone-400 mt-1">
-                修改 R27 或 Coffit 教練專屬之共享登入密碼
+                修改 R27 紅樹林店 或 R27 天母店 教練專屬之共享登入密碼
               </p>
             </div>
           </div>
@@ -538,21 +538,21 @@ export default function SettingsPage() {
                     <input
                       type="radio"
                       name="pwCenter"
-                      checked={pwCenter === 'r27'}
-                      onChange={() => setPwCenter('r27')}
+                      checked={pwCenter === 'hongshulin_branch'}
+                      onChange={() => setPwCenter('hongshulin_branch')}
                       className="text-brand-500 focus:ring-brand-500"
                     />
-                    <span>R27 (trainer-r27@r27app.com)</span>
+                    <span>R27 紅樹林店 (trainer-hongshulin@r27app.com)</span>
                   </label>
                   <label className="flex items-center gap-2 text-sm font-semibold text-stone-700 cursor-pointer">
                     <input
                       type="radio"
                       name="pwCenter"
-                      checked={pwCenter === 'coffit'}
-                      onChange={() => setPwCenter('coffit')}
+                      checked={pwCenter === 'tianmu_branch'}
+                      onChange={() => setPwCenter('tianmu_branch')}
                       className="text-brand-500 focus:ring-brand-500"
                     />
-                    <span>Coffit (trainer-coffit@r27app.com)</span>
+                    <span>R27 天母店 (trainer-tianmu@r27app.com)</span>
                   </label>
                 </div>
               </div>

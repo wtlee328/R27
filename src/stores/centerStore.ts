@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type CenterId = 'r27' | 'coffit'
+export type CenterId = 'hongshulin_branch' | 'tianmu_branch'
 
 interface CenterState {
   centerId: CenterId
@@ -12,13 +12,13 @@ const LOCAL_STORAGE_KEY = 'r27_selected_center_id'
 const getInitialCenterId = (): CenterId => {
   try {
     const saved = localStorage.getItem(LOCAL_STORAGE_KEY)
-    if (saved === 'r27' || saved === 'coffit') {
+    if (saved === 'hongshulin_branch' || saved === 'tianmu_branch') {
       return saved
     }
   } catch (e) {
     console.error('Failed to parse centerId from localStorage', e)
   }
-  return 'r27'
+  return 'hongshulin_branch'
 }
 
 export const useCenterStore = create<CenterState>((set) => ({

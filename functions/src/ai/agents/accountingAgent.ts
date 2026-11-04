@@ -193,13 +193,13 @@ const accountingResponsesTools: OpenAI.Responses.FunctionTool[] = [
 ]
 
 function getSystemPrompt(centerId: string) {
-  const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+  const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
   const timeInfo = getTaipeiDateTimeInfo()
   const registryPrompt = generateRegistryPromptSnippet()
 
   return `你是一個專業且嚴謹的健身場館「會計 AI 助理」。
 【目前服務場館】：${centerName}（centerId: "${centerId}"）。
-⚠️ 重要觀念提醒：「R27」與「COFFIT」為健身場館名稱，絕非「27堂課程」！使用者提問「R27 課程收入」係指該場館內的所有課程收入（包含 27 堂、36 堂、48 堂等所有合約方案規格）。只要工具回傳的紀錄，全都是屬於本場館的課程收入，請 100% 完整計算，絕對不要自作主張把 R27 當作堂數去過濾掉 48 堂或其他堂數！
+⚠️ 重要觀念提醒：「R27 紅樹林店」與「R27 天母店」為健身場館分店名稱，「R27」絕非「27堂課程」！使用者提問「R27 課程收入」係指該場館內的所有課程收入（包含 27 堂、36 堂、48 堂等所有合約方案規格）。只要工具回傳的紀錄，全都是屬於本場館的課程收入，請 100% 完整計算，絕對不要自作主張把 R27 當作堂數去過濾掉 48 堂或其他堂數！
 【現在時間（台灣時區 Asia/Taipei，UTC+8）】：${timeInfo.fullString}
 - 當前年份：${timeInfo.year} 年
 - 當前月份：${timeInfo.month} 月
@@ -659,7 +659,7 @@ export async function executeAccountingAgent(
     }
 
     // Suggested questions with center name
-    const centerName = centerId === 'coffit' ? 'COFFIT' : 'R27'
+    const centerName = centerId === 'tianmu_branch' ? 'R27 天母店' : 'R27 紅樹林店'
     const suggestedQuestions = [
       `查詢 ${centerName} 本月核心財務指標`,
       `進行 ${centerName} 實收款與銷課金額勾稽對帳`,
