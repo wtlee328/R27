@@ -1220,7 +1220,9 @@ export function CustomerContractModal({
                     )}
 
                     <div className="pt-2 text-[10px] text-stone-500 border-t border-stone-200/50 leading-relaxed font-mono">
-                      （匯款資訊：台北富邦012 05430240590000 請備註姓名）
+                      {isTianmu
+                        ? '（匯款資訊：台北富邦012 0081680018696912 請備註姓名）'
+                        : '（匯款資訊：台北富邦012 05430240590000 請備註姓名）'}
                     </div>
                   </div>
                 </div>
